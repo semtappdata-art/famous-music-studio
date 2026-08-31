@@ -3,6 +3,9 @@ upload/client_secrets.json
 upload/token.json
 upload/tiktok_client_secrets.json
 upload/tiktok_token.json
+upload/instagram_client_secrets.json
+upload/instagram_token.json
+upload/netlify_client_secrets.json
 
 # Render çıktıları ve büyük binary dosyalar
 projects/*/output/
