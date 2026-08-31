@@ -1,0 +1,82 @@
+<title>Famous Music Studio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0b0d12;
+    --text: #e8eaf0;
+    --text-muted: #8b92a6;
+    --accent: #33d6e8;
+    --accent-2: #e8399c;
+  }
+
+  :root[data-theme="light"] {
+    --bg: #faf9f7;
+    --text: #191a1e;
+    --text-muted: #5c6270;
+    --accent: #0f9fae;
+    --accent-2: #b91c78;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #faf9f7;
+      --text: #191a1e;
+      --text-muted: #5c6270;
+      --accent: #0f9fae;
+      --accent-2: #b91c78;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', system-ui, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .wrap { text-align: center; max-width: 480px; }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(32px, 6vw, 48px);
+    margin: 0 0 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  p { color: var(--text-muted); font-size: 16px; margin: 0 0 32px; }
+
+  nav { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+
+  a {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    padding: 10px 18px;
+    border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
+    border-radius: 999px;
+  }
+
+  a:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <h1>Famous Music Studio</h1>
+  <p>Original music, produced and published.</p>
+  <nav>
+    <a href="/privacy-policy.html">Privacy Policy</a>
+    <a href="/terms-of-service.html">Terms of Service</a>
+  </nav>
+</div>

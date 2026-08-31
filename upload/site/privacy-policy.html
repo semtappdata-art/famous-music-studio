@@ -1,0 +1,191 @@
+<title>Famous Music Studio Privacy</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0b0d12;
+    --surface: #14171f;
+    --surface-2: #191d27;
+    --text: #e8eaf0;
+    --text-muted: #8b92a6;
+    --border: #232733;
+    --accent: #33d6e8;
+    --accent-2: #e8399c;
+    --link: #5fe3f0;
+  }
+
+  :root[data-theme="light"] {
+    --bg: #faf9f7;
+    --surface: #ffffff;
+    --surface-2: #f1f0ee;
+    --text: #191a1e;
+    --text-muted: #5c6270;
+    --border: #e4e2df;
+    --accent: #0f9fae;
+    --accent-2: #b91c78;
+    --link: #0a7f8c;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #faf9f7;
+      --surface: #ffffff;
+      --surface-2: #f1f0ee;
+      --text: #191a1e;
+      --text-muted: #5c6270;
+      --border: #e4e2df;
+      --accent: #0f9fae;
+      --accent-2: #b91c78;
+      --link: #0a7f8c;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 24px 96px;
+  }
+
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  header {
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+
+  .brand {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-size: clamp(32px, 5vw, 44px);
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 12px;
+  }
+
+  .effective {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .intro {
+    font-size: 17px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  section { margin-bottom: 40px; }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 22px;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  h2 .num {
+    font-size: 14px;
+    color: var(--accent-2);
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  p { margin: 0 0 14px; font-size: 15.5px; }
+  ul { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 8px; font-size: 15.5px; }
+
+  strong { font-weight: 600; }
+
+  a { color: var(--link); text-decoration-color: color-mix(in srgb, var(--link) 40%, transparent); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--link); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+
+  .card p:last-child { margin-bottom: 0; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13.5px;
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">Famous Music Studio</div>
+    <h1>Privacy Policy</h1>
+    <p class="effective">Effective August 31, 2026</p>
+  </header>
+
+  <p class="intro">Famous Music Studio produces original music and short-form videos, and publishes them to platforms including YouTube, TikTok, and Instagram. This policy explains what we collect when we do that, and why.</p>
+
+  <section>
+    <h2><span class="num">01</span>What we collect</h2>
+    <p>When we connect a publishing tool to your platform account (for example, to upload a video to YouTube or TikTok on your behalf), the platform issues an authorization token scoped to that specific action — uploading video, reading basic profile info to confirm the right account is connected. We store that token locally to avoid asking you to re-authorize every time.</p>
+    <p>We do not operate a public-facing app that collects data from viewers or visitors. If you're reading this, you're most likely the studio's own operator, not an end user of a consumer product.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>How we use it</h2>
+    <ul>
+      <li>To publish rendered videos to the platform account you've connected.</li>
+      <li>To read back basic statistics (views, likes) for videos we've published, so we know what's working.</li>
+      <li>Nothing else. We don't build advertising profiles, and we don't sell or share this data with third parties.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>Third-party platforms</h2>
+    <div class="card">
+      <p><strong>YouTube (Google)</strong> — video upload and statistics, via the YouTube Data API. Governed additionally by <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</p>
+    </div>
+    <div class="card">
+      <p><strong>TikTok</strong> — video publishing, via the Content Posting API. Governed additionally by <a href="https://www.tiktok.com/legal/page/row/privacy-policy/en" target="_blank" rel="noopener">TikTok's Privacy Policy</a>.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>Retention &amp; security</h2>
+    <p>Authorization tokens are kept only as long as needed to keep publishing working, stored on the machine that runs the publishing tool — not in a shared or hosted database. Revoking access from your platform's own account settings (YouTube's or TikTok's security settings) immediately invalidates the token on our end too.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>Changes</h2>
+    <p>If this policy changes in a way that matters, the date at the top will move and the change will be summarized here. Continued use after a change means you've accepted the update.</p>
+  </section>
+
+  <footer>
+    Questions about this policy: reach Famous Music Studio through the contact channel listed on our platform profiles.
+  </footer>
+</div>

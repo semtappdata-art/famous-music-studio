@@ -1,0 +1,18 @@
+# Hassas kimlik bilgileri — asla commit edilmemeli
+upload/client_secrets.json
+upload/token.json
+upload/tiktok_client_secrets.json
+upload/tiktok_token.json
+
+# Render çıktıları ve büyük binary dosyalar
+projects/*/output/
+projects/*/audio.wav
+assets/*.png
+upload/assets/*.png
+
+# Python
+__pycache__/
+*.pyc
+
+# Claude Code internal state
+.claude/scheduled_tasks.lock
