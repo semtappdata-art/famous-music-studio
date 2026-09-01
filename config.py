@@ -103,7 +103,17 @@ SOCIAL_LINKS = {
     "tiktok": "https://www.tiktok.com/@famousmusicstudio",
     "website": "https://famousmusicstudio.com",
 }
-BRAND_HASHTAGS = ["#FamousMusicStudio", "#AIMusic", "#YapayZekaMüzik"]
+BRAND_HASHTAGS = ["#FamousMusicStudio", "#AIMusic", "#YapayZekaMüzik", "#AIMusicChallenge"]
+
+# Caption'ın ilk satırı — kaydırmayı durdurmak için merak uyandıran kısa açılış cümlesi.
+# build_caption() şarkı başlığına göre bunlardan birini deterministik seçer (her şarkı
+# için hep aynı hook, ama şarkılar arası çeşitlilik olur).
+HOOK_LINES = [
+    "Bu şarkı tamamen yapay zeka ile yapıldı 🤖🎵",
+    "İnsan mı yapay zeka mı, sen karar ver 👇",
+    "0'dan yapay zeka ile üretilen yeni şarkı 🎶",
+    "Bunu bir AI besteledi, inanabiliyor musun?",
+]
 
 # Video/ses kodek ayarları
 VIDEO_CODEC = "libx264"

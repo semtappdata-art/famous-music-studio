@@ -88,3 +88,19 @@ python upload/youtube_upload.py --project "projects/sarki-adi"
 
 TikTok/Instagram otomatik yükleme ve analitik takibi — geliştirici hesabı onayları
 gerektirdiği için ayrı bir sonraki adım. Detaylı yol haritası: proje planı dosyasında.
+
+## Büyüme / Paylaşım Stratejisi
+
+Otomasyon yayınlama hızını çözüyor, ama izlenme/takipçi sayısını tek başına artırmıyor —
+keşfedilebilirlik için ayrıca şunlara dikkat et:
+
+- **Paylaşım sıklığı/hacmi:** Hazır şarkıları teker teker, seyrek yerine hızlıca sırayla
+  yayınlamak algoritmaya "aktif hesap" sinyali verir.
+- **Açılış kancası:** `config.HOOK_LINES` — her caption'ın ilk satırı, kaydırmayı durdurmak
+  için merak uyandıran bir cümleyle başlıyor (`upload/social_text.py` içindeki
+  `_pick_hook()` şarkı başlığına göre deterministik seçiyor).
+- **Trend/challenge hashtag'i:** `#AIMusicChallenge` (`config.BRAND_HASHTAGS` içinde) —
+  orijinal müzik olduğu için TikTok'un trend-ses algoritmasından faydalanamıyoruz, bunun
+  yerine kendi "challenge" etiketimizle merak/tartışma yaratmayı hedefliyoruz.
+- **Yorumlara hızlı yanıt:** İlk yorumlara hızlı dönüş etkileşim sinyalini güçlendirir —
+  şu an otomatikleştirilmiş değil, elle takip gerekiyor.
