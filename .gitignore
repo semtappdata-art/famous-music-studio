@@ -12,6 +12,7 @@ upload/tiktok_auth_state.json
 # Render çıktıları ve büyük binary dosyalar
 projects/*/output/
 projects/*/audio.wav
+projects/*/_backdrop_*.png
 assets/*.png
 upload/assets/*.png
 

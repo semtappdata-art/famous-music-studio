@@ -57,10 +57,17 @@ platform thumbnail'i, videoya hiç girmiyor.
 ## Proje Yapısı
 
 - `render.py` — CLI giriş noktası (`--project <klasör>` veya `--all`), 3 platformu paralel render eder
-- `ffmpeg_utils.py` — ffprobe süre okuma + kart/glow/marquee/progress-bar filtergraph inşası + render_video()
+- `ffmpeg_utils.py` — ffprobe süre okuma + kart/marquee/progress-bar filtergraph inşası + render_video()
 - `config.py` — TÜM görünüm/kalite ayarları burada (aşağıda liste)
 - `assets/card_mask.png` — yuvarlak köşe maskesi (luma tabanlı, `alphamerge` ile kullanılır, tüm temalarda ortak)
-- `assets/card_glow_<tema>.png` — her tema (pop/rock/elektronik/akustik/hiphop) için ayrı, o temanın rengiyle üretilmiş yumuşak kenarlı kare parlama (alfa tabanlı; `hue` filtresiyle o renk etrafında HAFİFÇE salınır, tüm renkleri gezmez)
+- **Arka plan artık her şarkının kendi `art.jpg`'sinden geliyor** (Spotify "Now Playing" tarzı):
+  `ensure_art_backdrop()` art.jpg'yi ekranı kaplayacak şekilde büyütüp güçlü `gblur` uygular +
+  hafif karartır, projenin kendi klasörüne (`_backdrop_<w>x<h>.png`) önbelleğe alır. Şablon
+  (blur miktarı, karartma) her şarkıda AYNI — sadece kaynak görsel farklı olduğu için renk
+  şarkıdan şarkıya doğal olarak değişiyor; sabit bir tema paletinden GELMİYOR artık. art.jpg
+  yoksa (kart düz renge düştüğünde) `ensure_vignette()` fallback'i kullanılır (sabit, tema
+  bağımsız bir vinyet). Eskiden var olan köşe "glow" asset'i (`ensure_card_glow`) filtergraph'ta
+  hiç kullanılmıyordu (üretilip hiç compose edilmiyordu) — kaldırıldı.
 - `projects/<şarkı-adı>/` — her şarkı kendi klasöründe:
   - `audio.wav` (veya `.mp3`/`.m4a`)
   - `cover.jpg` (veya `.jpeg`/`.png`) — şu an hem thumbnail hem kart için kullanılıyor (yukarıdaki açık konuya bakın)
@@ -77,8 +84,8 @@ platform thumbnail'i, videoya hiç girmiyor.
 
 - `PLATFORMS` — platform_key → (genişlik, yükseklik).
 - `CARD_SIZE_RATIO` — kartın min(genişlik,yükseklik)'e oranı (0.74 — büyük/baskın, küçük thumbnail değil).
-- `CARD_CORNER_RATIO`, `CARD_GLOW_MARGIN_RATIO`, `CARD_HUE_PERIOD_SEC` — köşe yuvarlaklığı, çerçeve payı, renk dönüş hızı.
-- `CARD_ASSET_REF_SIZE` / `CARD_MASK_ASSET_PATH` / `CARD_GLOW_ASSET_PATH` — önbelleğe alınmış asset'ler (dosya silinirse otomatik yeniden üretilir).
+- `CARD_CORNER_RATIO` — köşe yuvarlaklığı.
+- `CARD_ASSET_REF_SIZE` / `CARD_MASK_ASSET_PATH` — önbelleğe alınmış maske asset'i (dosya silinirse otomatik yeniden üretilir). Art backdrop'ı ise projenin kendi klasöründe önbelleğe alınır (yukarıya bakın).
 - `THEMES[key]["accent"]`/`["accent2"]` — çerçeve artık İKİ renk arasında AÇISAL (angular,
   `atan2` ile) gradyan, `rotate` filtresiyle sürekli döndürülüyor — referans videodaki
   "aynı anda çok renkli" görünüm buradan geliyor (eski tek-renk `hue` salınımı yerine geçti).

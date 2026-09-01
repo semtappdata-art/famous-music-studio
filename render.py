@@ -106,13 +106,15 @@ def render_project(project_dir: str) -> bool:
         return platform_key, output_path
 
     ok = True
-    # Kart maskesi/parlaması ilk kullanımda üretiliyor; paralel süreçler yarışıp
+    # Kart maskesi/arka planı ilk kullanımda üretiliyor; paralel süreçler yarışıp
     # bozuk/eksik bir dosya yazmasın diye render başlamadan önce garantiye alıyoruz.
     theme_key = ffmpeg_utils.get_theme_key(theme)
     ffmpeg_utils.ensure_card_mask()
-    ffmpeg_utils.ensure_card_glow(theme_key)
     for width, height in config.PLATFORMS.values():
-        ffmpeg_utils.ensure_vignette(width, height, theme_key)
+        if art_path:
+            ffmpeg_utils.ensure_art_backdrop(art_path, width, height)
+        else:
+            ffmpeg_utils.ensure_vignette(width, height, theme_key)
 
     with ThreadPoolExecutor(max_workers=config.MAX_PARALLEL_RENDERS) as executor:
         futures = {

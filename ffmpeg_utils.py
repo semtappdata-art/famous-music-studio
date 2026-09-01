@@ -72,66 +72,44 @@ def ensure_card_mask() -> str:
     return mask_path
 
 
-def _tonal_pair(rgb: tuple[int, int, int]) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
-    """Tek bir renkten (accent) AÇIK ve KOYU tonlarını üretir — kutu çevresindeki
-    gradyanın iki farklı/zıt renk (accent/accent2) yerine TEK rengin ton farkıyla
-    (aynı renk ailesi, açık<->koyu) geçiş yapması için. TONE_LIGHT_MIX beyaza,
-    TONE_DARK_MIX siyaha ne kadar yaklaşıldığını belirler."""
-    r, g, b = rgb
-    lm, dm = config.CARD_TONE_LIGHT_MIX, config.CARD_TONE_DARK_MIX
-    light = tuple(c + (255 - c) * lm for c in (r, g, b))
-    dark = tuple(c * (1 - dm) for c in (r, g, b))
-    return light, dark
+def ensure_art_backdrop(art_path: str, width: int, height: int) -> str:
+    """Spotify Now Playing tarzı: arka plan, kartta gösterilen görselin (art.jpg)
+    kendisinin tüm ekranı kaplayacak şekilde büyütülüp güçlü bulanıklaştırılmış
+    hâli — böylece arka planın rengi/atmosferi sabit bir tema paletinden değil,
+    doğrudan o şarkının kart görselinden geliyor. Şablon (blur + hafif karartma)
+    her şarkıda AYNI kalıyor, sadece kaynak görsel değiştiği için sonuç renk
+    şarkıdan şarkıya doğal olarak değişiyor. Proje bazında önbelleğe alınır
+    (art.jpg'nin yanına, çözünürlüğe göre) — parça başına bir kez üretilir."""
+    backdrop_path = os.path.join(os.path.dirname(art_path), f"_backdrop_{width}x{height}.png")
+    if os.path.isfile(backdrop_path):
+        return backdrop_path
 
-
-def ensure_card_glow(theme_key: str) -> str:
-    """Referans görseldeki gibi İKİ AYRI köşe ışık kaynağı: üst-sol köşede turquoise/cyan,
-    alt-sağ köşede magenta — her biri kendi Gauss yayılımına sahip, additif karışıyor.
-    Bu, tek merkezi blob + diagonal renk gradyanından FARKLI: köşelerde net, saturated
-    renk yoğunlaşması yaratır (referans görselde görülen distinct iki renkli köşe efekti)."""
-    glow_path = os.path.join(config.CARD_GLOW_ASSET_DIR, f"card_glow_{theme_key}.png")
-    if os.path.isfile(glow_path):
-        return glow_path
-
-    os.makedirs(os.path.dirname(glow_path) or ".", exist_ok=True)
-    size = config.CARD_ASSET_REF_SIZE
-    sigma = size * 0.42  # Geniş yayılım, köşeden köşeye kapsasın
-
-    # İki ışık kaynağı: üst-sol (turquoise), alt-sağ (magenta)
-    cx1, cy1 = size * 0.22, size * 0.22  # Üst-sol
-    cx2, cy2 = size * 0.78, size * 0.78  # Alt-sağ
-    d1 = f"hypot(X-{cx1:.1f}\\,Y-{cy1:.1f})"
-    d2 = f"hypot(X-{cx2:.1f}\\,Y-{cy2:.1f})"
-    a1 = f"exp(-pow({d1}/{sigma:.2f}\\,2))"
-    a2 = f"exp(-pow({d2}/{sigma:.2f}\\,2))"
-
-    r_turq, g_turq, b_turq = 0, 220, 255       # Bright cyan
-    r_mag, g_mag, b_mag = 255, 60, 200         # Bright magenta
-
-    total = f"({a1}+{a2})"
-    r_expr = f"255*(({r_turq:.1f}*{a1}+{r_mag:.1f}*{a2})/max({total}\\,0.0001)/255)*min(1\\,{total})"
-    g_expr = f"255*(({g_turq:.1f}*{a1}+{g_mag:.1f}*{a2})/max({total}\\,0.0001)/255)*min(1\\,{total})"
-    b_expr = f"255*(({b_turq:.1f}*{a1}+{b_mag:.1f}*{a2})/max({total}\\,0.0001)/255)*min(1\\,{total})"
-    a_expr = f"255*min(1\\,{total})"
+    sigma = max(20, int(min(width, height) * 0.045))
     cmd = [
         "ffmpeg", "-y",
-        "-f", "lavfi", "-i", f"color=c=black@0.0:s={size}x{size}",
-        "-vf", f"format=rgba,geq=r='{r_expr}':g='{g_expr}':b='{b_expr}':a='{a_expr}'",
+        "-i", art_path,
+        "-vf", (
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},"
+            f"gblur=sigma={sigma},"
+            f"eq=brightness=-0.12:saturation=1.15"
+        ),
         "-frames:v", "1", "-update", "1",
-        glow_path,
+        backdrop_path,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"Kart parlaması üretilemedi: {result.stderr[-1000:]}")
-    return glow_path
+        raise RuntimeError(f"Kart arka planı (blur) üretilemedi: {result.stderr[-1000:]}")
+    return backdrop_path
 
 
 def ensure_vignette(width: int, height: int, theme_key: str) -> str:
-    """Arka planı platform+tema başına BİR KEZ üretir ve önbelleğe alır: merkezdeki
-    radial falloff + asimetrik tonlu bokeh blob (accent'in açık tonu) → derinlik.
-    Bokeh çok yumuşak/bulanık olmalı (soft glow), kart'ı ön plana çıkarmak için.
-    Bunu her karede canlı `geq` ile hesaplamak çok yavaştı — statik bir PNG
-    üretip bindirmek hızlı."""
+    """FALLBACK arka plan — sadece projede art.jpg yokken kullanılır (kart
+    art.jpg'siz düz renge düştüğünde, blur alınacak bir görsel olmadığı için).
+    Art.jpg varsa bunun yerine ensure_art_backdrop() kullanılır. Platform+tema
+    başına BİR KEZ üretir ve önbelleğe alır: merkezdeki radial falloff +
+    asimetrik tonlu bokeh blob → derinlik. Bunu her karede canlı `geq` ile
+    hesaplamak çok yavaştı — statik bir PNG üretip bindirmek hızlı."""
     path = f"assets/vignette_{width}x{height}_{theme_key}.png"
     if os.path.isfile(path):
         return path
@@ -195,9 +173,6 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
 
     card_size = int(min(width, height) * config.CARD_SIZE_RATIO)
     card_size -= card_size % 2
-    glow_margin = int(card_size * config.CARD_GLOW_MARGIN_RATIO)
-    glow_size = card_size + 2 * glow_margin
-    glow_size -= glow_size % 2
     bar_thick = int(card_size * config.EQ_BAR_THICKNESS_RATIO)
     bar_thick -= bar_thick % 2
 
@@ -218,22 +193,21 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
     card_y = max(0, (height - total_h) // 2)
     card_x = (width - card_size) // 2
 
-    glow_x = card_x - glow_margin
-    glow_y = card_y - glow_margin
-
     marquee_y = card_y + card_size + bar_thick + marquee_gap
     label_y = marquee_y + marquee_strip_h + label_gap
 
-    # Arka plan: ortada hafif aydınlık + iki asimetrik renkli bokeh lekesi, kenarlara
-    # doğru siyaha kararıyor. Önbelleğe alınmış statik bir PNG (her karede geq yerine).
-    canvas = f"[3:v]fps={fps}[canvas]"
+    # Arka plan: art.jpg varsa onun bulanıklaştırılmış hâli (ensure_art_backdrop),
+    # yoksa (kart art.jpg'siz düz renge düştüğünde) sabit vignette fallback'i
+    # (ensure_vignette) — hangisi olduğu render_video() tarafında seçiliyor,
+    # ikisi de aynı [2:v] girişinden statik bir PNG olarak geliyor.
+    canvas = f"[2:v]fps={fps}[canvas]"
 
     # "Famous Music Studio" logosu sadece platform thumbnail'inde (cover.jpg) kullanılıyor —
     # video içindeki kartta GÖSTERİLMİYOR. art_path verilmişse o görsel kare kırpılıp
     # kullanılır (esnek kart içeriği); yoksa düz koyu renkle dolduruluyor (sabit fallback).
     if has_art:
         card_raw = (
-            f"[4:v]scale={card_size}:{card_size}:force_original_aspect_ratio=increase,"
+            f"[3:v]scale={card_size}:{card_size}:force_original_aspect_ratio=increase,"
             f"crop={card_size}:{card_size},format=rgba[card_raw]"
         )
     else:
@@ -241,7 +215,7 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
             f"color=c={config.CARD_ART_COLOR}:s={card_size}x{card_size}:"
             f"d={duration:.3f}:rate={fps},format=rgba[card_raw]"
         )
-    mask_scaled = f"[2:v]scale={card_size}:{card_size}[mask_s]"
+    mask_scaled = f"[1:v]scale={card_size}:{card_size}[mask_s]"
     card = "[card_raw][mask_s]alphamerge[card]"
 
     parts = [
@@ -322,18 +296,16 @@ def render_video(
         duration = full_duration
     theme_key = get_theme_key(theme)
     mask_path = ensure_card_mask()
-    glow_path = ensure_card_glow(theme_key)
-    vignette_path = ensure_vignette(width, height, theme_key)
     has_art = bool(art_path)
+    canvas_path = ensure_art_backdrop(art_path, width, height) if has_art else ensure_vignette(width, height, theme_key)
     filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key)
 
     audio_input = ["-ss", f"{start_time:.3f}"] if start_time is not None else []
     cmd = [
         "ffmpeg", "-y",
         *audio_input, "-i", audio_path,
-        "-loop", "1", "-i", glow_path,
         "-loop", "1", "-i", mask_path,
-        "-loop", "1", "-i", vignette_path,
+        "-loop", "1", "-i", canvas_path,
     ]
     if has_art:
         cmd += ["-loop", "1", "-i", art_path]
