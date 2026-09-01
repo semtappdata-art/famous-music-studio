@@ -11,10 +11,11 @@ Kullanım:
     python auto_process.py --privacy unlisted
     python auto_process.py --base projects
 
-Her çalıştırmada en fazla 1 proje işlenir (henüz 3 platforma da tam
-yüklenmemiş olanlardan en eskisi) — paylaşım sıklığını günde 1 şarkı ile
-sınırlı tutmak için. Görev Zamanlayıcı günde bir kez çalışacak şekilde
-kurulmalı.
+Her çalıştırmada en fazla 2 proje işlenir (henüz 3 platforma da tam
+yüklenmemiş olanlardan en eskisi + mümkünse ondan farklı temada olan bir
+tane daha) — paylaşım sıklığını günde 2 farklı tarz şarkı ile sınırlı
+tutmak için. Görev Zamanlayıcı günde bir kez çalışacak şekilde kurulmalı,
+her iki şarkı da aynı koşuda arka arkaya işlenir.
 
 Kendini iyileştiren mantık: proje için render sadece çıktı dosyaları eksikse
 yapılır; her platforma yükleme sadece state.json'da o platforma ait alan
@@ -92,6 +93,32 @@ def _is_fully_done(project_dir: str) -> bool:
     )
 
 
+def _project_theme(project_dir: str) -> str:
+    meta_path = os.path.join(project_dir, "meta.json")
+    if os.path.isfile(meta_path):
+        with open(meta_path, "r", encoding="utf-8") as f:
+            return json.load(f).get("theme")
+    return None
+
+
+def pick_todays_projects(pending: list) -> list:
+    """Bekleyen projelerden bugün işlenecek en fazla 2 taneyi seçer — ilki en
+    eski bekleyen, ikincisi ise mümkünse ilkinden farklı temada olan en eski
+    bekleyen (günde 2 farklı tarz hedefiyle). Farklı temada başka bekleyen
+    proje yoksa, ikinci sıradaki proje temaya bakılmaksızın seçilir."""
+    if not pending:
+        return []
+    todays = [pending[0]]
+    first_theme = _project_theme(pending[0])
+    for p in pending[1:]:
+        if _project_theme(p) != first_theme:
+            todays.append(p)
+            break
+    if len(todays) < 2 and len(pending) > 1:
+        todays.append(pending[1])
+    return todays
+
+
 def process_project(project_dir: str, privacy: str) -> None:
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
 
@@ -167,12 +194,14 @@ def main():
         log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
         return
 
-    # Günde sadece 1 yeni şarkı işlenir (paylaşım sıklığını sürdürülebilir tutmak
-    # ve her şarkının kendi izleyicisini bulmasına zaman tanımak için) — Görev
+    # Günde en fazla 2 yeni şarkı işlenir, mümkünse farklı tarzda (paylaşım
+    # sıklığını sürdürülebilir tutmak ve çeşitlilik sağlamak için) — Görev
     # Zamanlayıcı günde bir kez çalıştırılacak şekilde ayarlanmalı.
-    project_dir = pending[0]
-    log(f"{len(pending)} bekleyen proje var, bugün işlenecek: {os.path.basename(project_dir)}")
-    process_project(project_dir, args.privacy)
+    todays = pick_todays_projects(pending)
+    names = ", ".join(os.path.basename(p) for p in todays)
+    log(f"{len(pending)} bekleyen proje var, bugün işlenecek ({len(todays)}): {names}")
+    for project_dir in todays:
+        process_project(project_dir, args.privacy)
 
     log("Çalıştırma tamamlandı.")
 
