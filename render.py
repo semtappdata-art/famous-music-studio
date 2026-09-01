@@ -80,6 +80,12 @@ def render_project(project_dir: str) -> bool:
 
     highlight_start = meta.get("highlight_start")
     highlight_end = meta.get("highlight_end")
+    if (highlight_start is None) != (highlight_end is None):
+        print(
+            "  UYARI: meta.json'da highlight_start/highlight_end alanlarından sadece biri "
+            "belirtilmiş, ikisi de gerekli — göz ardı edilip otomatik tespite geçiliyor."
+        )
+        highlight_start = highlight_end = None
     if highlight_start is None or highlight_end is None:
         if config.HIGHLIGHT_PLATFORMS:
             print("  highlight otomatik tespit ediliyor (en yoğun bölüm)...")

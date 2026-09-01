@@ -1,5 +1,7 @@
 """Render ayarları — tüm görünüm/kalite parametreleri burada."""
 
+import os
+
 FPS = 30
 
 # platform_key -> (genişlik, yükseklik, çıktı dosya adı)
@@ -82,7 +84,32 @@ PROGRESS_BAR_EMPTY = 70  # boş kısım parlaklığı (0-255)
 
 # Başlık metni (meta.json'da "title" varsa kullanılır) — kayan, künye/jenerik tarzı
 # küçük ve göze batmayan bir yazı (büyük/kalın başlık değil).
-FONT_PATH = r"C:\Windows\Fonts\segoeui.ttf"  # Windows'ta en yaygın kullanılan modern arayüz fontu
+def _find_font_path() -> str:
+    """İşletim sistemine göre ilk bulunan sistem fontunu döndürür — proje Windows,
+    macOS ve Linux'ta çalışabilsin diye (tek sabit Windows yolu yerine). Segoe UI
+    (Windows) tercih edilir, bulunamazsa her platformda yaygın bir sans-serif
+    alternatife düşülür. Hiçbiri yoksa render.py başlarken açık hata versin diye
+    RuntimeError fırlatılır (drawtext sessizce hatalı/eksik yazı üretmesin diye)."""
+    candidates = [
+        r"C:\Windows\Fonts\segoeui.ttf",
+        r"C:\Windows\Fonts\arial.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    raise RuntimeError(
+        "Sistemde uygun bir font bulunamadı (denenen yollar: "
+        + ", ".join(candidates)
+        + "). config.FONT_PATH'i elle bir .ttf/.ttc dosyasına ayarlayın."
+    )
+
+
+FONT_PATH = _find_font_path()
 FONT_SIZE_RATIO = 0.032  # video yüksekliğine oran — büyütüldü, okunurluk için
 FONT_COLOR = "white@0.95"  # künye yazısı net okunsun diye yüksek opaklık
 MARQUEE_SEPARATOR = "  •  "
