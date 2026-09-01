@@ -41,16 +41,8 @@ DEFAULT_THEME = "hiphop"  # meta.json'da "theme" belirtilmezse kullanılır
 # waveform tasarımına göre çok daha az render maliyeti var.
 CARD_SIZE_RATIO = 0.45  # min(genişlik,yükseklik)'e oran — büyütüldü, daha belirgin görünüm
 CARD_CORNER_RATIO = 0.08  # kart boyutuna oran, köşe yuvarlaklığı
-CARD_GLOW_MARGIN_RATIO = 0.26  # neon çerçevenin kartın etrafına ne kadar taştığı — eşitleyici çubuğunu (0.20) da kapsayacak kadar büyük olmalı, yoksa çubuğun dış kenarı sert bir çizgi gibi görünüyor
-CARD_ASSET_REF_SIZE = 800  # maske/glow asset üretim çözünürlüğü (render'da ölçeklenir)
-CARD_GLOW_SOFTNESS_RATIO = 0.62  # yarı boyuta oran, Gauss yayılımı — büyüdükçe daha yumuşak/geniş bir ışık sızıntısı, küçüldükçe daha belirgin/dar bir halka
-
-# Kutu çevresindeki gradyan (halka + eşitleyici çubukları) artık İKİ FARKLI RENK
-# (accent/accent2) yerine TEK rengin (accent) açık<->koyu TONU arasında geçiş yapıyor.
-CARD_TONE_LIGHT_MIX = 0.45  # accent'in beyaza ne kadar yaklaştığı (0-1)
-CARD_TONE_DARK_MIX = 0.55  # accent'in siyaha ne kadar yaklaştığı (0-1)
+CARD_ASSET_REF_SIZE = 800  # maske asset üretim çözünürlüğü (render'da ölçeklenir)
 CARD_MASK_ASSET_PATH = "assets/card_mask.png"
-CARD_GLOW_ASSET_DIR = "assets"  # her tema için assets/card_glow_<tema>.png üretilir
 
 # Kart içeriği: "Famous Music Studio" logosu SADECE platform thumbnail'inde (cover.jpg)
 # kullanılıyor, video içindeki kartta GÖSTERİLMİYOR. Kart içeriği artık ESNEK —
