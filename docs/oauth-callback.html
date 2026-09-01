@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OAuth Callback</title>
+<style>
+  body {
+    background: #0a0806;
+    color: #ece6da;
+    font-family: -apple-system, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 2rem;
+    text-align: center;
+  }
+  .box { max-width: 32rem; }
+  h1 { font-size: 1.3rem; margin-bottom: 1rem; }
+  code {
+    display: block;
+    background: #1a1712;
+    border: 1px solid #3a352a;
+    border-radius: 8px;
+    padding: 1rem;
+    word-break: break-all;
+    font-size: 1rem;
+    margin: 1rem 0;
+    user-select: all;
+  }
+  .hint { color: #a89b84; font-size: 0.9rem; }
+  button {
+    background: #c9a15a;
+    color: #0a0806;
+    border: none;
+    border-radius: 999px;
+    padding: 0.6rem 1.4rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Yetkilendirme kodu:</h1>
+  <code id="code">yükleniyor...</code>
+  <button onclick="copyCode()">Kopyala</button>
+  <p class="hint">Bu kodu kopyalayıp Claude'a yapıştır.</p>
+</div>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code') || '(kod bulunamadı — URL\'de ?code= parametresi yok)';
+  document.getElementById('code').textContent = code;
+  function copyCode() {
+    navigator.clipboard.writeText(code);
+  }
+</script>
+</body>
+</html>
