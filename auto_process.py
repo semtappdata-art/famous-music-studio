@@ -8,10 +8,15 @@ her şeyi" (render + YouTube + TikTok + Instagram) otomatikleştiriyor.
 
 Kullanım:
     python auto_process.py
-    python auto_process.py --privacy public
+    python auto_process.py --privacy unlisted
     python auto_process.py --base projects
 
-Kendini iyileştiren mantık: her proje için render sadece çıktı dosyaları eksikse
+Her çalıştırmada en fazla 1 proje işlenir (henüz 3 platforma da tam
+yüklenmemiş olanlardan en eskisi) — paylaşım sıklığını günde 1 şarkı ile
+sınırlı tutmak için. Görev Zamanlayıcı günde bir kez çalışacak şekilde
+kurulmalı.
+
+Kendini iyileştiren mantık: proje için render sadece çıktı dosyaları eksikse
 yapılır; her platforma yükleme sadece state.json'da o platforma ait alan
 (youtube_video_id / tiktok_publish_id / instagram_media_id) yoksa denenir. Yani
 bir platform bir çalıştırmada başarısız olursa, bir sonraki çalıştırmada sadece
@@ -78,6 +83,15 @@ def find_ready_projects(base: str) -> list:
     return ready
 
 
+def _is_fully_done(project_dir: str) -> bool:
+    """Üç platforma da yüklenmişse True — bu proje için yapılacak bir şey kalmadı."""
+    state = _load_state(project_dir)
+    return all(
+        key in state
+        for key in ("youtube_video_id", "tiktok_publish_id", "instagram_media_id")
+    )
+
+
 def process_project(project_dir: str, privacy: str) -> None:
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
 
@@ -137,8 +151,8 @@ def main():
         description="Bekleyen (audio+cover hazır) projeleri otomatik render edip yükler."
     )
     parser.add_argument(
-        "--privacy", default="private", choices=["private", "unlisted", "public"],
-        help="Yeni YouTube yüklemeleri için görünürlük (varsayılan: private)",
+        "--privacy", default="public", choices=["private", "unlisted", "public"],
+        help="Yeni YouTube yüklemeleri için görünürlük (varsayılan: public)",
     )
     parser.add_argument("--base", default="projects", help="Proje klasörlerinin kök dizini")
     args = parser.parse_args()
@@ -148,9 +162,17 @@ def main():
         log("İşlenecek proje yok (audio+cover hazır olan bulunamadı).")
         return
 
-    log(f"{len(ready)} proje kontrol ediliyor: {', '.join(os.path.basename(p) for p in ready)}")
-    for project_dir in ready:
-        process_project(project_dir, args.privacy)
+    pending = [p for p in ready if not _is_fully_done(p)]
+    if not pending:
+        log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
+        return
+
+    # Günde sadece 1 yeni şarkı işlenir (paylaşım sıklığını sürdürülebilir tutmak
+    # ve her şarkının kendi izleyicisini bulmasına zaman tanımak için) — Görev
+    # Zamanlayıcı günde bir kez çalıştırılacak şekilde ayarlanmalı.
+    project_dir = pending[0]
+    log(f"{len(pending)} bekleyen proje var, bugün işlenecek: {os.path.basename(project_dir)}")
+    process_project(project_dir, args.privacy)
 
     log("Çalıştırma tamamlandı.")
 
