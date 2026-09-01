@@ -33,12 +33,6 @@ def _headers(access_token: str) -> dict:
     }
 
 
-def _query_creator_info(access_token: str) -> dict:
-    resp = requests.post(f"{API_BASE}/post/publish/creator_info/query/", headers=_headers(access_token))
-    resp.raise_for_status()
-    return resp.json()["data"]
-
-
 def _load_meta(project_dir: str) -> dict:
     meta_path = os.path.join(project_dir, "meta.json")
     if os.path.isfile(meta_path):
@@ -47,7 +41,12 @@ def _load_meta(project_dir: str) -> dict:
     return {}
 
 
-def upload_video(project_dir: str, privacy_level: str | None = None) -> str:
+def upload_video(project_dir: str) -> str:
+    """App'de sadece video.upload scope'u varsa (video.publish yok), TikTok'un
+    "Upload to TikTok" (inbox/draft) akışı kullanılır: video kullanıcının TikTok
+    gelen kutusuna taslak olarak düşer, yayınlamayı kullanıcı TikTok uygulamasından
+    elle tamamlar. Doğrudan/otomatik yayın (Direct Post) video.publish scope'u
+    gerektirir — app review onayı olmadan bu scope alınamıyor."""
     video_path = os.path.join(project_dir, "output", "shorts_9x16.mp4")
     if not os.path.isfile(video_path):
         raise FileNotFoundError(f"{video_path} bulunamadı — önce render.py ile bu projeyi render et.")
@@ -55,27 +54,11 @@ def upload_video(project_dir: str, privacy_level: str | None = None) -> str:
     token = get_access_token()
     access_token = token["access_token"]
 
-    creator_info = _query_creator_info(access_token)
-    allowed_privacy = creator_info.get("privacy_level_options", [])
-    if privacy_level is None:
-        # Sandbox/onaysız app'lerde genelde sadece SELF_ONLY (private) mevcut.
-        privacy_level = "SELF_ONLY" if "SELF_ONLY" in allowed_privacy else allowed_privacy[0]
-    elif privacy_level not in allowed_privacy:
-        raise ValueError(f"'{privacy_level}' bu hesap için izinli değil. İzinli: {allowed_privacy}")
-
     meta = _load_meta(project_dir)
-    caption = build_caption(meta)
     display_title = meta.get("title", "Untitled")
 
     video_size = os.path.getsize(video_path)
     init_body = {
-        "post_info": {
-            "title": caption,
-            "privacy_level": privacy_level,
-            "disable_duet": False,
-            "disable_comment": False,
-            "disable_stitch": False,
-        },
         "source_info": {
             "source": "FILE_UPLOAD",
             "video_size": video_size,
@@ -84,14 +67,14 @@ def upload_video(project_dir: str, privacy_level: str | None = None) -> str:
         },
     }
     resp = requests.post(
-        f"{API_BASE}/post/publish/video/init/", headers=_headers(access_token), json=init_body
+        f"{API_BASE}/post/publish/inbox/video/init/", headers=_headers(access_token), json=init_body
     )
     resp.raise_for_status()
     init_data = resp.json()["data"]
     publish_id = init_data["publish_id"]
     upload_url = init_data["upload_url"]
 
-    print(f"  yükleniyor: {display_title} ({privacy_level})")
+    print(f"  yükleniyor (taslak): {display_title}")
     with open(video_path, "rb") as f:
         video_bytes = f.read()
     upload_resp = requests.put(
@@ -114,8 +97,8 @@ def upload_video(project_dir: str, privacy_level: str | None = None) -> str:
         )
         status_resp.raise_for_status()
         status = status_resp.json()["data"]["status"]
-        if status == "PUBLISH_COMPLETE":
-            print(f"  tamam: publish_id={publish_id}")
+        if status in ("PUBLISH_COMPLETE", "SEND_TO_USER_INBOX"):
+            print(f"  tamam ({status}): publish_id={publish_id} — TikTok uygulamasından yayınla.")
             break
         if status == "FAILED":
             raise RuntimeError(f"TikTok yükleme başarısız: {status_resp.json()}")
@@ -129,7 +112,7 @@ def upload_video(project_dir: str, privacy_level: str | None = None) -> str:
             state = json.load(f)
     state["tiktok_publish_id"] = publish_id
     state["tiktok_uploaded_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    state["tiktok_privacy"] = privacy_level
+    state["tiktok_privacy"] = "DRAFT_INBOX"
     with open(state_path, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
@@ -139,10 +122,9 @@ def upload_video(project_dir: str, privacy_level: str | None = None) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Render edilmiş bir projeyi TikTok'a yükler.")
     parser.add_argument("--project", required=True, help="Proje klasörü (örn. projects/sarki-adi)")
-    parser.add_argument("--privacy", default=None, help="Örn. SELF_ONLY, PUBLIC_TO_EVERYONE (hesaba göre kısıtlı)")
     args = parser.parse_args()
 
-    upload_video(args.project, args.privacy)
+    upload_video(args.project)
 
 
 if __name__ == "__main__":
