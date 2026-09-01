@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from instagram_auth import get_access_token
+from social_text import build_caption
 
 UPLOAD_DIR = os.path.dirname(os.path.abspath(__file__))
 NETLIFY_SECRETS_PATH = os.path.join(UPLOAD_DIR, "netlify_client_secrets.json")
@@ -107,7 +108,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
 
     if caption is None:
         meta = _load_meta(project_dir)
-        caption = meta.get("title", "")
+        caption = build_caption(meta)
 
     # 1) Media container olustur
     create_resp = requests.post(

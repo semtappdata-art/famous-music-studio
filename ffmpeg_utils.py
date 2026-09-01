@@ -302,8 +302,24 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
     return ";".join(parts)
 
 
-def render_video(art_path: str | None, audio_path: str, output_path: str, width: int, height: int, title: str | None = None, theme: str | None = None) -> None:
-    duration = get_audio_duration(audio_path)
+def render_video(
+    art_path: str | None,
+    audio_path: str,
+    output_path: str,
+    width: int,
+    height: int,
+    title: str | None = None,
+    theme: str | None = None,
+    start_time: float | None = None,
+    end_time: float | None = None,
+) -> None:
+    """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
+    kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için."""
+    full_duration = get_audio_duration(audio_path)
+    if start_time is not None and end_time is not None:
+        duration = min(end_time, full_duration) - start_time
+    else:
+        duration = full_duration
     theme_key = get_theme_key(theme)
     mask_path = ensure_card_mask()
     glow_path = ensure_card_glow(theme_key)
@@ -311,9 +327,10 @@ def render_video(art_path: str | None, audio_path: str, output_path: str, width:
     has_art = bool(art_path)
     filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key)
 
+    audio_input = ["-ss", f"{start_time:.3f}"] if start_time is not None else []
     cmd = [
         "ffmpeg", "-y",
-        "-i", audio_path,
+        *audio_input, "-i", audio_path,
         "-loop", "1", "-i", glow_path,
         "-loop", "1", "-i", mask_path,
         "-loop", "1", "-i", vignette_path,

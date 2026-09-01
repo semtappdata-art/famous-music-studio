@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import config
 import ffmpeg_utils
+from audio_highlight import find_highlight
 
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
 ART_NAMES = ["art.jpg", "art.jpeg", "art.png"]
@@ -77,10 +78,25 @@ def render_project(project_dir: str) -> bool:
     output_dir = os.path.join(project_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
 
+    highlight_start = meta.get("highlight_start")
+    highlight_end = meta.get("highlight_end")
+    if highlight_start is None or highlight_end is None:
+        if config.HIGHLIGHT_PLATFORMS:
+            print("  highlight otomatik tespit ediliyor (en yoğun bölüm)...")
+            highlight_start, highlight_end = find_highlight(audio_path, config.HIGHLIGHT_DURATION)
+            print(f"  highlight: {highlight_start:.1f}s - {highlight_end:.1f}s")
+    else:
+        print(f"  highlight (meta.json'dan): {highlight_start:.1f}s - {highlight_end:.1f}s")
+
     def render_one(platform_key, width, height):
         output_path = os.path.join(output_dir, f"{platform_key}.mp4")
         print(f"  -> {platform_key} ({width}x{height}) render ediliyor...")
-        ffmpeg_utils.render_video(art_path, audio_path, output_path, width, height, title, theme)
+        use_highlight = platform_key in config.HIGHLIGHT_PLATFORMS
+        ffmpeg_utils.render_video(
+            art_path, audio_path, output_path, width, height, title, theme,
+            start_time=highlight_start if use_highlight else None,
+            end_time=highlight_end if use_highlight else None,
+        )
         return platform_key, output_path
 
     ok = True
