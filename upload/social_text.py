@@ -33,4 +33,8 @@ def build_caption(meta: dict) -> str:
     hashtags = " ".join(config.BRAND_HASHTAGS + genre_hashtags)
     hook = _pick_hook(title)
 
-    return f"{hook}\n\n{title} 🎵\n\nYeni şarkılar için takipte kalın\n\n{hashtags}"
+    return (
+        f"{hook}\n\n{title} 🎵\n\n"
+        f"Bu sesi edit/kesit videolarında kullanabilirsin 🔥\n\n"
+        f"Yeni şarkılar için takipte kalın\n\n{hashtags}"
+    )
