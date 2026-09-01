@@ -35,9 +35,18 @@ def build_snippet(meta: dict) -> dict:
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
     genre_tags = [theme["label"]] + theme.get("related", [])
+    links = config.SOCIAL_LINKS
+    hashtags = " ".join(config.BRAND_HASHTAGS)
 
-    description = f"{title}\n\n{config.STATIC_LABEL_TEXT}"
-    tags = genre_tags + [config.STATIC_LABEL_TEXT]
+    description = (
+        f"{title} | {config.STATIC_LABEL_TEXT}\n\n"
+        f"Yeni şarkılar için takipte kalın 🎵\n\n"
+        f"📷 Instagram: {links['instagram']}\n"
+        f"🎵 TikTok: {links['tiktok']}\n"
+        f"🌐 Website: {links['website']}\n\n"
+        f"{hashtags}"
+    )
+    tags = genre_tags + [config.STATIC_LABEL_TEXT, "AI Music", "Yapay Zeka Muzik"]
 
     return {
         "title": title,
