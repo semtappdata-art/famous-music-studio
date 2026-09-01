@@ -15,12 +15,11 @@ bekliyor. İki seçenek var:
 """
 
 import argparse
-import io
+import hashlib
 import json
 import os
 import sys
 import time
-import zipfile
 
 import requests
 
@@ -46,7 +45,17 @@ def _load_meta(project_dir: str) -> dict:
 
 def _upload_to_netlify(video_path: str) -> str:
     """Video dosyasını ayrı bir 'sadece medya' Netlify sitesine deploy edip
-    ortaya çıkan public URL'i döner. netlify_client_secrets.json gerektirir."""
+    ortaya çıkan public URL'i döner. netlify_client_secrets.json gerektirir.
+
+    NOT: Önceden burada ham bir zip'i `Content-Type: application/zip` ile tek
+    POST'ta göndermeyi deniyorduk (Netlify'ın "one-off deploy" yöntemi) — ama
+    gerçek kullanımda Netlify bunu zip olarak AÇMADI, tüm içeriği tek, yanlış
+    mime type'lı ("text/plain") bir kök (`/`) dosyası olarak kaydetti, video
+    hiçbir zaman gerçek dosya adıyla erişilebilir olmadı. Onun yerine Netlify'ın
+    "digest deploy" API'si kullanılıyor (dosya yolu + SHA1 hash'i JSON ile
+    bildirilip, Netlify içeriği zaten önbelleğinde tutmuyorsa dosya ayrıca PUT
+    edilir) — bu, Netlify'ın kendi web arayüzündeki (sürükle-bırak) yöntemle
+    aynı ve bu projede elle doğrulanmış şekilde çalışıyor."""
     if not os.path.isfile(NETLIFY_SECRETS_PATH):
         raise FileNotFoundError(
             f"{NETLIFY_SECRETS_PATH} bulunamadı ve --video-url verilmedi.\n"
@@ -58,29 +67,36 @@ def _upload_to_netlify(video_path: str) -> str:
         creds = json.load(f)
 
     filename = os.path.basename(video_path)
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.write(video_path, arcname=filename)
-    zip_buffer.seek(0)
+    with open(video_path, "rb") as f:
+        content = f.read()
+    file_sha1 = hashlib.sha1(content).hexdigest()
 
-    resp = requests.post(
+    auth_headers = {"Authorization": f"Bearer {creds['token']}"}
+
+    create_resp = requests.post(
         f"https://api.netlify.com/api/v1/sites/{creds['site_id']}/deploys",
-        headers={
-            "Authorization": f"Bearer {creds['token']}",
-            "Content-Type": "application/zip",
-        },
-        data=zip_buffer.read(),
+        headers={**auth_headers, "Content-Type": "application/json"},
+        json={"files": {f"/{filename}": file_sha1}},
     )
-    resp.raise_for_status()
-    deploy = resp.json()
+    create_resp.raise_for_status()
+    deploy = create_resp.json()
     deploy_id = deploy["id"]
-    base_url = deploy["ssl_url"]
+
+    # Netlify aynı içeriği (aynı SHA1) daha önce görmediyse dosyayı ayrıca yükle.
+    if file_sha1 in (deploy.get("required") or []):
+        upload_resp = requests.put(
+            f"https://api.netlify.com/api/v1/deploys/{deploy_id}/files/{filename}",
+            headers={**auth_headers, "Content-Type": "application/octet-stream"},
+            data=content,
+        )
+        upload_resp.raise_for_status()
 
     # Deploy 'ready' olana kadar bekle
+    status_resp = None
     for _ in range(30):
         status_resp = requests.get(
             f"https://api.netlify.com/api/v1/deploys/{deploy_id}",
-            headers={"Authorization": f"Bearer {creds['token']}"},
+            headers=auth_headers,
         )
         status_resp.raise_for_status()
         if status_resp.json().get("state") == "ready":
@@ -89,6 +105,7 @@ def _upload_to_netlify(video_path: str) -> str:
     else:
         raise RuntimeError("Netlify deploy zaman aşımına uğradı.")
 
+    base_url = status_resp.json()["ssl_url"]
     return f"{base_url}/{filename}"
 
 
