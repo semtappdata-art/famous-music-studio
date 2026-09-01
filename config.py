@@ -9,6 +9,13 @@ PLATFORMS = {
     "square_1x1": (1080, 1080),
 }
 
+# Bu platformlar şarkının TAMAMI yerine, audio_highlight.find_highlight() ile
+# bulunan en enerjik/yoğun bölümden kırpılır (viral kısa video için) —
+# meta.json'da "highlight_start"/"highlight_end" (saniye) belirtilirse onlar
+# öncelikli kullanılır, otomatik tespit devreye girmez.
+HIGHLIGHT_PLATFORMS = {"shorts_9x16", "square_1x1"}
+HIGHLIGHT_DURATION = 45.0  # saniye — YouTube Shorts/TikTok/Reels limitinin (180s) çok altında
+
 # Aynı anda kaç platform paralel render edilsin (varsayılan: hepsi birden)
 MAX_PARALLEL_RENDERS = len(PLATFORMS)
 
@@ -87,6 +94,16 @@ MARQUEE_SPEED_PX_S = 60
 STATIC_LABEL_TEXT = "Famous Music Studio"
 STATIC_LABEL_FONT_RATIO = 0.85  # ana font boyutuna oran — biraz daha küçük
 STATIC_LABEL_GAP_RATIO = 0.01  # kayan yazı ile arasındaki boşluk (yüksekliğe oran)
+
+# Paylaşım metinleri (YouTube açıklaması, sosyal medya caption şablonları) için
+# tek merkezi marka bilgisi — upload/youtube_upload.py ve ileride
+# instagram_upload.py/tiktok_upload.py bu değerleri kullanır.
+SOCIAL_LINKS = {
+    "instagram": "https://instagram.com/famous_music_studio",
+    "tiktok": "https://www.tiktok.com/@famousmusicstudio",
+    "website": "https://famousmusicstudio.com",
+}
+BRAND_HASHTAGS = ["#FamousMusicStudio", "#AIMusic", "#YapayZekaMüzik"]
 
 # Video/ses kodek ayarları
 VIDEO_CODEC = "libx264"

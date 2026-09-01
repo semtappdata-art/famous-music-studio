@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Famous Music Studio Terms</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0b0d12;
+    --surface: #14171f;
+    --text: #e8eaf0;
+    --text-muted: #8b92a6;
+    --border: #232733;
+    --accent: #33d6e8;
+    --accent-2: #e8399c;
+    --link: #5fe3f0;
+  }
+
+  :root[data-theme="light"] {
+    --bg: #faf9f7;
+    --surface: #ffffff;
+    --text: #191a1e;
+    --text-muted: #5c6270;
+    --border: #e4e2df;
+    --accent: #0f9fae;
+    --accent-2: #b91c78;
+    --link: #0a7f8c;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #faf9f7;
+      --surface: #ffffff;
+      --text: #191a1e;
+      --text-muted: #5c6270;
+      --border: #e4e2df;
+      --accent: #0f9fae;
+      --accent-2: #b91c78;
+      --link: #0a7f8c;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 24px 96px;
+  }
+
+  .wrap { max-width: 680px; margin: 0 auto; }
+
+  header {
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+
+  .brand {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-size: clamp(32px, 5vw, 44px);
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 12px;
+  }
+
+  .effective { color: var(--text-muted); font-size: 14px; }
+  .intro { font-size: 17px; color: var(--text-muted); margin-bottom: 8px; }
+
+  section { margin-bottom: 40px; }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 22px;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  h2 .num {
+    font-size: 14px;
+    color: var(--accent);
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+  }
+
+  p { margin: 0 0 14px; font-size: 15.5px; }
+  ul { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 8px; font-size: 15.5px; }
+  strong { font-weight: 600; }
+
+  a { color: var(--link); text-decoration-color: color-mix(in srgb, var(--link) 40%, transparent); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--link); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">Famous Music Studio</div>
+    <h1>Terms of Service</h1>
+    <p class="effective">Effective August 31, 2026</p>
+  </header>
+
+  <p class="intro">Famous Music Studio produces original music and short-form videos for publishing to YouTube, TikTok, and Instagram. These terms cover the tools we use to do that.</p>
+
+  <section>
+    <h2><span class="num">01</span>What this covers</h2>
+    <p>Famous Music Studio operates internal publishing tooling that connects to platform APIs (YouTube Data API, TikTok Content Posting API) to upload video content we've produced. These terms govern that connection, not a public product — there's no separate account signup or consumer-facing service here.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>Content ownership</h2>
+    <p>All music, video, and artwork produced and published through this tooling is original work created by or on behalf of Famous Music Studio. We retain ownership of content we publish, subject to each platform's own terms once it's live there.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>Acceptable use</h2>
+    <ul>
+      <li>Publishing tooling is used only to upload content we own or have rights to.</li>
+      <li>We follow each connected platform's community guidelines and developer policies — YouTube's, TikTok's, and Instagram's — as a condition of keeping API access.</li>
+      <li>Access tokens are not shared outside the studio's own operation.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>No warranty</h2>
+    <p>This tooling is provided as-is. Publishing can fail for reasons outside our control — a platform outage, a policy change, a quota limit — and we don't guarantee uninterrupted uploads.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>Changes</h2>
+    <p>If these terms change in a way that matters, the date at the top will move. Continued use after a change means you've accepted the update.</p>
+  </section>
+
+  <footer>
+    Questions about these terms: reach Famous Music Studio through the contact channel listed on our platform profiles.
+  </footer>
+</div>
+</body>
+</html>
