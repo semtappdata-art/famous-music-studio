@@ -1,34 +1,39 @@
 """TikTok OAuth2 (PKCE) kimlik doğrulama — bir kere tamamlanır, tiktok_token.json'a kaydedilir.
 
-Kullanım:
-    python upload/tiktok_auth.py
+TikTok da localhost redirect_uri'yi reddettiği için akış İKİ ADIMLI (Instagram ile aynı desen):
+    1. python upload/tiktok_auth.py --print-url
+       -> auth_url'i yazdırır. Bu linki tarayıcıda aç, TikTok'ta giriş yapıp izin ver.
+       TikTok seni docs/oauth-callback.html sayfasına yönlendirir, orada bir kod görünür.
+    2. python upload/tiktok_auth.py --code KOPYALANAN_KOD
+       -> kodu token'a çevirir, tiktok_token.json'a yazar.
 
 Önkoşul: upload/tiktok_client_secrets.json dosyasında {"client_key": "...", "client_secret": "..."}
 olmalı — bu değerleri TikTok Developer Portal'daki "Famous Music Studio" app'inin
 Credentials bölümünden kopyala (Client key / Client secret).
+
+Ayrıca TikTok Developer Portal'da (App > Login Kit veya Products > redirect URI ayarları)
+REDIRECT_URI (aşağıda) kayıtlı olmalı — GitHub Pages'teki docs/oauth-callback.html'in tam URL'i.
 """
 
+import argparse
 import base64
 import hashlib
-import http.server
 import json
 import os
 import secrets
-import threading
 import urllib.parse
-import webbrowser
 
 import requests
 
 UPLOAD_DIR = os.path.dirname(os.path.abspath(__file__))
 CLIENT_SECRETS_PATH = os.path.join(UPLOAD_DIR, "tiktok_client_secrets.json")
 TOKEN_PATH = os.path.join(UPLOAD_DIR, "tiktok_token.json")
+STATE_PATH = os.path.join(UPLOAD_DIR, "tiktok_auth_state.json")
 
 AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/"
 TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/"
-SCOPES = "user.info.basic,video.upload,video.publish"
-REDIRECT_PORT = 8722
-REDIRECT_URI = f"http://localhost:{REDIRECT_PORT}/"
+SCOPES = "user.info.basic,video.upload"
+REDIRECT_URI = "https://semtappdata-art.github.io/famous-music-studio/oauth-callback.html"
 
 
 def _load_client_secrets() -> dict:
@@ -49,36 +54,16 @@ def _pkce_pair():
     return verifier, challenge
 
 
-class _CallbackHandler(http.server.BaseHTTPRequestHandler):
-    code = None
-    state = None
-
-    def do_GET(self):
-        parsed = urllib.parse.urlparse(self.path)
-        params = urllib.parse.parse_qs(parsed.query)
-        _CallbackHandler.code = params.get("code", [None])[0]
-        _CallbackHandler.state = params.get("state", [None])[0]
-        self.send_response(200)
-        self.send_header("Content-type", "text/html; charset=utf-8")
-        self.end_headers()
-        self.wfile.write("<h2>Kimlik dogrulama tamamlandi, bu sekmeyi kapatabilirsin.</h2>".encode())
-
-    def log_message(self, *args):
-        pass
-
-
-def get_access_token() -> dict:
-    """tiktok_token.json varsa onu döner, yoksa OAuth flow'u başlatır (tarayıcı açar)."""
-    if os.path.isfile(TOKEN_PATH):
-        with open(TOKEN_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-
+def print_auth_url() -> None:
+    """Yetkilendirme URL'ini üretir, yazdırır; state ve code_verifier'ı STATE_PATH'e kaydeder
+    (exchange_code() bunları okur)."""
     secrets_data = _load_client_secrets()
     client_key = secrets_data["client_key"]
-    client_secret = secrets_data["client_secret"]
 
     verifier, challenge = _pkce_pair()
     state = secrets.token_urlsafe(16)
+    with open(STATE_PATH, "w", encoding="utf-8") as f:
+        json.dump({"state": state, "verifier": verifier}, f)
 
     params = {
         "client_key": client_key,
@@ -90,24 +75,34 @@ def get_access_token() -> dict:
         "code_challenge_method": "S256",
     }
     auth_url = AUTH_URL + "?" + urllib.parse.urlencode(params)
+    print(f"Bu linki tarayicida ac: {auth_url}")
+    print("Giris/izin verdikten sonra yonlendirilecegin sayfadaki kodu kopyala,")
+    print("sonra: python upload/tiktok_auth.py --code KOPYALANAN_KOD")
 
-    server = http.server.HTTPServer(("localhost", REDIRECT_PORT), _CallbackHandler)
-    thread = threading.Thread(target=server.handle_request)
-    thread.start()
 
-    print(f"Bu linki taraycida ac (otomatik acilmadiysa): {auth_url}")
-    try:
-        webbrowser.open(auth_url)
-    except Exception:
-        pass
+def get_access_token() -> dict:
+    """tiktok_token.json varsa onu döner, yoksa hata verir (önce --print-url /
+    --code adımlarıyla giriş tamamlanmalı)."""
+    if os.path.isfile(TOKEN_PATH):
+        with open(TOKEN_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise FileNotFoundError(
+        f"{TOKEN_PATH} yok. Once: python upload/tiktok_auth.py --print-url, "
+        "sonra: python upload/tiktok_auth.py --code KOD"
+    )
 
-    thread.join(timeout=300)
-    server.server_close()
 
-    if not _CallbackHandler.code:
-        raise RuntimeError("Yetkilendirme kodu alinamadi (zaman asimi veya iptal).")
-    if _CallbackHandler.state != state:
-        raise RuntimeError("state uyusmuyor, guvenlik hatasi.")
+def exchange_code(code: str) -> dict:
+    """Yetkilendirme kodunu access token'a çevirir, tiktok_token.json'a yazar."""
+    secrets_data = _load_client_secrets()
+    client_key = secrets_data["client_key"]
+    client_secret = secrets_data["client_secret"]
+
+    if not os.path.isfile(STATE_PATH):
+        raise FileNotFoundError("Once: python upload/tiktok_auth.py --print-url calistirilmali.")
+    with open(STATE_PATH, "r", encoding="utf-8") as f:
+        state_data = json.load(f)
+    verifier = state_data["verifier"]
 
     resp = requests.post(
         TOKEN_URL,
@@ -115,7 +110,7 @@ def get_access_token() -> dict:
         data={
             "client_key": client_key,
             "client_secret": client_secret,
-            "code": _CallbackHandler.code,
+            "code": code,
             "grant_type": "authorization_code",
             "redirect_uri": REDIRECT_URI,
             "code_verifier": verifier,
@@ -131,5 +126,15 @@ def get_access_token() -> dict:
 
 
 if __name__ == "__main__":
-    token = get_access_token()
-    print("Kimlik dogrulama basarili, tiktok_token.json yazildi.")
+    parser = argparse.ArgumentParser(description="TikTok OAuth2 kimlik dogrulama (2 adimli).")
+    parser.add_argument("--print-url", action="store_true", help="Yetkilendirme URL'ini yazdir.")
+    parser.add_argument("--code", default=None, help="Callback sayfasindan kopyalanan kod.")
+    args = parser.parse_args()
+
+    if args.print_url:
+        print_auth_url()
+    elif args.code:
+        token = exchange_code(args.code)
+        print("Kimlik dogrulama basarili, tiktok_token.json yazildi.")
+    else:
+        print("Kullanim: --print-url ile basla, sonra --code KOD ile tamamla.")
