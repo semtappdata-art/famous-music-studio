@@ -100,7 +100,8 @@ def process_project(project_dir: str, privacy: str) -> None:
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
             from youtube_upload import upload_video as yt_upload
-            yt_upload(project_dir, privacy)
+            video_id = yt_upload(project_dir, privacy)
+            log(f"  YouTube: tamam, https://youtu.be/{video_id}")
         except Exception as e:
             log(f"  YouTube HATA: {e}")
     else:
@@ -111,7 +112,8 @@ def process_project(project_dir: str, privacy: str) -> None:
     elif os.path.isfile(os.path.join(upload_dir, "tiktok_token.json")):
         try:
             from tiktok_upload import upload_video as tt_upload
-            tt_upload(project_dir)
+            publish_id = tt_upload(project_dir)
+            log(f"  TikTok: tamam (taslak/inbox), publish_id={publish_id} — TikTok uygulamasından yayınla")
         except Exception as e:
             log(f"  TikTok HATA: {e}")
     else:
@@ -122,7 +124,8 @@ def process_project(project_dir: str, privacy: str) -> None:
     elif os.path.isfile(os.path.join(upload_dir, "instagram_token.json")):
         try:
             from instagram_upload import upload_video as ig_upload
-            ig_upload(project_dir)
+            media_id = ig_upload(project_dir)
+            log(f"  Instagram: tamam, media_id={media_id}")
         except Exception as e:
             log(f"  Instagram HATA: {e}")
     else:
