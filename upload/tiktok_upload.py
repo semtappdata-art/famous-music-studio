@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from tiktok_auth import get_access_token
+from social_text import build_caption
 
 API_BASE = "https://open.tiktokapis.com/v2"
 
@@ -63,12 +64,13 @@ def upload_video(project_dir: str, privacy_level: str | None = None) -> str:
         raise ValueError(f"'{privacy_level}' bu hesap için izinli değil. İzinli: {allowed_privacy}")
 
     meta = _load_meta(project_dir)
-    title = meta.get("title", "Untitled")
+    caption = build_caption(meta)
+    display_title = meta.get("title", "Untitled")
 
     video_size = os.path.getsize(video_path)
     init_body = {
         "post_info": {
-            "title": title,
+            "title": caption,
             "privacy_level": privacy_level,
             "disable_duet": False,
             "disable_comment": False,
@@ -89,7 +91,7 @@ def upload_video(project_dir: str, privacy_level: str | None = None) -> str:
     publish_id = init_data["publish_id"]
     upload_url = init_data["upload_url"]
 
-    print(f"  yükleniyor: {title} ({privacy_level})")
+    print(f"  yükleniyor: {display_title} ({privacy_level})")
     with open(video_path, "rb") as f:
         video_bytes = f.read()
     upload_resp = requests.put(

@@ -105,6 +105,17 @@
     letter-spacing: 0.03em;
   }
 
+  footer a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  footer a:hover,
+  footer a:focus-visible {
+    color: var(--gold);
+    text-decoration: underline;
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     main { animation: fade-up 0.6s ease-out both; }
   }
@@ -136,7 +147,11 @@
     </a>
   </nav>
 
-  <footer>&copy; 2026 Famous Music Studio</footer>
+  <footer>
+    &copy; 2026 Famous Music Studio &middot;
+    <a href="privacy-policy.html">Privacy Policy</a> &middot;
+    <a href="terms-of-service.html">Terms of Service</a>
+  </footer>
 </main>
 </body>
 </html>
