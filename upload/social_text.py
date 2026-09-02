@@ -24,12 +24,12 @@ def _pick_hook(title: str) -> str:
     return config.HOOK_LINES[index]
 
 
-def build_caption(meta: dict, youtube_url: str | None = None) -> str:
-    """youtube_url verilirse (o proje zaten YouTube'a yüklendiyse), caption'a bir
-    satır olarak eklenir — kısa/dikey klip burada, şarkının tamamı YouTube'da diye.
-    Link tıklanabilir olmasa da (Instagram/TikTok caption linkleri aktif etmez)
-    metin olarak görünür/kopyalanabilir kalması, izleyiciyi tam şarkıya yönlendirmek
-    için yeterli bir sinyal."""
+def build_caption(meta: dict) -> str:
+    """Caption BİLİNÇLİ olarak başka bir platforma yönlendirme içermiyor — Instagram/
+    TikTok'un keşfet/For You dağıtımı, caption'da "başka platforma git" mesajı olan
+    içeriği hafifçe cezalandırıyor olabilir (resmi olarak açıklanmıyor ama yaygın
+    growth pratiği bu yönde). YouTube linki bunun yerine build_youtube_comment() ile
+    paylaşımdan SONRA bir yorum olarak ekleniyor — bkz. instagram_upload.py."""
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
@@ -37,11 +37,16 @@ def build_caption(meta: dict, youtube_url: str | None = None) -> str:
 
     hashtags = " ".join(config.BRAND_HASHTAGS + genre_hashtags)
     hook = _pick_hook(title)
-    youtube_line = f"🎧 Şarkının tamamı YouTube'da: {youtube_url}\n\n" if youtube_url else ""
 
     return (
         f"{hook}\n\n{title} 🎵\n\n"
         f"Bu sesi edit/kesit videolarında kullanabilirsin 🔥\n\n"
-        f"{youtube_line}"
         f"Yeni şarkılar için takipte kalın\n\n{hashtags}"
     )
+
+
+def build_youtube_comment(youtube_url: str) -> str:
+    """Paylaşımdan SONRA ilk yorum olarak eklenecek kısa metin — caption'ın aksine
+    yorumların keşfet dağıtımını etkilediğine dair bir kaygı yok, o yüzden link
+    burada güvenle kullanılabiliyor."""
+    return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}"

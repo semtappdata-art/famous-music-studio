@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from instagram_auth import get_access_token
-from social_text import build_caption
+from social_text import build_caption, build_youtube_comment
 
 UPLOAD_DIR = os.path.dirname(os.path.abspath(__file__))
 NETLIFY_SECRETS_PATH = os.path.join(UPLOAD_DIR, "netlify_client_secrets.json")
@@ -123,16 +123,17 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
         video_url = _upload_to_netlify(video_path)
         print(f"  yüklendi: {video_url}")
 
+    youtube_url = None
+    state_path = os.path.join(project_dir, "state.json")
+    if os.path.isfile(state_path):
+        with open(state_path, "r", encoding="utf-8") as f:
+            video_id = json.load(f).get("youtube_video_id")
+        if video_id:
+            youtube_url = f"https://youtu.be/{video_id}"
+
     if caption is None:
         meta = _load_meta(project_dir)
-        youtube_url = None
-        state_path = os.path.join(project_dir, "state.json")
-        if os.path.isfile(state_path):
-            with open(state_path, "r", encoding="utf-8") as f:
-                video_id = json.load(f).get("youtube_video_id")
-            if video_id:
-                youtube_url = f"https://youtu.be/{video_id}"
-        caption = build_caption(meta, youtube_url)
+        caption = build_caption(meta)
 
     # 1) Media container olustur
     create_resp = requests.post(
@@ -172,6 +173,20 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
     publish_resp.raise_for_status()
     media_id = publish_resp.json()["id"]
     print(f"  tamam: media_id={media_id}")
+
+    # YouTube linki caption'a DEĞİL, paylaşımdan SONRA bir yoruma ekleniyor — bkz.
+    # social_text.build_caption()'daki not. Yorum başarısız olsa bile ana yükleme
+    # zaten tamamlandığı için hata fırlatmıyoruz, sadece logluyoruz.
+    if youtube_url:
+        try:
+            comment_resp = requests.post(
+                f"{GRAPH_API}/{media_id}/comments",
+                data={"message": build_youtube_comment(youtube_url), "access_token": access_token},
+            )
+            comment_resp.raise_for_status()
+            print(f"  YouTube linki yorum olarak eklendi: {comment_resp.json().get('id')}")
+        except requests.exceptions.RequestException as e:
+            print(f"  UYARI: YouTube linki yorumu eklenemedi: {e}")
 
     state_path = os.path.join(project_dir, "state.json")
     state = {}
