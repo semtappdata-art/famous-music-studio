@@ -109,6 +109,7 @@ def exchange_code(code: str) -> dict:
             "redirect_uri": REDIRECT_URI,
             "code": code,
         },
+        timeout=(10, 30),
     )
     short_resp.raise_for_status()
     short_data = short_resp.json()
@@ -123,6 +124,7 @@ def exchange_code(code: str) -> dict:
             "client_secret": app_secret,
             "access_token": short_token,
         },
+        timeout=(10, 30),
     )
     long_resp.raise_for_status()
     long_data = long_resp.json()
@@ -154,6 +156,7 @@ def refresh_access_token() -> dict:
             "grant_type": "ig_refresh_token",
             "access_token": token["access_token"],
         },
+        timeout=(10, 30),
     )
     resp.raise_for_status()
     data = resp.json()

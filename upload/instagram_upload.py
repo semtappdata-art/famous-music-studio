@@ -77,6 +77,7 @@ def _upload_to_netlify(video_path: str) -> str:
         f"https://api.netlify.com/api/v1/sites/{creds['site_id']}/deploys",
         headers={**auth_headers, "Content-Type": "application/json"},
         json={"files": {f"/{filename}": file_sha1}},
+        timeout=(10, 30),
     )
     create_resp.raise_for_status()
     deploy = create_resp.json()
@@ -88,6 +89,7 @@ def _upload_to_netlify(video_path: str) -> str:
             f"https://api.netlify.com/api/v1/deploys/{deploy_id}/files/{filename}",
             headers={**auth_headers, "Content-Type": "application/octet-stream"},
             data=content,
+            timeout=(10, 300),
         )
         upload_resp.raise_for_status()
 
@@ -97,6 +99,7 @@ def _upload_to_netlify(video_path: str) -> str:
         status_resp = requests.get(
             f"https://api.netlify.com/api/v1/deploys/{deploy_id}",
             headers=auth_headers,
+            timeout=(10, 30),
         )
         status_resp.raise_for_status()
         if status_resp.json().get("state") == "ready":
@@ -144,6 +147,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
             "caption": caption,
             "access_token": access_token,
         },
+        timeout=(10, 30),
     )
     create_resp.raise_for_status()
     creation_id = create_resp.json()["id"]
@@ -155,6 +159,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
         status_resp = requests.get(
             f"{GRAPH_API}/{creation_id}",
             params={"fields": "status_code", "access_token": access_token},
+            timeout=(10, 30),
         )
         status_resp.raise_for_status()
         status_code = status_resp.json().get("status_code")
@@ -169,6 +174,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
     publish_resp = requests.post(
         f"{GRAPH_API}/{ig_user_id}/media_publish",
         data={"creation_id": creation_id, "access_token": access_token},
+        timeout=(10, 30),
     )
     publish_resp.raise_for_status()
     media_id = publish_resp.json()["id"]
@@ -182,6 +188,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
             comment_resp = requests.post(
                 f"{GRAPH_API}/{media_id}/comments",
                 data={"message": build_youtube_comment(youtube_url), "access_token": access_token},
+                timeout=(10, 30),
             )
             comment_resp.raise_for_status()
             print(f"  YouTube linki yorum olarak eklendi: {comment_resp.json().get('id')}")

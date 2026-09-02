@@ -72,19 +72,29 @@ def _load_state(project_dir: str) -> dict:
 
 
 def find_ready_projects(base: str) -> list:
-    """audio'su hazır olan tüm proje klasörlerini döner (zaten tamamen işlenmiş
-    olanlar dahil — process_project zaten-yapılmış adımları atlar, bu yüzden
-    burada filtrelemeye gerek yok). cover/art artık aranmıyor — eksikse
-    process_project render'dan önce otomatik üretir."""
+    """audio'su hazır olan tüm proje klasörlerini, klasörün oluşturulma zamanına
+    göre (en eskiden en yeniye) sıralı döner (zaten tamamen işlenmiş olanlar
+    dahil — process_project zaten-yapılmış adımları atlar, bu yüzden burada
+    filtrelemeye gerek yok). cover/art artık aranmıyor — eksikse process_project
+    render'dan önce otomatik üretir.
+
+    NOT: Önceden burada `sorted(os.listdir(base))` (isim alfabetik sırası)
+    kullanılıyordu ve docstring/main() "en eski bekleyen proje" işlendiğini
+    iddia ediyordu — ama alfabetik sıra oluşturulma zamanıyla ilgisiz, adı
+    alfabetik önde olan YENİ bir proje gerçekten daha uzun süredir bekleyen
+    bir projenin önüne geçebiliyordu. os.path.getctime ile gerçek klasör
+    oluşturulma zamanına göre sıralanıyor (isim, eşit zaman durumunda
+    determinizm için ikincil anahtar)."""
     ready = []
     if not os.path.isdir(base):
         return ready
-    for name in sorted(os.listdir(base)):
+    for name in os.listdir(base):
         project_dir = os.path.join(base, name)
         if not os.path.isdir(project_dir):
             continue
         if _has_any(project_dir, AUDIO_NAMES):
             ready.append(project_dir)
+    ready.sort(key=lambda p: (os.path.getctime(p), p))
     return ready
 
 
