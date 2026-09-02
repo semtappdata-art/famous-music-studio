@@ -36,11 +36,18 @@ tutarlı ol, tekrar keşfetme.
 5. **Suno stil etiketi eksiksizliği**: Etikette şu unsurların hepsi var mı — tür/alt tür,
    tempo (BPM veya "mid-tempo" gibi tanım), enstrümantasyon (hangi çalgılar öne çıkıyor),
    vokal tanımı (cinsiyet + doku), duygu/mood tanımı. Eksik olan varsa belirt.
-6. **Söz yapısı**: `[Intro]/[Verse]/[Pre-Chorus]/[Chorus]/[Bridge]/[Outro]` gibi net bir
-   yapı var mı? Chorus tekrar ediyor ve akılda kalıcı mı — `config.HIGHLIGHT_DURATION` (45sn)
-   ile kırpılan öne çıkan bölüm muhtemelen chorus'a denk gelecek, bu yüzden chorus'un güçlü
-   olması özellikle önemli (find_highlight enerji bazlı otomatik buluyor ama sözün kendisi
-   zayıfsa bu otomasyon bunu telafi edemez).
+6. **Söz yapısı ve lirik zanaat**: `[Intro]/[Verse]/[Pre-Chorus]/[Chorus]/[Bridge]/[Outro]`
+   gibi net bir yapı var mı? Chorus tekrar ediyor ve akılda kalıcı mı —
+   `config.HIGHLIGHT_DURATION` (45sn) ile kırpılan öne çıkan bölüm muhtemelen chorus'a
+   denk gelecek, bu yüzden chorus'un güçlü olması özellikle önemli (find_highlight enerji
+   bazlı otomatik buluyor ama sözün kendisi zayıfsa bu otomasyon bunu telafi edemez).
+   Bunun ötesinde SÖZÜN KENDİSİNİ satır satır oku ve zanaat açısından değerlendir: klişe/
+   basmakalıp ifadeler var mı (kataloğun diğer şarkılarıyla neredeyse aynı dizeler
+   tekrarlanıyor mu — örn. "kalbim/kalbim" veya "gözlerin/gözlerine" gibi kalıpların aşırı
+   sık tekrarı), imgeler somut ve özgün mü yoksa jenerik mi, kafiye/ölçü örüntüsü tutarlı mı,
+   hikaye/duygu akışı Verse→Pre-Chorus→Chorus arasında net bir yükseliş çiziyor mu yoksa
+   düz mü kalıyor. Bu kısım öznel bir zanaat yargısıdır — "daha iyi olabilir" gibi belirsiz
+   bir yorum yerine hangi SATIRIN neden zayıf/klişe olduğunu somut alıntılayarak göster.
 7. **Marka/dil tutarlılığı**: Türkçe sözler + kanalın kök kimliği (hüzünlü/samimi anlatım,
    "Famous Music Studio" markası) ile örtüşüyor mu?
 

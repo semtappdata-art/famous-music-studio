@@ -31,9 +31,15 @@ Her çağrıldığında, değişikliğin türüne göre ilgili olanları kontrol
 6. **Trend notu tazeliği**: `trend_hashtag_notlari.md`'nin "Son güncelleme" tarihi 3+ ay
    eskiyse ve şu anki değişiklik hashtag/keşfet kararına dayanıyorsa, bunu tazelemesi
    gerektiğini hatırlat.
-7. **Görsel tutarlılık**: `art.jpg/png` içine gömülü başlık metni var mı — blur backdrop'ta
-   (`ensure_art_backdrop`) okunaksız bir lekeye dönüşür. `art.*` metinsiz, `cover.*` başlıklı
-   olmalı; ikisi aynı dosyaysa bu bir hata belirtisidir.
+7. **Görsel tutarlılık ve kalite**: `art.jpg/png` içine gömülü başlık metni var mı — blur
+   backdrop'ta (`ensure_art_backdrop`) okunaksız bir lekeye dönüşür. `art.*` metinsiz,
+   `cover.*` başlıklı olmalı; ikisi aynı dosyaysa bu bir hata belirtisidir. Bunun ötesinde,
+   yeni/değişen bir cover.png veya render çıktısı varsa GERÇEKTEN AÇIP BAK (Read tool ile
+   görseli/bir video karesini görüntüle, kod okumak yetmez) — kart içeriği okunaksız mı,
+   metin arka planla yeterli kontrastta mı (özellikle küçük ekranda/thumbnail boyutunda
+   okunabilirlik), renkler tema ile tutarlı mı, kart ile backdrop arasında görsel ayrım var
+   mı (düz/boş bir backdrop kartı yutabilir — bkz. bokeh dokusu eklenmeden önceki hata).
+   Bu estetik bir yargı gerektirir, sadece dosya varlığı kontrolü yetmez.
 
 Bulgularını kısa bir madde listesi olarak raporla, formatı:
 `⚠️ [sorun] — [neden önemli] — [öneri]`
