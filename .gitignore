@@ -22,3 +22,6 @@ __pycache__/
 
 # Claude Code internal state
 .claude/scheduled_tasks.lock
+
+# Otomasyon log dosyası
+auto_process.log
