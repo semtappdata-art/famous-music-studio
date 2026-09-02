@@ -58,6 +58,14 @@ BG_BOKEH_RADIUS_RATIO = 0.45  # min(W,H)'e oran, bokeh yarıçapı — ne kadar 
 BG_BOKEH_BRIGHTNESS = 50  # bokeh blob'ün en parlak merkez noktası (0-255)
 BG_BOKEH_COLOR = (80, 180, 255)  # cool cyan-blue, accent rengiyle complementary
 
+# Arka plan artık statik değil, video boyunca yavaşça kayıyor (pan): kaynak görsel
+# hedef çözünürlükten biraz büyük üretiliyor, render sırasında crop x/y zamanla
+# (sin/cos ile) kayıyor. Zoom YOK — crop neredeyse ücretsiz ama her karede yeniden
+# ölçekleme (scale/zoom) render'ı ciddi yavaşlatırdı.
+BACKDROP_PAN_MARGIN_RATIO = 0.14  # arka planın hedef boyuttan ne kadar büyük üretileceği
+BACKDROP_PAN_SPEED_X = 0.05  # radyan/saniye, x ekseni salınım hızı
+BACKDROP_PAN_SPEED_Y = 0.035  # radyan/saniye, y ekseni — x'ten farklı, tekrarsız/organik desen için
+
 # EQ bars (sese duyarlı çubuklar) kaldırıldı — kullanıcı beğenmedi, kaldırıldı.
 # BAR_THICKNESS_RATIO hâlâ layout boşluğu (kart altı/text arası) için kullanılıyor.
 EQ_BAR_THICKNESS_RATIO = 0.15  # kart boyutuna oran, layout spacing için

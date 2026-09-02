@@ -5,7 +5,8 @@ yuvarlak köşeli bir albüm kartı + etrafında iki renk arasında SABİT (dön
 parlama çerçevesi + kartın 4 kenarında gerçek ses frekans verisinden üretilen sese
 tepki veren çubuklar + kartın altında kayan künye yazısı + sabit "Famous Music
 Studio" marka satırı + en altta bir ilerleme çubuğu. Sadece kart alanı işlenir,
-kenarlar düz siyah kalır.
+kenarlar düz siyah kalır. Arka plan statik değil — video boyunca yavaşça
+kayıyor (bkz. _panned_size, _build_filter_complex'teki pan_x/pan_y).
 """
 
 import os
@@ -72,25 +73,36 @@ def ensure_card_mask() -> str:
     return mask_path
 
 
+def _panned_size(width: int, height: int) -> tuple[int, int]:
+    """Arka planın pan edilebilmesi için hedef çözünürlükten BACKDROP_PAN_MARGIN_RATIO
+    kadar büyük üretilmesi gereken boyut — _build_filter_complex bu fazlalık içinde
+    zamanla kayan bir crop penceresi açıyor."""
+    margin = config.BACKDROP_PAN_MARGIN_RATIO
+    return int(width * (1 + margin)), int(height * (1 + margin))
+
+
 def ensure_art_backdrop(art_path: str, width: int, height: int) -> str:
     """Spotify Now Playing tarzı: arka plan, kartta gösterilen görselin (art.jpg)
     kendisinin tüm ekranı kaplayacak şekilde büyütülüp güçlü bulanıklaştırılmış
     hâli — böylece arka planın rengi/atmosferi sabit bir tema paletinden değil,
     doğrudan o şarkının kart görselinden geliyor. Şablon (blur + hafif karartma)
     her şarkıda AYNI kalıyor, sadece kaynak görsel değiştiği için sonuç renk
-    şarkıdan şarkıya doğal olarak değişiyor. Proje bazında önbelleğe alınır
-    (art.jpg'nin yanına, çözünürlüğe göre) — parça başına bir kez üretilir."""
-    backdrop_path = os.path.join(os.path.dirname(art_path), f"_backdrop_{width}x{height}.png")
+    şarkıdan şarkıya doğal olarak değişiyor. Hedef çözünürlükten biraz BÜYÜK
+    üretiliyor (bkz. _panned_size) ki render sırasında içinde yavaşça kayan bir
+    pan efekti olsun — arka plan sabit bir kare değil. Proje bazında önbelleğe
+    alınır (art.jpg'nin yanına, çözünürlüğe göre) — parça başına bir kez üretilir."""
+    backdrop_path = os.path.join(os.path.dirname(art_path), f"_backdrop_pan_{width}x{height}.png")
     if os.path.isfile(backdrop_path):
         return backdrop_path
 
+    bg_w, bg_h = _panned_size(width, height)
     sigma = max(20, int(min(width, height) * 0.045))
     cmd = [
         "ffmpeg", "-y",
         "-i", art_path,
         "-vf", (
-            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
-            f"crop={width}:{height},"
+            f"scale={bg_w}:{bg_h}:force_original_aspect_ratio=increase,"
+            f"crop={bg_w}:{bg_h},"
             f"gblur=sigma={sigma},"
             f"eq=brightness=-0.12:saturation=1.15"
         ),
@@ -109,12 +121,16 @@ def ensure_vignette(width: int, height: int, theme_key: str) -> str:
     Art.jpg varsa bunun yerine ensure_art_backdrop() kullanılır. Platform+tema
     başına BİR KEZ üretir ve önbelleğe alır: merkezdeki radial falloff +
     asimetrik tonlu bokeh blob → derinlik. Bunu her karede canlı `geq` ile
-    hesaplamak çok yavaştı — statik bir PNG üretip bindirmek hızlı."""
-    path = f"assets/vignette_{width}x{height}_{theme_key}.png"
+    hesaplamak çok yavaştı — statik bir PNG üretip bindirmek hızlı.
+    Hedef çözünürlükten biraz BÜYÜK üretiliyor (bkz. _panned_size) ki
+    ensure_art_backdrop gibi bu da render sırasında yavaşça kayan bir pan
+    efekti alsın."""
+    path = f"assets/vignette_pan_{width}x{height}_{theme_key}.png"
     if os.path.isfile(path):
         return path
 
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    width, height = _panned_size(width, height)
 
     # Merkez falloff + kartın HEMEN ARKASINDA açık tonlu (beyaza yakın) turquoise/magenta
     # glow, + uzak köşelerde daha koyu/saturated aynı renkler → derinlik katmanı.
@@ -170,6 +186,7 @@ def ensure_vignette(width: int, height: int, theme_key: str) -> str:
 
 def _build_filter_complex(width: int, height: int, duration: float, title: str | None, has_art: bool, theme_key: str) -> str:
     fps = config.FPS
+    bg_pan_w, bg_pan_h = _panned_size(width, height)
 
     card_size = int(min(width, height) * config.CARD_SIZE_RATIO)
     card_size -= card_size % 2
@@ -199,8 +216,16 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
     # Arka plan: art.jpg varsa onun bulanıklaştırılmış hâli (ensure_art_backdrop),
     # yoksa (kart art.jpg'siz düz renge düştüğünde) sabit vignette fallback'i
     # (ensure_vignette) — hangisi olduğu render_video() tarafında seçiliyor,
-    # ikisi de aynı [2:v] girişinden statik bir PNG olarak geliyor.
-    canvas = f"[2:v]fps={fps}[canvas]"
+    # ikisi de aynı [2:v] girişinden geliyor. İkisi de _panned_size() kadar
+    # BÜYÜK statik bir PNG (kaynak görsel/desen sabit) — burada, hedef boyutta
+    # bir crop penceresini zamanla (sin/cos ile) kaydırarak arka planı hareketli
+    # hale getiriyoruz. Zoom yok, sadece pan — crop neredeyse ücretsiz olduğu
+    # için performans maliyeti yok (geq'i her karede yeniden hesaplamak yerine).
+    pan_x_range = (bg_pan_w - width) / 2
+    pan_y_range = (bg_pan_h - height) / 2
+    pan_x = f"{pan_x_range:.1f}+{pan_x_range:.1f}*sin(t*{config.BACKDROP_PAN_SPEED_X})"
+    pan_y = f"{pan_y_range:.1f}+{pan_y_range:.1f}*cos(t*{config.BACKDROP_PAN_SPEED_Y})"
+    canvas = f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}'[canvas]"
 
     # "Famous Music Studio" logosu sadece platform thumbnail'inde (cover.jpg) kullanılıyor —
     # video içindeki kartta GÖSTERİLMİYOR. art_path verilmişse o görsel kare kırpılıp
