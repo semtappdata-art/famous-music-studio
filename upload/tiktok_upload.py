@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from tiktok_auth import get_access_token
-from social_text import build_caption
+from social_text import build_caption, build_youtube_comment
 
 API_BASE = "https://open.tiktokapis.com/v2"
 
@@ -56,6 +56,32 @@ def upload_video(project_dir: str) -> str:
 
     meta = _load_meta(project_dir)
     display_title = meta.get("title", "Untitled")
+
+    # API'nin inbox/draft akışı caption/title alanı KABUL ETMİYOR — kullanıcı
+    # taslağı TikTok uygulamasından yayınlarken caption'ı elle girmesi gerekiyor.
+    # Burada önerilen caption'ı hesaplayıp hem konsola/log'a yazdırıyoruz hem de
+    # state.json'a kaydediyoruz ki kullanıcı saatler sonra yayınlarken kolayca
+    # kopyalayabilsin. YouTube linki caption'a DEĞİL — Instagram'daki gibi aynı
+    # sebeple (keşfet/For You dağıtımı riski) — ayrı, "paylaşımdan sonra yorum
+    # olarak ekle" şeklinde öneriliyor.
+    youtube_url = None
+    state_path = os.path.join(project_dir, "state.json")
+    existing_state = {}
+    if os.path.isfile(state_path):
+        with open(state_path, "r", encoding="utf-8") as f:
+            existing_state = json.load(f)
+        video_id = existing_state.get("youtube_video_id")
+        if video_id:
+            youtube_url = f"https://youtu.be/{video_id}"
+    suggested_caption = build_caption(meta)
+    suggested_comment = build_youtube_comment(youtube_url) if youtube_url else None
+    print("  --- TikTok'ta yayınlarken caption olarak yapıştır ---")
+    print(f"  {suggested_caption}")
+    print("  ------------------------------------------------------")
+    if suggested_comment:
+        print("  --- Paylaşımdan SONRA ilk yorum olarak ekle ---")
+        print(f"  {suggested_comment}")
+        print("  -------------------------------------------------")
 
     video_size = os.path.getsize(video_path)
     init_body = {
@@ -105,16 +131,14 @@ def upload_video(project_dir: str) -> str:
     else:
         print(f"  Durum belirsiz (timeout), publish_id={publish_id} — TikTok Studio'dan kontrol et.")
 
-    state_path = os.path.join(project_dir, "state.json")
-    state = {}
-    if os.path.isfile(state_path):
-        with open(state_path, "r", encoding="utf-8") as f:
-            state = json.load(f)
-    state["tiktok_publish_id"] = publish_id
-    state["tiktok_uploaded_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    state["tiktok_privacy"] = "DRAFT_INBOX"
+    existing_state["tiktok_publish_id"] = publish_id
+    existing_state["tiktok_uploaded_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    existing_state["tiktok_privacy"] = "DRAFT_INBOX"
+    existing_state["tiktok_suggested_caption"] = suggested_caption
+    if suggested_comment:
+        existing_state["tiktok_suggested_comment"] = suggested_comment
     with open(state_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+        json.dump(existing_state, f, ensure_ascii=False, indent=2)
 
     return publish_id
 
