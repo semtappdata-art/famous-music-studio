@@ -82,6 +82,12 @@ def upload_video(project_dir: str) -> str:
         print("  --- Paylaşımdan SONRA ilk yorum olarak ekle ---")
         print(f"  {suggested_comment}")
         print("  -------------------------------------------------")
+    # TikTok, gerçekçi AI-üretimi içerik için "AI-generated content" etiketinin
+    # (Content Credentials/AIGC) açılmasını zorunlu kılıyor (newsroom.tiktok.com/
+    # en-us/new-labels-for-disclosing-ai-generated-content). inbox/draft akışı bu
+    # alanı API ile göndermiyor (video.publish scope'u yok) — kullanıcı TikTok
+    # uygulamasından elle yayınlarken bunu da elle açmalı.
+    print("  --- TikTok uygulamasından yayınlarken UNUTMA: 'AI-generated content' etiketini de aç ---")
 
     video_size = os.path.getsize(video_path)
     init_body = {
@@ -93,7 +99,8 @@ def upload_video(project_dir: str) -> str:
         },
     }
     resp = requests.post(
-        f"{API_BASE}/post/publish/inbox/video/init/", headers=_headers(access_token), json=init_body
+        f"{API_BASE}/post/publish/inbox/video/init/", headers=_headers(access_token), json=init_body,
+        timeout=(10, 30),
     )
     resp.raise_for_status()
     init_data = resp.json()["data"]
@@ -110,26 +117,41 @@ def upload_video(project_dir: str) -> str:
             "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
         },
         data=video_bytes,
+        timeout=(10, 300),
     )
     upload_resp.raise_for_status()
 
-    # Yayın durumunu poll et
-    for _ in range(30):
-        time.sleep(3)
-        status_resp = requests.post(
-            f"{API_BASE}/post/publish/status/fetch/",
-            headers=_headers(access_token),
-            json={"publish_id": publish_id},
+    # Yayın durumunu poll et — bu noktada video baytları TikTok'a ZATEN ulaştı
+    # (PUT başarılı oldu), yani durum sorgulaması sırasında bir AĞ hatası
+    # (timeout/bağlantı kopması) olursa bunu "başarısız yükleme" gibi ele
+    # alıp fonksiyonu patlatmıyoruz — aksi halde state.json'a publish_id hiç
+    # yazılmaz, bir sonraki koşu videoyu TEKRAR yükleyip TikTok'un gelen
+    # kutusunda yinelenen bir taslak bırakır. Sadece TikTok'un kendisinin
+    # açıkça "FAILED" dediği durum gerçek bir başarısızlıktır (o zaman raise
+    # edip state'i KAYDETMEDEN çıkıyoruz, tekrar deneme mümkün olsun).
+    try:
+        for _ in range(30):
+            time.sleep(3)
+            status_resp = requests.post(
+                f"{API_BASE}/post/publish/status/fetch/",
+                headers=_headers(access_token),
+                json={"publish_id": publish_id},
+                timeout=(10, 30),
+            )
+            status_resp.raise_for_status()
+            status = status_resp.json()["data"]["status"]
+            if status in ("PUBLISH_COMPLETE", "SEND_TO_USER_INBOX"):
+                print(f"  tamam ({status}): publish_id={publish_id} — TikTok uygulamasından yayınla.")
+                break
+            if status == "FAILED":
+                raise RuntimeError(f"TikTok yükleme başarısız: {status_resp.json()}")
+        else:
+            print(f"  Durum belirsiz (timeout), publish_id={publish_id} — TikTok Studio'dan kontrol et.")
+    except requests.exceptions.RequestException as e:
+        print(
+            f"  UYARI: durum sorgulanamadı ({e}) — video muhtemelen zaten yüklendi, "
+            f"publish_id={publish_id} yine de kaydediliyor, TikTok Studio'dan kontrol et."
         )
-        status_resp.raise_for_status()
-        status = status_resp.json()["data"]["status"]
-        if status in ("PUBLISH_COMPLETE", "SEND_TO_USER_INBOX"):
-            print(f"  tamam ({status}): publish_id={publish_id} — TikTok uygulamasından yayınla.")
-            break
-        if status == "FAILED":
-            raise RuntimeError(f"TikTok yükleme başarısız: {status_resp.json()}")
-    else:
-        print(f"  Durum belirsiz (timeout), publish_id={publish_id} — TikTok Studio'dan kontrol et.")
 
     existing_state["tiktok_publish_id"] = publish_id
     existing_state["tiktok_uploaded_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
