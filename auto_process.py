@@ -155,6 +155,16 @@ def process_project(project_dir: str, privacy: str) -> None:
     else:
         log("  YouTube atlandı: upload/token.json yok (önce youtube_auth.py çalıştır)")
 
+    # Tema/tarz playlist'i: video yüklüyse (yeni veya daha önceden), kendi temasının
+    # playlist'ine ekler — state.json'da youtube_playlist_id zaten varsa atlar (idempotent),
+    # yani daha önce yüklenmiş şarkılar için de retroaktif çalışır.
+    if youtube_video_id and os.path.isfile(os.path.join(upload_dir, "token.json")):
+        try:
+            from youtube_playlists import sync_project as yt_sync_playlist, get_authenticated_service as yt_service
+            yt_sync_playlist(yt_service(), project_dir)
+        except Exception as e:
+            log(f"  YouTube playlist HATA: {e}")
+
     # YouTube Shorts: zaten render edilen shorts_9x16.mp4'ü AYRICA (uzun formattan
     # bağımsız) bir YouTube Short olarak yükler — küçük/yeni kanallar için Shorts
     # akışı, uzun format önerilen videolar sisteminden çok daha erişilebilir bir
