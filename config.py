@@ -66,6 +66,13 @@ BACKDROP_PAN_MARGIN_RATIO = 0.14  # arka planın hedef boyuttan ne kadar büyük
 BACKDROP_PAN_SPEED_X = 0.05  # radyan/saniye, x ekseni salınım hızı
 BACKDROP_PAN_SPEED_Y = 0.035  # radyan/saniye, y ekseni — x'ten farklı, tekrarsız/organik desen için
 
+# Renk akışı: pan'a ek olarak backdrop'un hue'su zamanla yumuşakça salınıyor.
+# Tam 360° dönmüyor (dar bir açı aralığında ileri-geri akıyor) — şarkının kendi
+# tema renginden (art.jpg'nin rengi) çok uzaklaşmasın, yine de gözle görülür bir
+# "renk akışı" hissi olsun diye.
+BACKDROP_HUE_AMPLITUDE_DEG = 35  # salınımın genliği (derece) — 0 = orijinal renk, +/- bu kadar kayar
+BACKDROP_HUE_SPEED = 0.025  # radyan/saniye
+
 # EQ bars (sese duyarlı çubuklar) kaldırıldı — kullanıcı beğenmedi, kaldırıldı.
 # BAR_THICKNESS_RATIO hâlâ layout boşluğu (kart altı/text arası) için kullanılıyor.
 EQ_BAR_THICKNESS_RATIO = 0.15  # kart boyutuna oran, layout spacing için

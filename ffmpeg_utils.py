@@ -221,11 +221,19 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
     # bir crop penceresini zamanla (sin/cos ile) kaydırarak arka planı hareketli
     # hale getiriyoruz. Zoom yok, sadece pan — crop neredeyse ücretsiz olduğu
     # için performans maliyeti yok (geq'i her karede yeniden hesaplamak yerine).
+    # Buna ek olarak `hue` filtresiyle renk akışı: ton zamanla dar bir açı
+    # aralığında ileri-geri salınıyor (tam 360° dönmüyor — şarkının kendi tema
+    # renginden çok uzaklaşmasın diye), pan ile birlikte "hareketli + renk akan"
+    # bir arka plan hissi veriyor. hue de ucuz bir filtre, performans maliyeti yok.
     pan_x_range = (bg_pan_w - width) / 2
     pan_y_range = (bg_pan_h - height) / 2
     pan_x = f"{pan_x_range:.1f}+{pan_x_range:.1f}*sin(t*{config.BACKDROP_PAN_SPEED_X})"
     pan_y = f"{pan_y_range:.1f}+{pan_y_range:.1f}*cos(t*{config.BACKDROP_PAN_SPEED_Y})"
-    canvas = f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}'[canvas]"
+    hue_shift = f"{config.BACKDROP_HUE_AMPLITUDE_DEG}*sin(t*{config.BACKDROP_HUE_SPEED})"
+    canvas = (
+        f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}',"
+        f"hue=h='{hue_shift}'[canvas]"
+    )
 
     # "Famous Music Studio" logosu sadece platform thumbnail'inde (cover.jpg) kullanılıyor —
     # video içindeki kartta GÖSTERİLMİYOR. art_path verilmişse o görsel kare kırpılıp
