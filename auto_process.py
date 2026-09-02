@@ -1,10 +1,12 @@
-"""Bekleyen (audio.wav + cover.jpg hazır) projeleri otomatik render edip
-YouTube/TikTok/Instagram'a yükler — Windows Görev Zamanlayıcı ile periyodik
-çalıştırılmak üzere tasarlandı.
+"""Bekleyen (audio.wav hazır) projeleri otomatik render edip YouTube/TikTok/
+Instagram'a yükler — Windows Görev Zamanlayıcı ile periyodik çalıştırılmak
+üzere tasarlandı.
 
 Suno'da şarkı üretimi ve indirme hâlâ elle yapılmalı (bkz. suno_prompt_hazirlik.md)
-— bu script sadece "audio.wav + cover.jpg bir proje klasörüne konduktan sonraki
-her şeyi" (render + YouTube + TikTok + Instagram) otomatikleştiriyor.
+— bu script "audio.wav bir proje klasörüne konduktan sonraki her şeyi"
+(cover/art üretimi + render + YouTube + TikTok + Instagram) otomatikleştiriyor.
+cover.jpg/png veya art.jpg/png elle hazırlanmışsa dokunulmaz; eksikse
+generate_cover.py ile meta.json'daki title/theme'e göre otomatik üretilir.
 
 Kullanım:
     python auto_process.py
@@ -37,10 +39,10 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload"))
 
+import generate_cover
 import render as render_module
 
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
-COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
 RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4", "square_1x1.mp4"]
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_process.log")
 
@@ -70,9 +72,10 @@ def _load_state(project_dir: str) -> dict:
 
 
 def find_ready_projects(base: str) -> list:
-    """audio+cover'ı hazır olan tüm proje klasörlerini döner (zaten tamamen
-    işlenmiş olanlar dahil — process_project zaten-yapılmış adımları atlar,
-    bu yüzden burada filtrelemeye gerek yok)."""
+    """audio'su hazır olan tüm proje klasörlerini döner (zaten tamamen işlenmiş
+    olanlar dahil — process_project zaten-yapılmış adımları atlar, bu yüzden
+    burada filtrelemeye gerek yok). cover/art artık aranmıyor — eksikse
+    process_project render'dan önce otomatik üretir."""
     ready = []
     if not os.path.isdir(base):
         return ready
@@ -80,7 +83,7 @@ def find_ready_projects(base: str) -> list:
         project_dir = os.path.join(base, name)
         if not os.path.isdir(project_dir):
             continue
-        if _has_any(project_dir, AUDIO_NAMES) and _has_any(project_dir, COVER_NAMES):
+        if _has_any(project_dir, AUDIO_NAMES):
             ready.append(project_dir)
     return ready
 
@@ -96,6 +99,12 @@ def _is_fully_done(project_dir: str) -> bool:
 
 def process_project(project_dir: str, privacy: str) -> None:
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
+
+    try:
+        generate_cover.generate(project_dir)
+    except Exception as e:
+        log(f"  cover/art üretimi HATA: {e}")
+        return
 
     if not _is_rendered(project_dir):
         log(f"=== Render: {project_dir} ===")
@@ -150,7 +159,7 @@ def process_project(project_dir: str, privacy: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Bekleyen (audio+cover hazır) projeleri otomatik render edip yükler."
+        description="Bekleyen (audio hazır) projeleri otomatik render edip yükler."
     )
     parser.add_argument(
         "--privacy", default="public", choices=["private", "unlisted", "public"],
@@ -161,7 +170,7 @@ def main():
 
     ready = find_ready_projects(args.base)
     if not ready:
-        log("İşlenecek proje yok (audio+cover hazır olan bulunamadı).")
+        log("İşlenecek proje yok (audio hazır olan bulunamadı).")
         return
 
     pending = [p for p in ready if not _is_fully_done(p)]
