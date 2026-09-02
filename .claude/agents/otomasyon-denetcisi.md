@@ -32,11 +32,10 @@ sorun olabilir" değil, "şurada X oluyor, kanıt: Y" formatında rapor et.
    timeout, rate-limit/quota aşımı senaryoları ele alınmış mı? Token yenileme mantığı
    (örnek: tiktok_auth.py'deki 401 fix) tüm platformlarda tutarlı mı? Bir upload
    yarıda kesilirse (network hatası) state.json tutarsız bir hâlde mi kalıyor?
-3. **Güvenlik**: subprocess çağrılarında shell injection riski var mı (kullanıcı/meta.json
-   girdisi doğrudan komut string'ine enjekte ediliyor mu — `_escape_drawtext` gibi escape
-   fonksiyonları her yerde tutarlı kullanılıyor mu)? Secrets (.gitignore'daki token/
-   client_secrets dosyaları) yanlışlıkla commit edilmiş mi (`git log --all --
-   '*token*' '*secret*'` gibi kontrol et)?
+3. **Güvenlik (yüzeysel tarama)**: bariz bir şey çarpıyorsa not et, ama derinlemesine
+   güvenlik denetimi (secrets sızıntısı, komut enjeksiyonu, OAuth kapsamları) bu ajanın
+   işi değil — kullanıcı özel olarak güvenlik istiyorsa onu `siper-guvenlik-ajani`'na
+   yönlendir, burada tekrarlama.
 4. **Performans**: gereksiz yeniden hesaplama, cache tutarsızlığı (örnek: eski
    `_backdrop_*`/`vignette_*` isimlendirmesi değişince eski cache dosyalarının nasıl
    ele alındığı), paralel render'da yarış durumu riski.
