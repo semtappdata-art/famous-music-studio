@@ -36,11 +36,16 @@ STATE_PATH = os.path.join(UPLOAD_DIR, "instagram_auth_state.json")
 AUTH_URL = "https://www.instagram.com/oauth/authorize"
 SHORT_TOKEN_URL = "https://api.instagram.com/oauth/access_token"
 LONG_TOKEN_URL = "https://graph.instagram.com/access_token"
+
+# instagram_business_manage_messages BİLİNÇLİ OLARAK istenmiyor — kod tabanında bu
+# scope'a karşılık gelen hiçbir API çağrısı yok (mesajlaşma/DM yönetimi kullanılmıyor),
+# en az yetki ilkesi için kaldırıldı. Sadece fiilen kullanılan üç scope isteniyor:
+# temel profil bilgisi, video/reel yayınlama, ve yorum ekleme (build_youtube_comment
+# ile paylaşım sonrası YouTube linki yorumu için).
 SCOPES = (
     "instagram_business_basic,"
     "instagram_business_content_publish,"
-    "instagram_business_manage_comments,"
-    "instagram_business_manage_messages"
+    "instagram_business_manage_comments"
 )
 REDIRECT_URI = "https://semtappdata-art.github.io/famous-music-studio/oauth-callback.html"
 

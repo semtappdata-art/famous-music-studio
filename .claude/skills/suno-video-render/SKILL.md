@@ -1,102 +1,86 @@
 ---
 name: suno-video-render
-description: Suno'da üretilen ses dosyalarından YouTube/YouTube Shorts/TikTok/Instagram Reels/Facebook için otomatik çoklu-platform "müzik kartı" videosu üreten bu projenin (render.py) workflow'u. Yeni şarkı eklerken, render çalıştırırken, config.py'deki kart/marquee/ilerleme çubuğu ayarlarını değiştirirken, render sonrası görsel doğrulama yaparken veya ffmpeg filtergraph hatalarıyla karşılaşınca kullan.
+description: Suno'da üretilen ses dosyalarından YouTube (uzun format + Shorts), TikTok, Instagram Reels için otomatik çoklu-platform "Now Playing" tarzı müzik kartı videosu üreten bu projenin (render.py, generate_cover.py, auto_process.py) workflow'u. Yeni şarkı eklerken, render çalıştırırken, config.py'deki kart/backdrop/marquee/ilerleme çubuğu ayarlarını değiştirirken, render sonrası görsel doğrulama yaparken veya ffmpeg filtergraph hatalarıyla karşılaşınca kullan.
 ---
 
 # Suno Video Render Pipeline
 
-Bu proje, Suno'dan indirilen ses dosyalarını (audio.wav/.mp3/.m4a) + bir kart görselini alıp,
-ffmpeg ile 3 platform için "müzik player kartı" tarzında video üretir: YouTube (16:9), YouTube
-Shorts/TikTok/Instagram Reels (9:16), Instagram post/Facebook kare (1:1).
+Bu proje, Suno'dan indirilen ses dosyalarını (audio.wav/.mp3/.m4a) + (opsiyonel) bir kart
+görselini alıp, ffmpeg ile 2 platform çıktısı üretir: YouTube uzun format (16:9,
+`youtube_16x9.mp4`) ve YouTube Shorts/TikTok/Instagram Reels (9:16, `shorts_9x16.mp4` — bu
+tek dosya üç yere de yükleniyor). `auto_process.py` bunun üstüne YouTube Shorts'u AYRI bir
+YouTube video'su olarak da yüklüyor — aynı şarkı için iki ayrı YouTube uploadı oluyor.
 
-**Görsel stil (v2 — referans videoya göre tasarlandı, tam ekran/Ken-Burns tasarımının yerine
-geçti):** siyah zemin üzerinde, ekranın büyük kısmını kaplayan ("orta alan") yuvarlak köşeli bir
-albüm kartı + etrafında zamanla renk değiştiren (hue rotation) neon parlama çerçevesi + kartın
-altında küçük, ince, künye tarzı sürekli kayan (marquee) yazı ("Şarkı Adı — Famous Studio
-Yapımı") + en altta gerçek zamanlı dolan bir ilerleme çubuğu. **Kart statik durur (zoom yok),
-waveform yok** — sadece kart alanı işlenir, geri kalan çerçeve düz siyahtır, bu yüzden eski tam
-ekran tasarımına göre çok daha az render maliyeti vardır.
+**Güncel görsel stil — Spotify "Now Playing" tarzı:** ortada yuvarlak köşeli, ekranın büyük
+kısmını kaplayan bir albüm kartı (içeriği şarkının kendi `art.jpg`'si — kare kırpılıp
+yerleştirilir) + arka plan, o AYNI `art.jpg`'nin ekranı kaplayacak şekilde büyütülüp güçlü
+bulanıklaştırılmış (`gblur`) ve hafif karartılmış hâli (`ffmpeg_utils.ensure_art_backdrop`) —
+yani arka planın rengi/atmosferi sabit bir tema paletinden DEĞİL, doğrudan o şarkının kart
+görselinden geliyor. Bu backdrop artık STATİK bir kare değil: hedef çözünürlükten biraz büyük
+üretilip render sırasında içinde yavaşça kayan bir `crop` penceresi (pan) + dar bir açı
+aralığında salınan `hue` (renk akışı) uygulanıyor — ikisi de ucuz filtreler, performans
+maliyeti yok. Kartın altında küçük, kayan (marquee) künye yazısı + sabit "Famous Music Studio"
+marka satırı + en altta gerçek zamanlı dolan bir ilerleme çubuğu var. Kart statik durur (zoom
+yok, sadece backdrop hareketli), waveform/eşitleyici çubuğu YOK (eski bir tasarımda vardı,
+kullanıcı beğenmeyip kaldırdı) — sadece kart alanı + backdrop işlenir, bu yüzden eski tam
+ekran/waveform tasarımına göre çok daha az render maliyeti vardır.
 
-Kartın 4 düz kenarı boyunca **gerçek sese tepki veren eşitleyici çubukları** var (`showfreqs`,
-tema rengiyle). Köşeler bilinçli olarak sarılmıyor — sadece arkadaki glow ile dolduruluyor
-(kullanıcı onayıyla basitleştirildi, "tam çevreleyen" bir efekt DEĞİL).
+`art.jpg` yoksa `ffmpeg_utils.ensure_vignette()` fallback'i (sabit, tema rengine göre statik
+bir vinyet — o da aynı pan+hue muamelesini alır) kullanılır. `art.jpg`/`cover.jpg` da yoksa
+(hiç elle görsel hazırlanmamışsa) `generate_cover.py`, `meta.json`'daki title/theme'e göre
+ikisini de otomatik üretir — tema rengi + şarkı başlığından türetilen deterministik bir bokeh
+dokusu (düz gradyan DEĞİL — kart ile backdrop arasında görsel kontrast olması için).
 
-"Famous Music Studio" logosu artık karttan kaldırıldı — kart şu an düz koyu renk
-(`config.CARD_ART_COLOR`) dolgu, `cover.jpg` sadece platform thumbnail'i için kullanılacak
-(bu script tarafından üretilmiyor, ayrıca yüklenecek).
-
-**AÇIK KONU:** Kart içine şarkıya özel atmosferik/sanatsal bir görsel (referans videodaki neon
-sokak fotoğrafı gibi) eklenecek ama kaynağı henüz kararlaştırılmadı (Suno mu sağlayacak, AI ile
-mi üretilecek). Yeni oturumda önce bunu netleştir.
-
-**Referans örnek tamamlandı (2026-08-30):** `projects/ilk-sarkim` — gerçek şarkı ("AY-AH
-Nights", Turkish Trap Arabesk, gece/yalnızlık teması), gerçek kart görseli (`art.png`, Canva ile
-üretildi, tema rengiyle uyumlu), tema=`pop`, tam 3 platform render'ı başarılı. Bu, pipeline'ın
-"kusursuz başlangıç" referans noktası — yeni özellik denerken bunu bozmadığından emin ol.
-Kart içeriği artık `art.jpg/.jpeg/.png` (opsiyonel, yoksa düz renk) — `cover.jpg` SADECE
-platform thumbnail'i, videoya hiç girmiyor.
-
-**Gerçek şarkıda test edildi ve düzeltildi (bu oturumda):**
-- Render süresi: yeni hafif kart tasarımı eski tam ekran tasarımından ~2.2x hızlı (4 dk'lık
-  şarkı için ~22 dk → ~9-10 dk).
-- `CARD_SIZE_RATIO` gerçek ekranda çok büyük duruyordu → 0.74'ten 0.55'e düşürüldü.
-- Kayan yazı/kart boyutu birkaç yanlış denemeden sonra referans video (sunıo/video_1.mp4)
-  TEKRAR dikkatle ölçülerek düzeltildi: (1) `CARD_SIZE_RATIO` referansta ölçüldüğünde ~0.31-0.35
-  çıktı (0.55 bile hâlâ çok büyüktü) → 0.35'e düşürüldü. (2) Künye yazısı kartın İÇİNDE DEĞİL,
-  kartın ALTINDA (küçük bir `MARQUEE_GAP_RATIO` boşluğuyla), `card_size` genişliğinde duruyor —
-  "kart içine bindirme" denemesi YANLIŞTI, referans videoda yazı açıkça kartın altında.
-  **Ders:** Görsel konumlandırma belirsizliğinde tahmin etmek yerine referans kareyi
-  `Read` ile tekrar aç ve piksel oranlarını ölç — birkaç deneme-yanılma turu yerine tek
-  seferde doğru sonucu verir.
-- `showfreqs` gerçek müzikte `ascale=log` ile sürekli maksimuma vurup "beyaz duvar" gibi amatör
-  görünüyordu; `ascale=lin` ise neredeyse görünmez oldu. `ascale=sqrt` + `EQ_INPUT_GAIN=0.7`
-  (showfreqs'e girmeden önce sesi zayıflatan bir `volume` filtresi) orta yol oldu — ince,
-  dokulu bir çizgi. Bu ayarları değiştirirken MUTLAKA gerçek bir şarkıyla test et, sinüs test
-  tonu bu sorunları YANSITMIYOR (çok farklı görünüyor).
+**KRİTİK — art.jpg METİNSİZ olmalı:** `art.jpg`, hem kartın içeriği hem de blur backdrop'ın
+kaynağı olarak kullanılıyor. İçine başlık/logo gibi bir metin gömülüyse, blur bunu okunaksız
+bir lekeye çevirir. `cover.jpg` (platform thumbnail'i) başlıklı olabilir/olmalı — ama `art.jpg`
+her zaman metinsiz bir görsel/doku olmalı. Bu proje boyunca birkaç kez (elle hazırlanan
+art.jpg'lerin cover.jpg ile aynı, metinli dosya olarak bırakılması yüzünden) bu hataya
+düşüldü — yeni bir proje incelerken `art.* == cover.*` (byte-birebir aynı) olup olmadığını
+kontrol etmek hızlı bir sağlık kontrolü.
 
 ## Proje Yapısı
 
-- `render.py` — CLI giriş noktası (`--project <klasör>` veya `--all`), 3 platformu paralel render eder
-- `ffmpeg_utils.py` — ffprobe süre okuma + kart/marquee/progress-bar filtergraph inşası + render_video()
+- `render.py` — CLI giriş noktası (`--project <klasör>` veya `--all`), platformları paralel render eder (`config.PLATFORMS`)
+- `generate_cover.py` — eksik `cover.png`/`art.png`'yi tema rengi + bokeh dokusuyla otomatik üretir (`auto_process.py` render'dan önce çağırır)
+- `ffmpeg_utils.py` — ffprobe süre okuma + kart/backdrop(pan+hue)/marquee/progress-bar filtergraph inşası + `render_video()`
+- `audio_highlight.py` — Shorts/Reels için sesin en yoğun/enerjik bölümünü bulur (`config.HIGHLIGHT_DURATION`, 45sn)
+- `auto_process.py` — asıl production giriş noktası: cover/art üretimi + render + YouTube (uzun+Shorts) + TikTok + Instagram, hepsi tek komutta
 - `config.py` — TÜM görünüm/kalite ayarları burada (aşağıda liste)
 - `assets/card_mask.png` — yuvarlak köşe maskesi (luma tabanlı, `alphamerge` ile kullanılır, tüm temalarda ortak)
-- **Arka plan artık her şarkının kendi `art.jpg`'sinden geliyor** (Spotify "Now Playing" tarzı):
-  `ensure_art_backdrop()` art.jpg'yi ekranı kaplayacak şekilde büyütüp güçlü `gblur` uygular +
-  hafif karartır, projenin kendi klasörüne (`_backdrop_<w>x<h>.png`) önbelleğe alır. Şablon
-  (blur miktarı, karartma) her şarkıda AYNI — sadece kaynak görsel farklı olduğu için renk
-  şarkıdan şarkıya doğal olarak değişiyor; sabit bir tema paletinden GELMİYOR artık. art.jpg
-  yoksa (kart düz renge düştüğünde) `ensure_vignette()` fallback'i kullanılır (sabit, tema
-  bağımsız bir vinyet). Eskiden var olan köşe "glow" asset'i (`ensure_card_glow`) filtergraph'ta
-  hiç kullanılmıyordu (üretilip hiç compose edilmiyordu) — kaldırıldı.
 - `projects/<şarkı-adı>/` — her şarkı kendi klasöründe:
-  - `audio.wav` (veya `.mp3`/`.m4a`)
-  - `cover.jpg` (veya `.jpeg`/`.png`) — şu an hem thumbnail hem kart için kullanılıyor (yukarıdaki açık konuya bakın)
-  - `meta.json` (opsiyonel) — `{"title": "..."}` — kayan yazıda görünür
-  - `output/` — render sonrası 3 mp4 buraya yazılır
+  - `audio.wav` (veya `.mp3`/`.m4a`) — TEK zorunlu dosya, gerisi otomatik üretilebilir
+  - `cover.jpg`/`.png` (opsiyonel, yoksa otomatik üretilir) — başlıklı platform thumbnail'i
+  - `art.jpg`/`.png` (opsiyonel, yoksa otomatik üretilir) — METİNSİZ, kart içeriği + backdrop kaynağı
+  - `meta.json` (opsiyonel) — `{"title": "...", "theme": "..."}`
+  - `output/` — render sonrası mp4'ler buraya yazılır
 
 ## Yeni Şarkı Ekleme ve Render
 
-1. `projects/<şarkı-adı>/audio.wav` ve kart görselini koy.
-2. (Opsiyonel) `meta.json` ile `title` ekle (künye yazısında görünür).
-3. Çalıştır: `python render.py --project projects/<şarkı-adı>` veya `python render.py --all`.
+1. `projects/<şarkı-adı>/audio.wav` koy (görsel opsiyonel — yoksa otomatik üretilir).
+2. (Opsiyonel) `meta.json` ile `title`/`theme` ekle.
+3. Tam otomasyon için: `python auto_process.py` (cover/art + render + tüm platform upload'ları).
+   Sadece render için: `python render.py --project projects/<şarkı-adı>` veya `--all`.
 
 ## config.py Ayarları
 
-- `PLATFORMS` — platform_key → (genişlik, yükseklik).
-- `CARD_SIZE_RATIO` — kartın min(genişlik,yükseklik)'e oranı (0.74 — büyük/baskın, küçük thumbnail değil).
+- `PLATFORMS` — platform_key → (genişlik, yükseklik). Şu an `youtube_16x9` ve `shorts_9x16`
+  (üçüncü bir `square_1x1` vardı, hiçbir upload script'i kullanmadığı için kaldırıldı).
+- `CARD_SIZE_RATIO` — kartın min(genişlik,yükseklik)'e oranı (0.45).
 - `CARD_CORNER_RATIO` — köşe yuvarlaklığı.
-- `CARD_ASSET_REF_SIZE` / `CARD_MASK_ASSET_PATH` — önbelleğe alınmış maske asset'i (dosya silinirse otomatik yeniden üretilir). Art backdrop'ı ise projenin kendi klasöründe önbelleğe alınır (yukarıya bakın).
-- `THEMES[key]["accent"]`/`["accent2"]` — çerçeve artık İKİ renk arasında AÇISAL (angular,
-  `atan2` ile) gradyan, `rotate` filtresiyle sürekli döndürülüyor — referans videodaki
-  "aynı anda çok renkli" görünüm buradan geliyor (eski tek-renk `hue` salınımı yerine geçti).
-- `MARQUEE_SUFFIX`, `MARQUEE_SEPARATOR`, `MARQUEE_REPEAT`, `MARQUEE_SPEED_PX_S`, `FONT_SIZE_RATIO`, `FONT_COLOR` — künye tarzı kayan yazı (küçük, ince, `—` ayraçlı, yavaş kayar — büyük/kalın başlık DEĞİL, bilinçli tercih).
+- `CARD_ASSET_REF_SIZE` / `CARD_MASK_ASSET_PATH` — önbelleğe alınmış maske asset'i.
+- `BACKDROP_PAN_MARGIN_RATIO`, `BACKDROP_PAN_SPEED_X`/`_Y` — backdrop'un ne kadar büyük
+  üretileceği ve pan (kayma) hızı.
+- `BACKDROP_HUE_AMPLITUDE_DEG`, `BACKDROP_HUE_SPEED` — renk akışının genliği/hızı (tam 360°
+  dönmez, tema renginden çok uzaklaşmasın diye dar bir açıda salınır).
+- `MARQUEE_SEPARATOR`, `MARQUEE_REPEAT`, `MARQUEE_SPEED_PX_S`, `FONT_SIZE_RATIO`, `FONT_COLOR` — künye tarzı kayan yazı.
 - `PROGRESS_BAR_*` — alttaki ilerleme çubuğu boyut/renk/konum ayarları.
 - `MAX_PARALLEL_RENDERS` — kaç platformun aynı anda render edileceği.
-- `THEMES` / `DEFAULT_THEME` — meta.json'daki `"theme"` alanına göre kart çerçevesinin rengini
-  belirler (`pop`, `rock`, `elektronik`, `akustik`, `hiphop`). `CARD_HUE_WOBBLE_DEG` kadar o
-  renk etrafında hafifçe salınır — tüm renkleri gezen rastgele bir efekt DEĞİL, tür kimliğini
-  yansıtan sabit bir renk + hafif canlılık. Not: `akustik` ve `hiphop` ikisi de sıcak
-  turuncu/sarı aile, gözle ayırt etmek zor olabilir — kullanıcı geri bildirimi bekleniyor.
+- `THEMES` / `DEFAULT_THEME` — meta.json'daki `"theme"` alanına göre (`pop`, `rock`,
+  `elektronik`, `akustik`, `hiphop`, `arabesk`) kayan yazının rengini ve caption'daki tür
+  hashtag'lerini belirler — backdrop'un rengini DEĞİL (o artık `art.jpg`'den geliyor).
+- `HIGHLIGHT_DURATION`, `HIGHLIGHT_PLATFORMS` — Shorts/Reels için hangi platformların ses
+  highlight'ıyla kırpılacağı ve ne kadar süreyle.
 
 ## Render Sonrası Doğrulama (bu projede standart yöntem)
 
@@ -140,13 +124,12 @@ tonu + basit bir görsel) izole bir klip üzerinde dene, ana pipeline'a onaylanm
 10. **`color=...`, `nullsrc` gibi kaynak filtreler** ekstra bir `-i` girdisi gerektirmeden
     doğrudan `filter_complex` içine (girdi etiketi olmadan) yazılabilir — canvas/progress-bar
     arka planı için bu şekilde kullanıldı.
-11.5. **Statik bir PNG'yi (`-loop 1 -i x.png`) filtergraph'ın ANA/TEMEL katmanı (canvas) olarak
+11. **Statik bir PNG'yi (`-loop 1 -i x.png`) filtergraph'ın ANA/TEMEL katmanı (canvas) olarak
     kullanırken mutlaka `fps={FPS}` ekle.** Aksi halde PNG'nin varsayılan (genelde 25) kare
-    hızı tüm zincirin zamanlamasını bozabiliyor — belirti: `showfreqs` gibi zamana bağlı
-    filtreler DONMUŞ gibi davranıyor (iki farklı zaman noktasında piksel değerleri aynı
-    kalıyor), ama marquee/progress-bar gibi `t`/`T` kullanan diğer şeyler normal görünebiliyor
-    (bu yüzden fark etmesi zor). Vinyet arka planını canvas yaparken bu bulundu/düzeltildi.
-11. **KRİTİK — bir filtre çıktısını (`[label]`) `vflip`/`transpose` gibi filtrelere VE aynı
+    hızı tüm zincirin zamanlamasını bozabiliyor — belirti: zamana bağlı filtreler (`t`/`T`
+    kullananlar) DONMUŞ gibi davranabiliyor (iki farklı zaman noktasında piksel değerleri aynı
+    kalıyor). Vinyet arka planını canvas yaparken bu bulundu/düzeltildi.
+12. **KRİTİK — bir filtre çıktısını (`[label]`) `vflip`/`transpose` gibi filtrelere VE aynı
     zamanda başka bir yerde (örn. `overlay`) doğrudan besliyorsan, önce `split` ile açıkça
     çoğalt.** Bunu atlamak (örn. `[eqh]vflip[x]` ve `[eqh]transpose=1[y]` gibi aynı etiketi
     birden fazla filtreye vermek) sessizce bozuk/kayıp içerik üretiyor (bu oturumda kartın
@@ -156,10 +139,12 @@ tonu + basit bir görsel) izole bir klip üzerinde dene, ana pipeline'a onaylanm
 
 ## Performans Notları
 
-- 3 platform **paralel** render ediliyor (`ThreadPoolExecutor`).
-- Kart tasarımı (v2), eski tam ekran + Ken-Burns + waveform tasarımına göre doğası gereği çok
-  daha hafif: kartın kendisi statik (zoom yok), çerçevenin dışındaki büyük alan düz siyah
-  (neredeyse bedava encode), waveform kaldırıldı.
+- Tüm platformlar (`config.PLATFORMS`, şu an 2 tane) **paralel** render ediliyor (`ThreadPoolExecutor`).
+- Kart tasarımı, eski tam ekran + Ken-Burns + waveform tasarımına göre doğası gereği çok
+  daha hafif: kartın kendisi statik (zoom yok, sadece backdrop hareketli), çerçevenin dışındaki
+  büyük alan backdrop ile dolduruluyor ama waveform/eşitleyici çubuğu yok — kaldırıldı.
+  Backdrop'taki pan/hue de ucuz (crop + hue filtreleri, geq gibi her karede yeniden
+  hesaplama gerektirmiyor), performansa ölçülebilir bir maliyeti yok.
 - Aynı şarkıyı sadece başlık değiştirerek tekrar tekrar render etmenin önbellekleme ile
   hızlandırılması **bilinçli olarak yapılmadı** — iki kademeli bir önbellek ikinci nesil
   sıkıştırma kaybı getirir ve gerçek kullanım akışında (şarkı başına tek render) faydası yoktur.
