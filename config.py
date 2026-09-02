@@ -5,17 +5,18 @@ import os
 FPS = 30
 
 # platform_key -> (genişlik, yükseklik, çıktı dosya adı)
+# NOT: "square_1x1" (1080x1080) daha önce burada vardı ama hiçbir upload script'i
+# onu kullanmıyordu — her render'da boşuna üretiliyordu, kaldırıldı.
 PLATFORMS = {
     "youtube_16x9": (1920, 1080),
     "shorts_9x16": (1080, 1920),
-    "square_1x1": (1080, 1080),
 }
 
 # Bu platformlar şarkının TAMAMI yerine, audio_highlight.find_highlight() ile
 # bulunan en enerjik/yoğun bölümden kırpılır (viral kısa video için) —
 # meta.json'da "highlight_start"/"highlight_end" (saniye) belirtilirse onlar
 # öncelikli kullanılır, otomatik tespit devreye girmez.
-HIGHLIGHT_PLATFORMS = {"shorts_9x16", "square_1x1"}
+HIGHLIGHT_PLATFORMS = {"shorts_9x16"}
 HIGHLIGHT_DURATION = 45.0  # saniye — YouTube Shorts/TikTok/Reels limitinin (180s) çok altında
 
 # Aynı anda kaç platform paralel render edilsin (varsayılan: hepsi birden)
@@ -57,6 +58,21 @@ BG_BOKEH_POS = (0.8, 0.7)  # bokeh blob merkezi, (x,y) genişlik/yükseklik oran
 BG_BOKEH_RADIUS_RATIO = 0.45  # min(W,H)'e oran, bokeh yarıçapı — ne kadar kapsadığı
 BG_BOKEH_BRIGHTNESS = 50  # bokeh blob'ün en parlak merkez noktası (0-255)
 BG_BOKEH_COLOR = (80, 180, 255)  # cool cyan-blue, accent rengiyle complementary
+
+# Arka plan artık statik değil, video boyunca yavaşça kayıyor (pan): kaynak görsel
+# hedef çözünürlükten biraz büyük üretiliyor, render sırasında crop x/y zamanla
+# (sin/cos ile) kayıyor. Zoom YOK — crop neredeyse ücretsiz ama her karede yeniden
+# ölçekleme (scale/zoom) render'ı ciddi yavaşlatırdı.
+BACKDROP_PAN_MARGIN_RATIO = 0.14  # arka planın hedef boyuttan ne kadar büyük üretileceği
+BACKDROP_PAN_SPEED_X = 0.05  # radyan/saniye, x ekseni salınım hızı
+BACKDROP_PAN_SPEED_Y = 0.035  # radyan/saniye, y ekseni — x'ten farklı, tekrarsız/organik desen için
+
+# Renk akışı: pan'a ek olarak backdrop'un hue'su zamanla yumuşakça salınıyor.
+# Tam 360° dönmüyor (dar bir açı aralığında ileri-geri akıyor) — şarkının kendi
+# tema renginden (art.jpg'nin rengi) çok uzaklaşmasın, yine de gözle görülür bir
+# "renk akışı" hissi olsun diye.
+BACKDROP_HUE_AMPLITUDE_DEG = 35  # salınımın genliği (derece) — 0 = orijinal renk, +/- bu kadar kayar
+BACKDROP_HUE_SPEED = 0.025  # radyan/saniye
 
 # EQ bars (sese duyarlı çubuklar) kaldırıldı — kullanıcı beğenmedi, kaldırıldı.
 # BAR_THICKNESS_RATIO hâlâ layout boşluğu (kart altı/text arası) için kullanılıyor.

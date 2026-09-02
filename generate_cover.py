@@ -3,7 +3,8 @@ thumbnail'i) ve art.png (metinsiz, video kartı + arka plan blur kaynağı) üre
 
 Proje bilinçli olarak sadece ffmpeg kullanıyor (Pillow/Playwright gibi ek bir
 görsel işleme bağımlılığı eklemiyor) — tema rengine göre radial gradyan arka
-plan + (cover.png için) ortalanmış başlık metni.
+plan + şarkı başlığından türetilen deterministik bokeh dokusu + (cover.png
+için) ortalanmış başlık metni.
 
 Kullanım:
     python generate_cover.py --project "projects/sarki-adi"
@@ -15,8 +16,10 @@ zorunlu değil, sadece audio.wav + (opsiyonel) meta.json yeterli.
 """
 
 import argparse
+import hashlib
 import json
 import os
+import random
 import shutil
 import subprocess
 
@@ -67,6 +70,50 @@ def _radial_background(out_path: str, accent: tuple[int, int, int]) -> None:
         raise RuntimeError(f"Arka plan üretilemedi: {result.stderr[-1000:]}")
 
 
+def _add_bokeh(bg_path: str, out_path: str, accent: tuple[int, int, int], seed: int) -> None:
+    """Düz radyal arka planın üstüne, şarkı başlığından türetilen SEED ile
+    deterministik (her şarkı farklı ama tekrar üretilince aynı) birkaç yumuşak
+    ışık lekesi (bokeh) ekler.
+
+    Bunsuz art.png tamamen düz bir gradyandı: video render'da kart (ön plan) ve
+    arka plan (o gradyanın bulanıklaştırılmış hâli) neredeyse ayırt edilemiyordu
+    — kartın içi de boş kalıyordu. Bokeh dokusu hem art.png'ye (kart + backdrop
+    kaynağı) hem cover.png'ye gerçek bir doku/derinlik katıyor, ffmpeg_utils.
+    ensure_vignette()'teki bokeh formülüyle aynı yaklaşımı kullanıyor."""
+    rng = random.Random(seed)
+    size = CANVAS_SIZE
+    light = tuple(c + (255 - c) * 0.55 for c in accent)
+    white = (255, 255, 255)
+
+    blobs = []
+    for _ in range(rng.randint(5, 8)):
+        cx = rng.uniform(0.12, 0.88) * size
+        cy = rng.uniform(0.12, 0.88) * size
+        sigma = rng.uniform(0.05, 0.14) * size
+        peak = rng.uniform(30, 70)
+        color = white if rng.random() < 0.35 else light
+        blobs.append((cx, cy, sigma, peak, color))
+
+    def _channel_expr(source: str, idx: int) -> str:
+        terms = [f"{source}(X,Y)"]
+        for cx, cy, sigma, peak, color in blobs:
+            dist = f"hypot(X-{cx:.1f}\\,Y-{cy:.1f})"
+            falloff = f"exp(-pow({dist}/{sigma:.1f}\\,2))"
+            terms.append(f"{peak * color[idx] / 255:.3f}*{falloff}")
+        return "clip(" + "+".join(terms) + "\\,0\\,255)"
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", bg_path,
+        "-vf", f"geq=r='{_channel_expr('r', 0)}':g='{_channel_expr('g', 1)}':b='{_channel_expr('b', 2)}'",
+        "-frames:v", "1", "-update", "1",
+        out_path,
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Bokeh dokusu eklenemedi: {result.stderr[-1000:]}")
+
+
 def _add_title_text(bg_path: str, out_path: str, title: str) -> None:
     """bg_path'teki görsele başlık + sabit marka satırını ortalayarak yazar,
     out_path'e yazar (bg_path değiştirilmez)."""
@@ -115,8 +162,11 @@ def generate(project_dir: str) -> None:
     if has_cover and has_art:
         return
 
+    seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
+    base_path = os.path.join(project_dir, "_bg_base_tmp.png")
     bg_path = os.path.join(project_dir, "_bg_tmp.png")
-    _radial_background(bg_path, theme["accent"])
+    _radial_background(base_path, theme["accent"])
+    _add_bokeh(base_path, bg_path, theme["accent"], seed)
     try:
         if not has_art:
             shutil.copy(bg_path, art_path)
@@ -125,8 +175,9 @@ def generate(project_dir: str) -> None:
             _add_title_text(bg_path, cover_path, title)
             print(f"  cover.png üretildi ({title!r}, {theme_key} teması)")
     finally:
-        if os.path.isfile(bg_path):
-            os.remove(bg_path)
+        for tmp_path in (base_path, bg_path):
+            if os.path.isfile(tmp_path):
+                os.remove(tmp_path)
 
 
 def main():

@@ -2,12 +2,10 @@
 
 Suno'da ürettiğin şarkılardan tüm platformlar için otomatik video üretir:
 
-- **YouTube** (16:9) → `output/youtube_16x9.mp4`
-- **YouTube Shorts / TikTok / Instagram Reels** (9:16) → `output/shorts_9x16.mp4`
-- **Instagram post / Facebook kare** (1:1) → `output/square_1x1.mp4`
-
-Facebook için ayrı bir video yok — 16:9 (`youtube_16x9.mp4`) veya 1:1 (`square_1x1.mp4`)
-dosyalarını doğrudan Facebook'a da yükleyebilirsin.
+- **YouTube (uzun format)** (16:9) → `output/youtube_16x9.mp4`
+- **YouTube Shorts / TikTok / Instagram Reels** (9:16) → `output/shorts_9x16.mp4` — bu dosya
+  hem TikTok/Instagram'a hem de AYRI bir yükleme olarak YouTube'a (Short olarak) gidiyor;
+  aynı şarkı için iki ayrı YouTube video'su (uzun format + Short) oluşuyor.
 
 Videolar: ortada yuvarlak köşeli albüm kartı + kayan künye yazısı + sabit marka satırı +
 ilerleme çubuğu + derinlikli arka plan içerir. Tamamen otomatik, elle video düzenleme gerekmez.
