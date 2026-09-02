@@ -138,6 +138,14 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
         meta = _load_meta(project_dir)
         caption = build_caption(meta)
 
+    # AÇIK MADDE: Meta, gerçekçi AI-üretimi içerik için "AI Info" etiketlemesini
+    # zorunlu kılıyor (about.fb.com/news/2024/02 ve 2024/04 duyuruları). Graph API
+    # media endpoint'inde buna karşılık gelen resmi alan adı bu depoda DOĞRULANAMADI
+    # (developers.facebook.com'a bu ortamdan erişilemedi) — ikincil kaynaklarda
+    # `is_ai_generated` benzeri bir alan geçiyor ama teyitsiz. Yanlış alan adını
+    # buraya eklemek her yüklemede API hatasına yol açabileceği için BİLEREK
+    # eklenmedi — resmi dokümantasyondan doğrulanınca buraya eklenmeli.
+
     # 1) Media container olustur
     create_resp = requests.post(
         f"{GRAPH_API}/{ig_user_id}/media",

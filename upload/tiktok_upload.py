@@ -82,6 +82,12 @@ def upload_video(project_dir: str) -> str:
         print("  --- Paylaşımdan SONRA ilk yorum olarak ekle ---")
         print(f"  {suggested_comment}")
         print("  -------------------------------------------------")
+    # TikTok, gerçekçi AI-üretimi içerik için "AI-generated content" etiketinin
+    # (Content Credentials/AIGC) açılmasını zorunlu kılıyor (newsroom.tiktok.com/
+    # en-us/new-labels-for-disclosing-ai-generated-content). inbox/draft akışı bu
+    # alanı API ile göndermiyor (video.publish scope'u yok) — kullanıcı TikTok
+    # uygulamasından elle yayınlarken bunu da elle açmalı.
+    print("  --- TikTok uygulamasından yayınlarken UNUTMA: 'AI-generated content' etiketini de aç ---")
 
     video_size = os.path.getsize(video_path)
     init_body = {

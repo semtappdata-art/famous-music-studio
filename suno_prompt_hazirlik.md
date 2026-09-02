@@ -2,6 +2,13 @@
 
 Suno API erişimi yok — bu akış manuel: prompt hazırla → Suno.com'a yapıştır → indir → proje klasörüne koy.
 
+> **Lisans/ticari kullanım notu:** Bu kanaldaki her şarkı Suno çıktısı ve ticari amaçla
+> (marka hesabı) YouTube/TikTok/Instagram'a yükleniyor. Suno'nun ücretsiz/ücretli plan
+> katmanlarına göre ticari kullanım ve platform dağıtım hakları farklılık gösterebilir —
+> bu, hesaba özel ve zamanla değişen bir konu olduğu için burada belgelenmiyor. Kendi Suno
+> aboneliğinin güncel Kullanım Şartları'nı bir kere kontrol edip bu kullanımı kapsadığından
+> emin ol (henüz yapılmadıysa).
+
 ## Adımlar
 
 1. **Stil etiketini Suno'nun Style kutusuna yapıştır** (aşağıdaki örneğe bak, şarkıya göre uyarla)
