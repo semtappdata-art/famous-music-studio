@@ -2,6 +2,9 @@
 
 Suno'nun Lyrics kutusuna aynen yapıştırılabilir.
 
+> Yeni bir şarkı prompt'u yazmadan önce `ses_ve_tarz_takibi.md`'ye bak —
+> vokal cinsiyeti/dokusu art arda tekrarlanmasın.
+
 **Neden bu tema:** Kataloğun 6 tema slotundan `akustik` hiç kullanılmamıştı.
 Markanın kök kimliğine (hüzünlü/samimi) piano-gitar ağırlıklı, sade bir
 prodüksiyonla dönüyor — dans/enerji değil, "sözleri dokunaklı" tipi
