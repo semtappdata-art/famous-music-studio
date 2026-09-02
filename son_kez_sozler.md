@@ -14,7 +14,7 @@ Kadar'ın tam zıttı).
 ## Stil Etiketi (Suno Style kutusuna yapıştır)
 
 ```
-Turkish acoustic ballad, intimate piano and fingerstyle guitar, soft string swell in chorus, warm raspy male vocals, heartfelt and melancholic, slow and emotional, 68 BPM
+Turkish acoustic pop-ballad, mid-tempo, warm fingerstyle guitar with soft cajon percussion, uplifting string lift in chorus, warm raspy male vocals, bittersweet with a hopeful undertone, 92 BPM
 ```
 
 ## Sözler (Suno Lyrics kutusuna yapıştır)
@@ -73,6 +73,13 @@ Sonra git, istersen hiç dönme...
   "female vocals" kullanmıştı — fark edilmeden tekrarlanan bir örüntüydü,
   ses çeşitliliği için kırıldı. Sıcak/kısık (raspy) doku, "veda" temasına
   uygun düşünülerek seçildi.
+- **Stil etiketi ikinci kez revize edildi:** ilk üretilen versiyon (68 BPM,
+  "heartfelt and melancholic, slow and emotional") kullanıcı tarafından
+  dinlendikten sonra "çok ağır, kitlesi dar" olarak değerlendirildi. Sözler
+  aynı kaldı (iyi yazılmışlardı) — prodüksiyon 92 BPM'e çekildi, hafif
+  vurmalı (cajon) eklendi, ton "melankolik/ağıt" yerine "hüzünlü ama
+  umutlu"ya kaydırıldı. Amaç: duygusal derinliği korurken dinleme eşiğini
+  düşürmek, daha geniş bir kitleye ulaşabilmek.
 - Tema: veda, özlem, anıya sarılma — markanın orijinal melankolik kimliğine
   yakın ama trap/arabesk yerine sade akustik prodüksiyon
 - `config.py`'deki `theme` alanı için: `"akustik"` (accent turuncu/pembe)
