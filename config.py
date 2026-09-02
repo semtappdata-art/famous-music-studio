@@ -5,17 +5,18 @@ import os
 FPS = 30
 
 # platform_key -> (genişlik, yükseklik, çıktı dosya adı)
+# NOT: "square_1x1" (1080x1080) daha önce burada vardı ama hiçbir upload script'i
+# onu kullanmıyordu — her render'da boşuna üretiliyordu, kaldırıldı.
 PLATFORMS = {
     "youtube_16x9": (1920, 1080),
     "shorts_9x16": (1080, 1920),
-    "square_1x1": (1080, 1080),
 }
 
 # Bu platformlar şarkının TAMAMI yerine, audio_highlight.find_highlight() ile
 # bulunan en enerjik/yoğun bölümden kırpılır (viral kısa video için) —
 # meta.json'da "highlight_start"/"highlight_end" (saniye) belirtilirse onlar
 # öncelikli kullanılır, otomatik tespit devreye girmez.
-HIGHLIGHT_PLATFORMS = {"shorts_9x16", "square_1x1"}
+HIGHLIGHT_PLATFORMS = {"shorts_9x16"}
 HIGHLIGHT_DURATION = 45.0  # saniye — YouTube Shorts/TikTok/Reels limitinin (180s) çok altında
 
 # Aynı anda kaç platform paralel render edilsin (varsayılan: hepsi birden)
