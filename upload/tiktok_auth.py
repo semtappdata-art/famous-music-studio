@@ -109,6 +109,7 @@ def get_access_token() -> dict:
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
         },
+        timeout=(10, 30),
     )
     if not resp.ok:
         raise RuntimeError(
@@ -145,6 +146,7 @@ def exchange_code(code: str) -> dict:
             "redirect_uri": REDIRECT_URI,
             "code_verifier": verifier,
         },
+        timeout=(10, 30),
     )
     resp.raise_for_status()
     token = resp.json()

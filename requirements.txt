@@ -1,0 +1,15 @@
+# Famous Music Studio otomasyonunun bağımlılıkları.
+#
+# Not: Bu dosya kod taramasıyla (hangi paketler import ediliyor) çıkarıldı,
+# sürümler kasıtlı olarak SABİTLENMEDİ — bu ortamda (bulut geliştirme oturumu)
+# gerçek çalışan sürümler kurulu değildi, uydurma bir sürüm numarası yazmak
+# yanıltıcı olurdu. Otomasyonun çalıştığı bilgisayarda bir kere şunu çalıştırıp
+# çıktısıyla bu dosyayı güncellersen (`pip freeze > requirements.txt`),
+# gelecekte "hangi sürümle çalışıyordu" sorusuna kesin cevap alırsın.
+
+librosa
+numpy
+requests
+google-api-python-client
+google-auth
+google-auth-oauthlib

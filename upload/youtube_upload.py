@@ -101,7 +101,17 @@ def _upload(video_path: str, snippet: dict, privacy: str) -> str:
 
     body = {
         "snippet": snippet,
-        "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False},
+        # containsSyntheticMedia: YouTube'un "altered or synthetic content" açıklama
+        # zorunluluğunun API karşılığı (Ekim 2024'te eklendi, resmi kaynak:
+        # support.google.com/youtube/answer/14328491 ve developers.google.com/youtube/
+        # v3/revision_history). Bu kanalın TÜM içeriği (vokal+beste+kapak+video) AI
+        # üretimi olduğu için True olarak işaretleniyor — hem uzun format hem Shorts
+        # (ikisi de bu _upload()'ı kullanıyor).
+        "status": {
+            "privacyStatus": privacy,
+            "selfDeclaredMadeForKids": False,
+            "containsSyntheticMedia": True,
+        },
     }
 
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")

@@ -77,6 +77,7 @@ def _upload_to_netlify(video_path: str) -> str:
         f"https://api.netlify.com/api/v1/sites/{creds['site_id']}/deploys",
         headers={**auth_headers, "Content-Type": "application/json"},
         json={"files": {f"/{filename}": file_sha1}},
+        timeout=(10, 30),
     )
     create_resp.raise_for_status()
     deploy = create_resp.json()
@@ -88,6 +89,7 @@ def _upload_to_netlify(video_path: str) -> str:
             f"https://api.netlify.com/api/v1/deploys/{deploy_id}/files/{filename}",
             headers={**auth_headers, "Content-Type": "application/octet-stream"},
             data=content,
+            timeout=(10, 300),
         )
         upload_resp.raise_for_status()
 
@@ -97,6 +99,7 @@ def _upload_to_netlify(video_path: str) -> str:
         status_resp = requests.get(
             f"https://api.netlify.com/api/v1/deploys/{deploy_id}",
             headers=auth_headers,
+            timeout=(10, 30),
         )
         status_resp.raise_for_status()
         if status_resp.json().get("state") == "ready":
@@ -135,6 +138,14 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
         meta = _load_meta(project_dir)
         caption = build_caption(meta)
 
+    # AÇIK MADDE: Meta, gerçekçi AI-üretimi içerik için "AI Info" etiketlemesini
+    # zorunlu kılıyor (about.fb.com/news/2024/02 ve 2024/04 duyuruları). Graph API
+    # media endpoint'inde buna karşılık gelen resmi alan adı bu depoda DOĞRULANAMADI
+    # (developers.facebook.com'a bu ortamdan erişilemedi) — ikincil kaynaklarda
+    # `is_ai_generated` benzeri bir alan geçiyor ama teyitsiz. Yanlış alan adını
+    # buraya eklemek her yüklemede API hatasına yol açabileceği için BİLEREK
+    # eklenmedi — resmi dokümantasyondan doğrulanınca buraya eklenmeli.
+
     # 1) Media container olustur
     create_resp = requests.post(
         f"{GRAPH_API}/{ig_user_id}/media",
@@ -144,6 +155,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
             "caption": caption,
             "access_token": access_token,
         },
+        timeout=(10, 30),
     )
     create_resp.raise_for_status()
     creation_id = create_resp.json()["id"]
@@ -155,6 +167,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
         status_resp = requests.get(
             f"{GRAPH_API}/{creation_id}",
             params={"fields": "status_code", "access_token": access_token},
+            timeout=(10, 30),
         )
         status_resp.raise_for_status()
         status_code = status_resp.json().get("status_code")
@@ -169,6 +182,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
     publish_resp = requests.post(
         f"{GRAPH_API}/{ig_user_id}/media_publish",
         data={"creation_id": creation_id, "access_token": access_token},
+        timeout=(10, 30),
     )
     publish_resp.raise_for_status()
     media_id = publish_resp.json()["id"]
@@ -182,6 +196,7 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
             comment_resp = requests.post(
                 f"{GRAPH_API}/{media_id}/comments",
                 data={"message": build_youtube_comment(youtube_url), "access_token": access_token},
+                timeout=(10, 30),
             )
             comment_resp.raise_for_status()
             print(f"  YouTube linki yorum olarak eklendi: {comment_resp.json().get('id')}")
