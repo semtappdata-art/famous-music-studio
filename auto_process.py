@@ -48,6 +48,8 @@ import render as render_module
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
 RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4"]
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_process.log")
+LOCK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".auto_process.lock")
+LOCK_STALE_SECONDS = 2 * 60 * 60  # 2 saat — normal bir render+upload'dan çok daha uzun
 
 
 def log(msg: str) -> None:
@@ -55,6 +57,28 @@ def log(msg: str) -> None:
     print(line)
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(line + "\n")
+
+
+def _acquire_lock() -> bool:
+    """İki auto_process.py çalıştırması aynı anda çakışırsa (örn. çakışan Görev
+    Zamanlayıcı tetikleyicileri, ya da elle + zamanlanmış çalıştırma çakışması) ikisi
+    de AYNI en eski projeyi seçip aynı videoyu iki kez yükleyebilir — bu basit dosya
+    kilidi ikinci çalıştırmayı erken çıkışa yönlendirir. Kilit dosyası LOCK_STALE_SECONDS'
+    tan eskiyse (önceki çalıştırma çökmüş/kilidini bırakmamış olabilir) yok sayılır."""
+    if os.path.isfile(LOCK_PATH):
+        age = time.time() - os.path.getmtime(LOCK_PATH)
+        if age < LOCK_STALE_SECONDS:
+            return False
+        log(f"  Eski kilit dosyası bulundu ({age:.0f}s) — önceki çalıştırma muhtemelen "
+            f"yarıda kalmış, yok sayılıp devam ediliyor.")
+    with open(LOCK_PATH, "w", encoding="utf-8") as f:
+        f.write(str(os.getpid()))
+    return True
+
+
+def _release_lock() -> None:
+    if os.path.isfile(LOCK_PATH):
+        os.remove(LOCK_PATH)
 
 
 def _has_any(project_dir: str, names: list) -> bool:
@@ -231,23 +255,31 @@ def main():
     )
     args = parser.parse_args()
 
-    ready = find_ready_projects(args.base)
-    if not ready:
-        log("İşlenecek proje yok (audio hazır olan bulunamadı).")
+    if not _acquire_lock():
+        log("Başka bir auto_process.py çalışması zaten sürüyor (kilit dosyası var) — "
+            "bu çalıştırma atlanıyor, çakışan yükleme riski önlendi.")
         return
 
-    pending = [p for p in ready if not _is_fully_done(p)]
-    if not pending:
-        log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
-        return
+    try:
+        ready = find_ready_projects(args.base)
+        if not ready:
+            log("İşlenecek proje yok (audio hazır olan bulunamadı).")
+            return
 
-    batch = pending[:args.count]
-    log(f"{len(pending)} bekleyen proje var, bu koşuda işlenecek ({len(batch)}): "
-        f"{', '.join(os.path.basename(p) for p in batch)}")
-    for project_dir in batch:
-        process_project(project_dir, args.privacy)
+        pending = [p for p in ready if not _is_fully_done(p)]
+        if not pending:
+            log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
+            return
 
-    log("Çalıştırma tamamlandı.")
+        batch = pending[:args.count]
+        log(f"{len(pending)} bekleyen proje var, bu koşuda işlenecek ({len(batch)}): "
+            f"{', '.join(os.path.basename(p) for p in batch)}")
+        for project_dir in batch:
+            process_project(project_dir, args.privacy)
+
+        log("Çalıştırma tamamlandı.")
+    finally:
+        _release_lock()
 
 
 if __name__ == "__main__":

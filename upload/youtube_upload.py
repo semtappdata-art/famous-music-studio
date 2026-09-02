@@ -121,7 +121,13 @@ def _upload(video_path: str, snippet: dict, privacy: str) -> str:
     response = None
     while response is None:
         try:
-            status, response = request.next_chunk()
+            # num_retries=3: googleapiclient'ın kendi kaynağına göre varsayılan 0
+            # ("isteği sadece bir kez dener") — yani bu olmadan uzun bir upload
+            # sırasındaki geçici bir ağ kesintisi/5xx hatası TÜM yüklemeyi anında
+            # iptal ediyordu, bir sonraki deneme saatler sonraki bir sonraki
+            # zamanlanmış çalıştırmaya kalıyordu. 3, kütüphanenin kendi exponential
+            # backoff'unu (HttpError 5xx ve bağlantı hataları için) devreye sokar.
+            status, response = request.next_chunk(num_retries=3)
             if status:
                 print(f"    %{int(status.progress() * 100)}")
         except HttpError as e:

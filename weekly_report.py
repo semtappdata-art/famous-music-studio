@@ -1,5 +1,6 @@
 """projects/ altındaki tüm şarkıların YouTube istatistiklerini (görüntülenme,
-beğeni, yorum) tazeleyip özet bir tablo basar — haftalık takip için.
+beğeni, yorum) tazeleyip özet bir tablo basar — haftalık takip için. Ayrıca
+Instagram token'ının süresi yaklaşıyorsa uyarır (bkz. _check_instagram_token_expiry).
 
 Kullanım:
     python weekly_report.py
@@ -14,11 +15,49 @@ import argparse
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload"))
 
 from youtube_stats import get_stats
+
+INSTAGRAM_TOKEN_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "upload", "instagram_token.json"
+)
+INSTAGRAM_WARN_DAYS = 10  # bu kadar gün kala uyar (60 günlük token için makul bir tampon)
+
+
+def _check_instagram_token_expiry() -> None:
+    """TikTok'un aksine Instagram token'ı hiçbir yerden otomatik yenilenmiyor
+    (upload/instagram_auth.py::refresh_access_token() tanımlı ama hiç çağrılmıyor) —
+    ~60 günde bir sessizce süresi doluyor. Otomatik yenileme yerine (Meta'nın refresh
+    endpoint'inin canlı davranışı bu ortamdan doğrulanamadığı için) sadece UYARI
+    basıyoruz — kullanıcı gerektiğinde elle `python upload/instagram_auth.py
+    --print-url` ile yeniden yetkilendirir."""
+    if not os.path.isfile(INSTAGRAM_TOKEN_PATH):
+        return  # Instagram hiç bağlanmamış, kontrol edecek bir şey yok
+    try:
+        with open(INSTAGRAM_TOKEN_PATH, "r", encoding="utf-8") as f:
+            token = json.load(f)
+        expires_in = token.get("expires_in")
+        if not expires_in:
+            return
+        # expires_in, dosyanın en son YAZILDIĞI ana göre (exchange_code veya
+        # refresh_access_token) göreli saniye — dosyanın mtime'ını o an olarak kabul
+        # ediyoruz (kesin değil ama makul bir yaklaşım).
+        issued_at = os.path.getmtime(INSTAGRAM_TOKEN_PATH)
+        expires_at = issued_at + expires_in
+        days_left = (expires_at - time.time()) / 86400
+        if days_left < 0:
+            print(f"⚠️  Instagram token'ının süresi DOLMUŞ görünüyor (~{-days_left:.0f} gün önce) — "
+                  f"upload/instagram_upload.py 401 vermeye başlamış olabilir. "
+                  f"Yeniden yetkilendir: python upload/instagram_auth.py --print-url")
+        elif days_left < INSTAGRAM_WARN_DAYS:
+            print(f"⚠️  Instagram token'ının süresi ~{days_left:.0f} gün içinde doluyor — "
+                  f"yakında yeniden yetkilendirmen gerekecek: python upload/instagram_auth.py --print-url")
+    except (json.JSONDecodeError, OSError, KeyError):
+        pass  # sağlık kontrolü, ana raporu bozmasın
 
 
 def _load_state(project_dir: str) -> dict:
@@ -35,6 +74,8 @@ def main():
     )
     parser.add_argument("--base", default="projects", help="Proje klasörlerinin kök dizini")
     args = parser.parse_args()
+
+    _check_instagram_token_expiry()
 
     if not os.path.isdir(args.base):
         print(f"{args.base} bulunamadı.")

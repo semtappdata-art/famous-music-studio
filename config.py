@@ -22,9 +22,10 @@ HIGHLIGHT_DURATION = 45.0  # saniye — YouTube Shorts/TikTok/Reels limitinin (1
 # Aynı anda kaç platform paralel render edilsin (varsayılan: hepsi birden)
 MAX_PARALLEL_RENDERS = len(PLATFORMS)
 
-# Müzik türüne göre 5 renk paleti — her şarkı meta.json'da "theme" ile birini seçer.
-# accent/accent2: çerçevenin iki rengi — statik açısal (aynı anda çok renkli) gradyan
-# bu ikisi arasında oluşur (referans videoda çerçeve dönmüyor, sabit).
+# Müzik türüne göre renk paletleri — her şarkı meta.json'da "theme" ile birini seçer.
+# accent: art.jpg yoksa (ensure_vignette fallback) kullanılan tema rengi. accent2: şu an
+# kodda hiç KULLANILMIYOR (eski, artık var olmayan bir çerçeve/gradyan tasarımından
+# kalma ölü veri) — kaldırılmadı ama render'ı fiilen etkilemiyor.
 THEMES = {
     "pop": {"label": "Pop", "related": ["R&B", "Trap"], "accent": (255, 60, 140), "accent2": (80, 120, 255)},
     "rock": {"label": "Rock", "related": ["Alternative", "Punk"], "accent": (230, 35, 35), "accent2": (255, 170, 40)},
@@ -35,11 +36,12 @@ THEMES = {
 }
 DEFAULT_THEME = "hiphop"  # meta.json'da "theme" belirtilmezse kullanılır
 
-# --- Kart tasarımı: referans video stili — tam ekran değil, ekranın büyük kısmını
-# kaplayan ("orta alan") yuvarlak köşeli albüm kartı + etrafında dönen neon çerçeve +
-# altında kayan başlık + ilerleme çubuğu.
-# Sadece bu kart alanı işlenir (kenarlar düz siyah) — bu yüzden eski tam ekran/zoom/
-# waveform tasarımına göre çok daha az render maliyeti var.
+# --- Kart tasarımı: Spotify "Now Playing" stili — tam ekran değil, ekranın büyük
+# kısmını kaplayan ("orta alan") yuvarlak köşeli albüm kartı + kartın kendi görselinden
+# (art.jpg) türetilmiş, hareketli (pan+hue) bir backdrop + altında kayan başlık +
+# ilerleme çubuğu. Çerçeve/glow YOK (eski bir tasarımda vardı, kaldırıldı).
+# Kart statik durur (zoom yok) — bu yüzden eski tam ekran/zoom/waveform tasarımına
+# göre çok daha az render maliyeti var.
 CARD_SIZE_RATIO = 0.45  # min(genişlik,yükseklik)'e oran — büyütüldü, daha belirgin görünüm
 CARD_CORNER_RATIO = 0.08  # kart boyutuna oran, köşe yuvarlaklığı
 CARD_ASSET_REF_SIZE = 800  # maske asset üretim çözünürlüğü (render'da ölçeklenir)
