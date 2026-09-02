@@ -118,6 +118,18 @@ python upload/tiktok_upload.py --project "projects/sarki-adi"
 python upload/instagram_upload.py --project "projects/sarki-adi"
 ```
 
+### Tarz/tema playlist'leri
+
+`auto_process.py`, her YouTube (uzun format) yüklemesinden sonra şarkıyı otomatik olarak
+kendi temasının (`meta.json`'daki `theme`) YouTube playlist'ine ekler — kanal içinde
+"Rap/Hip-Hop", "Pop", "Arabesk" gibi ayrı tarz alanları oluşur, playlist yoksa otomatik
+oluşturulur. Daha önce yüklenmiş kataloğu bir kerede gruplamak için:
+```bash
+python upload/youtube_playlists.py --sync-all
+```
+Hangi türlere öncelik verileceği için (kanalın kendi verisi yerine Türkiye geneli dinleme
+trendlerine göre) bkz. [turkiye_muzik_trend_arastirmasi.md](turkiye_muzik_trend_arastirmasi.md).
+
 ### Sadece render + YouTube (eski/basit akış)
 
 `auto_process.py`'nin tüm platformları kapsayan sürümüne ihtiyacın yoksa, sadece render +
