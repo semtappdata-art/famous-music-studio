@@ -43,7 +43,7 @@ import generate_cover
 import render as render_module
 
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
-RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4", "square_1x1.mp4"]
+RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4"]
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_process.log")
 
 
@@ -89,11 +89,20 @@ def find_ready_projects(base: str) -> list:
 
 
 def _is_fully_done(project_dir: str) -> bool:
-    """Üç platforma da yüklenmişse True — bu proje için yapılacak bir şey kalmadı."""
+    """Tüm platformlara (YouTube uzun format + Shorts, TikTok, Instagram) yüklenmişse
+    True — bu proje için yapılacak bir şey kalmadı. Daha önce yüklenmiş ama
+    youtube_shorts_video_id'si olmayan projeler (bu alan sonradan eklendi) bu
+    kontrolden geçemez, yani bir sonraki çalıştırmada otomatik olarak Shorts
+    yüklemesi de yapılır (retroaktif tamamlama)."""
     state = _load_state(project_dir)
     return all(
         key in state
-        for key in ("youtube_video_id", "tiktok_publish_id", "instagram_media_id")
+        for key in (
+            "youtube_video_id",
+            "youtube_shorts_video_id",
+            "tiktok_publish_id",
+            "instagram_media_id",
+        )
     )
 
 
@@ -119,18 +128,38 @@ def process_project(project_dir: str, privacy: str) -> None:
         log(f"=== Zaten render edilmiş, upload kontrolüne geçiliyor: {project_dir} ===")
 
     state = _load_state(project_dir)
+    youtube_video_id = state.get("youtube_video_id")
 
-    if "youtube_video_id" in state:
+    if youtube_video_id:
         log("  YouTube: zaten yüklü, atlanıyor")
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
             from youtube_upload import upload_video as yt_upload
-            video_id = yt_upload(project_dir, privacy)
-            log(f"  YouTube: tamam, https://youtu.be/{video_id}")
+            youtube_video_id = yt_upload(project_dir, privacy)
+            log(f"  YouTube: tamam, https://youtu.be/{youtube_video_id}")
         except Exception as e:
             log(f"  YouTube HATA: {e}")
     else:
         log("  YouTube atlandı: upload/token.json yok (önce youtube_auth.py çalıştır)")
+
+    # YouTube Shorts: zaten render edilen shorts_9x16.mp4'ü AYRICA (uzun formattan
+    # bağımsız) bir YouTube Short olarak yükler — küçük/yeni kanallar için Shorts
+    # akışı, uzun format önerilen videolar sisteminden çok daha erişilebilir bir
+    # keşif kanalı. Uzun format zaten yüklüyse (youtube_video_id var) ona bağlantı
+    # veriyor. Önce uzun format yüklenmiş olmalı (linklemek için video id gerekli).
+    if "youtube_shorts_video_id" in state:
+        log("  YouTube Shorts: zaten yüklü, atlanıyor")
+    elif not youtube_video_id:
+        log("  YouTube Shorts atlandı: önce uzun format yüklenmeli")
+    elif os.path.isfile(os.path.join(upload_dir, "token.json")):
+        try:
+            from youtube_upload import upload_short as yt_upload_short
+            shorts_id = yt_upload_short(project_dir, privacy, youtube_video_id)
+            log(f"  YouTube Shorts: tamam, https://youtube.com/shorts/{shorts_id}")
+        except Exception as e:
+            log(f"  YouTube Shorts HATA: {e}")
+    else:
+        log("  YouTube Shorts atlandı: upload/token.json yok (önce youtube_auth.py çalıştır)")
 
     if "tiktok_publish_id" in state:
         log("  TikTok: zaten yüklü, atlanıyor")
