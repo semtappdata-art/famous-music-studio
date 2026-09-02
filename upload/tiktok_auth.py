@@ -81,15 +81,45 @@ def print_auth_url() -> None:
 
 
 def get_access_token() -> dict:
-    """tiktok_token.json varsa onu döner, yoksa hata verir (önce --print-url /
-    --code adımlarıyla giriş tamamlanmalı)."""
-    if os.path.isfile(TOKEN_PATH):
-        with open(TOKEN_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    raise FileNotFoundError(
-        f"{TOKEN_PATH} yok. Once: python upload/tiktok_auth.py --print-url, "
-        "sonra: python upload/tiktok_auth.py --code KOD"
+    """tiktok_token.json'daki access_token'ı döner — TikTok access token'ları
+    kısa ömürlü (genelde 24 saat) olduğu için, kullanmadan önce her zaman
+    refresh_token ile YENİLENİR (refresh_token çok daha uzun ömürlü, ~1 yıl).
+    Bu yenileme olmadan token birkaç saat içinde 401 Unauthorized vermeye
+    başlıyordu — otomasyon günlerce arayla çalıştığı için her seferinde
+    yenilemek şart."""
+    if not os.path.isfile(TOKEN_PATH):
+        raise FileNotFoundError(
+            f"{TOKEN_PATH} yok. Once: python upload/tiktok_auth.py --print-url, "
+            "sonra: python upload/tiktok_auth.py --code KOD"
+        )
+    with open(TOKEN_PATH, "r", encoding="utf-8") as f:
+        token = json.load(f)
+
+    refresh_token = token.get("refresh_token")
+    if not refresh_token:
+        return token
+
+    secrets_data = _load_client_secrets()
+    resp = requests.post(
+        TOKEN_URL,
+        headers={"Content-Type": "application/x-www-form-urlencoded", "Cache-Control": "no-cache"},
+        data={
+            "client_key": secrets_data["client_key"],
+            "client_secret": secrets_data["client_secret"],
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        },
     )
+    if not resp.ok:
+        raise RuntimeError(
+            f"TikTok token yenilenemedi ({resp.status_code}): {resp.text[:500]}\n"
+            "refresh_token da süresi dolmuş/geçersiz olabilir — yeniden yetkilendirme "
+            "gerekebilir: python upload/tiktok_auth.py --print-url"
+        )
+    new_token = resp.json()
+    with open(TOKEN_PATH, "w", encoding="utf-8") as f:
+        json.dump(new_token, f, ensure_ascii=False, indent=2)
+    return new_token
 
 
 def exchange_code(code: str) -> dict:
