@@ -125,7 +125,14 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
 
     if caption is None:
         meta = _load_meta(project_dir)
-        caption = build_caption(meta)
+        youtube_url = None
+        state_path = os.path.join(project_dir, "state.json")
+        if os.path.isfile(state_path):
+            with open(state_path, "r", encoding="utf-8") as f:
+                video_id = json.load(f).get("youtube_video_id")
+            if video_id:
+                youtube_url = f"https://youtu.be/{video_id}"
+        caption = build_caption(meta, youtube_url)
 
     # 1) Media container olustur
     create_resp = requests.post(

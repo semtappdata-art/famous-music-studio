@@ -24,7 +24,12 @@ def _pick_hook(title: str) -> str:
     return config.HOOK_LINES[index]
 
 
-def build_caption(meta: dict) -> str:
+def build_caption(meta: dict, youtube_url: str | None = None) -> str:
+    """youtube_url verilirse (o proje zaten YouTube'a yüklendiyse), caption'a bir
+    satır olarak eklenir — kısa/dikey klip burada, şarkının tamamı YouTube'da diye.
+    Link tıklanabilir olmasa da (Instagram/TikTok caption linkleri aktif etmez)
+    metin olarak görünür/kopyalanabilir kalması, izleyiciyi tam şarkıya yönlendirmek
+    için yeterli bir sinyal."""
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
@@ -32,9 +37,11 @@ def build_caption(meta: dict) -> str:
 
     hashtags = " ".join(config.BRAND_HASHTAGS + genre_hashtags)
     hook = _pick_hook(title)
+    youtube_line = f"🎧 Şarkının tamamı YouTube'da: {youtube_url}\n\n" if youtube_url else ""
 
     return (
         f"{hook}\n\n{title} 🎵\n\n"
         f"Bu sesi edit/kesit videolarında kullanabilirsin 🔥\n\n"
+        f"{youtube_line}"
         f"Yeni şarkılar için takipte kalın\n\n{hashtags}"
     )
