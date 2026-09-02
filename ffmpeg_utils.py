@@ -1,12 +1,14 @@
 """ffprobe/ffmpeg ile süre okuma ve kart tasarımı video render fonksiyonları.
 
-Tasarım: organik bokeh lekeli siyah zemin üzerinde, ekranın büyük kısmını kaplayan
-yuvarlak köşeli bir albüm kartı + etrafında iki renk arasında SABİT (dönmeyen) neon
-parlama çerçevesi + kartın 4 kenarında gerçek ses frekans verisinden üretilen sese
-tepki veren çubuklar + kartın altında kayan künye yazısı + sabit "Famous Music
-Studio" marka satırı + en altta bir ilerleme çubuğu. Sadece kart alanı işlenir,
-kenarlar düz siyah kalır. Arka plan statik değil — video boyunca yavaşça
-kayıyor (bkz. _panned_size, _build_filter_complex'teki pan_x/pan_y).
+Tasarım (Spotify "Now Playing" tarzı): ekranın büyük kısmını kaplayan yuvarlak köşeli
+bir albüm kartı (içeriği o şarkının art.jpg'si) + arka plan, o AYNI art.jpg'nin
+bulanıklaştırılmış/karartılmış hâli — statik değil, video boyunca yavaşça kayıyor
+(pan) ve dar bir açı aralığında ton değiştiriyor (hue akışı, bkz. _panned_size,
+_build_filter_complex'teki pan_x/pan_y/hue_shift). Kartın altında kayan künye yazısı
++ sabit "Famous Music Studio" marka satırı + en altta bir ilerleme çubuğu. Kart
+statik durur (zoom yok, sadece backdrop hareketli) — waveform/eşitleyici çubuğu YOK
+(önceki bir tasarımda vardı, kaldırıldı). Sadece kart alanı + backdrop işlenir,
+kenarlar arka planla dolar (düz siyah değil).
 """
 
 import os

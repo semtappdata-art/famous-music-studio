@@ -5,7 +5,7 @@ Kullanım:
     python run_pipeline.py --project "projects/beni bırakma" --privacy public
     python run_pipeline.py --project "projects/beni bırakma" --skip-upload
 
-Adımlar: render.py (3 platform) -> upload/youtube_upload.py (youtube_16x9.mp4).
+Adımlar: render.py (config.PLATFORMS'taki tüm platformlar) -> upload/youtube_upload.py (youtube_16x9.mp4).
 Upload adımı, upload/token.json henüz yoksa (OAuth consent flow tamamlanmadıysa)
 açıkça hata verir — sessizce atlanmaz.
 """
