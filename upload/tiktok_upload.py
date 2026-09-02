@@ -110,16 +110,29 @@ def upload_video(project_dir: str) -> str:
     print(f"  yükleniyor (taslak): {display_title}")
     with open(video_path, "rb") as f:
         video_bytes = f.read()
-    upload_resp = requests.put(
-        upload_url,
-        headers={
-            "Content-Type": "video/mp4",
-            "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
-        },
-        data=video_bytes,
-        timeout=(10, 300),
-    )
-    upload_resp.raise_for_status()
+
+    # PUT çağrısı ağ seviyesinde (bir yanıt hiç gelmeden) başarısız olursa, TikTok'un
+    # video baytlarını alıp almadığını KESİN olarak bilemeyiz — init zaten publish_id
+    # ürettiği için videoyu sıfırdan tekrar yüklemek yerine durum sorgulamasına devam
+    # ediyoruz (aşağıdaki mantık bu belirsizliği zaten ele alıyor: FAILED ise gerçek
+    # başarısızlık kabul edilip state kaydedilmiyor, aksi halde publish_id kaydediliyor).
+    # TikTok'tan GERÇEK bir "reddedildi" yanıtı (HTTPError) alırsak bu güvenle gerçek
+    # bir başarısızlıktır, aynen eskisi gibi hemen raise ediyoruz.
+    try:
+        upload_resp = requests.put(
+            upload_url,
+            headers={
+                "Content-Type": "video/mp4",
+                "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
+            },
+            data=video_bytes,
+            timeout=(10, 300),
+        )
+        upload_resp.raise_for_status()
+    except requests.exceptions.HTTPError:
+        raise
+    except requests.exceptions.RequestException as e:
+        print(f"  UYARI: video yükleme yanıtı alınamadı ({e}) — durum sorgulanarak devam ediliyor.")
 
     # Yayın durumunu poll et — bu noktada video baytları TikTok'a ZATEN ulaştı
     # (PUT başarılı oldu), yani durum sorgulaması sırasında bir AĞ hatası

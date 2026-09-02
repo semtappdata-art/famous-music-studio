@@ -77,15 +77,24 @@ oradan değiştirebilirsin.
 ## Tam Otomasyon: `auto_process.py` (asıl production giriş noktası)
 
 `audio.wav` bir proje klasörüne konduktan sonraki HER ŞEYİ (kapak/kart üretimi + render +
-YouTube uzun format + YouTube Shorts + TikTok + Instagram yükleme) otomatikleştiren asıl
-script bu — Windows Görev Zamanlayıcı ile periyodik (günde 2 farklı tetikleyici, örn. 13:00
-ve 19:00) çalıştırılmak üzere tasarlandı. Her çalıştırmada en fazla 1 proje işler (en eski
-bekleyen), zaten tamamlanmış adımları atlar.
+YouTube uzun format + YouTube Shorts + TikTok + Instagram yükleme + tema playlist'i)
+otomatikleştiren asıl script bu — Windows Görev Zamanlayıcı ile periyodik çalıştırılmak
+üzere tasarlandı. Her çalıştırmada en fazla `--count` kadar proje işler (**varsayılan: 2**,
+en eski bekleyenden başlayarak), zaten tamamlanmış adımları atlar.
 
 ```bash
 python auto_process.py
 python auto_process.py --privacy unlisted
+python auto_process.py --count 1
 ```
+
+**YouTube günlük quota uyarısı:** her şarkı YouTube'a 2 ayrı video olarak gidiyor (uzun
+format + Shorts), her `video.insert` çağrısı ~1600 unit'lik varsayılan günlük kotanın
+(10.000 unit) bir kısmını tüketiyor — yani `--count 2`'lik TEK bir çalıştırma ~3200+ unit
+harcıyor (playlist çağrıları dahil biraz daha fazla). Görev Zamanlayıcı'da günde birden
+fazla tetikleyici kullanıyorsan, toplam günlük proje sayısını (`--count` × tetikleyici
+sayısı) hesaba katıp 10.000 unit'i aşmadığından emin ol — aşarsan o günün geri kalanında
+YouTube yüklemeleri başarısız olur (TikTok/Instagram etkilenmez, kendi kotalarına tabidir).
 
 Kimlik doğrulama (her platform için bir kerelik, ilgili script'in kendisiyle):
 
