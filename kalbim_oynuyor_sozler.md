@@ -2,6 +2,9 @@
 
 Suno'nun Lyrics kutusuna aynen yapıştırılabilir.
 
+> Yeni bir şarkı prompt'u yazmadan önce `ses_ve_tarz_takibi.md`'ye bak —
+> vokal cinsiyeti/dokusu art arda tekrarlanmasın.
+
 **Neden bu tema:** TikTok Türkiye'de şu an viral olan tür klasik melankolik
 trap/arabesk değil — klarnet + darbuka + modern pop prodüksiyonla enerjik
 "Roman havası / Oyun havası" fusion (120-125 BPM, dans temposu). Kataloğun

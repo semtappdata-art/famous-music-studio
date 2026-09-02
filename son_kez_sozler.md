@@ -2,6 +2,9 @@
 
 Suno'nun Lyrics kutusuna aynen yapıştırılabilir.
 
+> Yeni bir şarkı prompt'u yazmadan önce `ses_ve_tarz_takibi.md`'ye bak —
+> vokal cinsiyeti/dokusu art arda tekrarlanmasın.
+
 **Neden bu tema:** Kataloğun 6 tema slotundan `akustik` hiç kullanılmamıştı.
 Markanın kök kimliğine (hüzünlü/samimi) piano-gitar ağırlıklı, sade bir
 prodüksiyonla dönüyor — dans/enerji değil, "sözleri dokunaklı" tipi
@@ -11,7 +14,7 @@ Kadar'ın tam zıttı).
 ## Stil Etiketi (Suno Style kutusuna yapıştır)
 
 ```
-Turkish acoustic ballad, intimate piano and fingerstyle guitar, soft string swell in chorus, female vocals, heartfelt and melancholic, slow and emotional, 68 BPM
+Turkish acoustic ballad, intimate piano and fingerstyle guitar, soft string swell in chorus, warm raspy male vocals, heartfelt and melancholic, slow and emotional, 68 BPM
 ```
 
 ## Sözler (Suno Lyrics kutusuna yapıştır)
@@ -64,7 +67,12 @@ Sonra git, istersen hiç dönme...
 
 ## Notlar
 
-- Vokal dili: Türkçe belirtildi ("female vocals" + Türkçe sözler)
+- Vokal dili: Türkçe belirtildi ("male vocals" + Türkçe sözler)
+- Vokal cinsiyeti bilinçli olarak **erkek**e çevrildi: kataloğun önceki 3
+  şarkısının (Kalbim Oynuyor, Sabaha Kadar, ve bu dosyanın ilk hâli) hepsi
+  "female vocals" kullanmıştı — fark edilmeden tekrarlanan bir örüntüydü,
+  ses çeşitliliği için kırıldı. Sıcak/kısık (raspy) doku, "veda" temasına
+  uygun düşünülerek seçildi.
 - Tema: veda, özlem, anıya sarılma — markanın orijinal melankolik kimliğine
   yakın ama trap/arabesk yerine sade akustik prodüksiyon
 - `config.py`'deki `theme` alanı için: `"akustik"` (accent turuncu/pembe)
