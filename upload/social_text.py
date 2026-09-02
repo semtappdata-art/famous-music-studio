@@ -17,11 +17,13 @@ def _hashtag(text: str) -> str:
     return "#" + "".join(ch for ch in text if ch.isalnum())
 
 
-def _pick_hook(title: str) -> str:
-    """Şarkı başlığına göre deterministik bir hook satırı seçer — aynı şarkı hep aynı
-    hook'u alır, farklı şarkılar arasında çeşitlilik olur (bkz. feedback_growth_tavsiyeleri)."""
-    index = sum(ord(ch) for ch in title) % len(config.HOOK_LINES)
-    return config.HOOK_LINES[index]
+def _pick(title: str, options: list, salt: int = 0) -> str:
+    """Şarkı başlığına (+ salt) göre deterministik bir satır seçer — aynı şarkı hep
+    aynı satırı alır, farklı şarkılar arasında çeşitlilik olur. salt, aynı başlıktan
+    türeyen birden fazla seçimin (hook + engagement question gibi) her zaman aynı
+    ikilide eşleşmemesi için kullanılıyor."""
+    index = (sum(ord(ch) for ch in title) + salt) % len(options)
+    return options[index]
 
 
 def build_caption(meta: dict) -> str:
@@ -35,13 +37,15 @@ def build_caption(meta: dict) -> str:
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
     genre_hashtags = [_hashtag(theme["label"])] + [_hashtag(t) for t in theme.get("related", [])]
 
-    hashtags = " ".join(config.BRAND_HASHTAGS + genre_hashtags)
-    hook = _pick_hook(title)
+    hashtags = " ".join(config.BRAND_HASHTAGS + config.DISCOVERY_HASHTAGS + genre_hashtags)
+    hook = _pick(title, config.HOOK_LINES)
+    engagement_question = _pick(title, config.ENGAGEMENT_QUESTIONS, salt=7)
 
     return (
         f"{hook}\n\n{title} 🎵\n\n"
         f"Bu sesi edit/kesit videolarında kullanabilirsin 🔥\n\n"
-        f"Yeni şarkılar için takipte kalın\n\n{hashtags}"
+        f"Yeni şarkılar için takipte kalın\n\n"
+        f"{engagement_question}\n\n{hashtags}"
     )
 
 

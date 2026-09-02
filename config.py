@@ -124,6 +124,12 @@ SOCIAL_LINKS = {
 }
 BRAND_HASHTAGS = ["#FamousMusicStudio", "#AIMusic", "#YapayZekaMüzik", "#AIMusicChallenge"]
 
+# Keşfet/For You dağıtımını hedefleyen genel hashtag'ler — marka hashtag'lerinden
+# ayrı tutuluyor çünkü bunlar zamanla değişebilir (trend_hashtag_notlari.md'ye bak).
+# Eylül 2026 itibariyle araştırıldı: genel keşfet etiketleri + Suno/AI müzik
+# nişindeki aktif etiketler.
+DISCOVERY_HASHTAGS = ["#keşfet", "#fyp", "#viral", "#SunoAI"]
+
 # Caption'ın ilk satırı — kaydırmayı durdurmak için merak uyandıran kısa açılış cümlesi.
 # build_caption() şarkı başlığına göre bunlardan birini deterministik seçer (her şarkı
 # için hep aynı hook, ama şarkılar arası çeşitlilik olur).
@@ -132,6 +138,17 @@ HOOK_LINES = [
     "İnsan mı yapay zeka mı, sen karar ver 👇",
     "0'dan yapay zeka ile üretilen yeni şarkı 🎶",
     "Bunu bir AI besteledi, inanabiliyor musun?",
+]
+
+# Caption'ın sonunda, hashtag'lerden hemen önce — yorum sayısını artırmayı
+# hedefleyen bir soru (yorum, algoritma için güçlü bir etkileşim sinyali).
+# HOOK_LINES ile aynı deterministik seçim mantığı ama farklı bir index kullanılır
+# (bkz. social_text._pick_hook) — aynı şarkıda hep aynı ikili tekrarlanmasın diye.
+ENGAGEMENT_QUESTIONS = [
+    "Yorumda hangi türü bir sonraki duymak istersin? 👇",
+    "Bu şarkı sana neyi hatırlattı, yorumda yaz 💬",
+    "1'den 10'a kadar puanla 👇",
+    "Sence bu gerçekten AI mi yaptı? Yorumda tartışalım 🤔",
 ]
 
 # Video/ses kodek ayarları
