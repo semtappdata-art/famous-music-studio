@@ -12,13 +12,16 @@ Kullanım:
     python auto_process.py
     python auto_process.py --privacy unlisted
     python auto_process.py --base projects
+    python auto_process.py --count 3
 
-Her çalıştırmada en fazla 1 proje işlenir (henüz 3 platforma da tam
-yüklenmemiş olanlardan en eskisi). Günde 2 farklı tarz şarkı hedefi için
-Görev Zamanlayıcı'da GÜNDE İKİ AYRI tetikleyici kurulmalı (örn. 13:00 ve
-19:00) — böylece iki şarkı aynı anda değil, günün farklı saatlerine
-yayılarak yüklenir (aynı anda yüklenirlerse aynı takipçi kitlesinin aynı
-taramasında birbirleriyle yarışırlar).
+Her çalıştırmada en fazla `--count` kadar proje işlenir (varsayılan: 2, henüz
+3 platforma da tam yüklenmemiş olanlardan en eskiden başlayarak). NOT: bu
+sayı bir ara (rekabet riski yüzünden) bilinçli olarak 1'e düşürülüp günde
+2 AYRI Görev Zamanlayıcı tetikleyicisine (örn. 13:00/19:00) geçilmişti —
+aynı anda birden fazla şarkı paylaşmanın aynı takipçi kitlesinin aynı
+taramasında birbirleriyle yarışabileceği gerekçesiyle. Kullanıcı isteğiyle
+tekrar yükseltildi; bu riski önemsiyorsan `--count 1` ile eski davranışa
+dönüp birden fazla tetikleyici kullanmayı tercih edebilirsin.
 
 Kendini iyileştiren mantık: proje için render sadece çıktı dosyaları eksikse
 yapılır; her platforma yükleme sadece state.json'da o platforma ait alan
@@ -205,6 +208,17 @@ def main():
         help="Yeni YouTube yüklemeleri için görünürlük (varsayılan: public)",
     )
     parser.add_argument("--base", default="projects", help="Proje klasörlerinin kök dizini")
+    parser.add_argument(
+        "--count", type=int, default=2,
+        help=(
+            "Bu koşuda işlenecek en fazla proje sayısı (varsayılan: 2). NOT: daha önce "
+            "'aynı anda birden fazla şarkı paylaşmak aynı takipçi kitlesinin dikkatinde "
+            "birbiriyle yarışır' gerekçesiyle bu 1'e düşürülüp günde 2 AYRI saatlik "
+            "tetikleyiciye geçilmişti (bkz. git geçmişi) — kullanıcı isteğiyle tekrar "
+            "yükseltildi. Rekabet riskini önemsiyorsan --count 1 ile eski davranışa "
+            "dönebilir, Görev Zamanlayıcı'da günde birden fazla tetikleyici kullanabilirsin."
+        ),
+    )
     args = parser.parse_args()
 
     ready = find_ready_projects(args.base)
@@ -217,12 +231,11 @@ def main():
         log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
         return
 
-    # Her koşuda sadece en eski bekleyen proje işlenir — günde 2 farklı tarz
-    # hedefi, bu script'in İKİ AYRI saatte (Görev Zamanlayıcı) çalıştırılmasıyla
-    # sağlanıyor, tek koşuda birden fazla proje işlenerek değil.
-    project_dir = pending[0]
-    log(f"{len(pending)} bekleyen proje var, bu koşuda işlenecek: {os.path.basename(project_dir)}")
-    process_project(project_dir, args.privacy)
+    batch = pending[:args.count]
+    log(f"{len(pending)} bekleyen proje var, bu koşuda işlenecek ({len(batch)}): "
+        f"{', '.join(os.path.basename(p) for p in batch)}")
+    for project_dir in batch:
+        process_project(project_dir, args.privacy)
 
     log("Çalıştırma tamamlandı.")
 
