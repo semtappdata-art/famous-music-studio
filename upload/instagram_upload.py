@@ -26,6 +26,7 @@ import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import config
 from instagram_auth import get_access_token
 from social_text import build_caption, build_youtube_comment
 
@@ -137,7 +138,113 @@ def _upload_to_netlify(file_paths: list[str]) -> dict[str, str]:
     return {name: f"{base_url}/{name}" for name in contents}
 
 
-def upload_video(project_dir: str, video_url: str | None = None, caption: str | None = None) -> str:
+def _load_state(project_dir: str) -> dict:
+    state_path = os.path.join(project_dir, "state.json")
+    if os.path.isfile(state_path):
+        with open(state_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def _save_state(project_dir: str, updates: dict) -> None:
+    state_path = os.path.join(project_dir, "state.json")
+    state = _load_state(project_dir)
+    state.update(updates)
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def _publish_container(ig_user_id: str, access_token: str, creation_id: str, project_dir: str) -> str:
+    """Hazır (status_code=FINISHED) bir konteyneri yayınlar, YouTube linki
+    yorumunu ekler, state'i günceller. media_id döner."""
+    publish_resp = requests.post(
+        f"{GRAPH_API}/{ig_user_id}/media_publish",
+        data={"creation_id": creation_id, "access_token": access_token},
+        timeout=(10, 30),
+    )
+    publish_resp.raise_for_status()
+    media_id = publish_resp.json()["id"]
+    print(f"  tamam: media_id={media_id}")
+
+    # YouTube linki caption'a DEĞİL, paylaşımdan SONRA bir yoruma ekleniyor — bkz.
+    # social_text.build_caption()'daki not. Yorum başarısız olsa bile ana yükleme
+    # zaten tamamlandığı için hata fırlatmıyoruz, sadece logluyoruz.
+    video_id = _load_state(project_dir).get("youtube_video_id")
+    if video_id:
+        try:
+            comment_resp = requests.post(
+                f"{GRAPH_API}/{media_id}/comments",
+                data={"message": build_youtube_comment(f"https://youtu.be/{video_id}"), "access_token": access_token},
+                timeout=(10, 30),
+            )
+            comment_resp.raise_for_status()
+            print(f"  YouTube linki yorum olarak eklendi: {comment_resp.json().get('id')}")
+        except requests.exceptions.RequestException as e:
+            print(f"  UYARI: YouTube linki yorumu eklenemedi: {e}")
+
+    _save_state(project_dir, {
+        "instagram_media_id": media_id,
+        "instagram_uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
+    return media_id
+
+
+def try_publish_pending(project_dir: str) -> str | None:
+    """state.json'da bekleyen (henüz yayınlanmamış) bir instagram_creation_id
+    varsa kontrol eder: konteyner hâlâ işleniyorsa ya da golden-hour dışındaysak
+    None döner (bir sonraki çalıştırmada tekrar denenir). Konteynerin süresi
+    dolmuşsa (Instagram: 24 saat) bekleyen kaydı temizler — upload_video() bir
+    sonraki çağrıda sıfırdan yeni bir konteyner oluşturur. Golden-hour
+    penceresindeyse ve konteyner hazırsa yayınlar, media_id döner."""
+    state = _load_state(project_dir)
+    creation_id = state.get("instagram_creation_id")
+    if not creation_id or state.get("instagram_media_id"):
+        return None
+
+    token = get_access_token()
+    access_token = token["access_token"]
+    ig_user_id = token["ig_user_id"]
+
+    status_resp = requests.get(
+        f"{GRAPH_API}/{creation_id}",
+        params={"fields": "status_code", "access_token": access_token},
+        timeout=(10, 30),
+    )
+    status_resp.raise_for_status()
+    status_code = status_resp.json().get("status_code")
+
+    if status_code == "EXPIRED":
+        print(f"  Instagram: bekleyen konteynerin (creation_id={creation_id}) süresi dolmuş (24 saat), "
+              "yeniden oluşturulacak")
+        state.pop("instagram_creation_id", None)
+        state.pop("instagram_container_created_at", None)
+        state_path = os.path.join(project_dir, "state.json")
+        with open(state_path, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+        return None
+    if status_code == "ERROR":
+        raise RuntimeError(f"Instagram video işleme hatası: {status_resp.json()}")
+    if status_code != "FINISHED":
+        print(f"  Instagram: konteyner hâlâ işleniyor ({status_code}), bir sonraki kontrolde tekrar denenecek")
+        return None
+
+    if config.next_golden_publish_time() is not None:
+        print(f"  Instagram: konteyner hazır (creation_id={creation_id}), golden-hour penceresi bekleniyor")
+        return None
+
+    print(f"  Instagram: golden-hour penceresi, yayınlanıyor (creation_id={creation_id})")
+    return _publish_container(ig_user_id, access_token, creation_id, project_dir)
+
+
+def upload_video(project_dir: str, video_url: str | None = None, caption: str | None = None) -> str | None:
+    """Konteyneri oluşturur ve FINISHED olana kadar bekler, sonra:
+    - şu an bir golden-hour penceresindeysek HEMEN yayınlar, media_id döner;
+    - değilse konteyneri (instagram_creation_id) state.json'a kaydedip None
+      döner — bir sonraki çalıştırma (auto_process.py, saatlik) golden-hour'a
+      girdiğimizde try_publish_pending() ile bunu bulup yayınlar. Amaç: render/
+      upload anı ile Instagram'da CANLIYA ÇIKTIĞI an ayrılsın (YouTube'un
+      publishAt'iyle aynı fikir — ama Instagram Graph API'de native zamanlanmış
+      yayın YOK, bu yüzden kendi golden-hour kuyruğumuzu tutuyoruz)."""
     video_path = os.path.join(project_dir, "output", "shorts_9x16.mp4")
     if not os.path.isfile(video_path):
         raise FileNotFoundError(f"{video_path} bulunamadı — önce render.py ile bu projeyi render et.")
@@ -172,14 +279,6 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
             print(f"  kapak yüklendi: {cover_url}")
         except Exception as e:
             print(f"  UYARI: kapak yüklenemedi, Instagram varsayılan kareyi kullanacak: {e}")
-
-    youtube_url = None
-    state_path = os.path.join(project_dir, "state.json")
-    if os.path.isfile(state_path):
-        with open(state_path, "r", encoding="utf-8") as f:
-            video_id = json.load(f).get("youtube_video_id")
-        if video_id:
-            youtube_url = f"https://youtu.be/{video_id}"
 
     if caption is None:
         meta = _load_meta(project_dir)
@@ -228,42 +327,19 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
     else:
         raise RuntimeError("Instagram video işleme zaman aşımına uğradı.")
 
-    # 3) Yayinla
-    publish_resp = requests.post(
-        f"{GRAPH_API}/{ig_user_id}/media_publish",
-        data={"creation_id": creation_id, "access_token": access_token},
-        timeout=(10, 30),
-    )
-    publish_resp.raise_for_status()
-    media_id = publish_resp.json()["id"]
-    print(f"  tamam: media_id={media_id}")
+    # Konteyner hazır — creation_id'yi HEMEN state'e kaydet (golden-hour
+    # bekleniyorsa bile kaybolmasın; try_publish_pending() bunu bulup bir
+    # sonraki pencerede yayınlayacak, konteyner tekrar oluşturulmayacak).
+    _save_state(project_dir, {
+        "instagram_creation_id": creation_id,
+        "instagram_container_created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
 
-    # YouTube linki caption'a DEĞİL, paylaşımdan SONRA bir yoruma ekleniyor — bkz.
-    # social_text.build_caption()'daki not. Yorum başarısız olsa bile ana yükleme
-    # zaten tamamlandığı için hata fırlatmıyoruz, sadece logluyoruz.
-    if youtube_url:
-        try:
-            comment_resp = requests.post(
-                f"{GRAPH_API}/{media_id}/comments",
-                data={"message": build_youtube_comment(youtube_url), "access_token": access_token},
-                timeout=(10, 30),
-            )
-            comment_resp.raise_for_status()
-            print(f"  YouTube linki yorum olarak eklendi: {comment_resp.json().get('id')}")
-        except requests.exceptions.RequestException as e:
-            print(f"  UYARI: YouTube linki yorumu eklenemedi: {e}")
+    if config.next_golden_publish_time() is not None:
+        print(f"  Instagram: konteyner hazır (creation_id={creation_id}), golden-hour penceresi bekleniyor")
+        return None
 
-    state_path = os.path.join(project_dir, "state.json")
-    state = {}
-    if os.path.isfile(state_path):
-        with open(state_path, "r", encoding="utf-8") as f:
-            state = json.load(f)
-    state["instagram_media_id"] = media_id
-    state["instagram_uploaded_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    with open(state_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
-
-    return media_id
+    return _publish_container(ig_user_id, access_token, creation_id, project_dir)
 
 
 def main():

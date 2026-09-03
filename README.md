@@ -191,8 +191,30 @@ Kimlik doğrulama (her platform için bir kerelik, ilgili script'in kendisiyle):
    (geçici video barındırma için) doldurulmalı — detay: `upload/instagram_upload.py`
    dosyasının başındaki not.
 
+   **Instagram'ın gerçek yayın anı da golden-hour'a hizalı** (YouTube'daki gibi):
+   Graph API'de native zamanlanmış yayın YOK, bu yüzden `instagram_upload.py`
+   konteyneri hemen oluşturuyor ama `media_publish` çağrısını (gerçek canlıya
+   çıkış) golden-hour penceresine kadar erteliyor — `auto_process.py`'nin bir
+   sonraki çalıştırmasında (saatlik) otomatik tamamlanıyor, elle bir şey
+   yapmana gerek yok.
+
 Hiçbir platform için token yoksa `auto_process.py` o platformu sessizce atlar (hata vermez) —
 istediğin platformlar için sırayla kimlik doğrulaması ekleyebilirsin.
+
+**Telefon bildirimleri (`notify.py`, opsiyonel — TikTok hatırlatması için önerilir):**
+TikTok'un aksine Instagram/YouTube'da elle bir adım yok (yukarıya bkz.), ama TikTok'ta
+taslağı uygulamadan yayınlamak hâlâ elle yapman gereken bir şey — golden-hour
+penceresine girildiğinde telefonuna [ntfy](https://ntfy.sh) üzerinden ücretsiz bir
+hatırlatma bildirimi gönderilebilir:
+1. Telefonuna **ntfy** uygulamasını kur (App Store / Play Store), hesap gerekmez.
+2. Rastgele, tahmin edilmesi zor bir konu (topic) adı seç (ör. `fms-bildirim-x7q2`) ve
+   uygulamada o konuya abone ol.
+3. Repo kökünde `notify_config.json` oluştur (gitignored):
+   ```json
+   {"ntfy_topic": "senin-sectigin-konu-adi"}
+   ```
+
+Bu dosya yoksa otomasyon normal çalışmaya devam eder, sadece bildirim gönderilmez.
 
 Tek başına, tek bir platforma yükleme (render zaten yapılmışsa):
 ```bash
