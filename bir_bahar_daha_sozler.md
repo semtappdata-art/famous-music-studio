@@ -13,7 +13,7 @@ olduğu için bilinçli olarak umutlu/pozitif bir ton seçildi — kataloğa duy
 ## Stil Etiketi (Suno Style kutusuna yapıştır)
 
 ```
-Turkish pop, uplifting and romantic, acoustic guitar with soft synth pads, light percussion groove, warm smooth male vocals, hopeful summer-evening mood, 104 BPM
+Turkish pop, uplifting and romantic, acoustic guitar with soft synth pads, light percussion groove, warm smooth male vocals, hopeful summer-evening mood, 104 BPM, gentle fade-out ending
 ```
 
 ## Sözler (Suno Lyrics kutusuna yapıştır)
@@ -60,8 +60,8 @@ Belki mutluluk buymuş, basit ve sakin
 Bir bahar daha, ve ben hâlâ buradayım
 
 [Outro]
-Bir bahar daha, gülümsüyorum...
-Kendimle barışığım artık...
+Bir bahar daha, gülümsüyorum, kalbim hafif
+Kendimle barışığım artık, bu benim yeni başlangıcım
 ```
 
 ## Notlar
@@ -72,3 +72,5 @@ Kendimle barışığım artık...
   bilinçli bir kontrast, marka evreninin "gece/hüzün" dışında da nefes alabildiğini
   gösteriyor.
 - `config.py`'deki `theme` alanı için: `"pop"` (accent pembe).
+- Kapanış: stil etiketine `gentle fade-out ending` eklendi, Outro iki tam cümleye
+  çevrildi (bkz. `suno_prompt_hazirlik.md`, "Kapanış (Outro) kuralı").

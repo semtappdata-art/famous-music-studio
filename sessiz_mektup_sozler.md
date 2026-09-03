@@ -14,7 +14,7 @@ için (bkz. Neon Kalp'in Sabaha Kadar'la ilişkisiyle aynı mantık).
 ## Stil Etiketi (Suno Style kutusuna yapıştır)
 
 ```
-Turkish acoustic pop-ballad, tender and intimate, fingerpicked guitar with soft strings, minimal percussion, soft breathy female vocals, quiet nostalgic mood, 76 BPM
+Turkish acoustic pop-ballad, tender and intimate, fingerpicked guitar with soft strings, minimal percussion, soft breathy female vocals, quiet nostalgic mood, 76 BPM, gentle fade-out ending
 ```
 
 ## Sözler (Suno Lyrics kutusuna yapıştır)
@@ -61,8 +61,8 @@ Ama şimdilik, sessizce taşıyorum
 Bu güzel, bu hüzünlü hatırayı
 
 [Outro]
-Sessiz mektup, kalbimde...
-Hiç gönderilmedi ama hep orada...
+Sessiz mektup, kalbimde bir yerde saklı
+Hiç gönderilmedi ama hep orada, hep benimle
 ```
 
 ## Notlar
@@ -73,3 +73,5 @@ Hiç gönderilmedi ama hep orada...
 - Tema: geçmişe huzurla bakış, söylenmemiş sözler — Son Kez'in "veda" temasına
   yakın ama daha sakin/nostaljik, öfke/keskinlik yerine yumuşaklık öne çıkıyor.
 - `config.py`'deki `theme` alanı için: `"akustik"` (accent turuncu/pembe).
+- Kapanış: stil etiketine `gentle fade-out ending` eklendi, Outro iki tam cümleye
+  çevrildi (bkz. `suno_prompt_hazirlik.md`, "Kapanış (Outro) kuralı").

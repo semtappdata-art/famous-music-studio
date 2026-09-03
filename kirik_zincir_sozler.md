@@ -14,7 +14,7 @@ geçmişi) — Türkiye trend araştırmasında düşük veri desteği olsa da (
 ## Stil Etiketi (Suno Style kutusuna yapıştır)
 
 ```
-Turkish alternative rock, rebellious and powerful, distorted electric guitar riffs, driving live drums, powerful gritty male vocals, defiant anthemic energy, 132 BPM
+Turkish alternative rock, rebellious and powerful, distorted electric guitar riffs, driving live drums, powerful gritty male vocals, defiant anthemic energy, 132 BPM, strong final hit ending, no abrupt cutoff
 ```
 
 ## Sözler (Suno Lyrics kutusuna yapıştır)
@@ -61,8 +61,8 @@ Bu ateş içimde, sönmeyecek asla
 Kırık zincir, ben yeniden doğdum
 
 [Outro]
-Kırık zincir, özgürüm...
-Bu benim fırtınam...
+Kırık zincir, özgürüm, ben yeniden doğdum
+Bu benim fırtınam, bu benim özgürlüğüm
 ```
 
 ## Notlar
@@ -72,3 +72,6 @@ Bu benim fırtınam...
 - Tema: özgürleşme, kendini kabul, meydan okuma — kataloğun ilk gerçek rock
   üretimi, `rock` temasının boş slotunu dolduruyor.
 - `config.py`'deki `theme` alanı için: `"rock"` (accent kırmızı).
+- Kapanış: stil etiketine `strong final hit ending, no abrupt cutoff` eklendi,
+  Outro iki tam cümleye çevrildi (bkz. `suno_prompt_hazirlik.md`, "Kapanış
+  (Outro) kuralı").

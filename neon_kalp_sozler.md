@@ -13,7 +13,7 @@ yüksek enerjili/dans odaklı — aynı temada bile tekrar hissi yaratmamak içi
 ## Stil Etiketi (Suno Style kutusuna yapıştır)
 
 ```
-Turkish electropop, high-energy and euphoric, pulsing synth arpeggios, four-on-the-floor beat, bright breathy female vocals, neon nightlife atmosphere, 124 BPM
+Turkish electropop, high-energy and euphoric, pulsing synth arpeggios, four-on-the-floor beat, bright breathy female vocals, neon nightlife atmosphere, 124 BPM, strong final hit ending, no abrupt cutoff
 ```
 
 ## Sözler (Suno Lyrics kutusuna yapıştır)
@@ -60,8 +60,8 @@ Bu an hiç bitmesin istiyorum
 Neon kalp, ben buradayım, hep buradayım
 
 [Outro]
-Neon kalp, parlıyorum...
-Bu gece sonsuza kadar...
+Neon kalp, parlıyorum, hiç sönmeyeceğim
+Bu gece sonsuza kadar, ben buradayım
 ```
 
 ## Notlar
@@ -71,3 +71,6 @@ Bu gece sonsuza kadar...
 - Tema: özgürlük, gece hayatı, an'da kalmak — Sabaha Kadar'la aynı `theme` ama
   farklı doku (yüksek enerji vs. atmosferik) için ayrı bir izlenim bırakıyor.
 - `config.py`'deki `theme` alanı için: `"elektronik"` (accent camgöbeği).
+- Kapanış: stil etiketine `strong final hit ending, no abrupt cutoff` eklendi
+  (enerjik tema için "fade" yerine güçlü final), Outro iki tam cümleye çevrildi
+  (bkz. `suno_prompt_hazirlik.md`, "Kapanış (Outro) kuralı").
