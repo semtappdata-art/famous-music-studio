@@ -71,6 +71,46 @@ Beton krallığı, ben kraliyim...
 Düşsem de kalkarım, yıkılmam asla...
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+Issız sokaklar, tek başıma yürüdüm
+Kimse yoktu yanımda, hepsini gördüm
+
+Sabah beşte kalkarım, güneş henüz doğmadan
+Beton duvarlar tanık, düştüğüm her yerde
+Kimse inanmadı bana, ben kendime inandım
+Bu şehir beni yedi ama ben ondan büyüdüm
+
+Şimdi bak nereden nereye
+Karanlıktan ışığa, tek başıma
+Kimseye borcum yok, hesap kapandı
+Bu benim kanunum, bu benim caddemde
+
+Beton krallığı, taç bende, ben kraliyim
+Kimse durduramaz, ben yolumdayım
+Düşsem de kalkarım, yıkılmam asla
+Beton krallığı, bu benim sesim, benim davam
+
+Eski dostlar gitti, para geldi gerçekler çıktı
+Kimin gerçek kimin sahte, zamanla anladım
+Artık geceler benim, ışıklar sokakta yanar
+Ben o ışıkta yürürüm, gölgem bile korkar
+
+Beton krallığı, taç bende, ben kraliyim
+Kimse durduramaz, ben yolumdayım
+Düşsem de kalkarım, yıkılmam asla
+Beton krallığı, bu benim sesim, benim davam
+
+Bir gün bu şehir benim adımı anacak
+Bugün kimse bilmese de, yarın hepsi bilecek
+Ben bu yoldan döndüm, döndüm ama daha güçlü
+Beton krallığı bana taç giydirdi
+
+Beton krallığı, ben kraliyim...
+Düşsem de kalkarım, yıkılmam asla...
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe belirtildi ("Turkish male rap vocals" + Türkçe sözler).

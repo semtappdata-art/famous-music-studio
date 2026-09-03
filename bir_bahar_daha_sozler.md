@@ -64,6 +64,46 @@ Bir bahar daha, gülümsüyorum, kalbim hafif
 Kendimle barışığım artık, bu benim yeni başlangıcım
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+Bir bahar daha geldi, sen yine yoksun
+Ama bu sefer ben de değişmişim biraz
+
+Pencereden bakıyorum, ağaçlar çiçek açmış
+Geçen yıl bu vakit hâlâ seni bekliyordum
+Şimdi güneş farklı vuruyor yüzüme
+Belki de büyümek buymuş, öğreniyorum yavaşça
+
+Artık koşmuyorum peşinden
+Kendi adımlarımla yürüyorum
+Bu bahar bana ait, sadece bana
+İlk kez bu kadar hafif hissediyorum
+
+Bir bahar daha, bir başlangıç daha
+Kalbim yeniden açılıyor güneşe
+Seni değil, kendimi buluyorum burada
+Bir bahar daha, ve bu sefer gülümsüyorum
+
+Eski fotoğrafları kaldırdım çekmeceye
+Yeni bir sayfa açtım, kalemim hazır
+Belki bir gün biri gelir, belki gelmez
+Ama artık kendimle barışığım, bu yeter bana
+
+Bir bahar daha, bir başlangıç daha
+Kalbim yeniden açılıyor güneşe
+Seni değil, kendimi buluyorum burada
+Bir bahar daha, ve bu sefer gülümsüyorum
+
+Rüzgar saçlarımı dağıtıyor sokakta
+Ben gülüyorum, sebepsiz, öylesine
+Belki mutluluk buymuş, basit ve sakin
+Bir bahar daha, ve ben hâlâ buradayım
+
+Bir bahar daha, gülümsüyorum, kalbim hafif
+Kendimle barışığım artık, bu benim yeni başlangıcım
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe ("warm smooth male vocals" + Türkçe sözler).

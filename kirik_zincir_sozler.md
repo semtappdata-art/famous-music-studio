@@ -65,6 +65,46 @@ Kırık zincir, özgürüm, ben yeniden doğdum
 Bu benim fırtınam, bu benim özgürlüğüm
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+Kırdım zincirleri, artık özgürüm
+Kimse tutamaz beni bu yoldan
+
+Yıllarca sustum, yıllarca bekledim
+Herkesin dediği gibi yaşadım
+Ama artık bitti, artık farklıyım
+Kendi sesimi buldum, kendi yolumu
+
+Bana "yapamazsın" dediler hep
+Ben de gösterdim, işte buradayım
+Korku bitti, tereddüt bitti
+Şimdi sıra bende, şimdi sıra bende
+
+Kırık zincir, düşmüş ayaklarımdan
+Ben artık başkasının hayali değilim
+Kendi fırtınamı yaratıyorum
+Kırık zincir, bu benim özgürlüğüm
+
+Herkes bir kalıba sokmak istedi beni
+Ama ben o kalıba sığmadım hiç
+Şimdi kendi kurallarımı yazıyorum
+Ve kimse beni durduramaz artık
+
+Kırık zincir, düşmüş ayaklarımdan
+Ben artık başkasının hayali değilim
+Kendi fırtınamı yaratıyorum
+Kırık zincir, bu benim özgürlüğüm
+
+Belki düşerim, belki yıkılırım
+Ama asla eskisi gibi olmam
+Bu ateş içimde, sönmeyecek asla
+Kırık zincir, ben yeniden doğdum
+
+Kırık zincir, özgürüm, ben yeniden doğdum
+Bu benim fırtınam, bu benim özgürlüğüm
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe ("powerful gritty male vocals" + Türkçe sözler).

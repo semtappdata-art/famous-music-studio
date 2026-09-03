@@ -65,6 +65,46 @@ Sessiz mektup, kalbimde bir yerde saklı
 Hiç gönderilmedi ama hep orada, hep benimle
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+Bir mektup yazdım sana, göndermedim
+Belki rüzgar götürür diye bıraktım pencereye
+
+Sesini unuttum ama gülüşünü hâlâ hatırlıyorum
+Eski defterlerde satır aralarında saklısın
+Zaman yavaşça siliyor her şeyi
+Ama bazı anılar hiç silinmiyor, biliyorsun
+
+Belki de böyle daha iyi
+Söylenmemiş sözlerle kalmak
+Bazı şeyler sessizlikte daha güzel
+Bazı vedalar hiç söylenmemeli belki
+
+Sessiz mektup, hiç gönderilmedi
+Ama her satırında sen varsın hâlâ
+Bazı sevgiler böyle kalır, saklı
+Sessiz mektup, kalbimde bir yerde
+
+Şimdi başka bir şehirde, başka bir hayattayım
+Ama o mektup hâlâ çekmecemde duruyor
+Bazen açıp okuyorum, gülümsüyorum
+Acımıyor artık, sadece hatırlıyorum
+
+Sessiz mektup, hiç gönderilmedi
+Ama her satırında sen varsın hâlâ
+Bazı sevgiler böyle kalır, saklı
+Sessiz mektup, kalbimde bir yerde
+
+Belki bir gün bu şarkıyı duyarsın
+Ve anlarsın o mektubun sana yazıldığını
+Ama şimdilik, sessizce taşıyorum
+Bu güzel, bu hüzünlü hatırayı
+
+Sessiz mektup, kalbimde bir yerde saklı
+Hiç gönderilmedi ama hep orada, hep benimle
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe ("soft breathy female vocals" + Türkçe sözler).

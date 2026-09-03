@@ -87,6 +87,53 @@ Yürek yarası kapanmıyor asla...
 En derin sızı bu bizim...
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+(Kadın) Bir yara açtın, kapanmadı hiç
+(Erkek) Biliyorum, ben de kanıyorum içimde
+
+(Kadın) Sokak lambaları söner, ben hâlâ beklerim
+Senin gölgeni ararım her geçen arabada
+Kalbim bir şarkı gibi, hep aynı yerde takılı
+Ne kadar uzaklaşsan da, sesin burada kalır
+
+(Erkek) Gitmek istemedim ama kalamadım da
+Elimde olmayan bir şeydi bu, inan bana
+Her gece senin sokağından geçerim ben de
+Işığın yanmıyor artık, biliyorum ama bakarım yine
+
+(İkisi) Söyle bana neden bu kadar
+Zor oldu her şey, zor oldu ayrılık
+Belki ikimiz de o kapıda kaldık
+Belki ikimiz de dönmeyi bekliyoruz
+
+Yürek yarası kapanmıyor asla
+Her nefeste bir parçan eksiliyor benden
+Ağlamayı unuttum ama sen unutulmadın
+Yürek yarası, en derin sızı bu bizim
+
+(Kadın) Herkes "geçer zamanla" der, bilmezler nasıl bir şey
+Bir insanı kaybetmek, kendinden bir parça kaybetmek
+
+(Erkek) Ben de aynı aynaya bakıyorum her sabah
+Belki de asıl kayıp, ikimiz de kendimiziz şimdi
+
+Yürek yarası kapanmıyor asla
+Her nefeste bir parçan eksiliyor benden
+Ağlamayı unuttum ama sen unutulmadın
+Yürek yarası, en derin sızı bu bizim
+
+(Kadın) Belki bir gün bu şarkı sana ulaşır
+Ama bilmiyorum artık beklemeli miyim
+
+(Erkek) Duydum bile, işte buradayım şimdi
+Belki ikimiz de aynı kapıda kaldık
+
+Yürek yarası kapanmıyor asla...
+En derin sızı bu bizim...
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe ("powerful belting female vocals alternating with warm

@@ -69,6 +69,19 @@ Turkish trap arabesk, melancholic and cinematic, husky male vocals, 808 bass, ka
 
 Bu kural `karakter_roster.md`'deki arabesk-düet kuralı gibi kalıcı — yeni her şarkı prompt'unda uygulanmalı.
 
+## Temiz Sözler (YouTube açıklaması) kuralı — SABİT, atlama
+
+Suno'ya yapıştırılan sözler `[Verse 1]`, `[Chorus]` gibi köşeli parantez etiketleri
+içerir — bunlar Suno'ya yönelik yapı talimatları, izleyiciye değil. Bu etiketlerle
+birlikte YouTube açıklamasına kopyalanırsa amatör görünüyor (kullanıcı geri bildirimi).
+
+Artık her `*_sozler.md` dosyasında, Suno'ya yapıştırılan (etiketli) versiyonun HEMEN
+ALTINDA ayrı bir **"Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)"** bölümü
+oluyor — aynı sözler, köşeli parantez etiketleri TAMAMEN çıkarılmış, sadece bölümler
+arası boş satırla ayrılmış hâlde. Bu, doğrudan YouTube açıklamasına yapıştırılabilir.
+
+Bu kural da kalıcı — yeni her şarkı prompt'unda uygulanmalı.
+
 ## Notlar
 
 - Vokal dili: Türkçe belirtmeyi unutma (örn. "Turkish male vocals")

@@ -62,6 +62,11 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpe
   `strong final hit ending, no abrupt cutoff` enerjik temalar için) ve Outro iki TAM,
   bitmiş cümle oluyor — `...` YOK. Detay ve örnekler: `suno_prompt_hazirlik.md`,
   "Kapanış (Outro) kuralı".
+- **Her `*_sozler.md`'de "Temiz Sözler" bölümü SABİT**: Suno'ya yapıştırılan sözlerdeki
+  `[Verse 1]`/`[Chorus]` gibi köşeli parantez etiketleri YouTube açıklamasına aynen
+  kopyalanınca amatör görünüyordu (kullanıcı geri bildirimi). Artık her sözler
+  dosyasında, etiketli Suno versiyonunun altında etiketsiz, doğrudan açıklamaya
+  yapıştırılabilir bir "Temiz Sözler" bölümü de bulunuyor.
 - **Koşu başına proje sayısı (`--count`, varsayılan 2)**: bir ara bilinçli olarak 1'e
   düşürülüp günde 2 AYRI Görev Zamanlayıcı tetikleyicisine geçilmişti ("aynı anda birden
   fazla şarkı aynı takipçi kitlesinde birbiriyle yarışır" riski) — kullanıcı bu riski

@@ -66,6 +66,44 @@ Yeraltı, benim krallığım, burası hep benim kalacak
 Sesim yankılanır, kökümü asla unutmayacağım
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+Yeraltından geliyorum, sen üstte bilmezsin
+Burda kurallar başka, burda hayat farklı işler
+
+Sokakta büyüdüm ben, ders kitabı değil hayat öğretti
+Kaç kere düştüm bilmiyorum, her seferinde ayağa kalktım
+Kimse elimi tutmadı, ben kendi yolumu buldum
+Şimdi konuşuyorlar ama nerdeydiler o zaman
+
+Yeraltında ışık az ama biz karanlıkta görürüz
+Herkes korkar buradan, biz burda evimizdeyiz
+
+Yeraltı, benim krallığım, kimse giremez buraya
+Yeraltı, sesim yankılanır her sokak arasında
+Düşman çoksa önemi yok, ben yolumu biliyorum
+Yeraltı, burası benim, burası bizim
+
+Para değil peşimde koştuğum, saygı kazanmak zor iş
+Herkes bir hikaye anlatır ama gerçek azdır
+Ben anlattığımı yaşadım, yaşadığımı anlatırım
+Mikrofon elimde, sözüm ağır, adımım net
+
+Yeraltı, benim krallığım, kimse giremez buraya
+Yeraltı, sesim yankılanır her sokak arasında
+Düşman çoksa önemi yok, ben yolumu biliyorum
+Yeraltı, burası benim, burası bizim
+
+Bir gün yukarı çıkarsam da unutmam nereden geldiğimi
+Bu şehir beni yaptı, ben bu şehri anlatırım
+Yeraltından yukarıya, ama köküm hep burada
+Kim ne derse desin, ben biliyorum kim olduğumu
+
+Yeraltı, benim krallığım, burası hep benim kalacak
+Sesim yankılanır, kökümü asla unutmayacağım
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe ("husky nasal male vocals" + Türkçe sözler).

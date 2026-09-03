@@ -64,6 +64,46 @@ Neon kalp, parlıyorum, hiç sönmeyeceğim
 Bu gece sonsuza kadar, ben buradayım
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+Işıklar yanıyor, kalbim çarpıyor
+Bu gece hiçbir şey durduramaz beni
+
+Şehir uyanıyor güneş batınca
+Ben de uyanıyorum, kanımda müzik var
+Yüksek topuklar, parlayan gözler
+Bu gece ben de bu ışığın bir parçasıyım
+
+Kimse durduramaz bu enerjiyi
+Kalbim bir ritim, adım bir dans
+Her adımda büyüyor bu his
+Ben özgürüm, ben buradayım
+
+Neon kalp, karanlıkta parlıyor
+Her atışımda bir ışık yanıyor
+Beni durduramazsın, ben özgürüm
+Neon kalp, bu gece sonsuza kadar
+
+Müzik yükseliyor, ayaklarım havada
+Kimse bilmiyor yarın ne olacağını
+Ama şu an, bu an, bu benim anım
+Her saniye bir hediye, kaçırmıyorum
+
+Neon kalp, karanlıkta parlıyor
+Her atışımda bir ışık yanıyor
+Beni durduramazsın, ben özgürüm
+Neon kalp, bu gece sonsuza kadar
+
+Bütün şehir benimle nefes alıyor
+Her ışık bir kalp atışı gibi
+Bu an hiç bitmesin istiyorum
+Neon kalp, ben buradayım, hep buradayım
+
+Neon kalp, parlıyorum, hiç sönmeyeceğim
+Bu gece sonsuza kadar, ben buradayım
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe ("bright breathy female vocals" + Türkçe sözler).
