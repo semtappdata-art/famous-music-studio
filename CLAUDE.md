@@ -47,8 +47,26 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpe
   bokeh dokusu eklendi.
 - **Vokal/tema çeşitliliği takibi**: yeni bir şarkı stil etiketi yazmadan önce
   `ses_ve_tarz_takibi.md`'ye bak — art arda aynı vokal cinsiyeti/dokusu kullanılmasın.
-  `config.THEMES`'in 6 slotundan (pop/rock/elektronik/akustik/hiphop/arabesk) `rock` şu an
-  hiç kullanılmamış.
+  `config.THEMES`'in 6 slotu (pop/rock/elektronik/akustik/hiphop/arabesk) artık hepsi
+  en az bir şarkıda kullanıldı (`rock` en son, Kırık Zincir ile dolduruldu).
+- **`arabesk` teması SABİT olarak kadın-erkek düet formatında üretiliyor**: tek taraflı
+  vokal değil, `[Verse - Kadın]`/`[Verse - Erkek]` gibi etiketli karşılıklı bölümlerle
+  (bkz. `yurek_yarasi_sozler.md`, ilk örnek — aynı ayrılığı iki taraftan anlatan yapı,
+  arabeskin klasik düet geleneği). Bu ana kataloğun `arabesk` şarkıları için geçerli —
+  karakter sistemindeki tekli arabesk karakterleri (Kerem Ateşi, Azra Yıldız) bu kuraldan
+  ETKİLENMEDİ, onlar kendi sabit tekli kimliklerini koruyor.
+- **Her şarkının kapanışı (Outro) SABİT bir kurala göre yazılıyor**: şarkı sonlarının
+  anlamsız/ani kesilmesi tekrarlayan bir sorundu (`...` ile yarım bırakılmış Outro
+  cümleleri + stil etiketinde kapanışın tanımlanmamış olması). Artık HER stil etiketinin
+  sonuna bir kapanış tanımı ekleniyor (`gentle fade-out ending` sakin temalar için,
+  `strong final hit ending, no abrupt cutoff` enerjik temalar için) ve Outro iki TAM,
+  bitmiş cümle oluyor — `...` YOK. Detay ve örnekler: `suno_prompt_hazirlik.md`,
+  "Kapanış (Outro) kuralı".
+- **Her `*_sozler.md`'de "Temiz Sözler" bölümü SABİT**: Suno'ya yapıştırılan sözlerdeki
+  `[Verse 1]`/`[Chorus]` gibi köşeli parantez etiketleri YouTube açıklamasına aynen
+  kopyalanınca amatör görünüyordu (kullanıcı geri bildirimi). Artık her sözler
+  dosyasında, etiketli Suno versiyonunun altında etiketsiz, doğrudan açıklamaya
+  yapıştırılabilir bir "Temiz Sözler" bölümü de bulunuyor.
 - **Koşu başına proje sayısı (`--count`, varsayılan 2)**: bir ara bilinçli olarak 1'e
   düşürülüp günde 2 AYRI Görev Zamanlayıcı tetikleyicisine geçilmişti ("aynı anda birden
   fazla şarkı aynı takipçi kitlesinde birbiriyle yarışır" riski) — kullanıcı bu riski
