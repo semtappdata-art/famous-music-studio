@@ -72,11 +72,16 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpe
   yapay/şablon hissi veriyordu (kullanıcı geri bildirimi). Artık Intro somut bir
   an/detay/duyu imgesiyle açılıyor, temayı dolaylı hissettiriyor. Detay:
   `suno_prompt_hazirlik.md`, "Intro kuralı".
-- **Koşu başına proje sayısı (`--count`, varsayılan 1) — KADEMELİ paylaşım**: bir ara
-  kullanıcı isteğiyle 2'ye çıkarılmıştı, sonra "aynı anda birden fazla şarkı aynı
-  takipçi kitlesinde birbiriyle yarışır" riski gerekçesiyle tekrar 1'e döndürüldü.
-  Günde birden fazla şarkı için Görev Zamanlayıcı'da GÜNDE BİRDEN FAZLA AYRI
-  tetikleyici kullanılıyor (ör. 13:00/19:00) — `--count`'u yükseltmek yerine.
+- **`--count` artık OTOMATİK kademeleniyor (elle verilmezse)**: sabit bir sayı yerine
+  script, kaç proje bekliyorsa 24 saati o sayıya eşit aralıklara bölüp (ör. 9 proje →
+  ~2.7 saatte bir, 2 proje → 12 saatte bir) son yüklemeden bu aralık kadar süre
+  geçmediyse o koşuda hiçbir şey yapmıyor (`_auto_pace_count()`, `auto_process.py`).
+  Amaç aynı: aynı anda birden fazla şarkı paylaşmanın aynı takipçi kitlesinde
+  birbiriyle yarışmasını önlemek — ama artık kaç dosya biriktiği önemli değil,
+  otomatik dengeleniyor. Bunun işlemesi için Görev Zamanlayıcı'nın SIK (ör. saatte
+  bir) TEK bir tetikleyiciyle çalışması yeterli — script her çağrıldığında "sırası
+  geldi mi" diye kendi karar veriyor. `--count N` elle verilirse bu mantık devre
+  dışı kalır (eski sabit davranış).
 - **AI-içerik açıklaması**: kanal %100 AI üretimi olduğu için YouTube upload'ında
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış

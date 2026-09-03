@@ -14,14 +14,17 @@ Kullanım:
     python auto_process.py --base projects
     python auto_process.py --count 3
 
-Her çalıştırmada en fazla `--count` kadar proje işlenir (varsayılan: 1, henüz
-3 platforma da tam yüklenmemiş olanlardan en eskiden başlayarak) — kademeli
-paylaşım için: aynı anda birden fazla şarkı paylaşmak aynı takipçi kitlesinin
-aynı taramasında birbiriyle yarışabiliyor. Günde birden fazla şarkı istiyorsan
-Görev Zamanlayıcı'da GÜNDE BİRDEN FAZLA AYRI tetikleyici kullan (ör. 13:00 ve
-19:00), tek tetikleyicide `--count`'u yükseltmek yerine. (Bu değer bir ara
-kullanıcı isteğiyle 2'ye çıkarılmış, sonra aynı rekabet riski gerekçesiyle
-tekrar 1'e döndürülmüştü — bkz. git geçmişi.)
+**Otomatik kademeleme (varsayılan, `--count` verilmezse):** kaç proje bekliyorsa
+(henüz 3 platforma da tam yüklenmemiş) 24 saati o sayıya eşit aralıklara böler
+(ör. 9 proje → ~2.7 saatte bir 1 tane, 2 proje → 12 saatte bir 1 tane) ve son
+yüklemeden bu hesaplanan aralık kadar süre geçtiyse SADECE O ZAMAN bir proje
+işler — aksi halde bu koşuda hiçbir şey yapmadan çıkar. Amaç: aynı anda birden
+fazla şarkı paylaşmanın aynı takipçi kitlesinin aynı taramasında birbiriyle
+yarışmasını önlemek, kaç dosya biriktiği önemli olmadan gün içine dengeli
+yaymak. Bunun işlemesi için Görev Zamanlayıcı'yı SIK çalıştır (ör. saatte bir
+tek bir tetikleyici) — script her çağrıldığında "sırası geldi mi" diye kendi
+kendine karar verir. `--count N` verirsen bu otomatik kademe DEVRE DIŞI kalır,
+tam N kadarı zamanlama beklemeden hemen işlenir.
 
 Kendini iyileştiren mantık: proje için render sadece çıktı dosyaları eksikse
 yapılır; her platforma yükleme sadece state.json'da o platforma ait alan
@@ -62,6 +65,11 @@ RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4"]
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_process.log")
 LOCK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".auto_process.lock")
 LOCK_STALE_SECONDS = 2 * 60 * 60  # 2 saat — normal bir render+upload'dan çok daha uzun
+DAILY_WINDOW_SECONDS = 24 * 60 * 60
+UPLOAD_TIMESTAMP_KEYS = (
+    "youtube_uploaded_at", "youtube_shorts_uploaded_at",
+    "tiktok_uploaded_at", "instagram_uploaded_at",
+)
 
 
 def log(msg: str) -> None:
@@ -153,6 +161,49 @@ def _is_fully_done(project_dir: str) -> bool:
             "instagram_media_id",
         )
     )
+
+
+def _last_upload_time(project_dirs: list) -> float | None:
+    """Tüm projelerin state.json'larına bakıp en son yükleme zaman damgasını
+    (hangi platform olursa olsun) bulur — otomatik zamanlamanın referans
+    noktası: 'en son ne zaman bir şey paylaştık'. Hiç yükleme yoksa None."""
+    latest = None
+    for project_dir in project_dirs:
+        state = _load_state(project_dir)
+        for key in UPLOAD_TIMESTAMP_KEYS:
+            ts = state.get(key)
+            if not ts:
+                continue
+            try:
+                t = time.mktime(time.strptime(ts, "%Y-%m-%dT%H:%M:%S"))
+            except ValueError:
+                continue
+            if latest is None or t > latest:
+                latest = t
+    return latest
+
+
+def _auto_pace_count(pending: list, ready: list) -> int:
+    """--count elle verilmediğinde kaç proje işleneceğini OTOMATİK belirler:
+    bekleyen proje sayısına göre 24 saati eşit aralıklara böler (ör. 9 proje
+    bekliyorsa ~2.7 saatte bir 1 tane, 2 proje bekliyorsa 12 saatte bir 1 tane)
+    ve son yüklemeden bu hesaplanan aralık kadar süre geçtiyse 1, geçmediyse
+    0 döner. Kaç dosya beklediği önemli değil — Görev Zamanlayıcı'nın kendisi
+    sık çalıştığı sürece (ör. saatte bir) script kendi kendine "sırası geldi
+    mi" diye karar verir, gün içine dengeli yayılır."""
+    if not pending:
+        return 0
+    required_gap = DAILY_WINDOW_SECONDS / len(pending)
+    last = _last_upload_time(ready)
+    if last is None:
+        return 1  # hiç yükleme yapılmamış, hemen başla
+    elapsed = time.time() - last
+    if elapsed >= required_gap:
+        return 1
+    remaining_h = (required_gap - elapsed) / 3600
+    log(f"  Otomatik zamanlama: {len(pending)} proje bekliyor, sıradaki için "
+        f"~{remaining_h:.1f} saat daha var (henüz erken, bu koşuda atlanıyor).")
+    return 0
 
 
 def process_project(project_dir: str, privacy: str) -> None:
@@ -255,14 +306,14 @@ def main():
     )
     parser.add_argument("--base", default="projects", help="Proje klasörlerinin kök dizini")
     parser.add_argument(
-        "--count", type=int, default=1,
+        "--count", type=int, default=None,
         help=(
-            "Bu koşuda işlenecek en fazla proje sayısı (varsayılan: 1). NOT: bir ara "
-            "kullanıcı isteğiyle 2'ye yükseltilmişti, sonra 'aynı anda birden fazla şarkı "
-            "paylaşmak aynı takipçi kitlesinin dikkatinde birbiriyle yarışır' gerekçesiyle "
-            "tekrar 1'e (ve günde 2 AYRI Görev Zamanlayıcı tetikleyicisine, ör. 13:00/19:00) "
-            "döndürüldü — kademeli paylaşım. Daha yüksek bir hacim istiyorsan --count N ile "
-            "geçici olarak artırabilirsin, ama varsayılan davranış artık kademeli."
+            "Bu koşuda işlenecek en fazla proje sayısı. VERİLMEZSE OTOMATİK kademelenir: "
+            "kaç proje bekliyorsa 24 saate eşit aralıklarla yayılır (ör. 9 proje bekliyorsa "
+            "~2.7 saatte bir 1 tane, 2 proje bekliyorsa 12 saatte bir 1 tane) — Görev "
+            "Zamanlayıcı'yı sık çalıştır (ör. saatte bir), script sırası gelmemiş "
+            "projeleri kendiliğinden atlar. Elle bir sayı verirsen bu otomatik kademe "
+            "DEVRE DIŞI kalır, tam o kadarı hemen (zamanlama beklemeden) işlenir."
         ),
     )
     args = parser.parse_args()
@@ -283,7 +334,11 @@ def main():
             log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
             return
 
-        batch = pending[:args.count]
+        count = args.count if args.count is not None else _auto_pace_count(pending, ready)
+        if count == 0:
+            return
+
+        batch = pending[:count]
         log(f"{len(pending)} bekleyen proje var, bu koşuda işlenecek ({len(batch)}): "
             f"{', '.join(os.path.basename(p) for p in batch)}")
         for project_dir in batch:

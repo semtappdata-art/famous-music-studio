@@ -84,26 +84,34 @@ oradan değiştirebilirsin.
 `audio.wav` bir proje klasörüne konduktan sonraki HER ŞEYİ (kapak/kart üretimi + render +
 YouTube uzun format + YouTube Shorts + TikTok + Instagram yükleme + tema playlist'i)
 otomatikleştiren asıl script bu — Windows Görev Zamanlayıcı ile periyodik çalıştırılmak
-üzere tasarlandı. Her çalıştırmada en fazla `--count` kadar proje işler (**varsayılan: 1**,
-en eski bekleyenden başlayarak), zaten tamamlanmış adımları atlar.
+üzere tasarlandı.
 
-**Kademeli paylaşım:** günde birden fazla şarkı yayınlamak istiyorsan `--count`'u
-yükseltmek yerine Görev Zamanlayıcı'da **günde birden fazla ayrı tetikleyici** kullan
-(ör. 13:00 ve 19:00, her biri `--count 1` ile) — aynı anda birden fazla şarkı
-paylaşmak aynı takipçi kitlesinin aynı taramasında birbiriyle yarışabiliyor.
+**Otomatik kademeleme (varsayılan):** `--count` verilmezse, kaç proje bekliyorsa (audio
+hazır ama henüz 3 platforma da yüklenmemiş) script 24 saati o sayıya eşit aralıklara
+böler (ör. 9 proje bekliyorsa ~2.7 saatte bir 1 tane, 2 proje bekliyorsa 12 saatte bir
+1 tane) ve son yüklemeden bu kadar süre geçtiyse SADECE O ZAMAN bir proje işler —
+geçmediyse o koşuda hiçbir şey yapmadan çıkar. Amaç: aynı anda birden fazla şarkı
+paylaşmanın aynı takipçi kitlesinin aynı taramasında birbiriyle yarışmasını önlemek,
+kaç dosya biriktiği önemli olmadan gün içine dengeli yaymak.
+
+**Bunun işlemesi için Görev Zamanlayıcı'yı SIK çalıştır** — tek bir tetikleyici, ör.
+saatte bir yeterli (birden fazla tetikleyici kurmana gerek yok, script kendi kendine
+"sırası geldi mi" diye karar veriyor).
 
 ```bash
 python auto_process.py
 python auto_process.py --privacy unlisted
-python auto_process.py --count 2
+python auto_process.py --count 2   # otomatik kademeyi devre dışı bırakıp tam 2'sini hemen işler
 ```
 
 **YouTube günlük quota uyarısı:** her şarkı YouTube'a 2 ayrı video olarak gidiyor (uzun
 format + Shorts), her `video.insert` çağrısı ~1600 unit'lik varsayılan günlük kotanın
-(10.000 unit) bir kısmını tüketiyor — yani `--count 1`'lik TEK bir çalıştırma ~1600+ unit
-harcıyor (thumbnail + playlist çağrıları dahil biraz daha fazla). Görev Zamanlayıcı'da
-günde birden fazla tetikleyici kullanıyorsan, toplam günlük proje sayısını (`--count` ×
-tetikleyici sayısı) hesaba katıp 10.000 unit'i aşmadığından emin ol — aşarsan o günün
+(10.000 unit) bir kısmını tüketiyor (thumbnail + playlist çağrıları dahil biraz daha
+fazla) — yani günde ~6 projeden fazlası teorik olarak kotayı aşabilir. Otomatik
+kademeleme bekleyen proje sayısı arttıkça aralığı kendiliğinden kısaltır (ör. çok
+sayıda proje birikirse günde 6'dan fazlasını da işlemeye çalışır) — bekleyen proje
+sayın sürekli yüksekse veya `--count` ile elle yüksek bir sayı verirsen (ör. bir
+kerelik toplu çalıştırma) 10.000 unit'i aşmadığından kendin emin ol — aşarsan o günün
 geri kalanında YouTube yüklemeleri başarısız olur (TikTok/Instagram etkilenmez, kendi
 kotalarına tabidir).
 
