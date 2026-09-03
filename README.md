@@ -84,22 +84,28 @@ oradan değiştirebilirsin.
 `audio.wav` bir proje klasörüne konduktan sonraki HER ŞEYİ (kapak/kart üretimi + render +
 YouTube uzun format + YouTube Shorts + TikTok + Instagram yükleme + tema playlist'i)
 otomatikleştiren asıl script bu — Windows Görev Zamanlayıcı ile periyodik çalıştırılmak
-üzere tasarlandı. Her çalıştırmada en fazla `--count` kadar proje işler (**varsayılan: 2**,
+üzere tasarlandı. Her çalıştırmada en fazla `--count` kadar proje işler (**varsayılan: 1**,
 en eski bekleyenden başlayarak), zaten tamamlanmış adımları atlar.
+
+**Kademeli paylaşım:** günde birden fazla şarkı yayınlamak istiyorsan `--count`'u
+yükseltmek yerine Görev Zamanlayıcı'da **günde birden fazla ayrı tetikleyici** kullan
+(ör. 13:00 ve 19:00, her biri `--count 1` ile) — aynı anda birden fazla şarkı
+paylaşmak aynı takipçi kitlesinin aynı taramasında birbiriyle yarışabiliyor.
 
 ```bash
 python auto_process.py
 python auto_process.py --privacy unlisted
-python auto_process.py --count 1
+python auto_process.py --count 2
 ```
 
 **YouTube günlük quota uyarısı:** her şarkı YouTube'a 2 ayrı video olarak gidiyor (uzun
 format + Shorts), her `video.insert` çağrısı ~1600 unit'lik varsayılan günlük kotanın
-(10.000 unit) bir kısmını tüketiyor — yani `--count 2`'lik TEK bir çalıştırma ~3200+ unit
-harcıyor (playlist çağrıları dahil biraz daha fazla). Görev Zamanlayıcı'da günde birden
-fazla tetikleyici kullanıyorsan, toplam günlük proje sayısını (`--count` × tetikleyici
-sayısı) hesaba katıp 10.000 unit'i aşmadığından emin ol — aşarsan o günün geri kalanında
-YouTube yüklemeleri başarısız olur (TikTok/Instagram etkilenmez, kendi kotalarına tabidir).
+(10.000 unit) bir kısmını tüketiyor — yani `--count 1`'lik TEK bir çalıştırma ~1600+ unit
+harcıyor (thumbnail + playlist çağrıları dahil biraz daha fazla). Görev Zamanlayıcı'da
+günde birden fazla tetikleyici kullanıyorsan, toplam günlük proje sayısını (`--count` ×
+tetikleyici sayısı) hesaba katıp 10.000 unit'i aşmadığından emin ol — aşarsan o günün
+geri kalanında YouTube yüklemeleri başarısız olur (TikTok/Instagram etkilenmez, kendi
+kotalarına tabidir).
 
 Kimlik doğrulama (her platform için bir kerelik, ilgili script'in kendisiyle):
 

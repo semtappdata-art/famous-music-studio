@@ -72,10 +72,11 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpe
   yapay/şablon hissi veriyordu (kullanıcı geri bildirimi). Artık Intro somut bir
   an/detay/duyu imgesiyle açılıyor, temayı dolaylı hissettiriyor. Detay:
   `suno_prompt_hazirlik.md`, "Intro kuralı".
-- **Koşu başına proje sayısı (`--count`, varsayılan 2)**: bir ara bilinçli olarak 1'e
-  düşürülüp günde 2 AYRI Görev Zamanlayıcı tetikleyicisine geçilmişti ("aynı anda birden
-  fazla şarkı aynı takipçi kitlesinde birbiriyle yarışır" riski) — kullanıcı bu riski
-  bilerek tekrar yükseltilmesini istedi.
+- **Koşu başına proje sayısı (`--count`, varsayılan 1) — KADEMELİ paylaşım**: bir ara
+  kullanıcı isteğiyle 2'ye çıkarılmıştı, sonra "aynı anda birden fazla şarkı aynı
+  takipçi kitlesinde birbiriyle yarışır" riski gerekçesiyle tekrar 1'e döndürüldü.
+  Günde birden fazla şarkı için Görev Zamanlayıcı'da GÜNDE BİRDEN FAZLA AYRI
+  tetikleyici kullanılıyor (ör. 13:00/19:00) — `--count`'u yükseltmek yerine.
 - **AI-içerik açıklaması**: kanal %100 AI üretimi olduğu için YouTube upload'ında
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış

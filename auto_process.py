@@ -14,14 +14,14 @@ Kullanım:
     python auto_process.py --base projects
     python auto_process.py --count 3
 
-Her çalıştırmada en fazla `--count` kadar proje işlenir (varsayılan: 2, henüz
-3 platforma da tam yüklenmemiş olanlardan en eskiden başlayarak). NOT: bu
-sayı bir ara (rekabet riski yüzünden) bilinçli olarak 1'e düşürülüp günde
-2 AYRI Görev Zamanlayıcı tetikleyicisine (örn. 13:00/19:00) geçilmişti —
-aynı anda birden fazla şarkı paylaşmanın aynı takipçi kitlesinin aynı
-taramasında birbirleriyle yarışabileceği gerekçesiyle. Kullanıcı isteğiyle
-tekrar yükseltildi; bu riski önemsiyorsan `--count 1` ile eski davranışa
-dönüp birden fazla tetikleyici kullanmayı tercih edebilirsin.
+Her çalıştırmada en fazla `--count` kadar proje işlenir (varsayılan: 1, henüz
+3 platforma da tam yüklenmemiş olanlardan en eskiden başlayarak) — kademeli
+paylaşım için: aynı anda birden fazla şarkı paylaşmak aynı takipçi kitlesinin
+aynı taramasında birbiriyle yarışabiliyor. Günde birden fazla şarkı istiyorsan
+Görev Zamanlayıcı'da GÜNDE BİRDEN FAZLA AYRI tetikleyici kullan (ör. 13:00 ve
+19:00), tek tetikleyicide `--count`'u yükseltmek yerine. (Bu değer bir ara
+kullanıcı isteğiyle 2'ye çıkarılmış, sonra aynı rekabet riski gerekçesiyle
+tekrar 1'e döndürülmüştü — bkz. git geçmişi.)
 
 Kendini iyileştiren mantık: proje için render sadece çıktı dosyaları eksikse
 yapılır; her platforma yükleme sadece state.json'da o platforma ait alan
@@ -255,14 +255,14 @@ def main():
     )
     parser.add_argument("--base", default="projects", help="Proje klasörlerinin kök dizini")
     parser.add_argument(
-        "--count", type=int, default=2,
+        "--count", type=int, default=1,
         help=(
-            "Bu koşuda işlenecek en fazla proje sayısı (varsayılan: 2). NOT: daha önce "
-            "'aynı anda birden fazla şarkı paylaşmak aynı takipçi kitlesinin dikkatinde "
-            "birbiriyle yarışır' gerekçesiyle bu 1'e düşürülüp günde 2 AYRI saatlik "
-            "tetikleyiciye geçilmişti (bkz. git geçmişi) — kullanıcı isteğiyle tekrar "
-            "yükseltildi. Rekabet riskini önemsiyorsan --count 1 ile eski davranışa "
-            "dönebilir, Görev Zamanlayıcı'da günde birden fazla tetikleyici kullanabilirsin."
+            "Bu koşuda işlenecek en fazla proje sayısı (varsayılan: 1). NOT: bir ara "
+            "kullanıcı isteğiyle 2'ye yükseltilmişti, sonra 'aynı anda birden fazla şarkı "
+            "paylaşmak aynı takipçi kitlesinin dikkatinde birbiriyle yarışır' gerekçesiyle "
+            "tekrar 1'e (ve günde 2 AYRI Görev Zamanlayıcı tetikleyicisine, ör. 13:00/19:00) "
+            "döndürüldü — kademeli paylaşım. Daha yüksek bir hacim istiyorsan --count N ile "
+            "geçici olarak artırabilirsin, ama varsayılan davranış artık kademeli."
         ),
     )
     args = parser.parse_args()
