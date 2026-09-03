@@ -137,6 +137,22 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   sonra 7 gün içinde "Gönderiyi düzenle" → "Kapağı düzenle") "Yükle" ile galeriden elle
   seçiyor — video karesi seçmek zorunda değil. Detay: README.md, "Kimlik doğrulama" →
   TikTok adımı.
+- **`watch_projects.py` (opsiyonel klasör izleyici) saatlik tetikleyiciyi DEĞİŞTİRMEZ,
+  tamamlar**: kullanıcı isteğiyle eklendi — Suno'dan yeni indirilen (herhangi bir adla)
+  ses dosyasını yakalayıp `audio.wav`'a çevirir ve `auto_process.py`'yi hemen tetikler,
+  ama kademeleme kararına karışmaz (`auto_process.py` "sırası geldi mi" kontrolünü
+  hâlâ kendisi yapar) — sadece "dosya geldi → fark edilme" gecikmesini saatlerden
+  saniyelere indiriyor. `setup_task_scheduler.ps1` üçüncü bir görev olarak (oturum
+  açılışında başlayan, sürekli çalışan) kurar.
+- **`.ps1` dosyaları UTF-8 BOM'suz kaydedilirse Windows PowerShell 5.1'de BOZULUR**:
+  `setup_task_scheduler.ps1` ilk yazıldığında BOM'suzdu — Türkçe karakterler (ı, ğ, ş,
+  İ, —) ANSI kod sayfasıyla yanlış okunup parse hatalarına yol açıyordu (script hiç
+  çalışmayacaktı). Düzeltildi (BOM eklendi) ama YENİ bir `.ps1` dosyası yazılırsa aynı
+  hataya düşülebilir — UTF-8 BOM'LU kaydedilmeli (Python'da `encoding="utf-8-sig"`).
+  `.py` dosyaları etkilenmiyor (Python 3 kaynak kodu için BOM gerektirmiyor).
+- **Log dosyaları (`auto_process.log`, `watch_projects.log`) 7 günden eskiyi tutmuyor**:
+  her çalıştırmada `log_rotate.trim_log()` ile eski satırlar silinip dosya üzerine
+  yeniden yazılıyor (ayrı döndürülmüş `.1`/`.2` dosyaları YOK — kullanıcı isteği).
 
 ## Beş özel subagent (`.claude/agents/`)
 

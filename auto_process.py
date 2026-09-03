@@ -59,6 +59,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "upl
 
 import generate_cover
 import render as render_module
+from log_rotate import trim_log
 
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
 RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4"]
@@ -329,6 +330,8 @@ def main():
         ),
     )
     args = parser.parse_args()
+
+    trim_log(LOG_PATH)
 
     if not _acquire_lock():
         log("Başka bir auto_process.py çalışması zaten sürüyor (kilit dosyası var) — "
