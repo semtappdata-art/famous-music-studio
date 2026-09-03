@@ -6,6 +6,13 @@ görsel işleme bağımlılığı eklemiyor) — tema rengine göre radial grady
 plan + şarkı başlığından türetilen deterministik bokeh dokusu + (cover.png
 için) ortalanmış başlık metni.
 
+meta.json'da bir "character" alanı varsa (bkz. karakter_roster.md) ve
+characters/<karakter-slug>.jpg|jpeg|png dosyası mevcutsa, arka plan kaynağı
+olarak o karakterin hazır portresi kullanılır (procedural gradyan yerine) —
+art.png bu portrenin AYNISI (metinsiz), cover.png ise üstüne başlık metni
+eklenmiş hâli olur. Dosya henüz yoksa (karakter roster'da olup portre daha
+hazırlanmamışsa) sessizce procedural gradyana düşülür.
+
 Kullanım:
     python generate_cover.py --project "projects/sarki-adi"
 
@@ -20,12 +27,31 @@ import hashlib
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 
 import config
 
 CANVAS_SIZE = 1600
+CHARACTERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "characters")
+_TR_TRANSLATE = str.maketrans("çÇğĞıİöÖşŞüÜ", "cCgGiIoOsSuU")
+
+
+def _slugify(name: str) -> str:
+    """'Kerem Ateşi' -> 'kerem-atesi' — characters/ klasöründeki portre dosya
+    adlarıyla eşleşsin diye (karakter_roster.md'deki isimlerle aynı kurala göre)."""
+    ascii_name = name.translate(_TR_TRANSLATE)
+    return re.sub(r"[^a-z0-9]+", "-", ascii_name.lower()).strip("-")
+
+
+def find_character_image(character_name: str) -> str | None:
+    slug = _slugify(character_name)
+    for ext in (".jpg", ".jpeg", ".png"):
+        path = os.path.join(CHARACTERS_DIR, slug + ext)
+        if os.path.isfile(path):
+            return path
+    return None
 
 
 def load_meta(project_dir: str) -> dict:
@@ -148,9 +174,8 @@ def generate(project_dir: str) -> None:
     title = meta.get("title") or os.path.basename(os.path.normpath(project_dir))
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
+    character = meta.get("character")
 
-    cover_path = os.path.join(project_dir, "cover.png")
-    art_path = os.path.join(project_dir, "art.png")
     has_cover = any(
         os.path.isfile(os.path.join(project_dir, n))
         for n in ("cover.jpg", "cover.jpeg", "cover.png")
@@ -162,20 +187,33 @@ def generate(project_dir: str) -> None:
     if has_cover and has_art:
         return
 
-    seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
-    base_path = os.path.join(project_dir, "_bg_base_tmp.png")
-    bg_path = os.path.join(project_dir, "_bg_tmp.png")
-    _radial_background(base_path, theme["accent"])
-    _add_bokeh(base_path, bg_path, theme["accent"], seed)
+    character_image = find_character_image(character) if character else None
+    cleanup_paths = []
+    if character_image:
+        bg_path = character_image
+        bg_ext = os.path.splitext(character_image)[1]
+        source_label = f"karakter portresi: {character}"
+    else:
+        seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
+        base_path = os.path.join(project_dir, "_bg_base_tmp.png")
+        bg_path = os.path.join(project_dir, "_bg_tmp.png")
+        bg_ext = ".png"
+        _radial_background(base_path, theme["accent"])
+        _add_bokeh(base_path, bg_path, theme["accent"], seed)
+        cleanup_paths = [base_path, bg_path]
+        source_label = f"{theme_key} teması"
+
+    cover_path = os.path.join(project_dir, "cover.png")
+    art_path = os.path.join(project_dir, f"art{bg_ext}")
     try:
         if not has_art:
             shutil.copy(bg_path, art_path)
-            print(f"  art.png üretildi ({theme_key} teması)")
+            print(f"  art{bg_ext} üretildi ({source_label})")
         if not has_cover:
             _add_title_text(bg_path, cover_path, title)
-            print(f"  cover.png üretildi ({title!r}, {theme_key} teması)")
+            print(f"  cover.png üretildi ({title!r}, {source_label})")
     finally:
-        for tmp_path in (base_path, bg_path):
+        for tmp_path in cleanup_paths:
             if os.path.isfile(tmp_path):
                 os.remove(tmp_path)
 
