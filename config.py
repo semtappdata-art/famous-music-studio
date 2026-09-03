@@ -27,16 +27,24 @@ MAX_PARALLEL_RENDERS = len(PLATFORMS)
 # accent: art.jpg yoksa (ensure_vignette fallback) kullanılan tema rengi. accent2: şu an
 # kodda hiç KULLANILMIYOR (eski, artık var olmayan bir çerçeve/gradyan tasarımından
 # kalma ölü veri) — kaldırılmadı ama render'ı fiilen etkilemiyor.
+# "language": paylaşım metinlerinin (caption/hashtag/YouTube yorumu, bkz.
+# social_text.resolve_language) hangi dilde üretileceğinin STİLE göre
+# varsayılanı — kullanıcı isteği: Suno'da üretilen müziğin stiline göre dil
+# hazırlığı otomatik olsun, her projede elle "language" yazmaya gerek kalmasın.
+# meta.json'da açık bir "language" varsa o öncelikli (istisna/override için).
+# Ana katalog (6 tarz) tamamen Türkiye pazarına göre kurulu, "tr" — "dj" (DJ
+# Famous, bkz. dj_sets/README.md) markanın global açılımının ilk denemesi
+# olarak "en" (kullanıcı kararı, 2026-09-03).
 THEMES = {
-    "pop": {"label": "Pop", "related": ["R&B", "Trap"], "accent": (255, 60, 140), "accent2": (80, 120, 255)},
-    "rock": {"label": "Rock", "related": ["Alternative", "Punk"], "accent": (230, 35, 35), "accent2": (255, 170, 40)},
-    "elektronik": {"label": "Elektronik", "related": ["Synthwave", "House"], "accent": (60, 220, 255), "accent2": (170, 60, 255)},
-    "akustik": {"label": "Akustik", "related": ["Folk", "Indie"], "accent": (230, 150, 60), "accent2": (255, 90, 140)},
-    "hiphop": {"label": "Hip-Hop", "related": ["Trap", "Rap"], "accent": (255, 195, 60), "accent2": (255, 90, 40)},
-    "arabesk": {"label": "Arabesk", "related": ["Trap", "Türkçe Rap"], "accent": (200, 40, 90), "accent2": (255, 140, 60)},
+    "pop": {"label": "Pop", "related": ["R&B", "Trap"], "accent": (255, 60, 140), "accent2": (80, 120, 255), "language": "tr"},
+    "rock": {"label": "Rock", "related": ["Alternative", "Punk"], "accent": (230, 35, 35), "accent2": (255, 170, 40), "language": "tr"},
+    "elektronik": {"label": "Elektronik", "related": ["Synthwave", "House"], "accent": (60, 220, 255), "accent2": (170, 60, 255), "language": "tr"},
+    "akustik": {"label": "Akustik", "related": ["Folk", "Indie"], "accent": (230, 150, 60), "accent2": (255, 90, 140), "language": "tr"},
+    "hiphop": {"label": "Hip-Hop", "related": ["Trap", "Rap"], "accent": (255, 195, 60), "accent2": (255, 90, 40), "language": "tr"},
+    "arabesk": {"label": "Arabesk", "related": ["Trap", "Türkçe Rap"], "accent": (200, 40, 90), "accent2": (255, 140, 60), "language": "tr"},
     # Ana kataloğun 6 tarzından AYRI — haftalık DJ Famous setleri için (bkz.
     # dj_sets/README.md). Kataloğun 6-slotlu tema çeşitlilik takibine dahil değil.
-    "dj": {"label": "DJ Set", "related": ["Mix", "Live Set"], "accent": (255, 210, 60), "accent2": (255, 60, 140)},
+    "dj": {"label": "DJ Set", "related": ["Mix", "Live Set"], "accent": (255, 210, 60), "accent2": (255, 60, 140), "language": "en"},
 }
 DEFAULT_THEME = "hiphop"  # meta.json'da "theme" belirtilmezse kullanılır
 
@@ -178,6 +186,28 @@ ENGAGEMENT_QUESTIONS = [
     "Bu şarkı sana neyi hatırlattı, yorumda yaz 💬",
     "1'den 10'a kadar puanla 👇",
     "Sence bu gerçekten AI mi yaptı? Yorumda tartışalım 🤔",
+]
+
+# --- İngilizce varyantlar (meta.json'da "language": "en" ise kullanılır) ---
+# İlk kullanım: DJ Famous (bkz. dj_sets/README.md) — markanın uzun vadeli global
+# açılımının ilk somut denemesi olarak İngilizce başlık/metin tercih edildi
+# (kullanıcı kararı, 2026-09-03). Ana katalog (`projects/`) meta.json'larında
+# "language" alanı YOK, yani varsayılan ("tr") değişmedi — bu varyantlar sadece
+# language="en" olan projeler için devreye giriyor.
+DISCOVERY_HASHTAGS_EN = ["#explore", "#fyp", "#viral"]
+
+HOOK_LINES_EN = [
+    "This track was made entirely by AI 🤖🎵",
+    "Human or AI? You decide 👇",
+    "A brand new track, created from scratch by AI 🎶",
+    "An AI composed this. Can you believe it?",
+]
+
+ENGAGEMENT_QUESTIONS_EN = [
+    "What genre should we drop next? Comment below 👇",
+    "What does this track remind you of? Tell us in the comments 💬",
+    "Rate it from 1 to 10 👇",
+    "Do you really think AI made this? Let's discuss in the comments 🤔",
 ]
 
 # Video/ses kodek ayarları

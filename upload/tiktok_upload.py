@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 import notify
 from tiktok_auth import get_access_token
-from social_text import build_caption, build_youtube_comment
+from social_text import build_caption, build_youtube_comment, resolve_language
 
 API_BASE = "https://open.tiktokapis.com/v2"
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
@@ -85,7 +85,7 @@ def upload_video(project_dir: str) -> str:
         if video_id:
             youtube_url = f"https://youtu.be/{video_id}"
     suggested_caption = build_caption(meta)
-    suggested_comment = build_youtube_comment(youtube_url) if youtube_url else None
+    suggested_comment = build_youtube_comment(youtube_url, resolve_language(meta)) if youtube_url else None
     print("  --- TikTok'ta yayınlarken caption olarak yapıştır ---")
     print(f"  {suggested_caption}")
     print("  ------------------------------------------------------")

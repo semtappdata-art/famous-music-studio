@@ -74,6 +74,12 @@ ekleyerek üretir (önceden ilgisiz bir procedural gradyan kullanıyordu, bu dü
 `theme: "dj"` — ana kataloğun 6 tarzından ayrı, sadece hashtag/etiket üretimi için
 yeni bir `config.THEMES` girdisi (`config.py`).
 
+**Paylaşım metinleri (caption/hashtag/YouTube yorumu) otomatik İngilizce** —
+`theme: "dj"` bunu kendiliğinden tetikliyor (`config.THEMES["dj"]["language"] =
+"en"`, bkz. `social_text.resolve_language()`), `meta.json`'a elle `"language"`
+eklemene gerek yok. İstersen `meta.json`'a `"language": "tr"` ekleyip belirli bir
+set için bunu geçersiz kılabilirsin.
+
 ## Kullanım
 
 ```bash

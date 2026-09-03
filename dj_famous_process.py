@@ -191,20 +191,39 @@ def process_set(project_dir: str, privacy: str, schedule: bool) -> None:
     else:
         log("  TikTok atlandı: upload/tiktok_token.json yok (önce tiktok_auth.py çalıştır)")
 
+    def _log_instagram_result(media_id: str | None) -> None:
+        if media_id:
+            log(f"  Instagram: tamam, media_id={media_id}")
+        else:
+            log("  Instagram: konteyner hazır, golden-hour penceresi bekleniyor")
+
     if "instagram_media_id" in state:
         log("  Instagram: zaten yüklü, atlanıyor")
+    elif "instagram_creation_id" in state:
+        # Önceki çalıştırmada konteyner oluşturulmuş ama golden-hour dışında
+        # kaldığı için yayınlanamamıştı (bkz. instagram_upload.try_publish_pending).
+        # NOT: DJ Famous haftada bir çalıştığı için (varsayılan Cuma 18:00 —
+        # BİLEREK config.GOLDEN_HOURS'un akşam penceresiyle örtüşüyor) bu dal
+        # normalde hiç tetiklenmemeli; -DjFamousTime golden-hour DIŞINA
+        # ayarlanırsa konteyner 24 saat içinde expire olabilir (bir sonraki
+        # kontrol ancak bir hafta sonra gelir) — DjFamousTime'ı GOLDEN_HOURS
+        # içinde tutmak en güvenlisi.
+        try:
+            from instagram_upload import try_publish_pending as ig_try_publish
+            _log_instagram_result(ig_try_publish(project_dir))
+        except Exception as e:
+            log(f"  Instagram HATA: {e}")
     elif os.path.isfile(os.path.join(upload_dir, "instagram_token.json")):
         try:
             from instagram_upload import upload_video as ig_upload
-            from social_text import build_caption, build_ai_disclosure_line
+            from social_text import build_caption, build_ai_disclosure_line, resolve_language
             meta_path = os.path.join(project_dir, "meta.json")
             meta = {}
             if os.path.isfile(meta_path):
                 with open(meta_path, "r", encoding="utf-8") as f:
                     meta = json.load(f)
-            caption = build_caption(meta) + "\n\n" + build_ai_disclosure_line()
-            media_id = ig_upload(project_dir, caption=caption)
-            log(f"  Instagram: tamam, media_id={media_id}")
+            caption = build_caption(meta) + "\n\n" + build_ai_disclosure_line(resolve_language(meta))
+            _log_instagram_result(ig_upload(project_dir, caption=caption))
         except Exception as e:
             log(f"  Instagram HATA: {e}")
     else:

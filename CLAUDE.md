@@ -115,6 +115,19 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
     göndermiyor, TikTok API'sinden kullanıcının gerçekten yayınlayıp
     yayınlamadığını öğrenmenin bir yolu yok). `notify_config.json` (gitignored,
     `{"ntfy_topic": "..."}`) yoksa sessizce atlanır, otomasyon bozulmaz.
+- **Paylaşım metinlerinin dili (caption/hashtag/YouTube yorumu) artık STİLE göre
+  otomatik (`config.THEMES[...]["language"]`, `social_text.resolve_language()`)**:
+  kullanıcı isteği — Suno'da üretilen müziğin STİLİNE göre dil hazırlığı otomatik
+  olsun, her projede elle `"language"` yazmaya gerek kalmasın. Ana kataloğun 6
+  tarzının hepsi `"tr"` (Türkiye pazarına göre kurulu, değişmedi); `"dj"` (DJ
+  Famous) `"en"` — markanın global açılımının ilk somut denemesi (kullanıcı
+  kararı, 2026-09-03: "ama sonra yabancı da olacak"). `meta.json`'da açık bir
+  `"language"` varsa (istisna/override için) o öncelikli, yoksa temanın
+  varsayılanına düşülür. `build_caption()`/`build_ai_disclosure_line()`/
+  `build_youtube_comment()` hepsi bu mekanizmayı kullanıyor; TikTok'un
+  `notify_pending_publish()` bildirimi İSTİSNA — o kanal OPERATÖRÜNE (kullanıcı)
+  gidiyor, izleyiciye değil, bu yüzden bilerek Türkçe kalıyor (dil seçimi
+  içerik/izleyici odaklı, operatör arayüzü değil).
 - **DJ Famous (`dj_sets/`, `dj_famous_process.py`) ana katalogla ASLA karıştırılmamalı**:
   ana katalog kurgusal, DJ Famous GERÇEK bir kişiyi (kendi açık onayıyla) konu alıyor —
   bu yüzden bilerek ayrı bir klasör, ayrı bir script, ayrı bir kilit/log dosyası. AI-üretimi
