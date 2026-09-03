@@ -112,11 +112,11 @@ doğrulamak istediğinde aynen yeniden çalıştırabilirsin.
 
 **Klasör izleyici (`watch_projects.py`, opsiyonel hızlandırıcı):** saatlik tetikleyici
 zaten yeterli ama tepki süresini (yeni Suno indirmesi -> fark edilme) saatlerden
-saniyelere indirmek için `setup_task_scheduler.ps1` aynı zamanda oturum açılışında
-başlayıp sürekli arkaplanda çalışan bir görev de kurar — `projects/<isim>/` altına
-herhangi bir adla (`.wav`/`.mp3`/`.m4a`) düşürülen yeni bir ses dosyasını yakalayıp
-`audio.wav`'a çevirir ve `auto_process.py`'yi hemen tetikler. Kademeleme kararına
-karışmaz — `auto_process.py` "sırası geldi mi" kontrolünü hâlâ kendisi yapar.
+dakikalara indirmek için `setup_task_scheduler.ps1` aynı zamanda 1 dakikada bir
+tekrar eden bir görev de kurar — `projects/<isim>/` altına herhangi bir adla
+(`.wav`/`.mp3`/`.m4a`) düşürülen yeni bir ses dosyasını yakalayıp `audio.wav`'a
+çevirir ve `auto_process.py`'yi hemen tetikler. Kademeleme kararına karışmaz —
+`auto_process.py` "sırası geldi mi" kontrolünü hâlâ kendisi yapar.
 
 ```bash
 python auto_process.py

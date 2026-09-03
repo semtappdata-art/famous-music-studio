@@ -142,8 +142,14 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   ses dosyasını yakalayıp `audio.wav`'a çevirir ve `auto_process.py`'yi hemen tetikler,
   ama kademeleme kararına karışmaz (`auto_process.py` "sırası geldi mi" kontrolünü
   hâlâ kendisi yapar) — sadece "dosya geldi → fark edilme" gecikmesini saatlerden
-  saniyelere indiriyor. `setup_task_scheduler.ps1` üçüncü bir görev olarak (oturum
-  açılışında başlayan, sürekli çalışan) kurar.
+  dakikalara indiriyor. TEK SEFERLİK bir tarama scripti — sürekli çalışan bir
+  arkaplan süreci DEĞİL, `setup_task_scheduler.ps1` bunu 1 dakikada bir tekrar eden
+  bir görev olarak kurar (`auto_process.py`'nin saatlik görevindeki AYNI tetikleyici
+  deseni). İlk tasarım ("oturum açılışında başlayan sürekli süreç", `-AtLogOn`
+  tetikleyicisi) bu ortamda (Claude Code'un arka planda/interaktif olmayan çalıştırma
+  bağlamı) `Register-ScheduledTask` "Erişim engellendi" hatası verdiği için terk
+  edildi — Windows'un logon-tabanlı tetikleyicileri böyle bir bağlamdan kaydedilirken
+  izin isteyebiliyor, zaman-tabanlı tekrarlı tetikleyiciler bu kısıtlamaya takılmıyor.
 - **`.ps1` dosyaları UTF-8 BOM'suz kaydedilirse Windows PowerShell 5.1'de BOZULUR**:
   `setup_task_scheduler.ps1` ilk yazıldığında BOM'suzdu — Türkçe karakterler (ı, ğ, ş,
   İ, —) ANSI kod sayfasıyla yanlış okunup parse hatalarına yol açıyordu (script hiç
