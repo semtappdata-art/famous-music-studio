@@ -200,6 +200,18 @@ python upload/youtube_upload.py --project "projects/sarki-adi" --thumbnail-only 
 python upload/youtube_upload.py --thumbnail-only --all                          # projects/ altındaki TÜMÜ
 ```
 
+## DJ Famous (haftalık özel üretim)
+
+Ana kataloktan (kurgusal temalar, günlük 6 üretim) tamamen AYRI, haftada bir kez
+yayınlanan, **gerçek, tanınabilir bir kişiyi** konu alan özel bir format —
+`auto_process.py` DEĞİL, `dj_famous_process.py` işler, `projects/` DEĞİL,
+`dj_sets/` klasörünü kullanır. Detay, kurulum ve AI-içerik açıklama kuralları için
+[dj_sets/README.md](dj_sets/README.md).
+
+```bash
+python dj_famous_process.py
+```
+
 ### Tarz/tema playlist'leri
 
 `auto_process.py`, her YouTube (uzun format) yüklemesinden sonra şarkıyı otomatik olarak

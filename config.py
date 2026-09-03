@@ -34,6 +34,9 @@ THEMES = {
     "akustik": {"label": "Akustik", "related": ["Folk", "Indie"], "accent": (230, 150, 60), "accent2": (255, 90, 140)},
     "hiphop": {"label": "Hip-Hop", "related": ["Trap", "Rap"], "accent": (255, 195, 60), "accent2": (255, 90, 40)},
     "arabesk": {"label": "Arabesk", "related": ["Trap", "Türkçe Rap"], "accent": (200, 40, 90), "accent2": (255, 140, 60)},
+    # Ana kataloğun 6 tarzından AYRI — haftalık DJ Famous setleri için (bkz.
+    # dj_sets/README.md). Kataloğun 6-slotlu tema çeşitlilik takibine dahil değil.
+    "dj": {"label": "DJ Set", "related": ["Mix", "Live Set"], "accent": (255, 210, 60), "accent2": (255, 60, 140)},
 }
 DEFAULT_THEME = "hiphop"  # meta.json'da "theme" belirtilmezse kullanılır
 
@@ -141,13 +144,20 @@ SOCIAL_LINKS = {
     "tiktok": "https://www.tiktok.com/@famousmusicstudio",
     "website": "https://famousmusicstudio.com",
 }
-BRAND_HASHTAGS = ["#FamousMusicStudio", "#AIMusic", "#YapayZekaMüzik", "#AIMusicChallenge"]
+# NOT: "#AIMusic"/"#YapayZekaMüzik"/"#AIMusicChallenge"/"#SunoAI" gibi AI-vurgulu
+# ibareler BİLİNÇLİ olarak burada YOK — kullanıcı kuralı: ürettiğimiz hiçbir
+# içerikte (caption, YouTube tag, video içi kayan yazı) bu ibareler kullanılmasın.
+# AI-üretimi olduğunun ZORUNLU bildirimi (platform politikası gereği) bundan AYRI
+# ve hâlâ yerinde: YouTube'da containsSyntheticMedia API bayrağı
+# (youtube_upload.py), TikTok'ta uygulama içi "AI-generated content" etiketi
+# hatırlatması (tiktok_upload.py), Instagram'da caption'a eklenen tek satır
+# (social_text.build_ai_disclosure_line, sadece DJ Famous'ta) — bunlar hashtag/
+# marka etiketi değil, gerçek zorunlu bildirim mekanizmaları, dokunulmadı.
+BRAND_HASHTAGS = ["#FamousMusicStudio"]
 
 # Keşfet/For You dağıtımını hedefleyen genel hashtag'ler — marka hashtag'lerinden
 # ayrı tutuluyor çünkü bunlar zamanla değişebilir (trend_hashtag_notlari.md'ye bak).
-# Eylül 2026 itibariyle araştırıldı: genel keşfet etiketleri + Suno/AI müzik
-# nişindeki aktif etiketler.
-DISCOVERY_HASHTAGS = ["#keşfet", "#fyp", "#viral", "#SunoAI"]
+DISCOVERY_HASHTAGS = ["#keşfet", "#fyp", "#viral"]
 
 # Caption'ın ilk satırı — kaydırmayı durdurmak için merak uyandıran kısa açılış cümlesi.
 # build_caption() şarkı başlığına göre bunlardan birini deterministik seçer (her şarkı

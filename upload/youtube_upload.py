@@ -59,7 +59,7 @@ def build_snippet(meta: dict) -> dict:
         f"🌐 Website: {links['website']}\n\n"
         f"{hashtags}"
     )
-    tags = genre_tags + [config.STATIC_LABEL_TEXT, "AI Music", "Yapay Zeka Muzik"]
+    tags = genre_tags + [config.STATIC_LABEL_TEXT]
 
     return {
         "title": title,
@@ -87,7 +87,7 @@ def build_shorts_snippet(meta: dict, full_video_id: str | None = None) -> dict:
     if full_video_id:
         description += f"\n\n🎧 Şarkının tamamı kanalımızda: https://youtu.be/{full_video_id}"
 
-    tags = genre_tags + [config.STATIC_LABEL_TEXT, "Shorts", "AI Music", "Yapay Zeka Muzik"]
+    tags = genre_tags + [config.STATIC_LABEL_TEXT, "Shorts"]
 
     return {
         "title": f"{title} #Shorts",
