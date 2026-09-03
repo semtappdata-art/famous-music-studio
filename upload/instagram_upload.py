@@ -34,6 +34,16 @@ NETLIFY_SECRETS_PATH = os.path.join(UPLOAD_DIR, "netlify_client_secrets.json")
 
 GRAPH_API = "https://graph.instagram.com/v21.0"
 
+COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
+
+
+def _find_cover(project_dir: str) -> str | None:
+    for name in COVER_NAMES:
+        path = os.path.join(project_dir, name)
+        if os.path.isfile(path):
+            return path
+    return None
+
 
 def _load_meta(project_dir: str) -> dict:
     meta_path = os.path.join(project_dir, "meta.json")
@@ -43,9 +53,18 @@ def _load_meta(project_dir: str) -> dict:
     return {}
 
 
-def _upload_to_netlify(video_path: str) -> str:
-    """Video dosyasını ayrı bir 'sadece medya' Netlify sitesine deploy edip
-    ortaya çıkan public URL'i döner. netlify_client_secrets.json gerektirir.
+def _upload_to_netlify(file_paths: list[str]) -> dict[str, str]:
+    """Verilen dosyaları (ör. video + kapak) AYNI 'sadece medya' Netlify
+    deploy'unda birlikte yükler, dosya adı -> public URL sözlüğü döner.
+    netlify_client_secrets.json gerektirir.
+
+    ÖNEMLİ: Dosyalar TEK bir deploy'da birlikte gönderilmeli — Netlify'ın
+    digest deploy'u her deploy'u sitenin İÇERİĞİNİN TAMAMI olarak ele alıyor,
+    yani video ayrı bir deploy'da, kapak ayrı bir deploy'da gönderilirse
+    İKİNCİ deploy videoyu siteden KALDIRIR (sadece kendi dosyasını içerir).
+    Instagram video_url'i asenkron işlerken (bkz. status_code polling) video
+    o sırada Netlify'da artık bulunamaz. Bu yüzden bu fonksiyon çoklu dosya
+    kabul ediyor, çağıran video+kapağı TEK çağrıda birlikte göndermeli.
 
     NOT: Önceden burada ham bir zip'i `Content-Type: application/zip` ile tek
     POST'ta göndermeyi deniyorduk (Netlify'ın "one-off deploy" yöntemi) — ama
@@ -66,17 +85,21 @@ def _upload_to_netlify(video_path: str) -> str:
     with open(NETLIFY_SECRETS_PATH, "r", encoding="utf-8") as f:
         creds = json.load(f)
 
-    filename = os.path.basename(video_path)
-    with open(video_path, "rb") as f:
-        content = f.read()
-    file_sha1 = hashlib.sha1(content).hexdigest()
+    contents: dict[str, bytes] = {}
+    sha1s: dict[str, str] = {}
+    for path in file_paths:
+        filename = os.path.basename(path)
+        with open(path, "rb") as f:
+            content = f.read()
+        contents[filename] = content
+        sha1s[filename] = hashlib.sha1(content).hexdigest()
 
     auth_headers = {"Authorization": f"Bearer {creds['token']}"}
 
     create_resp = requests.post(
         f"https://api.netlify.com/api/v1/sites/{creds['site_id']}/deploys",
         headers={**auth_headers, "Content-Type": "application/json"},
-        json={"files": {f"/{filename}": file_sha1}},
+        json={"files": {f"/{name}": sha for name, sha in sha1s.items()}},
         timeout=(10, 30),
     )
     create_resp.raise_for_status()
@@ -84,14 +107,16 @@ def _upload_to_netlify(video_path: str) -> str:
     deploy_id = deploy["id"]
 
     # Netlify aynı içeriği (aynı SHA1) daha önce görmediyse dosyayı ayrıca yükle.
-    if file_sha1 in (deploy.get("required") or []):
-        upload_resp = requests.put(
-            f"https://api.netlify.com/api/v1/deploys/{deploy_id}/files/{filename}",
-            headers={**auth_headers, "Content-Type": "application/octet-stream"},
-            data=content,
-            timeout=(10, 300),
-        )
-        upload_resp.raise_for_status()
+    required_shas = set(deploy.get("required") or [])
+    for name, content in contents.items():
+        if sha1s[name] in required_shas:
+            upload_resp = requests.put(
+                f"https://api.netlify.com/api/v1/deploys/{deploy_id}/files/{name}",
+                headers={**auth_headers, "Content-Type": "application/octet-stream"},
+                data=content,
+                timeout=(10, 300),
+            )
+            upload_resp.raise_for_status()
 
     # Deploy 'ready' olana kadar bekle
     status_resp = None
@@ -109,7 +134,7 @@ def _upload_to_netlify(video_path: str) -> str:
         raise RuntimeError("Netlify deploy zaman aşımına uğradı.")
 
     base_url = status_resp.json()["ssl_url"]
-    return f"{base_url}/{filename}"
+    return {name: f"{base_url}/{name}" for name in contents}
 
 
 def upload_video(project_dir: str, video_url: str | None = None, caption: str | None = None) -> str:
@@ -121,10 +146,32 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
     access_token = token["access_token"]
     ig_user_id = token["ig_user_id"]
 
+    # cover_url: verilmezse Instagram video_url'in ilk karesini (thumb_offset=0)
+    # kullanıyor — YouTube'da tespit edilen aynı sorun (başlıksız/rastgele kare)
+    # burada da geçerliydi. video + kapak TEK Netlify deploy'unda birlikte
+    # yükleniyor (bkz. _upload_to_netlify'daki not — ayrı deploy'lar birbirini siler).
+    cover_url = None
+    cover_path = _find_cover(project_dir)
+
     if video_url is None:
-        print("  video_url verilmedi, Netlify'a yükleniyor...")
-        video_url = _upload_to_netlify(video_path)
-        print(f"  yüklendi: {video_url}")
+        to_deploy = [video_path] + ([cover_path] if cover_path else [])
+        print("  Netlify'a yükleniyor...")
+        urls = _upload_to_netlify(to_deploy)
+        video_url = urls[os.path.basename(video_path)]
+        print(f"  video yüklendi: {video_url}")
+        if cover_path:
+            cover_url = urls.get(os.path.basename(cover_path))
+            print(f"  kapak yüklendi: {cover_url}")
+    elif cover_path:
+        # video_url dışarıdan verildi (--video-url) ama kapak yine de Netlify'a
+        # gidebilir — burada tek dosya olduğu için "başka bir dosyayı silme"
+        # riski yok.
+        try:
+            urls = _upload_to_netlify([cover_path])
+            cover_url = urls[os.path.basename(cover_path)]
+            print(f"  kapak yüklendi: {cover_url}")
+        except Exception as e:
+            print(f"  UYARI: kapak yüklenemedi, Instagram varsayılan kareyi kullanacak: {e}")
 
     youtube_url = None
     state_path = os.path.join(project_dir, "state.json")
@@ -147,14 +194,17 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
     # eklenmedi — resmi dokümantasyondan doğrulanınca buraya eklenmeli.
 
     # 1) Media container olustur
+    media_data = {
+        "media_type": "REELS",
+        "video_url": video_url,
+        "caption": caption,
+        "access_token": access_token,
+    }
+    if cover_url:
+        media_data["cover_url"] = cover_url
     create_resp = requests.post(
         f"{GRAPH_API}/{ig_user_id}/media",
-        data={
-            "media_type": "REELS",
-            "video_url": video_url,
-            "caption": caption,
-            "access_token": access_token,
-        },
+        data=media_data,
         timeout=(10, 30),
     )
     create_resp.raise_for_status()
