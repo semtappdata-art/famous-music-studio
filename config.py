@@ -34,6 +34,9 @@ THEMES = {
     "akustik": {"label": "Akustik", "related": ["Folk", "Indie"], "accent": (230, 150, 60), "accent2": (255, 90, 140)},
     "hiphop": {"label": "Hip-Hop", "related": ["Trap", "Rap"], "accent": (255, 195, 60), "accent2": (255, 90, 40)},
     "arabesk": {"label": "Arabesk", "related": ["Trap", "Türkçe Rap"], "accent": (200, 40, 90), "accent2": (255, 140, 60)},
+    # Ana kataloğun 6 tarzından AYRI — haftalık DJ Famous setleri için (bkz.
+    # dj_sets/README.md). Kataloğun 6-slotlu tema çeşitlilik takibine dahil değil.
+    "dj": {"label": "DJ Set", "related": ["Mix", "Live Set"], "accent": (255, 210, 60), "accent2": (255, 60, 140)},
 }
 DEFAULT_THEME = "hiphop"  # meta.json'da "theme" belirtilmezse kullanılır
 

@@ -32,6 +32,8 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
 - `upload/*.py` — platform bazlı yükleme + OAuth (youtube_auth, tiktok_auth, instagram_auth)
 - `upload/social_text.py` — caption/hashtag/etkileşim sorusu üretimi (şarkı başlığından
   deterministik seçim — aynı şarkı hep aynı satırları alır)
+- `dj_famous_process.py` — ana katalogdan (yukarıdaki akış) TAMAMEN AYRI, haftalık DJ
+  Famous üretimi (`dj_sets/` klasörü) — detay: `dj_sets/README.md`.
 
 ## Önemli tasarım kararları (nedenini bilmeden değiştirme)
 
@@ -95,6 +97,23 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   uygulamalar için ileri-tarihli yayın parametresi YOK (WebSearch ile doğrulandı, Eylül
   2026) — bu iki platformda "zamanlama" zaten script'in ne zaman çalıştığından ibaret,
   ek bir şey yapılamaz.
+- **DJ Famous (`dj_sets/`, `dj_famous_process.py`) ana katalogla ASLA karıştırılmamalı**:
+  ana katalog kurgusal, DJ Famous GERÇEK bir kişiyi (kendi açık onayıyla) konu alıyor —
+  bu yüzden bilerek ayrı bir klasör, ayrı bir script, ayrı bir kilit/log dosyası. AI-üretimi
+  olduğu gizlenmiyor (kullanıcıyla netleştirilen tasarım kararı): YouTube'un
+  `containsSyntheticMedia` bayrağı zaten otomatik, TikTok'ta yüklerken uygulamadan native
+  "AI-generated content" etiketinin açılması gerektiği hatırlatılıyor, Instagram
+  caption'ının sonuna `social_text.build_ai_disclosure_line()` ile tek satır ekleniyor
+  (Meta'nın `is_ai_generated` API alanı ikincil kaynaklarda geçiyor ama resmi
+  dokümantasyonda doğrulanamadı, bkz. `upload/instagram_upload.py`'deki not — bu yüzden
+  API'ye güvenmek yerine caption satırı kullanıldı). Gerçek bir kişinin fotoğrafını
+  girdi olarak kullanmak KENDİ açık rızasını gerektirir — aile içi bir karar olsa bile.
+  `generate_cover.py`'daki `_add_title_text()` bu özellik eklenirken bir hata da ortaya
+  çıkardı ve düzeltildi: elle sağlanan (character-roster'da olmayan) bir `art.jpg`
+  CANVAS_SIZE (1600x1600) dışında bir çözünürlükte/en-boy oranındaysa başlık metni
+  canvas dışına taşıp kesiliyordu — artık her zaman önce scale+crop ile normalize
+  ediliyor (video render tarafı zaten `ffmpeg_utils.py`'de bunu yapıyordu, sadece
+  kapak üretimi eksikti).
 - **AI-içerik açıklaması**: kanal %100 AI üretimi olduğu için YouTube upload'ında
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış

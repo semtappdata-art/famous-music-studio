@@ -49,6 +49,19 @@ def build_caption(meta: dict) -> str:
     )
 
 
+def build_ai_disclosure_line() -> str:
+    """DJ Famous gibi GERÇEK, tanınabilir bir kişiyi (bkz. dj_sets/README.md)
+    konu alan içeriklerde caption'a eklenen tek satırlık AI-üretimi bildirimi.
+    Meta'nın Graph API'sinde resmi bir 'is_ai_generated' alanı ikincil
+    kaynaklarda geçiyor ama developers.facebook.com'da doğrulanamadı (bkz.
+    instagram_upload.py'deki not) — bu yüzden en küçük/en az göze batan
+    güvenilir alternatif olarak caption'ın SONUNA (en az dikkat çeken yer)
+    tek satır ekleniyor. Ana kataloğun (kurgusal temalar/karakterler) normal
+    build_caption() çıktısına eklenmiyor, sadece gerçek kişi içeren içerikte
+    kullanılır."""
+    return "Bu içerik yapay zeka ile üretilmiştir."
+
+
 def build_youtube_comment(youtube_url: str) -> str:
     """Paylaşımdan SONRA ilk yorum olarak eklenecek kısa metin — caption'ın aksine
     yorumların keşfet dağıtımını etkilediğine dair bir kaygı yok, o yüzden link
