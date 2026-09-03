@@ -33,36 +33,58 @@ buluyor; kadın tarafta R&B/pop/Türkçe rap arasında geçiş yapabilen çok y�
 Her karakter: **[İsim] — [cinsiyet] — [ana tema] — [Suno vokal tanımı, doğrudan style
 etiketine eklenebilir] — [ilham kaynağı, taklit değil trend referansı]**
 
-1. **ASI** — erkek — `hiphop` — *"aggressive gritty male rap vocals, deep bass-heavy
-   delivery, raw street energy"* — Türkçe trap'te öne çıkan sert/agresif erkek vokal
-   trendinden ilhamla (bkz. araştırma notu, isim/kimlik taklidi yok).
-2. **Nova Deniz** — kadın — `hiphop`/`pop` geçişli — *"versatile female vocals, confident
-   rap-pop crossover delivery, melodic hooks with edge"* — rap/pop/R&B arası geçiş yapabilen
-   çok yönlü kadın vokal trendinden ilhamla.
-3. **Kerem Ateşi** — erkek — `arabesk` — *"warm raspy male vocals, melodic emotional
-   delivery, memorable chorus hooks, pop-rap-arabesk fusion energy"* — melodik/duygusal,
-   hem rap hem pop dinleyicisine hitap eden arabesk-pop melezi trendinden ilhamla (Son
-   Kez'in "warm raspy male vocals" yönüyle de tutarlı).
-4. **Azra Yıldız** — kadın — `arabesk` — *"powerful emotional female vocals, belting
-   arabesk-pop delivery, dramatic dynamic range"* — güçlü, duygusal arabesk-pop kadın
-   vokal trendinden ilhamla.
-5. **Ege Barış** — erkek — `pop` — *"warm smooth male vocals, radio-friendly pop delivery,
-   easy melodic hooks"* — geniş tabanlı Türkçe pop dinleyicisine hitap eden, erişilebilir
-   erkek vokal.
-6. **Lina Su** — kadın — `pop` — *"bright breathy female vocals, catchy pop delivery,
-   youthful energetic tone"* — geniş tabanlı pop dinleyicisine hitap eden kadın vokal.
-7. **Mira Rüzgar** — kadın — `pop`/`hiphop` geçişli — *"smoky soulful female vocals, R&B-
-   inflected pop delivery, intimate emotional tone"* — IngaRose'un uluslararası doğrulanmış
-   R&B/soul karakter formülünden ilhamla (taklit değil, kanıtlanmış bir kalıbın Türkçe'ye
-   uyarlanması).
-8. **Efe Sinyal** — erkek — `elektronik` — *"processed energetic male vocals, synth-driven
-   delivery, modern electronic pop energy"*
-9. **Elif Yağmur** — kadın — `akustik` — *"soft intimate female vocals, breathy acoustic
-   delivery, gentle fingerstyle-friendly tone"* — Son Kez'in akustik yönünün kadın karşılığı.
-10. **Kaya Demir** — erkek — `rock` — *"powerful gritty male rock vocals, raw energetic
-    delivery"* — kataloğun hâlâ hiç kullanılmamış `rock` slotunu dolduran karakter (bkz.
-    `ses_ve_tarz_takibi.md`, müzik prodüksiyon ajanı denetimi) — düşük veri desteğine
-    rağmen (`turkiye_muzik_trend_arastirmasi.md`) katalog çeşitliliği için tutuldu.
+Her karakterin ayrıca sabit bir portresi var (bkz. "Portre görselleri" bölümü) —
+parantez içindeki dosya adı `characters/` klasöründe aranan dosya.
+
+1. **ASI** (`characters/asi.jpg`) — erkek — `hiphop` — *"aggressive gritty male rap
+   vocals, deep bass-heavy delivery, raw street energy"* — Türkçe trap'te öne çıkan
+   sert/agresif erkek vokal trendinden ilhamla (bkz. araştırma notu, isim/kimlik
+   taklidi yok).
+2. **Nova Deniz** (`characters/nova-deniz.jpg`) — kadın — `hiphop`/`pop` geçişli —
+   *"versatile female vocals, confident rap-pop crossover delivery, melodic hooks
+   with edge"* — rap/pop/R&B arası geçiş yapabilen çok yönlü kadın vokal trendinden
+   ilhamla.
+3. **Kerem Ateşi** (`characters/kerem-atesi.jpg`) — erkek — `arabesk` — *"warm raspy
+   male vocals, melodic emotional delivery, memorable chorus hooks, pop-rap-arabesk
+   fusion energy"* — melodik/duygusal, hem rap hem pop dinleyicisine hitap eden
+   arabesk-pop melezi trendinden ilhamla (Son Kez'in "warm raspy male vocals"
+   yönüyle de tutarlı).
+4. **Azra Yıldız** (`characters/azra-yildiz.jpg`) — kadın — `arabesk` — *"powerful
+   emotional female vocals, belting arabesk-pop delivery, dramatic dynamic range"*
+   — güçlü, duygusal arabesk-pop kadın vokal trendinden ilhamla.
+5. **Ege Barış** (`characters/ege-baris.jpg`) — erkek — `pop` — *"warm smooth male
+   vocals, radio-friendly pop delivery, easy melodic hooks"* — geniş tabanlı Türkçe
+   pop dinleyicisine hitap eden, erişilebilir erkek vokal.
+6. **Lina Su** (`characters/lina-su.jpg`) — kadın — `pop` — *"bright breathy female
+   vocals, catchy pop delivery, youthful energetic tone"* — geniş tabanlı pop
+   dinleyicisine hitap eden kadın vokal.
+7. **Mira Rüzgar** (`characters/mira-ruzgar.jpg`) — kadın — `pop`/`hiphop` geçişli —
+   *"smoky soulful female vocals, R&B-inflected pop delivery, intimate emotional
+   tone"* — IngaRose'un uluslararası doğrulanmış R&B/soul karakter formülünden
+   ilhamla (taklit değil, kanıtlanmış bir kalıbın Türkçe'ye uyarlanması).
+8. **Efe Sinyal** (`characters/efe-sinyal.jpg`) — erkek — `elektronik` — *"processed
+   energetic male vocals, synth-driven delivery, modern electronic pop energy"*
+9. **Elif Yağmur** (`characters/elif-yagmur.jpg`) — kadın — `akustik` — *"soft
+   intimate female vocals, breathy acoustic delivery, gentle fingerstyle-friendly
+   tone"* — Son Kez'in akustik yönünün kadın karşılığı.
+10. **Kaya Demir** (`characters/kaya-demir.jpg`) — erkek — `rock` — *"powerful gritty
+    male rock vocals, raw energetic delivery"* — kataloğun hâlâ hiç kullanılmamış
+    `rock` slotunu dolduran karakter (bkz. `ses_ve_tarz_takibi.md`, müzik
+    prodüksiyon ajanı denetimi) — düşük veri desteğine rağmen
+    (`turkiye_muzik_trend_arastirmasi.md`) katalog çeşitliliği için tutuldu.
+
+## Portre görselleri
+
+Her karakterin `characters/` klasöründe sabit, tekrar kullanılan bir portresi olur
+(dosya adları yukarıda, kural detayı `characters/README.md`'de). **Bu portreler
+otomasyona ARTIK bağlı** — `generate_cover.py`, `meta.json`'da `"character"` alanı
+eşleşen bir portre bulursa onu `cover.jpg`/`art.jpg` için otomatik kullanır (yoksa
+sessizce procedural gradyana döner, hiçbir şey bozulmaz). Portreler:
+
+- **Metinsiz** olmalı (art.jpg kuralı — blur backdrop kaynağı da bu görsel).
+- **Fotogerçekçi "gerçek insan" olmamalı** — stilize/illüstratif, aşağıdaki "Sınır ve
+  dürüstlük notu"yla tutarlı olmalı.
+- Bir kere üretilip o karakterin HER şarkısında AYNI kalmalı.
 
 **Cinsiyet dağılımı:** 5 erkek (ASI, Kerem Ateşi, Ege Barış, Efe Sinyal, Kaya Demir), 5 kadın
 (Nova Deniz, Azra Yıldız, Lina Su, Mira Rüzgar, Elif Yağmur) — dengeli.
@@ -79,10 +101,13 @@ pop'a 2 + 1 geçişli, elektronik/akustik/rock'a 1'er — `turkiye_muzik_trend_a
 2. Karakterin vokal tanımını doğrudan Suno stil etiketine ekle (tema/tempo/enstrümantasyon
    ile birlikte, `suno_prompt_hazirlik.md`'deki şablona göre).
 3. `meta.json`'da `theme` alanını karakterin ana temasına göre ayarla.
-4. İstersen (opsiyonel, henüz zorunlu değil) `meta.json`'a `"character": "Kerem Ateşi"` gibi
-   bir alan ekleyip hangi karakterin hangi şarkıda kullanıldığını kayıt altına alabilirsin —
-   otomasyon şu an bu alanı okumuyor, ama gelecekte (örn. karakter bazlı playlist/marka
-   sayfası) faydalı olabilir.
+4. `meta.json`'a `"character": "Kerem Ateşi"` gibi bir alan ekle — bu artık SADECE kayıt
+   amaçlı değil: `generate_cover.py` bu alanı okuyup `characters/` klasöründe eşleşen bir
+   portre varsa (bkz. "Portre görselleri") onu `cover.jpg`/`art.jpg` için otomatik
+   kullanıyor. Portre henüz hazırlanmadıysa alan yine de zararsız — otomasyon sessizce
+   procedural gradyana düşer, hiçbir şey bozulmaz. `cover.jpg`/`art.jpg`'yi zaten elle
+   koyduysan (karakter portresinden bağımsız, tek seferlik özel bir görsel istiyorsan)
+   o da her zaman önceliklidir, karakter portresi sadece boşluğu doldurur.
 
 ## Sınır ve dürüstlük notu
 
