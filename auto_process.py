@@ -39,6 +39,18 @@ import os
 import sys
 import time
 
+# Windows'ta konsol/log çıktısı varsayılan olarak yerel kod sayfasına (örn.
+# cp1252/charmap) düşüyor — bu ne Türkçe karakterleri doğru basabiliyor (loglar
+# "Ba�ka bir" gibi bozuk görünüyordu) ne de caption'lardaki emoji'yi (örn. 🎵)
+# hiç temsil edemiyor, ikincisi UnicodeEncodeError ile print() çağrısını
+# patlatıp upload'ı (henüz gerçek yükleme başlamadan) tamamen durduruyordu —
+# bkz. tiktok_upload.py'deki caption print'i. UTF-8'e zorlamak ikisini de çözer.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload"))
 
