@@ -67,6 +67,11 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpe
   kopyalanınca amatör görünüyordu (kullanıcı geri bildirimi). Artık her sözler
   dosyasında, etiketli Suno versiyonunun altında etiketsiz, doğrudan açıklamaya
   yapıştırılabilir bir "Temiz Sözler" bölümü de bulunuyor.
+- **Şarkı Intro'sunun ilk satırı temayı DOĞRUDAN adlandırmaz**: "Kırdım zincirleri,
+  artık özgürüm" gibi açılışlar (şarkının konusunu hemen özetleyen "tez cümlesi")
+  yapay/şablon hissi veriyordu (kullanıcı geri bildirimi). Artık Intro somut bir
+  an/detay/duyu imgesiyle açılıyor, temayı dolaylı hissettiriyor. Detay:
+  `suno_prompt_hazirlik.md`, "Intro kuralı".
 - **Koşu başına proje sayısı (`--count`, varsayılan 2)**: bir ara bilinçli olarak 1'e
   düşürülüp günde 2 AYRI Görev Zamanlayıcı tetikleyicisine geçilmişti ("aynı anda birden
   fazla şarkı aynı takipçi kitlesinde birbiriyle yarışır" riski) — kullanıcı bu riski
