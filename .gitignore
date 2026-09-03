@@ -44,3 +44,4 @@ auto_process.log
 .auto_process.lock
 dj_famous_process.log
 .dj_famous_process.lock
+watch_projects.log
