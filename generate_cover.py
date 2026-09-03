@@ -140,22 +140,27 @@ def _add_bokeh(bg_path: str, out_path: str, accent: tuple[int, int, int], seed: 
         raise RuntimeError(f"Bokeh dokusu eklenemedi: {result.stderr[-1000:]}")
 
 
-def _add_title_text(bg_path: str, out_path: str, title: str) -> None:
+def _add_title_text(bg_path: str, out_path: str, title: str, y_center_ratio: float = 0.5) -> None:
     """bg_path'teki görsele başlık + sabit marka satırını ortalayarak yazar,
-    out_path'e yazar (bg_path değiştirilmez)."""
+    out_path'e yazar (bg_path değiştirilmez). y_center_ratio, başlığın dikey
+    merkezinin canvas yüksekliğine oranı — procedural gradyanda tam ortada
+    (0.5) durur, ama bir karakter portresi arka planken (bkz. generate())
+    büst siluetiyle çakışmasın diye başın ÜSTÜNDEKİ boş alana (küçük bir
+    oran) taşınır."""
     rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
     title_escaped = _escape_drawtext(title)
     label_escaped = _escape_drawtext(config.STATIC_LABEL_TEXT)
     title_fontsize = int(CANVAS_SIZE * 0.075)
     label_fontsize = int(CANVAS_SIZE * 0.03)
+    y_center = int(CANVAS_SIZE * y_center_ratio)
 
     filter_complex = (
         f"drawtext=fontfile={rel_font}:text='{title_escaped}':"
         f"fontcolor=white:fontsize={title_fontsize}:"
-        f"x=(w-text_w)/2:y=(h-text_h)/2,"
+        f"x=(w-text_w)/2:y={y_center}-(text_h/2),"
         f"drawtext=fontfile={rel_font}:text='{label_escaped}':"
         f"fontcolor=white@0.75:fontsize={label_fontsize}:"
-        f"x=(w-text_w)/2:y=(h/2)+{int(title_fontsize * 0.9)}"
+        f"x=(w-text_w)/2:y={y_center}+{int(title_fontsize * 0.9)}"
     )
     cmd = [
         "ffmpeg", "-y",
@@ -210,7 +215,12 @@ def generate(project_dir: str) -> None:
             shutil.copy(bg_path, art_path)
             print(f"  art{bg_ext} üretildi ({source_label})")
         if not has_cover:
-            _add_title_text(bg_path, cover_path, title)
+            # Karakter portresi kullanılırken başlık, büst siluetinin (baş üstü
+            # ~%25'ten başlıyor) ÜSTÜNDEKİ boş alana taşınıyor ki üst üste
+            # binmesin — procedural gradyanda böyle bir "konu" olmadığı için
+            # tam ortada (varsayılan) kalıyor.
+            y_ratio = 0.13 if character_image else 0.5
+            _add_title_text(bg_path, cover_path, title, y_center_ratio=y_ratio)
             print(f"  cover.png üretildi ({title!r}, {source_label})")
     finally:
         for tmp_path in cleanup_paths:

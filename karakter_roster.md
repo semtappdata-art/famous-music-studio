@@ -75,11 +75,12 @@ parantez içindeki dosya adı `characters/` klasöründe aranan dosya.
 
 ## Portre görselleri
 
-Her karakterin `characters/` klasöründe sabit, tekrar kullanılan bir portresi olur
-(dosya adları yukarıda, kural detayı `characters/README.md`'de). **Bu portreler
-otomasyona ARTIK bağlı** — `generate_cover.py`, `meta.json`'da `"character"` alanı
-eşleşen bir portre bulursa onu `cover.jpg`/`art.jpg` için otomatik kullanır (yoksa
-sessizce procedural gradyana döner, hiçbir şey bozulmaz). Portreler:
+Her karakterin `characters/` klasöründe sabit, tekrar kullanılan bir portresi VAR
+(dosya adları yukarıda, `generate_character_portraits.py` ile üretildi — büst siluet +
+2 harfli monogram, kural detayı `characters/README.md`'de). Bu portreler otomasyona
+bağlı — `generate_cover.py`, `meta.json`'da `"character"` alanı eşleşen bir portre
+bulursa onu `cover.jpg`/`art.jpg` için otomatik kullanır (yoksa sessizce procedural
+gradyana döner, hiçbir şey bozulmaz). Portreler:
 
 - **Metinsiz** olmalı (art.jpg kuralı — blur backdrop kaynağı da bu görsel).
 - **Fotogerçekçi "gerçek insan" olmamalı** — stilize/illüstratif, aşağıdaki "Sınır ve
