@@ -13,6 +13,11 @@ edilmeden — bu dosya o hatayı tekrarlamamak için tutuluyor.)
 | Kalbim Oynuyor | pop | female vocals |
 | Sabaha Kadar | elektronik | female vocals |
 | Son Kez | akustik | male vocals (raspy) |
+| Yürek Yarası | arabesk | female vocals (powerful, belting) |
+| Bir Bahar Daha | pop | male vocals (warm, smooth) |
+| Neon Kalp | elektronik | female vocals (bright, breathy) |
+| Kırık Zincir | rock | male vocals (powerful, gritty) |
+| Sessiz Mektup | akustik | female vocals (soft, breathy) |
 
 Yeni şarkı eklerken: yukarıdaki tabloya bir satır ekle, son 2-3 şarkıdan
 farklı bir vokal cinsiyeti/dokusu seç (mümkünse erkek/kadın dönüşümlü,
