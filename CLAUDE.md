@@ -99,6 +99,13 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış
   alan adı riskli), sadece kullanıcıya elle etiketleme hatırlatması var.
+- **TikTok kapak (cover) görseli API'den ayarlanamıyor**: `video_cover_image_url` sadece
+  audit'ten geçmiş Direct Post akışında var, bu projenin kullandığı Taslak/Gelen Kutusu
+  akışında yok (WebSearch ile doğrulandı, Eylül 2026) — koda eklenebilecek bir şey değil.
+  Kullanıcının elle yapabileceği tek şey: TikTok uygulamasında (taslağı yayınlarken YA DA
+  yayınlandıktan sonra 7 gün içinde "Gönderiyi düzenle" → "Kapağı düzenle") galeriden özel
+  bir fotoğraf (projenin `cover.jpg`'si) yükleyebiliyor — video karesi seçmek zorunda değil.
+  Detay: README.md, "Kimlik doğrulama" → TikTok adımı.
 
 ## Beş özel subagent (`.claude/agents/`)
 

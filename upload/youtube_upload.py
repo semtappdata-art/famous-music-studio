@@ -4,6 +4,8 @@ Kullanım:
     python upload/youtube_upload.py --project "projects/beni bırakma"
     python upload/youtube_upload.py --project "projects/beni bırakma" --privacy public
     python upload/youtube_upload.py --project "projects/beni bırakma" --shorts
+    python upload/youtube_upload.py --project "projects/beni bırakma" --thumbnail-only
+    python upload/youtube_upload.py --thumbnail-only --all   # TÜM projelerin thumbnail'ini tek seferde düzeltir
 
 meta.json'dan title/theme okur, output/youtube_16x9.mp4'ü yükler (upload_video),
 sonucu projects/<isim>/state.json'a yazar. --shorts ile output/shorts_9x16.mp4
@@ -257,6 +259,15 @@ def upload_short(project_dir: str, privacy: str, full_video_id: str | None = Non
     video_id = _upload(video_path, snippet, privacy, publish_at=publish_at)
     print(f"  tamam: https://youtube.com/shorts/{video_id}")
 
+    try:
+        upload_thumbnail(get_authenticated_service(), video_id, project_dir)
+    except Exception as e:
+        # upload_video()'daki ile aynı mantık: thumbnail başarısız olsa da video
+        # zaten yüklendi, akışı durdurmuyoruz. Shorts'ta özel thumbnail YouTube
+        # Partner Program üyeliğine bağlı olabilir (2026 itibariyle) — HATA
+        # burada "desteklenmiyor" anlamına da gelebilir, "video bozuk" değil.
+        print(f"  Thumbnail HATA: {e}")
+
     _update_state(project_dir, {
         "youtube_shorts_video_id": video_id,
         "youtube_shorts_uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -267,25 +278,66 @@ def upload_short(project_dir: str, privacy: str, full_video_id: str | None = Non
 
 
 def fix_thumbnail(project_dir: str) -> None:
-    """Zaten yüklenmiş bir video için thumbnail'i (yeniden) ayarlar — video
+    """Zaten yüklenmiş video(lar) için thumbnail'i (yeniden) ayarlar — video
     upload_thumbnail eklenmeden ÖNCE yüklendiyse YouTube'un rastgele seçtiği
-    kareyle kalmıştı, bu onu düzeltir. state.json'dan youtube_video_id okur."""
+    kareyle kalmıştı, bu onu düzeltir. state.json'dan youtube_video_id VE
+    (varsa) youtube_shorts_video_id okur, ikisini de dener."""
     state_path = os.path.join(project_dir, "state.json")
     if not os.path.isfile(state_path):
         print(f"  HATA: {state_path} yok — bu proje hiç yüklenmemiş.")
         return
     with open(state_path, "r", encoding="utf-8") as f:
         state = json.load(f)
+
     video_id = state.get("youtube_video_id")
-    if not video_id:
-        print("  HATA: state.json'da youtube_video_id yok.")
+    shorts_id = state.get("youtube_shorts_video_id")
+    if not video_id and not shorts_id:
+        print("  HATA: state.json'da youtube_video_id/youtube_shorts_video_id yok.")
         return
-    upload_thumbnail(get_authenticated_service(), video_id, project_dir)
+
+    youtube = get_authenticated_service()
+    if video_id:
+        print("  uzun format:")
+        upload_thumbnail(youtube, video_id, project_dir)
+    if shorts_id:
+        print("  Shorts:")
+        try:
+            upload_thumbnail(youtube, shorts_id, project_dir)
+        except Exception as e:
+            print(f"  Shorts thumbnail HATA: {e}")
+
+
+def fix_all_thumbnails(base: str = "projects") -> None:
+    """--thumbnail-only --all: base altındaki, YouTube'a zaten yüklü (state.json'da
+    youtube_video_id ve/veya youtube_shorts_video_id olan) TÜM projelerin
+    thumbnail'ini tek seferde düzeltir. Zaten doğru kapakla yüklü videolarda da
+    tekrar çağırmak güvenlidir (thumbnails().set() üzerine yazar, idempotent)."""
+    if not os.path.isdir(base):
+        print(f"HATA: {base} klasörü bulunamadı.")
+        return
+    for name in sorted(os.listdir(base)):
+        project_dir = os.path.join(base, name)
+        if not os.path.isdir(project_dir):
+            continue
+        state_path = os.path.join(project_dir, "state.json")
+        if not os.path.isfile(state_path):
+            continue
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        if not state.get("youtube_video_id") and not state.get("youtube_shorts_video_id"):
+            continue
+        print(f"\n=== {name} ===")
+        try:
+            fix_thumbnail(project_dir)
+        except Exception as e:
+            print(f"  HATA: {e}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Render edilmiş bir projeyi YouTube'a yükler.")
-    parser.add_argument("--project", required=True, help="Proje klasörü (örn. projects/sarki-adi)")
+    parser.add_argument(
+        "--project", help="Proje klasörü (örn. projects/sarki-adi) — --thumbnail-only --all ile kullanılmaz",
+    )
     parser.add_argument(
         "--privacy", default="private", choices=["private", "unlisted", "public"],
         help="Yükleme görünürlüğü (varsayılan: private)",
@@ -296,8 +348,14 @@ def main():
     )
     parser.add_argument(
         "--thumbnail-only", action="store_true",
-        help="Video zaten yüklüyse (state.json'da youtube_video_id varsa) sadece thumbnail'i "
-             "(yeniden) ayarlar, videoyu tekrar yüklemez — geriye dönük düzeltme için.",
+        help="Video zaten yüklüyse (state.json'da youtube_video_id/youtube_shorts_video_id "
+             "varsa) sadece thumbnail'i (yeniden) ayarlar, videoyu tekrar yüklemez — geriye "
+             "dönük düzeltme için. --project ile tek proje, --all ile TÜM projeler.",
+    )
+    parser.add_argument(
+        "--all", action="store_true",
+        help="Sadece --thumbnail-only ile birlikte: projects/ altındaki YouTube'a zaten "
+             "yüklü TÜM projelerin thumbnail'ini tek seferde düzeltir.",
     )
     parser.add_argument(
         "--no-schedule", action="store_true",
@@ -306,8 +364,14 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.thumbnail_only:
+    if args.thumbnail_only and args.all:
+        fix_all_thumbnails()
+    elif args.thumbnail_only:
+        if not args.project:
+            parser.error("--thumbnail-only için --project ya da --all gerekli")
         fix_thumbnail(args.project)
+    elif not args.project:
+        parser.error("--project gerekli (ya da --thumbnail-only --all)")
     elif args.shorts:
         upload_short(args.project, args.privacy, schedule=not args.no_schedule)
     else:

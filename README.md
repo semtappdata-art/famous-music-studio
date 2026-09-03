@@ -164,6 +164,16 @@ Kimlik doğrulama (her platform için bir kerelik, ilgili script'in kendisiyle):
    girişi tamamla. Uygulama henüz TikTok'un içerik yayınlama (video.publish) audit/review
    sürecinden geçmediyse, video sadece TikTok'un gelen kutusuna TASLAK olarak düşer —
    yayınlamayı TikTok uygulamasından elle tamamlaman gerekir.
+
+   **Kapak (cover) görseli TikTok'ta API'den ayarlanamıyor** (WebSearch ile doğrulandı,
+   Eylül 2026) — `video_cover_image_url` parametresi sadece audit'ten geçmiş uygulamaların
+   kullanabildiği Direct Post akışında var, bu projenin kullandığı Taslak/Gelen Kutusu
+   akışında yok. Elle düzeltme mümkün: TikTok uygulamasında taslağı yayınlarken "Kapak
+   seç" ekranında galeriden özel bir fotoğraf yükleyebiliyorsun (video karesi seçmek
+   zorunda değilsin) — ilgili projenin `cover.jpg`/`cover.png` dosyasını telefonuna
+   aktarıp oradan seç. Videoyu YAYINLADIKTAN SONRA bile (7 gün içinde) profil →
+   video → ⋯ → "Gönderiyi düzenle" → "Kapağı düzenle" → "Yükle" ile aynı şekilde
+   değiştirebiliyorsun — zaten yayınlanmış eski videolar için de kullanılabilir.
 3. **Instagram** — Meta for Developers'ta Instagram API kurulumu yapıp
    `upload/instagram_client_secrets.json` doldur, `python upload/instagram_auth.py
    --print-url` ve `--code KOD` ile tamamla. Instagram Graph API dosya upload'ı değil,
@@ -180,6 +190,12 @@ python upload/youtube_upload.py --project "projects/sarki-adi"
 python upload/youtube_upload.py --project "projects/sarki-adi" --shorts
 python upload/tiktok_upload.py --project "projects/sarki-adi"
 python upload/instagram_upload.py --project "projects/sarki-adi"
+```
+
+Zaten yüklenmiş videoların YouTube thumbnail'ini (geriye dönük) düzeltmek için:
+```bash
+python upload/youtube_upload.py --project "projects/sarki-adi" --thumbnail-only  # tek proje (uzun format + varsa Shorts)
+python upload/youtube_upload.py --thumbnail-only --all                          # projects/ altındaki TÜMÜ
 ```
 
 ### Tarz/tema playlist'leri
