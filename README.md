@@ -98,6 +98,18 @@ kaç dosya biriktiği önemli olmadan gün içine dengeli yaymak.
 saatte bir yeterli (birden fazla tetikleyici kurmana gerek yok, script kendi kendine
 "sırası geldi mi" diye karar veriyor).
 
+**Kurulum elle Görev Zamanlayıcı arayüzünde tıklamayı gerektirmez** —
+[setup_task_scheduler.ps1](setup_task_scheduler.ps1) bunu tek komutla yapar: eski
+(ör. günde 2 kez 13:00/19:00 çalışan) `auto_process.py` görevlerini otomatik bulup
+siler, yerine saatte bir çalışan TEK bir görev kurar.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File setup_task_scheduler.ps1
+```
+
+Tekrar çalıştırmak güvenlidir (idempotent) — script değiştiğinde ya da tekrar
+doğrulamak istediğinde aynen yeniden çalıştırabilirsin.
+
 ```bash
 python auto_process.py
 python auto_process.py --privacy unlisted
