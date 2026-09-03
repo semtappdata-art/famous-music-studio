@@ -144,21 +144,20 @@ SOCIAL_LINKS = {
     "tiktok": "https://www.tiktok.com/@famousmusicstudio",
     "website": "https://famousmusicstudio.com",
 }
-# NOT: "#AIMusic"/"#YapayZekaMüzik" BİLİNÇLİ olarak burada YOK — kullanıcı kuralı:
-# ürettiğimiz hiçbir içerikte (caption, YouTube tag, video içi kayan yazı) bu
-# ibareler kullanılmasın. AI-üretimi olduğunun ZORUNLU bildirimi (platform
-# politikası gereği) bundan AYRI ve hâlâ yerinde: YouTube'da containsSyntheticMedia
-# API bayrağı (youtube_upload.py), TikTok'ta uygulama içi "AI-generated content"
-# etiketi hatırlatması (tiktok_upload.py), Instagram'da caption'a eklenen tek
-# satır (social_text.build_ai_disclosure_line, sadece DJ Famous'ta) — bunlar
-# hashtag/marka etiketi değil, gerçek zorunlu bildirim mekanizmaları, dokunulmadı.
-BRAND_HASHTAGS = ["#FamousMusicStudio", "#AIMusicChallenge"]
+# NOT: "#AIMusic"/"#YapayZekaMüzik"/"#AIMusicChallenge"/"#SunoAI" gibi AI-vurgulu
+# ibareler BİLİNÇLİ olarak burada YOK — kullanıcı kuralı: ürettiğimiz hiçbir
+# içerikte (caption, YouTube tag, video içi kayan yazı) bu ibareler kullanılmasın.
+# AI-üretimi olduğunun ZORUNLU bildirimi (platform politikası gereği) bundan AYRI
+# ve hâlâ yerinde: YouTube'da containsSyntheticMedia API bayrağı
+# (youtube_upload.py), TikTok'ta uygulama içi "AI-generated content" etiketi
+# hatırlatması (tiktok_upload.py), Instagram'da caption'a eklenen tek satır
+# (social_text.build_ai_disclosure_line, sadece DJ Famous'ta) — bunlar hashtag/
+# marka etiketi değil, gerçek zorunlu bildirim mekanizmaları, dokunulmadı.
+BRAND_HASHTAGS = ["#FamousMusicStudio"]
 
 # Keşfet/For You dağıtımını hedefleyen genel hashtag'ler — marka hashtag'lerinden
 # ayrı tutuluyor çünkü bunlar zamanla değişebilir (trend_hashtag_notlari.md'ye bak).
-# Eylül 2026 itibariyle araştırıldı: genel keşfet etiketleri + Suno/AI müzik
-# nişindeki aktif etiketler.
-DISCOVERY_HASHTAGS = ["#keşfet", "#fyp", "#viral", "#SunoAI"]
+DISCOVERY_HASHTAGS = ["#keşfet", "#fyp", "#viral"]
 
 # Caption'ın ilk satırı — kaydırmayı durdurmak için merak uyandıran kısa açılış cümlesi.
 # build_caption() şarkı başlığına göre bunlardan birini deterministik seçer (her şarkı
