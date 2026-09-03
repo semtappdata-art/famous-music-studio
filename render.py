@@ -86,6 +86,10 @@ def render_project(project_dir: str) -> bool:
     meta = load_meta(project_dir)
     title = meta.get("title")
     theme = meta.get("theme")
+    # DJ Famous gibi özel içerikler için sabit alt satırı override eder (ör.
+    # "DJ Famous") — verilmezse ffmpeg_utils.render_video config.STATIC_LABEL_TEXT'e
+    # ("Famous Music Studio") düşer, ana katalog etkilenmez.
+    static_label = meta.get("static_label")
 
     output_dir = os.path.join(project_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
@@ -112,6 +116,7 @@ def render_project(project_dir: str) -> bool:
         use_highlight = platform_key in config.HIGHLIGHT_PLATFORMS
         ffmpeg_utils.render_video(
             art_path, audio_path, output_path, width, height, title, theme,
+            static_label=static_label,
             start_time=highlight_start if use_highlight else None,
             end_time=highlight_end if use_highlight else None,
         )

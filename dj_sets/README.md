@@ -44,8 +44,15 @@ dj_sets/<hafta-etiketi>/
                         # dosya boyutu buna göre artar, bu normal)
     art.jpg             # Arda'nın (AI ile üretilmiş/işlenmiş) fotoğrafı — kartın içeriği +
                         # arka plan blur kaynağı olarak kullanılır
-    meta.json           # {"title": "DJ Famous - ...", "theme": "dj"}
+    meta.json           # {"title": "Hafta 1 Seti", "theme": "dj", "static_label": "DJ Famous"}
 ```
+
+`static_label` — ana katalogda videonun altındaki SABİT (kaymayan) satır her zaman
+"Famous Music Studio" (`config.STATIC_LABEL_TEXT`). DJ Famous'ta bunun yerine "DJ Famous"
+sabit dursun, `title` (ör. "Hafta 1 Seti") KAYSIN isteniyor — `meta.json`'a
+`"static_label": "DJ Famous"` eklemek yeterli, `render.py` bunu otomatik okuyup
+`ffmpeg_utils.render_video()`'ya geçiriyor. Belirtilmezse ana kataloktaki varsayılana
+(`config.STATIC_LABEL_TEXT`) düşer.
 
 `cover.jpg` elle sağlanmazsa `generate_cover.py` otomatik üretir — artık `art.jpg`
 elle sağlanmışsa (karakter roster'ından değil) o görselin üstüne başlık metni

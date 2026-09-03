@@ -186,7 +186,10 @@ def ensure_vignette(width: int, height: int, theme_key: str) -> str:
 
 
 
-def _build_filter_complex(width: int, height: int, duration: float, title: str | None, has_art: bool, theme_key: str) -> str:
+def _build_filter_complex(
+    width: int, height: int, duration: float, title: str | None, has_art: bool,
+    theme_key: str, static_label: str | None = None,
+) -> str:
     fps = config.FPS
     bg_pan_w, bg_pan_h = _panned_size(width, height)
 
@@ -262,7 +265,11 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
     if title:
         # Künye yazısı (şarkı adı + müzik türü, tekrarlı) kartın ALTINDA, kart
         # genişliğinde (tüm ekran genişliğinde DEĞİL) kayıyor. Altında da sabit
-        # "Famous Music Studio" marka satırı duruyor (kaymıyor).
+        # bir marka satırı duruyor (kaymıyor) — ana katalogda "Famous Music
+        # Studio" (config.STATIC_LABEL_TEXT), ama static_label verilmişse (ör.
+        # DJ Famous için "DJ Famous") onun yerine o kullanılıyor — meta.json'daki
+        # "static_label" alanından geliyor, bkz. render.py.
+        label_text = static_label or config.STATIC_LABEL_TEXT
         sep = config.MARQUEE_SEPARATOR
         genre_labels = [config.THEMES[theme_key]["label"]] + config.THEMES[theme_key].get("related", [])
         genre_text = sep.join(genre_labels)
@@ -272,9 +279,9 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
         speed = config.MARQUEE_SPEED_PX_S
 
         # Kayan yazının GÖRÜNÜR penceresi artık kart genişliği değil, alttaki sabit
-        # "Famous Music Studio" satırıyla aynı genişlikte (ikisi aynı fontta/boyutta
-        # olduğu için karakter sayısına göre piksel genişliği kabaca tahmin ediliyor).
-        label_width_est = int(len(config.STATIC_LABEL_TEXT) * label_fontsize * config.FONT_CHAR_WIDTH_RATIO)
+        # marka satırıyla aynı genişlikte (ikisi aynı fontta/boyutta olduğu için
+        # karakter sayısına göre piksel genişliği kabaca tahmin ediliyor).
+        label_width_est = int(len(label_text) * label_fontsize * config.FONT_CHAR_WIDTH_RATIO)
         marquee_w = min(card_size, max(1, label_width_est))
         marquee_x = card_x + (card_size - marquee_w) // 2
 
@@ -289,7 +296,7 @@ def _build_filter_complex(width: int, height: int, duration: float, title: str |
 
         # Sabit marka satırı: künye yazısıyla AYNI font ve AYNI düz beyaz renk —
         # tek tip, tutarlı bir yazı görünümü için renk animasyonu YOK.
-        label_escaped = _escape_drawtext(config.STATIC_LABEL_TEXT)
+        label_escaped = _escape_drawtext(label_text)
         parts.append(
             f"[{pre_label}]drawtext=fontfile={rel_font}:text='{label_escaped}':"
             f"fontcolor={config.FONT_COLOR}:fontsize={label_fontsize}:"
@@ -321,9 +328,13 @@ def render_video(
     theme: str | None = None,
     start_time: float | None = None,
     end_time: float | None = None,
+    static_label: str | None = None,
 ) -> None:
     """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
-    kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için."""
+    kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için.
+    static_label verilmezse config.STATIC_LABEL_TEXT ("Famous Music Studio")
+    kullanılır — DJ Famous gibi özel içerikler için (bkz. render.py) override
+    edilebilir."""
     full_duration = get_audio_duration(audio_path)
     if start_time is not None and end_time is not None:
         duration = min(end_time, full_duration) - start_time
@@ -333,7 +344,7 @@ def render_video(
     mask_path = ensure_card_mask()
     has_art = bool(art_path)
     canvas_path = ensure_art_backdrop(art_path, width, height) if has_art else ensure_vignette(width, height, theme_key)
-    filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key)
+    filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key, static_label)
 
     audio_input = ["-ss", f"{start_time:.3f}"] if start_time is not None else []
     cmd = [
