@@ -18,13 +18,16 @@ yükle — render mimarisi, ffmpeg tuzakları, config.py ayarları orada.
 ## Mimari — kısa özet
 
 ```
-audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpeg ile video)
-    → auto_process.py: YouTube (uzun+Shorts) + TikTok + Instagram yükleme
+audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project.py (sağlık kontrolü)
+    → render.py (ffmpeg ile video) → auto_process.py: YouTube (uzun+Shorts) + TikTok + Instagram
 ```
 
 - `config.py` — tüm görünüm/kalite ayarları (temalar, kart boyutu, backdrop pan/hue hızı, vb.)
 - `ffmpeg_utils.py` — kart+backdrop+marquee+progress-bar filtergraph inşası
 - `generate_cover.py` — eksik cover/art'ı tema rengi + bokeh dokusuyla otomatik üretir
+- `validate_project.py` — render'dan ÖNCE otomatik çalışan sağlık kontrolü (bozuk ses,
+  geçersiz meta.json/theme, art==cover metin sızması şüphesi) — `render.py` her projede
+  render başlamadan önce bunu çağırır, HATA varsa render'a hiç girmez
 - `auto_process.py` — asıl production giriş noktası, `--count` kadar bekleyen projeyi işler
 - `upload/*.py` — platform bazlı yükleme + OAuth (youtube_auth, tiktok_auth, instagram_auth)
 - `upload/social_text.py` — caption/hashtag/etkileşim sorusu üretimi (şarkı başlığından
