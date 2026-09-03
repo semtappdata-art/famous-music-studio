@@ -206,7 +206,7 @@ def _auto_pace_count(pending: list, ready: list) -> int:
     return 0
 
 
-def process_project(project_dir: str, privacy: str) -> None:
+def process_project(project_dir: str, privacy: str, schedule: bool = True) -> None:
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
 
     try:
@@ -235,7 +235,7 @@ def process_project(project_dir: str, privacy: str) -> None:
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
             from youtube_upload import upload_video as yt_upload
-            youtube_video_id = yt_upload(project_dir, privacy)
+            youtube_video_id = yt_upload(project_dir, privacy, schedule=schedule)
             log(f"  YouTube: tamam, https://youtu.be/{youtube_video_id}")
         except Exception as e:
             log(f"  YouTube HATA: {e}")
@@ -264,7 +264,7 @@ def process_project(project_dir: str, privacy: str) -> None:
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
             from youtube_upload import upload_short as yt_upload_short
-            shorts_id = yt_upload_short(project_dir, privacy, youtube_video_id)
+            shorts_id = yt_upload_short(project_dir, privacy, youtube_video_id, schedule=schedule)
             log(f"  YouTube Shorts: tamam, https://youtube.com/shorts/{shorts_id}")
         except Exception as e:
             log(f"  YouTube Shorts HATA: {e}")
@@ -306,6 +306,18 @@ def main():
     )
     parser.add_argument("--base", default="projects", help="Proje klasörlerinin kök dizini")
     parser.add_argument(
+        "--no-schedule", action="store_true",
+        help=(
+            "YouTube'un golden-hour zamanlamasını (config.GOLDEN_HOURS, 12:00-14:00/"
+            "18:00-22:00 TR) devre dışı bırakır — video hemen public yüklenir. "
+            "VARSAYILAN: render/upload anı otomatik kademelemeyle (saatte bir kontrol) "
+            "günün her saatine denk gelebildiği için, privacy=public olan videolar "
+            "YouTube'a private+publishAt ile yüklenir ve bir sonraki golden-hour "
+            "penceresinde otomatik public olur (YouTube bunu kendisi yapar, script "
+            "tekrar çağrılmasına gerek yok)."
+        ),
+    )
+    parser.add_argument(
         "--count", type=int, default=None,
         help=(
             "Bu koşuda işlenecek en fazla proje sayısı. VERİLMEZSE OTOMATİK kademelenir: "
@@ -342,7 +354,7 @@ def main():
         log(f"{len(pending)} bekleyen proje var, bu koşuda işlenecek ({len(batch)}): "
             f"{', '.join(os.path.basename(p) for p in batch)}")
         for project_dir in batch:
-            process_project(project_dir, args.privacy)
+            process_project(project_dir, args.privacy, schedule=not args.no_schedule)
 
         log("Çalıştırma tamamlandı.")
     finally:

@@ -85,10 +85,32 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   bir) TEK bir tetikleyiciyle çalışması yeterli — script her çağrıldığında "sırası
   geldi mi" diye kendi karar veriyor. `--count N` elle verilirse bu mantık devre
   dışı kalır (eski sabit davranış).
+- **YouTube golden-hour zamanlaması (`config.GOLDEN_HOURS`, `config.next_golden_publish_time`)**:
+  otomatik kademeleme render/upload anını günün her saatine denk getirebildiği için (eskiden
+  sabit 13:00/19:00, artık saatte bir kontrol), `privacy=public` YouTube yüklemeleri
+  `status.privacyStatus="private"` + `status.publishAt` ile yükleniyor — YouTube videoyu
+  bir sonraki golden-hour penceresinde (12:00-14:00/18:00-22:00 TR) kendisi otomatik public
+  yapıyor, render/upload anı ile canlıya çıkış anı böylece ayrılmış oluyor. `--no-schedule`
+  ile kapatılabilir. Instagram Graph API ve TikTok Content Posting API'de üçüncü parti
+  uygulamalar için ileri-tarihli yayın parametresi YOK (WebSearch ile doğrulandı, Eylül
+  2026) — bu iki platformda "zamanlama" zaten script'in ne zaman çalıştığından ibaret,
+  ek bir şey yapılamaz.
 - **AI-içerik açıklaması**: kanal %100 AI üretimi olduğu için YouTube upload'ında
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış
   alan adı riskli), sadece kullanıcıya elle etiketleme hatırlatması var.
+- **TikTok kapak (cover) görseli API'den ayarlanamıyor**: `video_cover_image_url` sadece
+  audit'ten geçmiş Direct Post akışında var, bu projenin kullandığı Taslak/Gelen Kutusu
+  akışında yok (WebSearch ile doğrulandı, Eylül 2026) — API üzerinden koda eklenebilecek
+  bir şey değil. Bunun yerine `tiktok_upload.py` YouTube/Instagram'daki caption/AI-etiket
+  hatırlatmalarıyla AYNI desende (bkz. `upload_video()` içindeki not) her yüklemede hangi
+  `cover.jpg`'yi kullanacağını basıp `state.json`'a (`tiktok_cover_hint`) kaydediyor;
+  `--pending-covers` ile TikTok'a zaten yüklü TÜM projeler için bu listeyi tek seferde
+  alabilirsin (eski videolar dahil, `tiktok_cover_hint` yoksa `_find_cover` ile yeniden
+  bulunuyor). Kullanıcı bunu TikTok uygulamasında (taslağı yayınlarken YA DA yayınlandıktan
+  sonra 7 gün içinde "Gönderiyi düzenle" → "Kapağı düzenle") "Yükle" ile galeriden elle
+  seçiyor — video karesi seçmek zorunda değil. Detay: README.md, "Kimlik doğrulama" →
+  TikTok adımı.
 
 ## Beş özel subagent (`.claude/agents/`)
 

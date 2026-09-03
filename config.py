@@ -1,6 +1,7 @@
 """Render ayarları — tüm görünüm/kalite parametreleri burada."""
 
 import os
+from datetime import datetime, timedelta, timezone
 
 FPS = 30
 
@@ -175,3 +176,37 @@ AUDIO_CODEC = "aac"
 AUDIO_BITRATE = "192k"
 CRF = "20"
 PRESET = "medium"
+
+# --- YouTube yayın zamanlaması (Türkiye yerel saati — Türkiye DST kullanmıyor,
+# yıl boyunca sabit UTC+3) ---
+# trend_hashtag_notlari.md'ye göre en iyi paylaşım saatleri: 12:00-14:00 ve
+# 18:00-22:00. Eskiden Görev Zamanlayıcı sadece 13:00/19:00'da çalıştığı için
+# her yükleme zaten bu aralıklara denk geliyordu; artık otomatik kademeleme
+# saatte bir SIK çalıştığı için (bkz. auto_process.py) yükleme anı günün her
+# saatine denk gelebilir. YouTube'un status.publishAt özelliği (video
+# privacyStatus="private" + gelecek bir publishAt zamanıyla yüklenir, YouTube
+# o ana gelince otomatik public'e çeviriyor) sayesinde render/upload ANI ile
+# videonun CANLIYA ÇIKTIĞI an birbirinden ayrılabiliyor — auto_process.py
+# kendi kademeleme mantığına göre istediği saatte render+upload yapmaya devam
+# eder, YouTube tarafı ise bir sonraki golden-hour penceresine kadar bekletir.
+GOLDEN_HOURS = [(12, 14), (18, 22)]  # (başlangıç, bitiş) — TR yerel saat, [başlangıç, bitiş)
+TR_TZ = timezone(timedelta(hours=3))
+
+
+def next_golden_publish_time(now: datetime | None = None) -> datetime | None:
+    """Şu an bir golden-hour penceresinin içindeyse None döner (hemen public
+    edilebilir, zamanlamaya gerek yok). Dışındaysa bir sonraki pencerenin
+    başlangıcını (TR yerel, tz-aware) döndürür."""
+    now = (now or datetime.now(TR_TZ)).astimezone(TR_TZ)
+    for start_hour, end_hour in GOLDEN_HOURS:
+        if start_hour <= now.hour < end_hour:
+            return None
+
+    candidates = []
+    for day_offset in (0, 1):
+        day = (now + timedelta(days=day_offset)).replace(minute=0, second=0, microsecond=0)
+        for start_hour, _ in GOLDEN_HOURS:
+            candidate = day.replace(hour=start_hour)
+            if candidate > now:
+                candidates.append(candidate)
+    return min(candidates)
