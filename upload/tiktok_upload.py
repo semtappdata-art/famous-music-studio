@@ -2,6 +2,7 @@
 
 Kullanım:
     python upload/tiktok_upload.py --project "projects/beni bırakma"
+    python upload/tiktok_upload.py --pending-covers   # TikTok'a yüklü tüm projeler için elle yapılacak kapak listesini basar
 
 NOT: App henüz TikTok'un audit/review sürecinden geçmediyse, video sadece
 sandbox'ta tanımlı hedef kullanıcıya (target user) gönderilebilir, herkese
@@ -24,6 +25,15 @@ from tiktok_auth import get_access_token
 from social_text import build_caption, build_youtube_comment
 
 API_BASE = "https://open.tiktokapis.com/v2"
+COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
+
+
+def _find_cover(project_dir: str) -> str | None:
+    for name in COVER_NAMES:
+        path = os.path.join(project_dir, name)
+        if os.path.isfile(path):
+            return path
+    return None
 
 
 def _headers(access_token: str) -> dict:
@@ -88,6 +98,22 @@ def upload_video(project_dir: str) -> str:
     # alanı API ile göndermiyor (video.publish scope'u yok) — kullanıcı TikTok
     # uygulamasından elle yayınlarken bunu da elle açmalı.
     print("  --- TikTok uygulamasından yayınlarken UNUTMA: 'AI-generated content' etiketini de aç ---")
+
+    # TikTok'un Taslak/Gelen Kutusu akışı (video.publish scope'u olmadığı için
+    # kullanılıyor) video_cover_image_url'i KABUL ETMİYOR — bu alan sadece
+    # audit'ten geçmiş Direct Post akışında var (WebSearch ile doğrulandı,
+    # Eylül 2026). Kapağı elle ayarlamak için tek yol: TikTok uygulamasında
+    # taslağı yayınlarken (ya da yayınlandıktan sonra 7 gün içinde "Gönderiyi
+    # düzenle" → "Kapağı düzenle") galeriden özel bir fotoğraf yükleyebilmek —
+    # rastgele bir video karesi seçmek zorunda değilsin. Diğer iki hatırlatma
+    # (caption, AI etiketi) gibi burada da hem yazdırıyoruz hem state.json'a
+    # kaydediyoruz ki saatler sonra yayınlarken hangi dosyayı yükleyeceğini
+    # unutma.
+    cover_path = _find_cover(project_dir)
+    if cover_path:
+        print(f"  --- TikTok'ta 'Kapağı düzenle' > 'Yükle' ile galeriden şunu seç: {cover_path} ---")
+    else:
+        print("  --- UYARI: cover.jpg/png bulunamadı, TikTok'ta kapak elle ayarlanamayacak ---")
 
     video_size = os.path.getsize(video_path)
     init_body = {
@@ -172,18 +198,61 @@ def upload_video(project_dir: str) -> str:
     existing_state["tiktok_suggested_caption"] = suggested_caption
     if suggested_comment:
         existing_state["tiktok_suggested_comment"] = suggested_comment
+    if cover_path:
+        existing_state["tiktok_cover_hint"] = cover_path
     with open(state_path, "w", encoding="utf-8") as f:
         json.dump(existing_state, f, ensure_ascii=False, indent=2)
 
     return publish_id
 
 
+def print_pending_covers(base: str = "projects") -> None:
+    """API'den kapak ayarlanamadığı için (bkz. upload_video() içindeki not) TikTok'a
+    zaten yüklenmiş (state.json'da tiktok_publish_id olan) TÜM projeler için elle
+    yapılması gereken kapak düzeltmesini tek seferde listeler — özellikle bu özellik
+    eklenmeden ÖNCE yüklenmiş eski videolar için (onlarda tiktok_cover_hint yok,
+    _find_cover ile yeniden bulunuyor)."""
+    if not os.path.isdir(base):
+        print(f"HATA: {base} klasörü bulunamadı.")
+        return
+    found_any = False
+    for name in sorted(os.listdir(base)):
+        project_dir = os.path.join(base, name)
+        if not os.path.isdir(project_dir):
+            continue
+        state_path = os.path.join(project_dir, "state.json")
+        if not os.path.isfile(state_path):
+            continue
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        if not state.get("tiktok_publish_id"):
+            continue
+        cover_path = state.get("tiktok_cover_hint") or _find_cover(project_dir)
+        found_any = True
+        if cover_path:
+            print(f"  [{name}] 'Kapağı düzenle' > 'Yükle': {cover_path}")
+        else:
+            print(f"  [{name}] UYARI: cover.jpg/png bulunamadı, kapak elle ayarlanamayacak")
+    if not found_any:
+        print("  TikTok'a yüklenmiş proje bulunamadı.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Render edilmiş bir projeyi TikTok'a yükler.")
-    parser.add_argument("--project", required=True, help="Proje klasörü (örn. projects/sarki-adi)")
+    parser.add_argument("--project", help="Proje klasörü (örn. projects/sarki-adi)")
+    parser.add_argument(
+        "--pending-covers", action="store_true",
+        help="Yüklemez — TikTok'a zaten yüklü TÜM projeler için elle yapılması gereken "
+             "kapak düzeltmesini (dosya yolu) listeler (API'den ayarlanamadığı için).",
+    )
     args = parser.parse_args()
 
-    upload_video(args.project)
+    if args.pending_covers:
+        print_pending_covers()
+    elif args.project:
+        upload_video(args.project)
+    else:
+        parser.error("--project gerekli (ya da --pending-covers)")
 
 
 if __name__ == "__main__":

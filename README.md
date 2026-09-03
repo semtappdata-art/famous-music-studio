@@ -98,11 +98,47 @@ kaç dosya biriktiği önemli olmadan gün içine dengeli yaymak.
 saatte bir yeterli (birden fazla tetikleyici kurmana gerek yok, script kendi kendine
 "sırası geldi mi" diye karar veriyor).
 
+**Kurulum elle Görev Zamanlayıcı arayüzünde tıklamayı gerektirmez** —
+[setup_task_scheduler.ps1](setup_task_scheduler.ps1) bunu tek komutla yapar: eski
+(ör. günde 2 kez 13:00/19:00 çalışan) `auto_process.py` görevlerini otomatik bulup
+siler, yerine saatte bir çalışan TEK bir görev kurar.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File setup_task_scheduler.ps1
+```
+
+Tekrar çalıştırmak güvenlidir (idempotent) — script değiştiğinde ya da tekrar
+doğrulamak istediğinde aynen yeniden çalıştırabilirsin.
+
 ```bash
 python auto_process.py
 python auto_process.py --privacy unlisted
-python auto_process.py --count 2   # otomatik kademeyi devre dışı bırakıp tam 2'sini hemen işler
+python auto_process.py --count 2         # otomatik kademeyi devre dışı bırakıp tam 2'sini hemen işler
+python auto_process.py --no-schedule     # YouTube'u golden-hour beklemeden hemen public yükler
 ```
+
+**YouTube golden-hour zamanlaması (varsayılan):** otomatik kademeleme, render/upload anını
+günün her saatine denk getirebildiği için (eskiden sabit 13:00/19:00 iken artık saatte bir
+kontrol var), `privacy=public` olan YouTube yüklemeleri artık `private` + YouTube'un
+`publishAt` alanıyla yükleniyor — video hemen değil, bir sonraki golden-hour penceresinde
+(12:00-14:00 veya 18:00-22:00, TR yerel saat — bkz. `config.GOLDEN_HOURS`,
+[trend_hashtag_notlari.md](trend_hashtag_notlari.md)) otomatik public oluyor; bunu YouTube
+kendisi yapıyor, script'in o anda tekrar çalışması gerekmiyor. Zaten bir golden-hour
+penceresinin içindeysek zamanlamasız, hemen public yüklenir. `--no-schedule` ile bu
+davranış tamamen kapatılabilir. Instagram/TikTok için aynı şey API üzerinden mümkün değil
+(bkz. aşağıdaki "Zamanlama neden sadece YouTube'da var" notu) — bu iki platform, script
+o an çalıştığında hemen yayınlanır/taslağa düşer.
+
+**Zamanlama neden sadece YouTube'da var:** YouTube Data API `videos.insert`, resmi olarak
+`status.privacyStatus="private"` + gelecekteki bir `status.publishAt` ile yüklenip
+otomatik public'e geçen zamanlanmış yayını destekliyor. Instagram Graph API'de üçüncü
+parti uygulamalar için böyle bir "ileri tarihli yayın" parametresi yok (yalnızca Facebook
+Sayfa gönderilerinde var) — tek yol, `media_publish` çağrısını hedeflenen ana kadar kendi
+altyapınızda bekletmek, ki bu zaten `auto_process.py`'nin kendi kademeleme mantığının
+yaptığı şey. TikTok'un Content Posting API'si hiç zamanlama desteklemiyor (native
+zamanlayıcı sadece TikTok'un kendi uygulamasında, onaylı İşletme hesapları için var,
+API'den erişilemiyor) — zaten bu projede kullanılan Inbox/Draft akışı da yayınlamayı
+elle yapılması gereken bir adım olarak bırakıyor.
 
 **YouTube günlük quota uyarısı:** her şarkı YouTube'a 2 ayrı video olarak gidiyor (uzun
 format + Shorts), her `video.insert` çağrısı ~1600 unit'lik varsayılan günlük kotanın
@@ -128,6 +164,18 @@ Kimlik doğrulama (her platform için bir kerelik, ilgili script'in kendisiyle):
    girişi tamamla. Uygulama henüz TikTok'un içerik yayınlama (video.publish) audit/review
    sürecinden geçmediyse, video sadece TikTok'un gelen kutusuna TASLAK olarak düşer —
    yayınlamayı TikTok uygulamasından elle tamamlaman gerekir.
+
+   **Kapak (cover) görseli TikTok'ta API'den ayarlanamıyor** (WebSearch ile doğrulandı,
+   Eylül 2026) — `video_cover_image_url` parametresi sadece audit'ten geçmiş uygulamaların
+   kullanabildiği Direct Post akışında var, bu projenin kullandığı Taslak/Gelen Kutusu
+   akışında yok. Elle düzeltme mümkün: TikTok uygulamasında taslağı yayınlarken (ya da
+   yayınlandıktan sonra 7 gün içinde profil → video → ⋯ → "Gönderiyi düzenle" → "Kapağı
+   düzenle") "Yükle" ile galeriden özel bir fotoğraf yükleyebiliyorsun — video karesi
+   seçmek zorunda değilsin. `tiktok_upload.py` her yüklemede hangi `cover.jpg`'yi
+   kullanman gerektiğini konsola basıp `state.json`'a kaydediyor (`tiktok_cover_hint`);
+   `python upload/tiktok_upload.py --pending-covers` ile TikTok'a zaten yüklü TÜM
+   projeler için bu listeyi tek seferde alabilirsin (eski, bu özellikten önce yüklenmiş
+   videolar dahil).
 3. **Instagram** — Meta for Developers'ta Instagram API kurulumu yapıp
    `upload/instagram_client_secrets.json` doldur, `python upload/instagram_auth.py
    --print-url` ve `--code KOD` ile tamamla. Instagram Graph API dosya upload'ı değil,
@@ -144,6 +192,12 @@ python upload/youtube_upload.py --project "projects/sarki-adi"
 python upload/youtube_upload.py --project "projects/sarki-adi" --shorts
 python upload/tiktok_upload.py --project "projects/sarki-adi"
 python upload/instagram_upload.py --project "projects/sarki-adi"
+```
+
+Zaten yüklenmiş videoların YouTube thumbnail'ini (geriye dönük) düzeltmek için:
+```bash
+python upload/youtube_upload.py --project "projects/sarki-adi" --thumbnail-only  # tek proje (uzun format + varsa Shorts)
+python upload/youtube_upload.py --thumbnail-only --all                          # projects/ altındaki TÜMÜ
 ```
 
 ### Tarz/tema playlist'leri
