@@ -144,7 +144,15 @@ SOCIAL_LINKS = {
     "tiktok": "https://www.tiktok.com/@famousmusicstudio",
     "website": "https://famousmusicstudio.com",
 }
-BRAND_HASHTAGS = ["#FamousMusicStudio", "#AIMusic", "#YapayZekaMüzik", "#AIMusicChallenge"]
+# NOT: "#AIMusic"/"#YapayZekaMüzik" BİLİNÇLİ olarak burada YOK — kullanıcı kuralı:
+# ürettiğimiz hiçbir içerikte (caption, YouTube tag, video içi kayan yazı) bu
+# ibareler kullanılmasın. AI-üretimi olduğunun ZORUNLU bildirimi (platform
+# politikası gereği) bundan AYRI ve hâlâ yerinde: YouTube'da containsSyntheticMedia
+# API bayrağı (youtube_upload.py), TikTok'ta uygulama içi "AI-generated content"
+# etiketi hatırlatması (tiktok_upload.py), Instagram'da caption'a eklenen tek
+# satır (social_text.build_ai_disclosure_line, sadece DJ Famous'ta) — bunlar
+# hashtag/marka etiketi değil, gerçek zorunlu bildirim mekanizmaları, dokunulmadı.
+BRAND_HASHTAGS = ["#FamousMusicStudio", "#AIMusicChallenge"]
 
 # Keşfet/For You dağıtımını hedefleyen genel hashtag'ler — marka hashtag'lerinden
 # ayrı tutuluyor çünkü bunlar zamanla değişebilir (trend_hashtag_notlari.md'ye bak).

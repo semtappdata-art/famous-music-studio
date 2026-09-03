@@ -45,8 +45,15 @@ dj_sets/<set-adı>/
     art.jpg             # Arda'nın (AI ile üretilmiş/işlenmiş) fotoğrafı — kartın içeriği +
                         # arka plan blur kaynağı olarak kullanılır
     meta.json           # {"title": "Gece Yarısı Seti", "theme": "dj",
-                        #  "marquee_text": "DJ Famous  •  Gece Yarısı Seti  •  #DJFamous #AIMusic #YapayZekaMuzik"}
+                        #  "marquee_text": "DJ Famous  •  Gece Yarısı Seti  •  #DJFamous"}
 ```
+
+**"#AIMusic"/"#YapayZekaMüzik" gibi AI-vurgulu ibareler kullanılmıyor** (kullanıcı
+kararı — hiçbir üretimde, ne kayan yazıda ne caption'da ne YouTube etiketlerinde).
+Bu, ZORUNLU AI-üretimi bildirimini DEĞİŞTİRMİYOR — o ayrı bir mekanizma ve hâlâ
+yerinde (YouTube `containsSyntheticMedia`, TikTok'ta uygulama içi etiket hatırlatması,
+Instagram caption'ındaki bildirim satırı). Kaldırılan sadece marka/keşfet amaçlı
+hashtag'ler (`config.BRAND_HASHTAGS`, YouTube `tags`) — bkz. `config.py`'deki not.
 
 **Klasör adı ve `title` — "Hafta 1"/"1-2" gibi sıralı/numaralı bir isimlendirme
 KULLANILMIYOR.** Her set kendi içeriğine göre betimleyici bir isim alır (ör. "Gece

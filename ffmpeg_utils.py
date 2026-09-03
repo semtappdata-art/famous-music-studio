@@ -268,8 +268,8 @@ def _build_filter_complex(
         # "Famous Music Studio" marka satırı duruyor (kaymıyor) — bu her içerik
         # için AYNI, override edilmiyor.
         #
-        # marquee_override verilmişse (ör. DJ Famous için "DJ Famous  •  Hafta 1
-        # Seti  •  #DJFamous #AIMusic ...") kayan yazı bunu gösterir; verilmezse
+        # marquee_override verilmişse (ör. DJ Famous için "DJ Famous  •  Gece
+        # Yarısı Seti  •  #DJFamous") kayan yazı bunu gösterir; verilmezse
         # varsayılan olarak title + tema/tür etiketleri kayar (ana katalog).
         sep = config.MARQUEE_SEPARATOR
         if marquee_override:

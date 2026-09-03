@@ -10,7 +10,12 @@ her paylaşımda otomatik ekliyor. Buradaki liste referans/güncelleme kaynağı
 `#keşfet` `#fyp` `#viral` `#keşfetteyiz` `#trend`
 
 ## Suno/AI müzik nişi
-`#SunoAI` `#AIMusic` `#YapayZekaMüzik` `#ŞarkıYap` `#AIGeneratedMusic`
+`#SunoAI` `#ŞarkıYap` `#AIGeneratedMusic`
+
+NOT: `#AIMusic`/`#YapayZekaMüzik` bilerek listede/kullanımda YOK — kullanıcı kararı:
+hiçbir üretimde (caption, YouTube tag, video içi kayan yazı) bu ibareler
+kullanılmasın. ZORUNLU AI-üretimi bildirimi bundan ayrı bir mekanizma, hâlâ yerinde
+(bkz. `config.py`'deki `BRAND_HASHTAGS` notu).
 
 ## En iyi paylaşım saatleri (Türkiye)
 Araştırmaya göre 12:00-14:00 ve 18:00-22:00 arası — bizim mevcut

@@ -118,6 +118,13 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış
   alan adı riskli), sadece kullanıcıya elle etiketleme hatırlatması var.
+- **"#AIMusic"/"#YapayZekaMüzik" gibi AI-vurgulu ibareler KULLANILMIYOR** (kullanıcı
+  kararı): ne caption'da (`config.BRAND_HASHTAGS`), ne YouTube etiketlerinde
+  (`upload/youtube_upload.py::build_snippet/build_shorts_snippet`), ne video içi kayan
+  yazıda (`marquee_text`). Bu, yukarıdaki ZORUNLU AI-üretimi bildirimini DEĞİŞTİRMEZ —
+  o ayrı, dokunulmayan bir mekanizma (containsSyntheticMedia, TikTok etiket hatırlatması,
+  Instagram disclosure satırı). Kaldırılan sadece marka/keşfet amaçlı hashtag'ler —
+  `#SunoAI` (`config.DISCOVERY_HASHTAGS`) buna dahil DEĞİL, dokunulmadı.
 - **TikTok kapak (cover) görseli API'den ayarlanamıyor**: `video_cover_image_url` sadece
   audit'ten geçmiş Direct Post akışında var, bu projenin kullandığı Taslak/Gelen Kutusu
   akışında yok (WebSearch ile doğrulandı, Eylül 2026) — API üzerinden koda eklenebilecek
