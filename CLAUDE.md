@@ -55,6 +55,13 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpe
   arabeskin klasik düet geleneği). Bu ana kataloğun `arabesk` şarkıları için geçerli —
   karakter sistemindeki tekli arabesk karakterleri (Kerem Ateşi, Azra Yıldız) bu kuraldan
   ETKİLENMEDİ, onlar kendi sabit tekli kimliklerini koruyor.
+- **Her şarkının kapanışı (Outro) SABİT bir kurala göre yazılıyor**: şarkı sonlarının
+  anlamsız/ani kesilmesi tekrarlayan bir sorundu (`...` ile yarım bırakılmış Outro
+  cümleleri + stil etiketinde kapanışın tanımlanmamış olması). Artık HER stil etiketinin
+  sonuna bir kapanış tanımı ekleniyor (`gentle fade-out ending` sakin temalar için,
+  `strong final hit ending, no abrupt cutoff` enerjik temalar için) ve Outro iki TAM,
+  bitmiş cümle oluyor — `...` YOK. Detay ve örnekler: `suno_prompt_hazirlik.md`,
+  "Kapanış (Outro) kuralı".
 - **Koşu başına proje sayısı (`--count`, varsayılan 2)**: bir ara bilinçli olarak 1'e
   düşürülüp günde 2 AYRI Görev Zamanlayıcı tetikleyicisine geçilmişti ("aynı anda birden
   fazla şarkı aynı takipçi kitlesinde birbiriyle yarışır" riski) — kullanıcı bu riski
