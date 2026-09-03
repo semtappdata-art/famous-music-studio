@@ -6,11 +6,11 @@ Tek seferlik kurulum scripti — ÜÇ görev kurar:
      bir tetikleyici kurar.
   2. dj_famous_process.py (haftalık DJ Famous seti, bkz. dj_sets/README.md) —
      haftada BİR (varsayılan: Cuma 18:00) çalışan ayrı bir tetikleyici.
-  3. watch_projects.py (klasör izleyici) — oturum açılışında başlayıp sürekli
-     arkaplanda çalışan, projects/ altına Suno'dan yeni bir ses dosyası
-     düşürüldüğünde onu audio.wav'a çevirip auto_process.py'yi hemen tetikleyen
-     bir görev. Saatlik tetikleyiciyle ÇAKIŞMAZ — kademeleme kararını hâlâ
-     auto_process.py kendisi verir, bu sadece tepki süresini kısaltır.
+  3. watch_projects.py (klasör izleyici) — 1 DAKİKADA bir tekrar eden, projects/
+     altına Suno'dan yeni bir ses dosyası düşürüldüğünde onu audio.wav'a çevirip
+     auto_process.py'yi hemen tetikleyen bir görev. Saatlik tetikleyiciyle
+     ÇAKIŞMAZ — kademeleme kararını hâlâ auto_process.py kendisi verir, bu
+     sadece tepki süresini (saatlerden dakikalara) kısaltır.
 Görev Zamanlayıcı arayüzünde elle tıklama gerektirmez.
 
 Kullanım (PowerShell'de, repo klasöründeyken):
@@ -103,7 +103,14 @@ Write-Host "  farklı gün/saat istersen: -DjFamousDayOfWeek <gün> -DjFamousTim
 Write-Host ""
 Write-Host "Kontrol için:  Get-ScheduledTask -TaskName '$djFamousTaskName' | Get-ScheduledTaskInfo"
 
-# --- Klasör izleyici (watch_projects.py, sürekli çalışan arkaplan görevi) ---
+# --- Klasör izleyici (watch_projects.py, 1 dakikada bir tekrar eden TEK
+# seferlik tarama — auto_process.py'nin saatlik görevindeki AYNI tetikleyici
+# deseni. NOT: ilk tasarım "oturum açılışında başlayan sürekli süreç"
+# (-AtLogOn tetikleyicisi) idi ama bu ortamda Register-ScheduledTask "Erişim
+# engellendi" hatası verdi — Windows'un logon-tabanlı tetikleyicileri,
+# arka planda/interaktif olmayan bir bağlamdan kaydedilirken bu izni
+# isteyebiliyor; zaman-tabanlı tekrarlı tetikleyiciler (aşağıdaki gibi) bu
+# kısıtlamaya takılmıyor. Detay: CLAUDE.md, watch_projects.py'nin başlığı.) ---
 $watcherTaskName = "FamousMusicStudio-Watcher"
 
 $watcherOld = Get-ScheduledTask | Where-Object {
@@ -115,29 +122,18 @@ foreach ($t in $watcherOld) {
     Unregister-ScheduledTask -TaskName $t.TaskName -Confirm:$false
 }
 
-# pythonw.exe varsa onu kullan (konsol penceresi açmadan arkaplanda çalışır);
-# yoksa normal python.exe'ye düş.
-$pythonwExe = Join-Path (Split-Path -Parent $pythonExe) "pythonw.exe"
-if (-not (Test-Path $pythonwExe)) {
-    $pythonwExe = $pythonExe
-}
-
-$watcherAction = New-ScheduledTaskAction -Execute $pythonwExe -Argument "watch_projects.py" -WorkingDirectory $repoRoot
-$watcherTrigger = New-ScheduledTaskTrigger -AtLogOn
-# ExecutionTimeLimit 0 = süresiz (script zaten sonsuz döngü) — çökerse
-# RestartCount/RestartInterval ile kendini toparlar.
+$watcherAction = New-ScheduledTaskAction -Execute $pythonExe -Argument "watch_projects.py" -WorkingDirectory $repoRoot
+$watcherTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
+    -RepetitionInterval (New-TimeSpan -Minutes 1) `
+    -RepetitionDuration (New-TimeSpan -Days 3650)
 $watcherSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopOnIdleEnd `
-    -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew `
-    -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
+    -ExecutionTimeLimit (New-TimeSpan -Hours 2) -MultipleInstances IgnoreNew
 
 Register-ScheduledTask -TaskName $watcherTaskName -Action $watcherAction -Trigger $watcherTrigger `
     -Settings $watcherSettings -Principal $principal -Force | Out-Null
 
-# Bir sonraki oturum açılışını beklemeden şimdi de başlat.
-Start-ScheduledTask -TaskName $watcherTaskName
-
 Write-Host ""
-Write-Host "Tamam: '$watcherTaskName' görevi kuruldu ve başlatıldı (oturum açılışında otomatik başlar)."
+Write-Host "Tamam: '$watcherTaskName' görevi 1 dakikada bir çalışacak şekilde kuruldu."
 Write-Host "  script : $repoRoot\watch_projects.py"
 Write-Host "  log    : $repoRoot\watch_projects.log"
 Write-Host ""

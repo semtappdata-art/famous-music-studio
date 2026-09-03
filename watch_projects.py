@@ -1,21 +1,25 @@
-"""projects/<isim>/ klasörlerini izleyip Suno'dan (herhangi bir dosya adıyla)
-yeni indirilen bir ses dosyasını yakalayan, audio.wav/mp3/m4a'ya çeviren ve
-auto_process.py'yi hemen tetikleyen hafif bir arkaplan izleyici.
+"""projects/<isim>/ klasörlerini TEK SEFERLİK tarayıp Suno'dan (herhangi bir
+dosya adıyla) yeni indirilen bir ses dosyasını yakalayan, audio.wav/mp3/m4a'ya
+çeviren ve auto_process.py'yi hemen tetikleyen hafif bir kontrol scripti.
 
 NEDEN VAR: Görev Zamanlayıcı'nın saatlik tetikleyicisi zaten otomatik
 kademelemeyi (bkz. auto_process.py, _auto_pace_count) sürekli ilerletiyor —
 bu script kademeleme mantığına DOKUNMUYOR, sadece "yeni dosya geldi ->
 audio.* adına çevrilip fark edilene kadar" geçen süreyi (saatlerden
-saniyelere) kısaltmak için var. Tetiklense bile auto_process.py kendi
+dakikalara) kısaltmak için var. Tetiklense bile auto_process.py kendi
 "sırası geldi mi" kararını kendisi veriyor, erken paylaşım riski yok.
 
 Kullanım:
     python watch_projects.py
-Sürekli çalışması gerekir (bkz. setup_task_scheduler.ps1 — "at log on"
-tetikleyicili ayrı bir görev olarak kurulur). Gerçek dosya sistemi olayları
-(ör. Windows ReadDirectoryChangesW) yerine basit bir yoklama (polling)
-kullanılıyor — ekstra bağımlılık (watchdog vb.) gerektirmiyor, bu kullanım
-için saniyeler mertebesindeki gecikme yeterli.
+TEK SEFERLİK bir tarama yapıp çıkar — sürekli çalışan bir arkaplan süreci
+DEĞİL. setup_task_scheduler.ps1 bunu Görev Zamanlayıcı'da 1 dakikada bir
+tekrar eden bir görev olarak kurar (auto_process.py'nin saatlik görevindeki
+AYNI kanıtlanmış tetikleyici deseni — bkz. -Once/-RepetitionInterval). İlk
+tasarım (sürekli döngü + "oturum açılışında başlat" tetikleyicisi) bu
+ortamda "Erişim engellendi" hatasıyla kaydedilemedi — Windows'un logon-tabanlı
+tetikleyicileri, arka planda/interaktif olmayan bir bağlamdan (bu Claude Code
+oturumu gibi) kaydedilirken izin isteyebiliyor; zaman-tabanlı tekrarlı
+tetikleyiciler bu kısıtlamaya takılmıyor. Detay: CLAUDE.md.
 """
 
 import os
@@ -37,7 +41,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECTS_DIR = os.path.join(BASE_DIR, "projects")
 LOG_PATH = os.path.join(BASE_DIR, "watch_projects.log")
 
-POLL_SECONDS = 20
 STABILITY_WAIT_SECONDS = 3  # indirme hâlâ sürüyor olabilir, boyut bu süre içinde değişmemeli
 
 AUDIO_EXT_TO_NAME = {".wav": "audio.wav", ".mp3": "audio.mp3", ".m4a": "audio.m4a"}
@@ -116,20 +119,12 @@ def _scan_once() -> None:
 
 def main() -> None:
     if not os.path.isdir(PROJECTS_DIR):
-        log(f"HATA: {PROJECTS_DIR} yok, çıkılıyor.")
         return
     trim_log(LOG_PATH)
-    last_trim = time.time()
-    log(f"İzleniyor: {PROJECTS_DIR} (her {POLL_SECONDS}s bir kontrol)")
-    while True:
-        try:
-            _scan_once()
-        except Exception as e:
-            log(f"HATA (döngü devam ediyor): {e}")
-        if time.time() - last_trim > 86400:
-            trim_log(LOG_PATH)
-            last_trim = time.time()
-        time.sleep(POLL_SECONDS)
+    try:
+        _scan_once()
+    except Exception as e:
+        log(f"HATA: {e}")
 
 
 if __name__ == "__main__":
