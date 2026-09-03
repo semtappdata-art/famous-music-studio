@@ -44,15 +44,17 @@ dj_sets/<hafta-etiketi>/
                         # dosya boyutu buna göre artar, bu normal)
     art.jpg             # Arda'nın (AI ile üretilmiş/işlenmiş) fotoğrafı — kartın içeriği +
                         # arka plan blur kaynağı olarak kullanılır
-    meta.json           # {"title": "Hafta 1 Seti", "theme": "dj", "static_label": "DJ Famous"}
+    meta.json           # {"title": "Hafta 1 Seti", "theme": "dj",
+                        #  "marquee_text": "DJ Famous  •  Hafta 1 Seti  •  #DJFamous #AIMusic #YapayZekaMuzik"}
 ```
 
-`static_label` — ana katalogda videonun altındaki SABİT (kaymayan) satır her zaman
-"Famous Music Studio" (`config.STATIC_LABEL_TEXT`). DJ Famous'ta bunun yerine "DJ Famous"
-sabit dursun, `title` (ör. "Hafta 1 Seti") KAYSIN isteniyor — `meta.json`'a
-`"static_label": "DJ Famous"` eklemek yeterli, `render.py` bunu otomatik okuyup
-`ffmpeg_utils.render_video()`'ya geçiriyor. Belirtilmezse ana kataloktaki varsayılana
-(`config.STATIC_LABEL_TEXT`) düşer.
+`marquee_text` — videonun altındaki SABİT (kaymayan) satır HER ZAMAN "Famous Music
+Studio" kalır (`config.STATIC_LABEL_TEXT`, ana katalogla aynı, değişmiyor). Onun
+ÜSTÜNDEKİ KAYAN yazı alanına DJ Famous için "DJ Famous" adı + setin içerik/müzik
+bilgisi + hashtag'ler gibi özel bir metin koymak için `meta.json`'a `marquee_text`
+eklenir — verilmezse ana kataloktaki varsayılana (title + tema/tür etiketleri) düşer.
+`title` alanı ayrı kalır (YouTube başlığı/kapak metni için kullanılmaya devam eder,
+hashtag İÇERMEMELİ — sadece `marquee_text`'e).
 
 `cover.jpg` elle sağlanmazsa `generate_cover.py` otomatik üretir — artık `art.jpg`
 elle sağlanmışsa (karakter roster'ından değil) o görselin üstüne başlık metni
