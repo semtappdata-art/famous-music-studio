@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import time
+from datetime import timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -94,7 +95,7 @@ def build_shorts_snippet(meta: dict, full_video_id: str | None = None) -> dict:
     }
 
 
-def _upload(video_path: str, snippet: dict, privacy: str) -> str:
+def _upload(video_path: str, snippet: dict, privacy: str, publish_at: str | None = None) -> str:
     if not os.path.isfile(video_path):
         raise FileNotFoundError(
             f"{video_path} bulunamadı — önce render.py ile bu projeyi render et."
@@ -102,25 +103,37 @@ def _upload(video_path: str, snippet: dict, privacy: str) -> str:
 
     youtube = get_authenticated_service()
 
-    body = {
-        "snippet": snippet,
+    # publish_at verilmişse (bkz. config.next_golden_publish_time): video ŞİMDİ
+    # private olarak yüklenir, YouTube belirtilen zamanda OTOMATİK public'e
+    # çevirir — publishAt sadece privacyStatus="private" ile birlikte kabul
+    # ediliyor (resmi API kısıtı). Böylece render/upload anı (auto_process.py'nin
+    # kendi kademeleme mantığı) ile videonun canlıya çıktığı an (golden-hour
+    # penceresi) birbirinden ayrılıyor.
+    status = {
+        "selfDeclaredMadeForKids": False,
         # containsSyntheticMedia: YouTube'un "altered or synthetic content" açıklama
         # zorunluluğunun API karşılığı (Ekim 2024'te eklendi, resmi kaynak:
         # support.google.com/youtube/answer/14328491 ve developers.google.com/youtube/
         # v3/revision_history). Bu kanalın TÜM içeriği (vokal+beste+kapak+video) AI
         # üretimi olduğu için True olarak işaretleniyor — hem uzun format hem Shorts
         # (ikisi de bu _upload()'ı kullanıyor).
-        "status": {
-            "privacyStatus": privacy,
-            "selfDeclaredMadeForKids": False,
-            "containsSyntheticMedia": True,
-        },
+        "containsSyntheticMedia": True,
     }
+    if publish_at:
+        status["privacyStatus"] = "private"
+        status["publishAt"] = publish_at
+    else:
+        status["privacyStatus"] = privacy
+
+    body = {"snippet": snippet, "status": status}
 
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
 
-    print(f"  yükleniyor: {snippet['title']} ({privacy})")
+    if publish_at:
+        print(f"  yükleniyor: {snippet['title']} (zamanlı: {publish_at}'te public olacak)")
+    else:
+        print(f"  yükleniyor: {snippet['title']} ({privacy})")
     response = None
     while response is None:
         try:
@@ -195,12 +208,26 @@ def _update_state(project_dir: str, fields: dict) -> None:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 
-def upload_video(project_dir: str, privacy: str) -> str:
+def _compute_publish_at(privacy: str, schedule: bool) -> str | None:
+    """privacy="public" ve schedule=True ise, şu an bir golden-hour penceresinin
+    (config.GOLDEN_HOURS) dışındaysak bir sonraki pencerenin başlangıcını UTC
+    ISO8601 ("...Z") olarak döner — içindeysek (ya da schedule kapalıysa/privacy
+    public değilse) None döner, hemen (zamanlamasız) yüklenir."""
+    if privacy != "public" or not schedule:
+        return None
+    target = config.next_golden_publish_time()
+    if target is None:
+        return None
+    return target.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def upload_video(project_dir: str, privacy: str, schedule: bool = True) -> str:
     video_path = os.path.join(project_dir, "output", "youtube_16x9.mp4")
     meta = load_meta(project_dir)
     snippet = build_snippet(meta)
 
-    video_id = _upload(video_path, snippet, privacy)
+    publish_at = _compute_publish_at(privacy, schedule)
+    video_id = _upload(video_path, snippet, privacy, publish_at=publish_at)
     print(f"  tamam: https://youtu.be/{video_id}")
 
     try:
@@ -214,24 +241,27 @@ def upload_video(project_dir: str, privacy: str) -> str:
         "youtube_video_id": video_id,
         "youtube_uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "youtube_privacy": privacy,
+        "youtube_publish_at": publish_at,
     })
     return video_id
 
 
-def upload_short(project_dir: str, privacy: str, full_video_id: str | None = None) -> str:
+def upload_short(project_dir: str, privacy: str, full_video_id: str | None = None, schedule: bool = True) -> str:
     """shorts_9x16.mp4'ü uzun formattan BAĞIMSIZ, ayrı bir YouTube video'su (Short)
     olarak yükler. full_video_id verilmişse açıklamada tam versiyona bağlantı verir."""
     video_path = os.path.join(project_dir, "output", "shorts_9x16.mp4")
     meta = load_meta(project_dir)
     snippet = build_shorts_snippet(meta, full_video_id)
 
-    video_id = _upload(video_path, snippet, privacy)
+    publish_at = _compute_publish_at(privacy, schedule)
+    video_id = _upload(video_path, snippet, privacy, publish_at=publish_at)
     print(f"  tamam: https://youtube.com/shorts/{video_id}")
 
     _update_state(project_dir, {
         "youtube_shorts_video_id": video_id,
         "youtube_shorts_uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "youtube_shorts_privacy": privacy,
+        "youtube_shorts_publish_at": publish_at,
     })
     return video_id
 
@@ -269,14 +299,19 @@ def main():
         help="Video zaten yüklüyse (state.json'da youtube_video_id varsa) sadece thumbnail'i "
              "(yeniden) ayarlar, videoyu tekrar yüklemez — geriye dönük düzeltme için.",
     )
+    parser.add_argument(
+        "--no-schedule", action="store_true",
+        help="privacy=public olsa bile golden-hour zamanlamasını (config.GOLDEN_HOURS) "
+             "devre dışı bırakıp hemen public yükler.",
+    )
     args = parser.parse_args()
 
     if args.thumbnail_only:
         fix_thumbnail(args.project)
     elif args.shorts:
-        upload_short(args.project, args.privacy)
+        upload_short(args.project, args.privacy, schedule=not args.no_schedule)
     else:
-        upload_video(args.project, args.privacy)
+        upload_video(args.project, args.privacy, schedule=not args.no_schedule)
 
 
 if __name__ == "__main__":

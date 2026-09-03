@@ -85,6 +85,16 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   bir) TEK bir tetikleyiciyle çalışması yeterli — script her çağrıldığında "sırası
   geldi mi" diye kendi karar veriyor. `--count N` elle verilirse bu mantık devre
   dışı kalır (eski sabit davranış).
+- **YouTube golden-hour zamanlaması (`config.GOLDEN_HOURS`, `config.next_golden_publish_time`)**:
+  otomatik kademeleme render/upload anını günün her saatine denk getirebildiği için (eskiden
+  sabit 13:00/19:00, artık saatte bir kontrol), `privacy=public` YouTube yüklemeleri
+  `status.privacyStatus="private"` + `status.publishAt` ile yükleniyor — YouTube videoyu
+  bir sonraki golden-hour penceresinde (12:00-14:00/18:00-22:00 TR) kendisi otomatik public
+  yapıyor, render/upload anı ile canlıya çıkış anı böylece ayrılmış oluyor. `--no-schedule`
+  ile kapatılabilir. Instagram Graph API ve TikTok Content Posting API'de üçüncü parti
+  uygulamalar için ileri-tarihli yayın parametresi YOK (WebSearch ile doğrulandı, Eylül
+  2026) — bu iki platformda "zamanlama" zaten script'in ne zaman çalıştığından ibaret,
+  ek bir şey yapılamaz.
 - **AI-içerik açıklaması**: kanal %100 AI üretimi olduğu için YouTube upload'ında
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış

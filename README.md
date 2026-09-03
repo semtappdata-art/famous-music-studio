@@ -113,8 +113,32 @@ doğrulamak istediğinde aynen yeniden çalıştırabilirsin.
 ```bash
 python auto_process.py
 python auto_process.py --privacy unlisted
-python auto_process.py --count 2   # otomatik kademeyi devre dışı bırakıp tam 2'sini hemen işler
+python auto_process.py --count 2         # otomatik kademeyi devre dışı bırakıp tam 2'sini hemen işler
+python auto_process.py --no-schedule     # YouTube'u golden-hour beklemeden hemen public yükler
 ```
+
+**YouTube golden-hour zamanlaması (varsayılan):** otomatik kademeleme, render/upload anını
+günün her saatine denk getirebildiği için (eskiden sabit 13:00/19:00 iken artık saatte bir
+kontrol var), `privacy=public` olan YouTube yüklemeleri artık `private` + YouTube'un
+`publishAt` alanıyla yükleniyor — video hemen değil, bir sonraki golden-hour penceresinde
+(12:00-14:00 veya 18:00-22:00, TR yerel saat — bkz. `config.GOLDEN_HOURS`,
+[trend_hashtag_notlari.md](trend_hashtag_notlari.md)) otomatik public oluyor; bunu YouTube
+kendisi yapıyor, script'in o anda tekrar çalışması gerekmiyor. Zaten bir golden-hour
+penceresinin içindeysek zamanlamasız, hemen public yüklenir. `--no-schedule` ile bu
+davranış tamamen kapatılabilir. Instagram/TikTok için aynı şey API üzerinden mümkün değil
+(bkz. aşağıdaki "Zamanlama neden sadece YouTube'da var" notu) — bu iki platform, script
+o an çalıştığında hemen yayınlanır/taslağa düşer.
+
+**Zamanlama neden sadece YouTube'da var:** YouTube Data API `videos.insert`, resmi olarak
+`status.privacyStatus="private"` + gelecekteki bir `status.publishAt` ile yüklenip
+otomatik public'e geçen zamanlanmış yayını destekliyor. Instagram Graph API'de üçüncü
+parti uygulamalar için böyle bir "ileri tarihli yayın" parametresi yok (yalnızca Facebook
+Sayfa gönderilerinde var) — tek yol, `media_publish` çağrısını hedeflenen ana kadar kendi
+altyapınızda bekletmek, ki bu zaten `auto_process.py`'nin kendi kademeleme mantığının
+yaptığı şey. TikTok'un Content Posting API'si hiç zamanlama desteklemiyor (native
+zamanlayıcı sadece TikTok'un kendi uygulamasında, onaylı İşletme hesapları için var,
+API'den erişilemiyor) — zaten bu projede kullanılan Inbox/Draft akışı da yayınlamayı
+elle yapılması gereken bir adım olarak bırakıyor.
 
 **YouTube günlük quota uyarısı:** her şarkı YouTube'a 2 ayrı video olarak gidiyor (uzun
 format + Shorts), her `video.insert` çağrısı ~1600 unit'lik varsayılan günlük kotanın
