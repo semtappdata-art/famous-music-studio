@@ -7,6 +7,18 @@ hâli) ve `art.jpg` (metinsiz, kart içeriği + backdrop blur kaynağı) için o
 kullanır — dosya yoksa sessizce procedural gradyan/bokeh üretimine döner, hiçbir şey
 bozulmaz.
 
+**10 karakterin portresi zaten burada** — `generate_character_portraits.py` ile
+üretildi: tema rengine göre radial gradyan + bokeh arka plan (generate_cover.py'nin
+aynısı) üstüne düz renkli bir büst siluet + karakterin 2 harfli monogramı (ör. Kerem
+Ateşi → "KA"). Bilinçli olarak bu şekilde — fotogerçekçi bir yüz üretecek bir araç bu
+projede yok, ve olsa bile aşağıdaki "Görsel gereksinimleri" bölümündeki gerekçeyle
+kullanılmazdı. İstersen (daha özgün/detaylı bir görsel istiyorsan) herhangi bir
+karakterin dosyasını kendi hazırladığın bir görselle DOĞRUDAN değiştirebilirsin — aynı
+dosya adını kullandığın sürece otomasyon fark etmez. Script'i tekrar çalıştırmak
+(`python generate_character_portraits.py`) sadece EKSİK dosyaları üretir, mevcut
+(senin değiştirdiğin dahil) hiçbirinin üstüne yazmaz — `--force` verirsen hepsini
+yeniden üretir.
+
 **Dosya adı kuralı:** karakter adı küçük harfe çevrilir, Türkçe karakterler ASCII'ye
 çevrilir (ç→c, ğ→g, ı/İ→i, ö→o, ş→s, ü→u), boşluklar `-` olur. Uzantı `.jpg`, `.jpeg`
 veya `.png` olabilir.
