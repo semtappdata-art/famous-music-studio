@@ -17,6 +17,7 @@ bağlantı eklemek için).
 import argparse
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -27,6 +28,8 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 from social_text import build_caption
 from youtube_auth import get_authenticated_service
+
+COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
 
 
 def load_meta(project_dir: str) -> dict:
@@ -137,6 +140,50 @@ def _upload(video_path: str, snippet: dict, privacy: str) -> str:
     return response["id"]
 
 
+def _find_cover(project_dir: str) -> str | None:
+    for name in COVER_NAMES:
+        path = os.path.join(project_dir, name)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def _prepare_thumbnail_jpeg(cover_path: str) -> str:
+    """YouTube thumbnails.set 2MB sınırı var — procedural PNG kapaklar (bokeh
+    dokusu yüzünden) bunu kolayca aşabiliyor (bir projede 2.7MB'a çıktığı
+    görüldü). Kaynak boyutuna bakmadan HER ZAMAN güvenli bir JPEG'e yeniden
+    kodluyoruz (PNG boyutu içerik gürültüsüne göre öngörülemez), geçici bir
+    dosyaya yazıp döndürüyoruz — çağıran temizlemekten sorumlu."""
+    tmp_path = cover_path + "._thumb_tmp.jpg"
+    cmd = ["ffmpeg", "-y", "-i", cover_path, "-q:v", "3", tmp_path]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Thumbnail JPEG'e dönüştürülemedi: {result.stderr[-500:]}")
+    return tmp_path
+
+
+def upload_thumbnail(youtube, video_id: str, project_dir: str) -> None:
+    """cover.jpg/png'yi videonun gerçek YouTube thumbnail'i olarak ayarlar.
+    Bunsuz YouTube videodan rastgele bir kare seçip thumbnail yapıyordu —
+    kartın başlıksız hâli (art.jpg) görünüyordu, tasarlanan başlıklı kapak
+    hiç kullanılmıyordu (kullanıcı geri bildirimiyle tespit edildi)."""
+    cover_path = _find_cover(project_dir)
+    if not cover_path:
+        print("  Thumbnail atlandı: cover.jpg/png bulunamadı")
+        return
+
+    tmp_path = _prepare_thumbnail_jpeg(cover_path)
+    try:
+        youtube.thumbnails().set(
+            videoId=video_id,
+            media_body=MediaFileUpload(tmp_path, mimetype="image/jpeg"),
+        ).execute()
+        print("  Thumbnail: tamam")
+    finally:
+        if os.path.isfile(tmp_path):
+            os.remove(tmp_path)
+
+
 def _update_state(project_dir: str, fields: dict) -> None:
     state_path = os.path.join(project_dir, "state.json")
     state = {}
@@ -155,6 +202,13 @@ def upload_video(project_dir: str, privacy: str) -> str:
 
     video_id = _upload(video_path, snippet, privacy)
     print(f"  tamam: https://youtu.be/{video_id}")
+
+    try:
+        upload_thumbnail(get_authenticated_service(), video_id, project_dir)
+    except Exception as e:
+        # Thumbnail başarısız olsa da video zaten yüklendi — akışı durdurmuyoruz,
+        # sadece uyarıyoruz. Video YouTube'un otomatik seçtiği kareyle kalır.
+        print(f"  Thumbnail HATA: {e}")
 
     _update_state(project_dir, {
         "youtube_video_id": video_id,
@@ -182,6 +236,23 @@ def upload_short(project_dir: str, privacy: str, full_video_id: str | None = Non
     return video_id
 
 
+def fix_thumbnail(project_dir: str) -> None:
+    """Zaten yüklenmiş bir video için thumbnail'i (yeniden) ayarlar — video
+    upload_thumbnail eklenmeden ÖNCE yüklendiyse YouTube'un rastgele seçtiği
+    kareyle kalmıştı, bu onu düzeltir. state.json'dan youtube_video_id okur."""
+    state_path = os.path.join(project_dir, "state.json")
+    if not os.path.isfile(state_path):
+        print(f"  HATA: {state_path} yok — bu proje hiç yüklenmemiş.")
+        return
+    with open(state_path, "r", encoding="utf-8") as f:
+        state = json.load(f)
+    video_id = state.get("youtube_video_id")
+    if not video_id:
+        print("  HATA: state.json'da youtube_video_id yok.")
+        return
+    upload_thumbnail(get_authenticated_service(), video_id, project_dir)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Render edilmiş bir projeyi YouTube'a yükler.")
     parser.add_argument("--project", required=True, help="Proje klasörü (örn. projects/sarki-adi)")
@@ -193,9 +264,16 @@ def main():
         "--shorts", action="store_true",
         help="Uzun format yerine (veya sonrasında) shorts_9x16.mp4'ü ayrı bir YouTube Short olarak yükle",
     )
+    parser.add_argument(
+        "--thumbnail-only", action="store_true",
+        help="Video zaten yüklüyse (state.json'da youtube_video_id varsa) sadece thumbnail'i "
+             "(yeniden) ayarlar, videoyu tekrar yüklemez — geriye dönük düzeltme için.",
+    )
     args = parser.parse_args()
 
-    if args.shorts:
+    if args.thumbnail_only:
+        fix_thumbnail(args.project)
+    elif args.shorts:
         upload_short(args.project, args.privacy)
     else:
         upload_video(args.project, args.privacy)

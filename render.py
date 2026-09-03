@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import config
 import ffmpeg_utils
+import validate_project
 from audio_highlight import find_highlight
 
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
@@ -57,6 +58,17 @@ def load_meta(project_dir: str) -> dict:
 def render_project(project_dir: str) -> bool:
     name = os.path.basename(os.path.normpath(project_dir))
     print(f"\n=== {name} ===")
+
+    # Render'dan önce kapsamlı sağlık kontrolü (bkz. validate_project.py) — bozuk
+    # ses dosyası, geçersiz meta.json, art.jpg'nin yanlışlıkla cover ile birebir
+    # aynı olması gibi hataları render BAŞLAMADAN yakalar. HATA varsa render'a
+    # hiç girmiyoruz (saatler süren bir işi baştan boşa harcamamak için); UYARI
+    # varsa loglayıp devam ediyoruz.
+    val_errors, val_warnings = validate_project.validate(project_dir)
+    validate_project.print_report(project_dir, val_errors, val_warnings)
+    if val_errors:
+        print(f"  Render durduruldu: {len(val_errors)} doğrulama hatası (yukarıda).")
+        return False
 
     audio_path = find_audio(project_dir)
     if not audio_path:

@@ -18,13 +18,16 @@ yükle — render mimarisi, ffmpeg tuzakları, config.py ayarları orada.
 ## Mimari — kısa özet
 
 ```
-audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpeg ile video)
-    → auto_process.py: YouTube (uzun+Shorts) + TikTok + Instagram yükleme
+audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project.py (sağlık kontrolü)
+    → render.py (ffmpeg ile video) → auto_process.py: YouTube (uzun+Shorts) + TikTok + Instagram
 ```
 
 - `config.py` — tüm görünüm/kalite ayarları (temalar, kart boyutu, backdrop pan/hue hızı, vb.)
 - `ffmpeg_utils.py` — kart+backdrop+marquee+progress-bar filtergraph inşası
 - `generate_cover.py` — eksik cover/art'ı tema rengi + bokeh dokusuyla otomatik üretir
+- `validate_project.py` — render'dan ÖNCE otomatik çalışan sağlık kontrolü (bozuk ses,
+  geçersiz meta.json/theme, art==cover metin sızması şüphesi) — `render.py` her projede
+  render başlamadan önce bunu çağırır, HATA varsa render'a hiç girmez
 - `auto_process.py` — asıl production giriş noktası, `--count` kadar bekleyen projeyi işler
 - `upload/*.py` — platform bazlı yükleme + OAuth (youtube_auth, tiktok_auth, instagram_auth)
 - `upload/social_text.py` — caption/hashtag/etkileşim sorusu üretimi (şarkı başlığından
@@ -72,10 +75,16 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → render.py (ffmpe
   yapay/şablon hissi veriyordu (kullanıcı geri bildirimi). Artık Intro somut bir
   an/detay/duyu imgesiyle açılıyor, temayı dolaylı hissettiriyor. Detay:
   `suno_prompt_hazirlik.md`, "Intro kuralı".
-- **Koşu başına proje sayısı (`--count`, varsayılan 2)**: bir ara bilinçli olarak 1'e
-  düşürülüp günde 2 AYRI Görev Zamanlayıcı tetikleyicisine geçilmişti ("aynı anda birden
-  fazla şarkı aynı takipçi kitlesinde birbiriyle yarışır" riski) — kullanıcı bu riski
-  bilerek tekrar yükseltilmesini istedi.
+- **`--count` artık OTOMATİK kademeleniyor (elle verilmezse)**: sabit bir sayı yerine
+  script, kaç proje bekliyorsa 24 saati o sayıya eşit aralıklara bölüp (ör. 9 proje →
+  ~2.7 saatte bir, 2 proje → 12 saatte bir) son yüklemeden bu aralık kadar süre
+  geçmediyse o koşuda hiçbir şey yapmıyor (`_auto_pace_count()`, `auto_process.py`).
+  Amaç aynı: aynı anda birden fazla şarkı paylaşmanın aynı takipçi kitlesinde
+  birbiriyle yarışmasını önlemek — ama artık kaç dosya biriktiği önemli değil,
+  otomatik dengeleniyor. Bunun işlemesi için Görev Zamanlayıcı'nın SIK (ör. saatte
+  bir) TEK bir tetikleyiciyle çalışması yeterli — script her çağrıldığında "sırası
+  geldi mi" diye kendi karar veriyor. `--count N` elle verilirse bu mantık devre
+  dışı kalır (eski sabit davranış).
 - **AI-içerik açıklaması**: kanal %100 AI üretimi olduğu için YouTube upload'ında
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış
