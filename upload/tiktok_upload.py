@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
+import notify
 from tiktok_auth import get_access_token
 from social_text import build_caption, build_youtube_comment
 
@@ -203,7 +204,49 @@ def upload_video(project_dir: str) -> str:
     with open(state_path, "w", encoding="utf-8") as f:
         json.dump(existing_state, f, ensure_ascii=False, indent=2)
 
+    # Upload her saat olabilir (auto_process.py'nin saatlik/1-dakikalık
+    # tetikleyicileri) ama taslağı TikTok uygulamasından yayınlamak elle bir
+    # adım — bunu golden-hour'a hizalamak için hatırlatma bildirimini burada
+    # DEĞİL, notify_pending_publish() içinde (golden-hour kontrolüyle)
+    # gönderiyoruz. Şu an zaten golden-hour içindeysek hemen dener.
+    try:
+        notify_pending_publish(project_dir)
+    except Exception as e:
+        print(f"  UYARI: TikTok bildirimi denenirken hata: {e}")
+
     return publish_id
+
+
+def notify_pending_publish(project_dir: str) -> bool:
+    """state.json'da 'tiktok_publish_id' var ama henüz bildirim gönderilmediyse
+    (tiktok_notified yok) ve şu an bir golden-hour penceresindeysek telefona
+    ntfy.sh üzerinden bir hatırlatma bildirimi gönderir ve tiktok_notified=true
+    kaydeder (bir daha hatırlatmaz — TikTok API'sinden kullanıcının taslağı
+    gerçekten yayınlayıp yayınlamadığını öğrenmenin bir yolu yok). Bildirim
+    gönderildiyse True döner; golden-hour dışındaysa, zaten bildirildiyse ya da
+    notify_config.json kurulmadıysa False döner."""
+    state_path = os.path.join(project_dir, "state.json")
+    if not os.path.isfile(state_path):
+        return False
+    with open(state_path, "r", encoding="utf-8") as f:
+        state = json.load(f)
+    if not state.get("tiktok_publish_id") or state.get("tiktok_notified"):
+        return False
+    if config.next_golden_publish_time() is not None:
+        return False  # golden-hour değil, bir sonraki kontrolde tekrar denenecek
+
+    title = _load_meta(project_dir).get("title", "Untitled")
+    sent = notify.send(
+        "TikTok",
+        f"'{title}' TikTok'ta taslak olarak bekliyor — uygulamadan yayınlayabilirsin.",
+    )
+    if not sent:
+        return False
+
+    state["tiktok_notified"] = True
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+    return True
 
 
 def print_pending_covers(base: str = "projects") -> None:

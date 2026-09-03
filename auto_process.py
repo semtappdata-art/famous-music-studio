@@ -207,6 +207,55 @@ def _auto_pace_count(pending: list, ready: list) -> int:
     return 0
 
 
+def _log_instagram_result(media_id: str | None) -> None:
+    if media_id:
+        log(f"  Instagram: tamam, media_id={media_id}")
+    else:
+        log("  Instagram: konteyner hazır, golden-hour penceresi bekleniyor")
+
+
+def _check_instagram_pending(project_dir: str) -> None:
+    """state.json'da media_id'siz bir instagram_creation_id varsa (konteyner
+    oluşturulmuş ama golden-hour beklemede) kontrol eder — hazırsa ve şu an
+    golden-hour ise yayınlar."""
+    try:
+        from instagram_upload import try_publish_pending as ig_try_publish
+        _log_instagram_result(ig_try_publish(project_dir))
+    except Exception as e:
+        log(f"  Instagram HATA: {e}")
+
+
+def _check_tiktok_notification(project_dir: str, state: dict) -> None:
+    """state.json'da tiktok_publish_id var (zaten yüklü) ama henüz bildirim
+    gönderilmediyse, golden-hour'daysak telefona bildirim gönderir."""
+    if state.get("tiktok_notified"):
+        log("  TikTok: zaten yüklü, atlanıyor")
+        return
+    try:
+        from tiktok_upload import notify_pending_publish as tt_notify
+        if tt_notify(project_dir):
+            log("  TikTok: bildirim gönderildi (golden-hour) — uygulamadan yayınla")
+        else:
+            log("  TikTok: zaten yüklü, bildirim golden-hour penceresi bekleniyor")
+    except Exception as e:
+        log(f"  TikTok bildirim HATA: {e}")
+
+
+def _drain_golden_hour_queue(project_dirs: list) -> None:
+    """auto-pace batch seçimine GİRMEYEN projeler için bile, ZATEN başlatılmış
+    (Instagram konteyneri oluşturulmuş / TikTok'a yüklenmiş) ama golden-hour'u
+    bekleyen aksiyonları kontrol eder — aksi halde bir proje uzun süre batch'e
+    girmezse (kaç proje bekliyorsa ona göre kademelenen aralık nedeniyle)
+    golden-hour penceresini hiç yakalayamayabilir. Render/YouTube/TikTok
+    upload/YENİ Instagram konteyneri BAŞLATMAZ, sadece bekleyeni tamamlar."""
+    for project_dir in project_dirs:
+        state = _load_state(project_dir)
+        if "instagram_creation_id" in state and "instagram_media_id" not in state:
+            _check_instagram_pending(project_dir)
+        if state.get("tiktok_publish_id") and not state.get("tiktok_notified"):
+            _check_tiktok_notification(project_dir, state)
+
+
 def process_project(project_dir: str, privacy: str, schedule: bool = True) -> None:
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
 
@@ -273,7 +322,7 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
         log("  YouTube Shorts atlandı: upload/token.json yok (önce youtube_auth.py çalıştır)")
 
     if "tiktok_publish_id" in state:
-        log("  TikTok: zaten yüklü, atlanıyor")
+        _check_tiktok_notification(project_dir, state)
     elif os.path.isfile(os.path.join(upload_dir, "tiktok_token.json")):
         try:
             from tiktok_upload import upload_video as tt_upload
@@ -286,11 +335,12 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
 
     if "instagram_media_id" in state:
         log("  Instagram: zaten yüklü, atlanıyor")
+    elif "instagram_creation_id" in state:
+        _check_instagram_pending(project_dir)
     elif os.path.isfile(os.path.join(upload_dir, "instagram_token.json")):
         try:
             from instagram_upload import upload_video as ig_upload
-            media_id = ig_upload(project_dir)
-            log(f"  Instagram: tamam, media_id={media_id}")
+            _log_instagram_result(ig_upload(project_dir))
         except Exception as e:
             log(f"  Instagram HATA: {e}")
     else:
@@ -344,13 +394,25 @@ def main():
             log("İşlenecek proje yok (audio hazır olan bulunamadı).")
             return
 
+        # NOT: _drain_golden_hour_queue aşağıda her dönüşte `ready` (sadece
+        # `pending` değil) ile çağrılıyor — _is_fully_done() tiktok_notified'ı
+        # SAYMIYOR (bilerek: "yüklendi mi" ile "bildirim gönderildi mi" ayrı
+        # şeyler), yani Instagram/YouTube/TikTok'un hepsi zaten yüklenmiş ama
+        # TikTok bildirimi henüz gönderilmemiş bir proje `pending`'de değil
+        # görünebilir; `ready` kullanmak bu projeyi de kapsar (drain zaten
+        # ucuz/idempotent — bekleyeni yoksa hiçbir şey yapmaz).
         pending = [p for p in ready if not _is_fully_done(p)]
         if not pending:
+            _drain_golden_hour_queue(ready)
             log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
             return
 
         count = args.count if args.count is not None else _auto_pace_count(pending, ready)
         if count == 0:
+            # Bu koşuda yeni bir proje işlenmeyecek olsa bile, ZATEN başlatılmış
+            # (Instagram konteyneri / TikTok yüklemesi) ama golden-hour'u bekleyen
+            # aksiyonlar olabilir — onları yine de kontrol et.
+            _drain_golden_hour_queue(ready)
             return
 
         batch = pending[:count]
@@ -359,6 +421,7 @@ def main():
         for project_dir in batch:
             process_project(project_dir, args.privacy, schedule=not args.no_schedule)
 
+        _drain_golden_hour_queue([p for p in ready if p not in batch])
         log("Çalıştırma tamamlandı.")
     finally:
         _release_lock()

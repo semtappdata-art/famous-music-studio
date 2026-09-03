@@ -87,16 +87,34 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   bir) TEK bir tetikleyiciyle çalışması yeterli — script her çağrıldığında "sırası
   geldi mi" diye kendi karar veriyor. `--count N` elle verilirse bu mantık devre
   dışı kalır (eski sabit davranış).
-- **YouTube golden-hour zamanlaması (`config.GOLDEN_HOURS`, `config.next_golden_publish_time`)**:
-  otomatik kademeleme render/upload anını günün her saatine denk getirebildiği için (eskiden
-  sabit 13:00/19:00, artık saatte bir kontrol), `privacy=public` YouTube yüklemeleri
-  `status.privacyStatus="private"` + `status.publishAt` ile yükleniyor — YouTube videoyu
-  bir sonraki golden-hour penceresinde (12:00-14:00/18:00-22:00 TR) kendisi otomatik public
-  yapıyor, render/upload anı ile canlıya çıkış anı böylece ayrılmış oluyor. `--no-schedule`
-  ile kapatılabilir. Instagram Graph API ve TikTok Content Posting API'de üçüncü parti
-  uygulamalar için ileri-tarihli yayın parametresi YOK (WebSearch ile doğrulandı, Eylül
-  2026) — bu iki platformda "zamanlama" zaten script'in ne zaman çalıştığından ibaret,
-  ek bir şey yapılamaz.
+- **Üç platform, üç FARKLI golden-hour stratejisi (`config.GOLDEN_HOURS`,
+  `config.next_golden_publish_time`, TR yerel 12:00-14:00/18:00-22:00)** — otomatik
+  kademeleme render/upload anını günün her saatine denk getirebildiği için (eskiden
+  sabit 13:00/19:00, artık saatte bir kontrol), kullanıcıyla netleştirilip her
+  platform kendi API kısıtına göre çözüldü:
+  - **YouTube** — native destek var: `status.privacyStatus="private"` +
+    `status.publishAt` ile yükleniyor, YouTube videoyu bir sonraki golden-hour
+    penceresinde kendisi otomatik public yapıyor. `--no-schedule` ile kapatılabilir.
+  - **Instagram** — Graph API'de native zamanlanmış yayın YOK (WebSearch ile
+    doğrulandı, Eylül 2026), bu yüzden KENDİ kuyruğumuz var: `instagram_upload.py`
+    konteyneri (`creation_id`) hemen oluşturup `state.json`'a kaydediyor ama
+    `media_publish` çağrısını (gerçek canlıya çıkış) golden-hour'a kadar
+    erteliyor (`try_publish_pending()`, `auto_process.py`'nin her çalıştırmasında
+    — batch'e girmeyen projeler için bile `_drain_golden_hour_queue()` ile kontrol
+    ediliyor). Instagram konteynerleri 24 saat sonra EXPIRED oluyor (WebSearch ile
+    doğrulandı) — golden-hour pencereleri arası en kötü senaryoda ~14 saat olduğu
+    için güvenli marj var, yine de `try_publish_pending()` EXPIRED durumunu
+    algılayıp konteyneri sıfırdan yeniden oluşturuyor.
+  - **TikTok** — Content Posting API'de de native zamanlanmış yayın YOK, ayrıca
+    henüz audit'ten geçmediği için zaten sadece taslak/gelen kutusuna yükleyip
+    kullanıcının uygulamadan ELLE yayınlamasını gerektiriyor (bkz. aşağıdaki
+    madde). Bu elle adımı unutmamak için kullanıcı isteğiyle `notify.py` (ntfy.sh
+    üzerinden ücretsiz telefon push bildirimi) eklendi — `tiktok_upload.py`nin
+    `notify_pending_publish()`'i golden-hour'a girildiğinde bir kereliğine
+    hatırlatma gönderiyor (`state.json`'da `tiktok_notified` ile tekrar
+    göndermiyor, TikTok API'sinden kullanıcının gerçekten yayınlayıp
+    yayınlamadığını öğrenmenin bir yolu yok). `notify_config.json` (gitignored,
+    `{"ntfy_topic": "..."}`) yoksa sessizce atlanır, otomasyon bozulmaz.
 - **DJ Famous (`dj_sets/`, `dj_famous_process.py`) ana katalogla ASLA karıştırılmamalı**:
   ana katalog kurgusal, DJ Famous GERÇEK bir kişiyi (kendi açık onayıyla) konu alıyor —
   bu yüzden bilerek ayrı bir klasör, ayrı bir script, ayrı bir kilit/log dosyası. AI-üretimi
