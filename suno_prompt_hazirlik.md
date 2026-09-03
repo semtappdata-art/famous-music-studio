@@ -32,10 +32,10 @@ Suno API erişimi yok — bu akış manuel: prompt hazırla → Suno.com'a yapı
 ## Örnek Stil Etiketi (referans, şarkıya göre uyarla)
 
 ```
-Turkish trap arabesk, melancholic and cinematic, husky male vocals, 808 bass, kanun strings, minor key piano, rain-soaked night atmosphere
+Turkish trap arabesk, melancholic and cinematic, husky male vocals, 808 bass, kanun strings, minor key piano, rain-soaked night atmosphere, gentle fade-out ending
 ```
 
-(7 tanımlayıcı — genre+mood önde, sonra vokal/enstrüman. Suno v4.5+ için optimal aralık.)
+(7 tanımlayıcı — genre+mood önde, sonra vokal/enstrüman, SONA bir kapanış tanımı — bkz. "Kapanış (Outro) kuralı". Suno v4.5+ için optimal aralık.)
 
 ## Şarkı Yapısı Şablonu (Custom Mode → Lyrics kutusuna yapıştır, sözleri kendin doldur)
 
@@ -55,10 +55,36 @@ Turkish trap arabesk, melancholic and cinematic, husky male vocals, 808 bass, ka
 [Bridge]
 
 [Outro]
+(iki tam, bitmiş cümle — bkz. "Kapanış (Outro) kuralı", "..." ile yarım bırakma)
 ```
+
+## Kapanış (Outro) kuralı — SABİT, atlama
+
+Şarkı sonlarının anlamsız/yarım kesilmiş hissettirmesi tekrarlayan bir sorundu — kaynağı muhtemelen iki şey:
+
+1. **Style etiketinde kapanışın nasıl olacağı belirtilmiyordu** — Suno'ya "nasıl bitsin" söylenmezse rastgele/ani kesebiliyor. Artık HER stil etiketinin SONUNA bir kapanış tanımı ekleniyor:
+   - Yumuşak/duygusal şarkılar (pop, akustik, arabesk): `gentle fade-out ending`
+   - Enerjik/sert şarkılar (rock, hiphop, elektronik): `strong final hit ending, no abrupt cutoff`
+2. **Outro sözleri "..." ile yarım bırakılmış cümlelerdi** (ör. "Kalbim hâlâ..."), gerçek bir kapanış cümlesi değil — hem müzikal olarak "bitmemiş" hissi veriyor hem de (Yürek Yarası'ndaki köşeli-parantez-dışı-metin hatasına benzer şekilde) Suno'nun düz metni garip yorumlama riski taşıyor. Artık Outro **iki TAM, bitmiş cümle** oluyor — üç nokta (`...`) YOK, yarım bırakılan düşünce YOK, nakaratı tekrar eden ama net bir noktada biten bir kapanış.
+
+Bu kural `karakter_roster.md`'deki arabesk-düet kuralı gibi kalıcı — yeni her şarkı prompt'unda uygulanmalı.
+
+## Temiz Sözler (YouTube açıklaması) kuralı — SABİT, atlama
+
+Suno'ya yapıştırılan sözler `[Verse 1]`, `[Chorus]` gibi köşeli parantez etiketleri
+içerir — bunlar Suno'ya yönelik yapı talimatları, izleyiciye değil. Bu etiketlerle
+birlikte YouTube açıklamasına kopyalanırsa amatör görünüyor (kullanıcı geri bildirimi).
+
+Artık her `*_sozler.md` dosyasında, Suno'ya yapıştırılan (etiketli) versiyonun HEMEN
+ALTINDA ayrı bir **"Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)"** bölümü
+oluyor — aynı sözler, köşeli parantez etiketleri TAMAMEN çıkarılmış, sadece bölümler
+arası boş satırla ayrılmış hâlde. Bu, doğrudan YouTube açıklamasına yapıştırılabilir.
+
+Bu kural da kalıcı — yeni her şarkı prompt'unda uygulanmalı.
 
 ## Notlar
 
 - Vokal dili: Türkçe belirtmeyi unutma (örn. "Turkish male vocals")
 - Tema tutarlılığı: gece, neon ışıklar, yalnız yürüyüş, şehir — marka evreninin (Famous Music Studio) genel ruh hali
 - Her yeni şarkı için bu dosyayı referans al, stil etiketini şarkının kendi temasına göre uyarla
+- `theme` seçenekleri (meta.json): `pop`, `rock`, `elektronik`, `akustik`, `hiphop`, `arabesk` (`config.THEMES`'teki 6 slot)

@@ -110,6 +110,15 @@ pop'a 2 + 1 geçişli, elektronik/akustik/rock'a 1'er — `turkiye_muzik_trend_a
    koyduysan (karakter portresinden bağımsız, tek seferlik özel bir görsel istiyorsan)
    o da her zaman önceliklidir, karakter portresi sadece boşluğu doldurur.
 
+## Kullanım geçmişi (rotasyon takibi)
+
+Yukarıdaki "aynı karakter art arda günlerde kullanılmasın" kuralını uygulayabilmek için
+— yeni bir karakter seçmeden önce bu tabloya bak, en son kullanılanı ELEME.
+
+| Tarih | Şarkı | Karakter |
+|---|---|---|
+| 2026-09-03 | Beton Krallığı | ASI |
+
 ## Sınır ve dürüstlük notu
 
 IngaRose örneği şeffaflığın (AI olduğunu gizlememenin) başarıyı engellemediğini gösteriyor
