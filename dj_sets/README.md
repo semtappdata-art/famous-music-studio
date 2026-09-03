@@ -39,14 +39,18 @@ Ana kataloktaki `projects/<isim>/` ile AYNI kurala göre çalışır — render.
 generate_cover.py, validate_project.py hepsi buradaki klasörleri de tanır:
 
 ```
-dj_sets/<hafta-etiketi>/
+dj_sets/<set-adı>/
     audio.wav          # set kaydı (uzun olabilir, ör. ~1 saat — render süresi/sıkıştırılmış
                         # dosya boyutu buna göre artar, bu normal)
     art.jpg             # Arda'nın (AI ile üretilmiş/işlenmiş) fotoğrafı — kartın içeriği +
                         # arka plan blur kaynağı olarak kullanılır
-    meta.json           # {"title": "Hafta 1 Seti", "theme": "dj",
-                        #  "marquee_text": "DJ Famous  •  Hafta 1 Seti  •  #DJFamous #AIMusic #YapayZekaMuzik"}
+    meta.json           # {"title": "Gece Yarısı Seti", "theme": "dj",
+                        #  "marquee_text": "DJ Famous  •  Gece Yarısı Seti  •  #DJFamous #AIMusic #YapayZekaMuzik"}
 ```
+
+**Klasör adı ve `title` — "Hafta 1"/"1-2" gibi sıralı/numaralı bir isimlendirme
+KULLANILMIYOR.** Her set kendi içeriğine göre betimleyici bir isim alır (ör. "Gece
+Yarısı Seti", "Yaz Akşamı Seti") — sıra numarası veya hafta etiketi yok.
 
 `marquee_text` — videonun altındaki SABİT (kaymayan) satır HER ZAMAN "Famous Music
 Studio" kalır (`config.STATIC_LABEL_TEXT`, ana katalogla aynı, değişmiyor). Onun
