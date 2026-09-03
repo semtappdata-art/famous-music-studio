@@ -53,6 +53,11 @@ pip install -r requirements.txt
    değil, kayan yazının rengini ve hashtag'lerin tür etiketini belirler. Belirtilmezse
    varsayılan `hiphop` kullanılır.
 
+   İsteğe bağlı `"character": "Kerem Ateşi"` alanı eklersen (bkz.
+   [karakter_roster.md](karakter_roster.md)) ve `characters/` klasöründe o karaktere ait
+   bir portre varsa, `cover.jpg`/`art.jpg` eksikse otomatik olarak o portreden üretilir —
+   yoksa (portre henüz hazırlanmadıysa) sessizce tema rengine göre procedural üretime döner.
+
 4. **Render et:**
    ```bash
    python render.py --project projects/<sarki-adi>
