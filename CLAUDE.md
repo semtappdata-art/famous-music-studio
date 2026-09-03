@@ -101,11 +101,16 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   alan adı riskli), sadece kullanıcıya elle etiketleme hatırlatması var.
 - **TikTok kapak (cover) görseli API'den ayarlanamıyor**: `video_cover_image_url` sadece
   audit'ten geçmiş Direct Post akışında var, bu projenin kullandığı Taslak/Gelen Kutusu
-  akışında yok (WebSearch ile doğrulandı, Eylül 2026) — koda eklenebilecek bir şey değil.
-  Kullanıcının elle yapabileceği tek şey: TikTok uygulamasında (taslağı yayınlarken YA DA
-  yayınlandıktan sonra 7 gün içinde "Gönderiyi düzenle" → "Kapağı düzenle") galeriden özel
-  bir fotoğraf (projenin `cover.jpg`'si) yükleyebiliyor — video karesi seçmek zorunda değil.
-  Detay: README.md, "Kimlik doğrulama" → TikTok adımı.
+  akışında yok (WebSearch ile doğrulandı, Eylül 2026) — API üzerinden koda eklenebilecek
+  bir şey değil. Bunun yerine `tiktok_upload.py` YouTube/Instagram'daki caption/AI-etiket
+  hatırlatmalarıyla AYNI desende (bkz. `upload_video()` içindeki not) her yüklemede hangi
+  `cover.jpg`'yi kullanacağını basıp `state.json`'a (`tiktok_cover_hint`) kaydediyor;
+  `--pending-covers` ile TikTok'a zaten yüklü TÜM projeler için bu listeyi tek seferde
+  alabilirsin (eski videolar dahil, `tiktok_cover_hint` yoksa `_find_cover` ile yeniden
+  bulunuyor). Kullanıcı bunu TikTok uygulamasında (taslağı yayınlarken YA DA yayınlandıktan
+  sonra 7 gün içinde "Gönderiyi düzenle" → "Kapağı düzenle") "Yükle" ile galeriden elle
+  seçiyor — video karesi seçmek zorunda değil. Detay: README.md, "Kimlik doğrulama" →
+  TikTok adımı.
 
 ## Beş özel subagent (`.claude/agents/`)
 
