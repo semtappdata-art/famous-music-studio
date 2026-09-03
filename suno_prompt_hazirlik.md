@@ -82,6 +82,28 @@ arası boş satırla ayrılmış hâlde. Bu, doğrudan YouTube açıklamasına y
 
 Bu kural da kalıcı — yeni her şarkı prompt'unda uygulanmalı.
 
+## Intro kuralı — SABİT, atlama
+
+Şarkı başlarının "yapay/şablon" hissettirmesi tekrarlayan bir sorundu. Kök neden:
+Intro'nun ilk satırı genelde şarkının konusunu/başlığını doğrudan özetleyen bir "tez
+cümlesi" oluyordu — ör. "Kırdım zincirleri, artık özgürüm" (Kırık Zincir), "Bir mektup
+yazdım sana, göndermedim" gibi temayı hemen adlandıran açılışlar. Gerçek/insan yazımı
+şarkı sözleri genelde böyle başlamaz — somut bir AN, DETAY veya duyu imgesiyle açılır,
+temayı dolaylı olarak hissettirir, doğrudan söylemez.
+
+**Kural:** Intro'nun ilk satırı şarkının temasını/başlığını DOĞRUDAN adlandırmamalı.
+Bunun yerine küçük, somut, sahneleyici bir detayla açılmalı (saat, mekan, ses, fiziksel
+bir hareket, bir nesne) — dinleyici temayı satır satır keşfetmeli, ilk cümlede
+özetlenmiş bulmamalı.
+
+- **Zayıf (kaçınılacak):** "Kırdım zincirleri, artık özgürüm" — doğrudan tema özeti.
+- **Güçlü (hedeflenen):** "Saat üçte uyandım, terden ıslanmış çarşaf" — somut an,
+  temayı (mücadele/özgürleşme) dolaylı hissettiriyor, sonraki satırlarda açılıyor.
+
+Bu kural da kalıcı — yeni her şarkı prompt'unda uygulanmalı. (Bugüne kadar üretilmiş
+7 şarkı geriye dönük DEĞİŞTİRİLMEDİ — audio zaten üretildi, sadece bundan sonrakiler
+için geçerli.)
+
 ## Notlar
 
 - Vokal dili: Türkçe belirtmeyi unutma (örn. "Turkish male vocals")
