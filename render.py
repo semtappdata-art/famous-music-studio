@@ -86,6 +86,10 @@ def render_project(project_dir: str) -> bool:
     meta = load_meta(project_dir)
     title = meta.get("title")
     theme = meta.get("theme")
+    # DJ Famous gibi özel içerikler için kayan yazının içeriğini override eder
+    # (ör. "DJ Famous  •  Hafta 1 Seti  •  #DJFamous ...") — sabit alt satır
+    # ("Famous Music Studio") HER ZAMAN aynı kalır, bundan etkilenmez.
+    marquee_override = meta.get("marquee_text")
 
     output_dir = os.path.join(project_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
@@ -112,6 +116,7 @@ def render_project(project_dir: str) -> bool:
         use_highlight = platform_key in config.HIGHLIGHT_PLATFORMS
         ffmpeg_utils.render_video(
             art_path, audio_path, output_path, width, height, title, theme,
+            marquee_override=marquee_override,
             start_time=highlight_start if use_highlight else None,
             end_time=highlight_end if use_highlight else None,
         )

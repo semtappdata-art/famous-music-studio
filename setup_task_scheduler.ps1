@@ -1,16 +1,25 @@
 <#
-Tek seferlik kurulum scripti: Windows Görev Zamanlayıcı'daki auto_process.py'yi
-çağıran ESKİ tetikleyicileri (ör. günde iki kez 13:00/19:00) otomatik bulup siler,
-yerine otomatik kademeleme mantığının (bkz. README.md, CLAUDE.md) gerektirdiği
-TEK, SIK (saatte bir) bir tetikleyici kurar. Görev Zamanlayıcı arayüzünde elle
-tıklama gerektirmez.
+Tek seferlik kurulum scripti — İKİ görev kurar:
+  1. auto_process.py (ana katalog, günlük 6 üretim) — ESKİ tetikleyicileri (ör.
+     günde iki kez 13:00/19:00) otomatik bulup silip, otomatik kademeleme
+     mantığının (bkz. README.md, CLAUDE.md) gerektirdiği TEK, SIK (saatte bir)
+     bir tetikleyici kurar.
+  2. dj_famous_process.py (haftalık DJ Famous seti, bkz. dj_sets/README.md) —
+     haftada BİR (varsayılan: Cuma 18:00) çalışan ayrı bir tetikleyici.
+Görev Zamanlayıcı arayüzünde elle tıklama gerektirmez.
 
 Kullanım (PowerShell'de, repo klasöründeyken):
     powershell -ExecutionPolicy Bypass -File setup_task_scheduler.ps1
+    powershell -ExecutionPolicy Bypass -File setup_task_scheduler.ps1 -DjFamousDayOfWeek Sunday -DjFamousTime 20:00
 
-Yeniden çalıştırmak güvenlidir (idempotent) — var olan aynı isimli görevi
+Yeniden çalıştırmak güvenlidir (idempotent) — var olan aynı isimli görevleri
 günceller, eski/farklı isimli auto_process.py görevlerini temizler.
 #>
+
+param(
+    [string]$DjFamousDayOfWeek = "Friday",
+    [string]$DjFamousTime = "18:00"
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -58,3 +67,33 @@ Write-Host "  script : $repoRoot\auto_process.py"
 Write-Host "  python : $pythonExe"
 Write-Host ""
 Write-Host "Kontrol için:  Get-ScheduledTask -TaskName '$taskName' | Get-ScheduledTaskInfo"
+
+# --- DJ Famous (haftalık, ayrı görev) ---
+$djFamousTaskName = "FamousMusicStudio-DjFamousProcess"
+
+$djFamousOld = Get-ScheduledTask | Where-Object {
+    $action = $_.Actions | Select-Object -First 1
+    $action -and $action.Arguments -and ($action.Arguments -match "dj_famous_process\.py")
+}
+foreach ($t in $djFamousOld) {
+    Write-Host "Eski DJ Famous görevi siliniyor: $($t.TaskName)"
+    Unregister-ScheduledTask -TaskName $t.TaskName -Confirm:$false
+}
+
+$djFamousAt = [DateTime]::ParseExact($DjFamousTime, "HH:mm", $null)
+$djFamousAction = New-ScheduledTaskAction -Execute $pythonExe -Argument "dj_famous_process.py" -WorkingDirectory $repoRoot
+$djFamousTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $DjFamousDayOfWeek -At $djFamousAt -WeeksInterval 1
+# 1 saate kadar sürebilecek set videoları render+3 platform yükleme için ana
+# katalogdan (2 saat) çok daha uzun bir süre limiti (bkz. dj_sets/README.md).
+$djFamousSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopOnIdleEnd `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 6) -MultipleInstances IgnoreNew
+
+Register-ScheduledTask -TaskName $djFamousTaskName -Action $djFamousAction -Trigger $djFamousTrigger `
+    -Settings $djFamousSettings -Principal $principal -Force | Out-Null
+
+Write-Host ""
+Write-Host "Tamam: '$djFamousTaskName' görevi her $DjFamousDayOfWeek $DjFamousTime çalışacak şekilde kuruldu."
+Write-Host "  script : $repoRoot\dj_famous_process.py"
+Write-Host "  farklı gün/saat istersen: -DjFamousDayOfWeek <gün> -DjFamousTime <SS:dd> ile yeniden çalıştır"
+Write-Host ""
+Write-Host "Kontrol için:  Get-ScheduledTask -TaskName '$djFamousTaskName' | Get-ScheduledTaskInfo"

@@ -54,6 +54,14 @@ def find_character_image(character_name: str) -> str | None:
     return None
 
 
+def _find_existing_art(project_dir: str) -> str | None:
+    for name in ("art.jpg", "art.jpeg", "art.png"):
+        path = os.path.join(project_dir, name)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
 def load_meta(project_dir: str) -> dict:
     meta_path = os.path.join(project_dir, "meta.json")
     if os.path.isfile(meta_path):
@@ -146,7 +154,17 @@ def _add_title_text(bg_path: str, out_path: str, title: str, y_center_ratio: flo
     merkezinin canvas yüksekliğine oranı — procedural gradyanda tam ortada
     (0.5) durur, ama bir karakter portresi arka planken (bkz. generate())
     büst siluetiyle çakışmasın diye başın ÜSTÜNDEKİ boş alana (küçük bir
-    oran) taşınır."""
+    oran) taşınır.
+
+    Font boyutları CANVAS_SIZE (1600x1600) varsayımıyla hesaplanıyor —
+    procedural arka planlar ve karakter portreleri zaten hep bu boyutta
+    üretiliyor, ama elle sağlanan bir art.jpg (ör. DJ Famous için gerçek bir
+    fotoğraf) HERHANGİ bir çözünürlükte/en-boy oranında olabilir. Bunsuz,
+    ör. 800x800'lük bir kaynakta metin canvas'ın çok dışına taşıp kesiliyordu
+    (test sırasında tespit edildi) — bu yüzden bg_path her zaman önce
+    CANVAS_SIZE x CANVAS_SIZE'a scale+crop ediliyor (ffmpeg_utils.py'nin
+    video kartı için yaptığı aynı normalizasyon), zaten bu boyuttaki
+    kaynaklarda (karakter portreleri, procedural arka plan) no-op."""
     rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
     title_escaped = _escape_drawtext(title)
     label_escaped = _escape_drawtext(config.STATIC_LABEL_TEXT)
@@ -155,6 +173,8 @@ def _add_title_text(bg_path: str, out_path: str, title: str, y_center_ratio: flo
     y_center = int(CANVAS_SIZE * y_center_ratio)
 
     filter_complex = (
+        f"scale={CANVAS_SIZE}:{CANVAS_SIZE}:force_original_aspect_ratio=increase,"
+        f"crop={CANVAS_SIZE}:{CANVAS_SIZE},"
         f"drawtext=fontfile={rel_font}:text='{title_escaped}':"
         f"fontcolor=white:fontsize={title_fontsize}:"
         f"x=(w-text_w)/2:y={y_center}-(text_h/2),"
@@ -193,11 +213,21 @@ def generate(project_dir: str) -> None:
         return
 
     character_image = find_character_image(character) if character else None
+    # has_art ise (elle sağlanmış bir görsel var, ör. karakter roster'ında olmayan
+    # bir proje için manuel art.jpg — DJ Famous gibi) cover.png'yi o gerçek görselden
+    # türetiyoruz; öncesinde bu durumda cover.png ilgisiz bir procedural gradyandan
+    # üretiliyordu (art.jpg tamamen göz ardı ediliyordu) — sağlanan görselle
+    # bağlantısız bir kapak çıkması bir hataydı.
+    existing_art = _find_existing_art(project_dir) if has_art else None
     cleanup_paths = []
     if character_image:
         bg_path = character_image
         bg_ext = os.path.splitext(character_image)[1]
         source_label = f"karakter portresi: {character}"
+    elif existing_art:
+        bg_path = existing_art
+        bg_ext = os.path.splitext(existing_art)[1]
+        source_label = "elle sağlanan art görseli"
     else:
         seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
         base_path = os.path.join(project_dir, "_bg_base_tmp.png")
@@ -215,11 +245,11 @@ def generate(project_dir: str) -> None:
             shutil.copy(bg_path, art_path)
             print(f"  art{bg_ext} üretildi ({source_label})")
         if not has_cover:
-            # Karakter portresi kullanılırken başlık, büst siluetinin (baş üstü
-            # ~%25'ten başlıyor) ÜSTÜNDEKİ boş alana taşınıyor ki üst üste
-            # binmesin — procedural gradyanda böyle bir "konu" olmadığı için
-            # tam ortada (varsayılan) kalıyor.
-            y_ratio = 0.13 if character_image else 0.5
+            # Karakter portresi ya da elle sağlanan bir görsel (muhtemelen bir
+            # yüz/konu içerir) arka planken başlık, üstteki boş alana taşınıyor
+            # ki üst üste binmesin — procedural gradyanda böyle bir "konu"
+            # olmadığı için tam ortada (varsayılan) kalıyor.
+            y_ratio = 0.13 if (character_image or existing_art) else 0.5
             _add_title_text(bg_path, cover_path, title, y_center_ratio=y_ratio)
             print(f"  cover.png üretildi ({title!r}, {source_label})")
     finally:

@@ -15,6 +15,20 @@ projects/*/audio.wav
 projects/*/audio.mp3
 projects/*/audio.m4a
 projects/*/_backdrop_*.png
+dj_sets/*/output/
+dj_sets/*/audio.wav
+dj_sets/*/audio.mp3
+dj_sets/*/audio.m4a
+dj_sets/*/_backdrop_*.png
+# dj_sets/*'in art/cover'ı katalogdakinin aksine GERÇEK bir kişinin fotoğrafı/
+# görüntüsü (bkz. dj_sets/README.md) — Suno ses dosyaları gibi kişisel/hassas,
+# repoya (potansiyel olarak herkese açık bir GitHub deposuna) commit edilmiyor.
+dj_sets/*/art.jpg
+dj_sets/*/art.jpeg
+dj_sets/*/art.png
+dj_sets/*/cover.jpg
+dj_sets/*/cover.jpeg
+dj_sets/*/cover.png
 assets/*.png
 upload/assets/*.png
 
@@ -28,3 +42,5 @@ __pycache__/
 # Otomasyon log dosyası ve çalıştırma kilidi
 auto_process.log
 .auto_process.lock
+dj_famous_process.log
+.dj_famous_process.lock
