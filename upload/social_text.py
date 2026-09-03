@@ -26,16 +26,44 @@ def _pick(title: str, options: list, salt: int = 0) -> str:
     return options[index]
 
 
+def resolve_language(meta: dict) -> str:
+    """Paylaşım metinlerinin dilini belirler: meta.json'da açık bir "language"
+    varsa o öncelikli (istisna/override için), yoksa Suno'da üretilen müziğin
+    STİLİNE (theme) göre varsayılana düşülür (config.THEMES[...]["language"]) —
+    kullanıcı isteği: dil hazırlığı stile göre otomatik olsun, her projede elle
+    yazmaya gerek kalmasın. Hiçbiri yoksa "tr"."""
+    if meta.get("language"):
+        return meta["language"]
+    theme_key = meta.get("theme", config.DEFAULT_THEME)
+    return config.THEMES.get(theme_key, {}).get("language", "tr")
+
+
 def build_caption(meta: dict) -> str:
     """Caption BİLİNÇLİ olarak başka bir platforma yönlendirme içermiyor — Instagram/
     TikTok'un keşfet/For You dağıtımı, caption'da "başka platforma git" mesajı olan
     içeriği hafifçe cezalandırıyor olabilir (resmi olarak açıklanmıyor ama yaygın
     growth pratiği bu yönde). YouTube linki bunun yerine build_youtube_comment() ile
-    paylaşımdan SONRA bir yorum olarak ekleniyor — bkz. instagram_upload.py."""
+    paylaşımdan SONRA bir yorum olarak ekleniyor — bkz. instagram_upload.py.
+
+    Dil resolve_language() ile belirlenir — stile (theme) göre otomatik, meta.json'da
+    açık bir "language" varsa o öncelikli. "en" ise İngilizce şablon/hashtag kullanılır
+    (bkz. config.py'deki *_EN sabitleri) — değilse (ana katalogdaki gibi) Türkçe."""
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
     genre_hashtags = [_hashtag(theme["label"])] + [_hashtag(t) for t in theme.get("related", [])]
+
+    if resolve_language(meta) == "en":
+        discovery_hashtags = config.DISCOVERY_HASHTAGS_EN
+        hashtags = " ".join(config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags)
+        hook = _pick(title, config.HOOK_LINES_EN)
+        engagement_question = _pick(title, config.ENGAGEMENT_QUESTIONS_EN, salt=7)
+        return (
+            f"{hook}\n\n{title} 🎵\n\n"
+            f"Feel free to use this track in your edits 🔥\n\n"
+            f"Follow for more tracks\n\n"
+            f"{engagement_question}\n\n{hashtags}"
+        )
 
     hashtags = " ".join(config.BRAND_HASHTAGS + config.DISCOVERY_HASHTAGS + genre_hashtags)
     hook = _pick(title, config.HOOK_LINES)
@@ -49,7 +77,7 @@ def build_caption(meta: dict) -> str:
     )
 
 
-def build_ai_disclosure_line() -> str:
+def build_ai_disclosure_line(lang: str = "tr") -> str:
     """DJ Famous gibi GERÇEK, tanınabilir bir kişiyi (bkz. dj_sets/README.md)
     konu alan içeriklerde caption'a eklenen tek satırlık AI-üretimi bildirimi.
     Meta'nın Graph API'sinde resmi bir 'is_ai_generated' alanı ikincil
@@ -58,12 +86,18 @@ def build_ai_disclosure_line() -> str:
     güvenilir alternatif olarak caption'ın SONUNA (en az dikkat çeken yer)
     tek satır ekleniyor. Ana kataloğun (kurgusal temalar/karakterler) normal
     build_caption() çıktısına eklenmiyor, sadece gerçek kişi içeren içerikte
-    kullanılır."""
+    kullanılır. lang="en" ise İngilizce metin döner (bkz. meta.json'daki
+    "language" alanı, ilk kullanım: DJ Famous)."""
+    if lang == "en":
+        return "This content was created using artificial intelligence."
     return "Bu içerik yapay zeka ile üretilmiştir."
 
 
-def build_youtube_comment(youtube_url: str) -> str:
+def build_youtube_comment(youtube_url: str, lang: str = "tr") -> str:
     """Paylaşımdan SONRA ilk yorum olarak eklenecek kısa metin — caption'ın aksine
     yorumların keşfet dağıtımını etkilediğine dair bir kaygı yok, o yüzden link
-    burada güvenle kullanılabiliyor."""
+    burada güvenle kullanılabiliyor. lang="en" ise İngilizce metin döner (bkz.
+    meta.json'daki "language" alanı)."""
+    if lang == "en":
+        return f"🎧 Full track on YouTube: {youtube_url}"
     return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}"

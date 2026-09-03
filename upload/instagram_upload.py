@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from instagram_auth import get_access_token
-from social_text import build_caption, build_youtube_comment
+from social_text import build_caption, build_youtube_comment, resolve_language
 
 UPLOAD_DIR = os.path.dirname(os.path.abspath(__file__))
 NETLIFY_SECRETS_PATH = os.path.join(UPLOAD_DIR, "netlify_client_secrets.json")
@@ -171,10 +171,11 @@ def _publish_container(ig_user_id: str, access_token: str, creation_id: str, pro
     # zaten tamamlandığı için hata fırlatmıyoruz, sadece logluyoruz.
     video_id = _load_state(project_dir).get("youtube_video_id")
     if video_id:
+        lang = resolve_language(_load_meta(project_dir))
         try:
             comment_resp = requests.post(
                 f"{GRAPH_API}/{media_id}/comments",
-                data={"message": build_youtube_comment(f"https://youtu.be/{video_id}"), "access_token": access_token},
+                data={"message": build_youtube_comment(f"https://youtu.be/{video_id}", lang), "access_token": access_token},
                 timeout=(10, 30),
             )
             comment_resp.raise_for_status()
