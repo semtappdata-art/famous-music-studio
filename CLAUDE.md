@@ -217,6 +217,15 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   script/python.exe) etkileyen değişiklikler bu mekanizmayla YAYILMAZ — o zaman
   hâlâ `setup_task_scheduler.ps1`'in elle yeniden çalıştırılması gerekiyor.
 
+- **YouTube OAuth scope'u (`youtube.upload` + `youtube.force-ssl`) DAHA FAZLA DARALTILAMAZ**:
+  WebSearch ile Google'ın resmi YouTube Data API dokümantasyonu doğrulandı (2026-09) —
+  `videos.update` (bkz. `set_privacy.py`/`update_metadata.py`) ve `playlistItems.insert`
+  (bkz. `youtube_playlists.py`) çağrıları `youtubepartner`, `youtube`, `youtube.force-ssl`
+  scope'larından EN AZ birini şart koşuyor; bu üçü arasında `youtube.force-ssl` zaten en
+  dar seçenek. Yani mevcut kurulum zaten minimal — daha dar bir scope'a geçmek bu iki
+  işlevi kırar. Kaynak: [Videos: update](https://developers.google.com/youtube/v3/docs/videos/update),
+  [PlaylistItems: insert](https://developers.google.com/youtube/v3/docs/playlistItems/insert).
+
 ## Beş özel subagent (`.claude/agents/`)
 
 Salt-okunur denetçiler — kod yazmazlar, sadece bulgu raporlarlar:
@@ -235,13 +244,17 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
 
 ## Açık/bilinen boşluklar (henüz yapılmadı)
 
-- TikTok/Instagram'ın AI-içerik açıklama API alan adları doğrulanmadı (resmi dokümantasyona
-  bu ortamdan erişilemedi) — kullanıcı doğrularsa koda eklenebilir.
-- YouTube OAuth scope'u (`youtube.force-ssl`) daraltılabilir mi test edilmedi — yanlış
-  daraltma `set_privacy.py`/`update_metadata.py`'yi bozabilir, canlı ortamda test gerekir.
+- TikTok/Instagram'ın AI-içerik açıklama API alan adları HÂLÂ tam doğrulanmadı (2026-09-04
+  WebSearch ile tekrar denendi): TikTok Content Posting API'de `post_info.is_aigc`,
+  Instagram Graph API'de `media_publish` çağrısında `is_ai_generated` adlı alanlar üçüncü
+  taraf entegrasyon dokümantasyonlarında (Ayrshare vb.) tutarlı şekilde geçiyor, ama resmi
+  `developers.tiktok.com`/`developers.facebook.com` sayfalarının ham metniyle bu ortamdan
+  DOĞRULANAMADI — Meta'nın en güncel resmi changelog'unda (3 Aralık 2025) bu alandan hiç
+  bahsedilmiyor, bu olumsuz bir sinyal. Koda eklemeden önce kullanıcının gerçek bir API
+  test isteğiyle (ör. sandbox/test hesabı) bu alanların kabul edildiğini bizzat doğrulaması
+  gerekiyor — yanlış alan adı riskli olduğu için hâlâ koda eklenmedi.
 - İlk 3 şarkının (Beni Bırakma, Küllerimden Geç, Shudhniy L) Suno stil etiketleri
   arşivlenmemiş.
-- `rock` teması hiç kullanılmadı (6 slottan tek boş kalan).
 
 ## Diğer takip dosyaları
 
