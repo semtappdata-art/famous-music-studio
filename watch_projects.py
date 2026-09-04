@@ -1,7 +1,9 @@
 """projects/<isim>/ VE dj_sets/<isim>/ klasörlerini TEK SEFERLİK tarayıp
 Suno'dan (herhangi bir dosya adıyla) yeni indirilen bir ses dosyasını
 yakalayan, audio.wav/mp3/m4a'ya çeviren ve ilgili script'i (auto_process.py /
-dj_famous_process.py) hemen tetikleyen hafif bir kontrol scripti.
+dj_famous_process.py) hemen tetikleyen hafif bir kontrol scripti. Aynı klasöre
+(ör. Pixlr gibi bir tasarım aracından) düşen sahipsiz bir görseli de
+cover.*/art.* olarak yerleştirir — bkz. _place_stray_images().
 
 NEDEN VAR: Görev Zamanlayıcı'nın saatlik tetikleyicisi zaten otomatik
 kademelemeyi (bkz. auto_process.py, _auto_pace_count) sürekli ilerletiyor —
@@ -70,6 +72,10 @@ HEARTBEAT_STALE_SECONDS = 4 * 60 * 60
 AUDIO_EXT_TO_NAME = {".wav": "audio.wav", ".mp3": "audio.mp3", ".m4a": "audio.m4a"}
 AUDIO_NAMES = set(AUDIO_EXT_TO_NAME.values())
 
+IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+COVER_NAMES = {"cover.jpg", "cover.jpeg", "cover.png"}
+ART_NAMES = {"art.jpg", "art.jpeg", "art.png"}
+
 
 def log(msg: str) -> None:
     line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
@@ -94,6 +100,49 @@ def _find_stray_audio(project_dir: str) -> str | None:
         if ext in AUDIO_EXT_TO_NAME and name not in AUDIO_NAMES:
             return os.path.join(project_dir, name)
     return None
+
+
+def _find_stray_images(project_dir: str) -> list[str]:
+    """cover.*/art.* değil ama görsel uzantılı dosyaları döner — Pixlr gibi bir
+    tasarım aracından indirilmiş, henüz yerleştirilmemiş kapak/kart görseli
+    olabilir. Ada göre sıralı döner (kararlı, tekrarlanabilir işleme sırası)."""
+    try:
+        entries = sorted(os.listdir(project_dir))
+    except OSError:
+        return []
+    strays = []
+    for name in entries:
+        ext = os.path.splitext(name)[1].lower()
+        if ext in IMAGE_EXTS and name not in COVER_NAMES and name not in ART_NAMES:
+            strays.append(os.path.join(project_dir, name))
+    return strays
+
+
+def _has_any(project_dir: str, names: set) -> bool:
+    return any(os.path.isfile(os.path.join(project_dir, name)) for name in names)
+
+
+def _place_stray_images(project_dir: str) -> None:
+    """Sahipsiz görselleri cover.*/art.* olarak yerleştirir. Kural basit ve
+    öngörülebilir: dosya adında "art" geçiyorsa art.*, geçmiyorsa (ve henüz
+    bir cover.* yoksa) cover.* olur — yaygın durum tek görsel indirmek ve bu
+    kapak olarak kullanılmak. Zaten bir cover.* varken "art" içermeyen ikinci
+    bir dosya gelirse DOKUNULMAZ — yanlış tahmin etmektense elle bırakılır."""
+    for path in _find_stray_images(project_dir):
+        if not _is_stable(path):
+            continue  # muhtemelen indirme sürüyor, bir sonraki turda tekrar bakılacak
+        base_name = os.path.basename(path)
+        ext = os.path.splitext(path)[1].lower()
+        if "art" in base_name.lower():
+            if _has_any(project_dir, ART_NAMES):
+                continue  # art zaten dolu — cover'a geri düşme, yanlış tahmin olur
+            target = os.path.join(project_dir, "art" + ext)
+        else:
+            if _has_any(project_dir, COVER_NAMES):
+                continue  # cover zaten dolu, belirsiz durum, elle yerleştirilmeli
+            target = os.path.join(project_dir, "cover" + ext)
+        os.rename(path, target)
+        log(f"  '{base_name}' -> '{os.path.basename(target)}' olarak yeniden adlandırıldı.")
 
 
 def _is_stable(path: str) -> bool:
@@ -121,15 +170,19 @@ def _trigger_script(script_name: str) -> None:
 
 
 def _scan_dir(base_dir: str, trigger_script: str) -> None:
-    """base_dir altındaki her proje klasörünü tarar, sahipsiz bir ses dosyası
-    bulup audio.* adına çevirdiğinde trigger_script'i (auto_process.py ya da
-    dj_famous_process.py) tetikler."""
+    """base_dir altındaki her proje klasörünü tarar: sahipsiz görselleri
+    cover.*/art.* olarak yerleştirir (audio'dan bağımsız, her turda dener) ve
+    sahipsiz bir ses dosyası bulup audio.* adına çevirdiğinde trigger_script'i
+    (auto_process.py ya da dj_famous_process.py) tetikler."""
     if not os.path.isdir(base_dir):
         return
     for name in sorted(os.listdir(base_dir)):
         project_dir = os.path.join(base_dir, name)
         if not os.path.isdir(project_dir):
             continue
+
+        _place_stray_images(project_dir)
+
         if _has_audio(project_dir):
             continue
         stray = _find_stray_audio(project_dir)
