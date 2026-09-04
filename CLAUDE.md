@@ -54,12 +54,16 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   `ses_ve_tarz_takibi.md`'ye bak — art arda aynı vokal cinsiyeti/dokusu kullanılmasın.
   `config.THEMES`'in 6 slotu (pop/rock/elektronik/akustik/hiphop/arabesk) artık hepsi
   en az bir şarkıda kullanıldı (`rock` en son, Kırık Zincir ile dolduruldu).
-- **`arabesk` teması SABİT olarak kadın-erkek düet formatında üretiliyor**: tek taraflı
-  vokal değil, `[Verse - Kadın]`/`[Verse - Erkek]` gibi etiketli karşılıklı bölümlerle
-  (bkz. `yurek_yarasi_sozler.md`, ilk örnek — aynı ayrılığı iki taraftan anlatan yapı,
-  arabeskin klasik düet geleneği). Bu ana kataloğun `arabesk` şarkıları için geçerli —
-  karakter sistemindeki tekli arabesk karakterleri (Kerem Ateşi, Azra Yıldız) bu kuraldan
-  ETKİLENMEDİ, onlar kendi sabit tekli kimliklerini koruyor.
+- **`arabesk` teması SABİT olarak düet formatında üretiliyor** (tek taraflı vokal değil,
+  karşılıklı etiketli bölümlerle): başlangıçta sadece **kadın-erkek** (bkz.
+  `yurek_yarasi_sozler.md`, ilk örnek — aynı ayrılığı iki taraftan anlatan yapı, arabeskin
+  klasik düet geleneği) idi; `Sofraya Gelmedin` (bkz. `sofraya_gelmedin_sozler.md`) ile
+  **baba-oğul** düeti de eklendi — kural artık düet OLMASINI zorunlu kılıyor, tarafların
+  cinsiyet/yaş kombinasyonunu değil. `[Verse - Kadın]`/`[Verse - Erkek]` ya da
+  `[Verse - Baba]`/`[Verse - Oğul]` gibi karşılıklı etiketli bölümler kullanılabilir. Bu ana
+  kataloğun `arabesk` şarkıları için geçerli — karakter sistemindeki tekli arabesk
+  karakterleri (Kerem Ateşi, Azra Yıldız) bu kuraldan ETKİLENMEDİ, onlar kendi sabit tekli
+  kimliklerini koruyor.
 - **Her şarkının kapanışı (Outro) SABİT bir kurala göre yazılıyor**: şarkı sonlarının
   anlamsız/ani kesilmesi tekrarlayan bir sorundu (`...` ile yarım bırakılmış Outro
   cümleleri + stil etiketinde kapanışın tanımlanmamış olması). Artık HER stil etiketinin
