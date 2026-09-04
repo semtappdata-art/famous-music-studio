@@ -8,10 +8,10 @@
 > kullanıcı Suno'daki tam sözleri/stil etiketini buraya yapıştırıp
 > tamamlamalı.
 
-**Not — arabesk düet kuralından sapma:** CLAUDE.md, arabesk temasının SABİT
-olarak **kadın-erkek** düet formatında üretildiğini belgeliyor (bkz.
-`yurek_yarasi_sozler.md`). Bu şarkı bunun yerine bir **baba-oğul** düeti —
-bilinçli bir tercihse sorun değil, ama not düşülüyor.
+**Not — arabesk düet kuralını genişletiyor:** CLAUDE.md'deki arabesk düet kuralı
+başlangıçta sadece **kadın-erkek** (bkz. `yurek_yarasi_sozler.md`) idi — bu şarkı
+kullanıcı kararıyla **baba-oğul** düetini de ekliyor, kural artık düet OLMASINI
+zorunlu kılıyor, tarafların kimliğini değil (CLAUDE.md güncellendi).
 
 ## Stil Etiketi (ekran görüntüsünden yakalanan, TAM olmayabilir)
 
