@@ -36,12 +36,34 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from log_rotate import trim_log
+import notify
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECTS_DIR = os.path.join(BASE_DIR, "projects")
 LOG_PATH = os.path.join(BASE_DIR, "watch_projects.log")
+AUTO_PROCESS_LOG_PATH = os.path.join(BASE_DIR, "auto_process.log")
+HEARTBEAT_MARKER_PATH = os.path.join(BASE_DIR, ".watchdog_alerted")
 
 STABILITY_WAIT_SECONDS = 3  # indirme hâlâ sürüyor olabilir, boyut bu süre içinde değişmemeli
+
+# auto_process.py'nin HER çalıştırmasında (yapılacak iş olsun olmasın) log()
+# en az bir kez çağrılıyor (bkz. auto_process.py main() — kilit/boş/pace/
+# tamamlandı yollarının HEPSİ log basıyor) — yani auto_process.log'un mtime'ı,
+# saatlik Görev Zamanlayıcı görevinin gerçekten tetiklendiğinin ucuz ve
+# güvenilir bir "nabız" göstergesi. Eşik 4 saat: saatlik tetikleyici +
+# ExecutionTimeLimit 2 saat + MultipleInstances IgnoreNew nedeniyle bir
+# koşunun uzun sürmesi bir sonraki tetiklemeyi atlatabilir, bu yüzden makul bir
+# pay bırakıldı (yanlış alarm güveni azaltır).
+#
+# SINIR: bu kontrol watch_projects.py'nin İÇİNDE çalıştığı için, sorun
+# watch_projects.py'nin kendi Görev Zamanlayıcı görevindeyse (auto_process.py
+# değil) tespit edilemez — bu durumda auto_process.py yine de kendi bağımsız
+# saatlik tetikleyicisiyle çalışmaya devam eder (watch_projects sadece "yeni
+# dosya" tepki süresini kısaltıyordu, kaybı sınırlı), ama BU nabız kontrolü
+# devre dışı kalmış olur. Makine tamamen kapalıysa/uyuyorsa zaten hiçbir yerel
+# script bir şey gönderemez — bu, harici altyapısı olmayan bir kişisel
+# otomasyonun doğal sınırı.
+HEARTBEAT_STALE_SECONDS = 4 * 60 * 60
 
 AUDIO_EXT_TO_NAME = {".wav": "audio.wav", ".mp3": "audio.mp3", ".m4a": "audio.m4a"}
 AUDIO_NAMES = set(AUDIO_EXT_TO_NAME.values())
@@ -117,7 +139,51 @@ def _scan_once() -> None:
         _trigger_auto_process()
 
 
+def _check_heartbeat() -> None:
+    """auto_process.log çok uzun süredir güncellenmemişse (saatlik Görev
+    Zamanlayıcı görevi tetiklenmiyor demektir — makine kapalı/uykuda, görev
+    devre dışı, ya da tekrarlayan bir çökme) telefona bir kereliğine uyarı
+    gönderir. auto_process.log henüz hiç oluşmamışsa (ilk kurulum) sessizce
+    atlar — bu bir arıza değil. Uyarı, log tekrar tazelenene kadar (sağlık
+    geri gelene kadar) bir daha gönderilmez (HEARTBEAT_MARKER_PATH ile)."""
+    if not os.path.isfile(AUTO_PROCESS_LOG_PATH):
+        return
+    age = time.time() - os.path.getmtime(AUTO_PROCESS_LOG_PATH)
+    already_alerted = os.path.isfile(HEARTBEAT_MARKER_PATH)
+
+    if age <= HEARTBEAT_STALE_SECONDS:
+        if already_alerted:
+            try:
+                os.remove(HEARTBEAT_MARKER_PATH)
+            except OSError:
+                pass
+        return
+
+    if already_alerted:
+        return  # zaten bir kere uyarıldık, log tazelenene kadar tekrar spam yok
+
+    hours = age / 3600
+    sent = notify.send(
+        "FMS: otomasyon sessiz",
+        f"auto_process.log {hours:.1f} saattir güncellenmedi — bilgisayar/"
+        "Görev Zamanlayıcı kontrol edilmeli.",
+    )
+    if sent:
+        try:
+            open(HEARTBEAT_MARKER_PATH, "w", encoding="utf-8").close()
+        except OSError:
+            pass
+        log(f"UYARI: auto_process.log {hours:.1f} saattir güncellenmedi, telefon bildirimi gönderildi.")
+    # sent=False (notify_config.json yok ya da ntfy'ye ulaşılamadı) ise marker
+    # yazılmıyor — bir sonraki dakika tekrar denenir.
+
+
 def main() -> None:
+    try:
+        _check_heartbeat()
+    except Exception as e:
+        log(f"HATA (heartbeat kontrolü): {e}")
+
     if not os.path.isdir(PROJECTS_DIR):
         return
     trim_log(LOG_PATH)

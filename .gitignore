@@ -36,6 +36,7 @@ upload/assets/*.png
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Claude Code internal state
 .claude/scheduled_tasks.lock
@@ -46,3 +47,4 @@ auto_process.log
 dj_famous_process.log
 .dj_famous_process.lock
 watch_projects.log
+.watchdog_alerted
