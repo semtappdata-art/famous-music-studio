@@ -199,6 +199,23 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   geçmek (pencere açmayan yorumlayıcı) hiçbir tanılama bilgisini kaybettirmiyor —
   `setup_task_scheduler.ps1` artık python.exe'nin yanındaki pythonw.exe'yi otomatik
   bulup üç görevde de onu kullanıyor (bulamazsa python.exe'ye düşüp uyarı basıyor).
+- **`auto_process.py`/`dj_famous_process.py` her çalıştırmada başında sessizce
+  `git pull` deniyor (`git_sync.auto_pull()`)**: kullanıcı her kod düzeltmesi PR ile
+  `main`'e birleştikten sonra üretim makinesine elle `git pull` yapmak zorunda
+  kalmasın diye eklendi. SADECE `git pull --ff-only` — `projects/*/state.json` gibi
+  bazı runtime dosyaları git'e commit'li (`.gitignore`'da YOK) ve otomasyon her
+  yüklemede bunları yerel olarak (commit'siz) değiştiriyor; sert bir reset/merge bu
+  değişikliklerin üzerine yazabilirdi, fast-forward ise uzak taraf o dosyalara
+  dokunmadığı sürece yereldeki commit'siz değişiklikleri OLDUĞU GİBİ bırakıyor.
+  Sadece `main` daldayken çalışıyor (elle farklı bir dal checkout edilmişse
+  dokunmuyor) ve fast-forward mümkün değilse (ör. gerçekten çakışan bir durum,
+  ağ yok, `.git` yok) ASLA otomatik merge/reset denemiyor — sessizce log'a bir
+  satır düşüp eski koduyla devam ediyor, otomasyonu hiçbir zaman durdurmuyor.
+  `watch_projects.py`'ye BİLEREK eklenmedi — dakikada bir GitHub'a istek atmak
+  gereksiz; watcher zaten yeni dosya geldiğinde `auto_process.py`'yi tetikliyor,
+  pull orada zaten oluyor. Görev Zamanlayıcı görev TANIMINI (tetikleyici, hangi
+  script/python.exe) etkileyen değişiklikler bu mekanizmayla YAYILMAZ — o zaman
+  hâlâ `setup_task_scheduler.ps1`'in elle yeniden çalıştırılması gerekiyor.
 
 ## Beş özel subagent (`.claude/agents/`)
 
