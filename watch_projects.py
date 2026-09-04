@@ -1,6 +1,7 @@
-"""projects/<isim>/ klasörlerini TEK SEFERLİK tarayıp Suno'dan (herhangi bir
-dosya adıyla) yeni indirilen bir ses dosyasını yakalayan, audio.wav/mp3/m4a'ya
-çeviren ve auto_process.py'yi hemen tetikleyen hafif bir kontrol scripti.
+"""projects/<isim>/ VE dj_sets/<isim>/ klasörlerini TEK SEFERLİK tarayıp
+Suno'dan (herhangi bir dosya adıyla) yeni indirilen bir ses dosyasını
+yakalayan, audio.wav/mp3/m4a'ya çeviren ve ilgili script'i (auto_process.py /
+dj_famous_process.py) hemen tetikleyen hafif bir kontrol scripti.
 
 NEDEN VAR: Görev Zamanlayıcı'nın saatlik tetikleyicisi zaten otomatik
 kademelemeyi (bkz. auto_process.py, _auto_pace_count) sürekli ilerletiyor —
@@ -40,6 +41,7 @@ import notify
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECTS_DIR = os.path.join(BASE_DIR, "projects")
+DJ_SETS_DIR = os.path.join(BASE_DIR, "dj_sets")
 LOG_PATH = os.path.join(BASE_DIR, "watch_projects.log")
 AUTO_PROCESS_LOG_PATH = os.path.join(BASE_DIR, "auto_process.log")
 HEARTBEAT_MARKER_PATH = os.path.join(BASE_DIR, ".watchdog_alerted")
@@ -111,18 +113,21 @@ def _is_stable(path: str) -> bool:
     return size_before == size_after
 
 
-def _trigger_auto_process() -> None:
+def _trigger_script(script_name: str) -> None:
     try:
-        subprocess.run([sys.executable, os.path.join(BASE_DIR, "auto_process.py")], cwd=BASE_DIR)
+        subprocess.run([sys.executable, os.path.join(BASE_DIR, script_name)], cwd=BASE_DIR)
     except Exception as e:
-        log(f"  auto_process.py tetiklenemedi: {e}")
+        log(f"  {script_name} tetiklenemedi: {e}")
 
 
-def _scan_once() -> None:
-    if not os.path.isdir(PROJECTS_DIR):
+def _scan_dir(base_dir: str, trigger_script: str) -> None:
+    """base_dir altındaki her proje klasörünü tarar, sahipsiz bir ses dosyası
+    bulup audio.* adına çevirdiğinde trigger_script'i (auto_process.py ya da
+    dj_famous_process.py) tetikler."""
+    if not os.path.isdir(base_dir):
         return
-    for name in sorted(os.listdir(PROJECTS_DIR)):
-        project_dir = os.path.join(PROJECTS_DIR, name)
+    for name in sorted(os.listdir(base_dir)):
+        project_dir = os.path.join(base_dir, name)
         if not os.path.isdir(project_dir):
             continue
         if _has_audio(project_dir):
@@ -135,8 +140,8 @@ def _scan_once() -> None:
         ext = os.path.splitext(stray)[1].lower()
         target = os.path.join(project_dir, AUDIO_EXT_TO_NAME[ext])
         os.rename(stray, target)
-        log(f"{name}: '{os.path.basename(stray)}' -> '{os.path.basename(target)}' olarak yeniden adlandırıldı, auto_process.py tetikleniyor...")
-        _trigger_auto_process()
+        log(f"{name}: '{os.path.basename(stray)}' -> '{os.path.basename(target)}' olarak yeniden adlandırıldı, {trigger_script} tetikleniyor...")
+        _trigger_script(trigger_script)
 
 
 def _check_heartbeat() -> None:
@@ -184,13 +189,15 @@ def main() -> None:
     except Exception as e:
         log(f"HATA (heartbeat kontrolü): {e}")
 
-    if not os.path.isdir(PROJECTS_DIR):
-        return
     trim_log(LOG_PATH)
     try:
-        _scan_once()
+        _scan_dir(PROJECTS_DIR, "auto_process.py")
     except Exception as e:
-        log(f"HATA: {e}")
+        log(f"HATA (projects/): {e}")
+    try:
+        _scan_dir(DJ_SETS_DIR, "dj_famous_process.py")
+    except Exception as e:
+        log(f"HATA (dj_sets/): {e}")
 
 
 if __name__ == "__main__":

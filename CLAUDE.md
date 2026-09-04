@@ -181,6 +181,11 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   bağlamı) `Register-ScheduledTask` "Erişim engellendi" hatası verdiği için terk
   edildi — Windows'un logon-tabanlı tetikleyicileri böyle bir bağlamdan kaydedilirken
   izin isteyebiliyor, zaman-tabanlı tekrarlı tetikleyiciler bu kısıtlamaya takılmıyor.
+  **Artık `dj_sets/` klasörünü de aynı şekilde izliyor** (`dj_famous_process.py`'yi
+  tetikleyerek) — başlangıçta sadece `projects/` (ana katalog) kapsanıyordu, kullanıcı
+  Suno'dan bir DJ Famous setini indirip `dj_sets/<isim>/` klasörüne elle kaydederken
+  bu boşluk fark edildi (`_scan_once()` → parametrik `_scan_dir(base_dir,
+  trigger_script)`'e genelleştirildi, `projects/` ve `dj_sets/` için ayrı ayrı çağrılıyor).
 - **`.ps1` dosyaları UTF-8 BOM'suz kaydedilirse Windows PowerShell 5.1'de BOZULUR**:
   `setup_task_scheduler.ps1` ilk yazıldığında BOM'suzdu — Türkçe karakterler (ı, ğ, ş,
   İ, —) ANSI kod sayfasıyla yanlış okunup parse hatalarına yol açıyordu (script hiç
