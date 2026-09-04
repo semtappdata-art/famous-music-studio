@@ -190,6 +190,15 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
 - **Log dosyaları (`auto_process.log`, `watch_projects.log`) 7 günden eskiyi tutmuyor**:
   her çalıştırmada `log_rotate.trim_log()` ile eski satırlar silinip dosya üzerine
   yeniden yazılıyor (ayrı döndürülmüş `.1`/`.2` dosyaları YOK — kullanıcı isteği).
+- **Görev Zamanlayıcı görevleri `pythonw.exe` ile çalıştırılıyor, `python.exe` DEĞİL**:
+  `python.exe` her tetiklenişte kısa süreliğine görünür bir konsol penceresi açıp
+  kapatıyordu — `watch_projects.py` dakikada bir çalıştığı için bu, ekranda sürekli
+  terminal penceresi açılıp kapanıyormuş gibi rahatsız edici bir görüntüye yol açıyordu
+  (kullanıcı geri bildirimi). `auto_process.py`/`dj_famous_process.py`/
+  `watch_projects.py` üçü de zaten kendi `.log` dosyalarına yazdığı için `pythonw.exe`'ye
+  geçmek (pencere açmayan yorumlayıcı) hiçbir tanılama bilgisini kaybettirmiyor —
+  `setup_task_scheduler.ps1` artık python.exe'nin yanındaki pythonw.exe'yi otomatik
+  bulup üç görevde de onu kullanıyor (bulamazsa python.exe'ye düşüp uyarı basıyor).
 
 ## Beş özel subagent (`.claude/agents/`)
 
