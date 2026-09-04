@@ -229,3 +229,24 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
 merge olduktan sonra bu dal restart edilir (`git fetch origin main && git reset --hard
 origin/main` veya içerik aynıysa force-with-lease push) — merge edilmiş commit'lerin
 üzerine yeni commit yığmak yerine.
+
+## Claude Code Remote Control (opsiyonel, yerel geliştirme için)
+
+Bu repo Windows'ta yerel olarak (Görev Zamanlayıcı + elle debug için terminal) geliştirilip
+kullanılıyor. Uzun süren bir işlem başlatılıp (ör. büyük bir render batch'i, `auto_process.py`
+çalıştırması, bir subagent denetimi) masadan uzaklaşılacaksa, oturum
+[Remote Control](https://code.claude.com/docs/en/remote-control) ile telefon/tarayıcıdan takip
+edilebilir:
+
+```
+claude remote-control
+```
+
+Bu, verilen QR kodu/URL üzerinden claude.ai/code veya Claude mobil uygulamasından bağlanmaya
+izin verir; kod çalıştırma ve dosya erişimi yine bu makinede (yerel) kalır, sadece
+görüntüleme/yönlendirme uzaktan yapılabilir. `auto_process.log`/`watch_projects.log` gibi log
+dosyalarını veya render çıktısını uzaktan kontrol etmek, ya da bir izin isteğine (permission
+prompt) telefonan yanıt vermek için kullanışlı. Zorunlu bir kurulum adımı değil — proje
+otomasyonu (`auto_process.py`, `watch_projects.py`) Görev Zamanlayıcı ile bağımsız çalışır,
+Remote Control sadece Claude Code ile yerel geliştirme/debug oturumlarını uzaktan izlemek
+içindir.
