@@ -242,6 +242,32 @@ Salt-okunur denetçiler — kod yazmazlar, sadece bulgu raporlarlar:
 Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların çoğu düzeltildi
 (bkz. git geçmişi, PR #25/#26/#27). Periyodik olarak tekrar çalıştırılabilirler.
 
+## Testler ve otomatik sağlık izleme
+
+- **`tests/` (pytest) + `.github/workflows/tests.yml`**: projede daha önce hiç otomatik
+  test yoktu (`otomasyon-denetcisi` denetiminin tekrar eden bulgularından biri). Şimdi
+  `git_sync.auto_pull()` (geçici git depolarıyla uçtan uca), `log_rotate.trim_log()`,
+  `config.next_golden_publish_time()`/`THEMES` (golden-hour pencere sınırları dahil),
+  `auto_process._auto_pace_count()` (otomatik kademeleme aritmetiği) ve
+  `validate_project.validate()` (bozuk ses/art==cover sızıntısı/geçersiz tema gibi bu
+  projede tekrar tekrar düşülen hatalar) için testler var. CI her push/PR'da `pytest`'i
+  çalıştırıyor — `ffprobe` gerektiren testler `ffprobe` yoksa (bu geliştirme ortamı gibi)
+  otomatik atlanıyor, CI'da `ffmpeg` kurulduğu için hepsi çalışıyor. `requirements-dev.txt`
+  sadece test için (`pytest`) — üretim makinesinde gerekmiyor.
+- **`watch_projects.py` artık bir "nabız" (heartbeat) kontrolü de yapıyor**: tek nokta
+  arızası riskini azaltmak için eklendi — makine kapanır/uyursa ya da bir Görev Zamanlayıcı
+  görevi bozulursa bunu fark edecek hiçbir mekanizma yoktu. `auto_process.py`'nin HER
+  çalıştırmasında (iş olsun olmasın) `log()` en az bir kez çağrıldığı için,
+  `auto_process.log`'un mtime'ı saatlik görevin gerçekten tetiklendiğinin ucuz bir
+  göstergesi — 4 saatten uzun süre güncellenmezse `notify.py` (ntfy.sh) ile telefona TEK
+  seferlik bir uyarı gönderiliyor (`.watchdog_alerted` marker dosyasıyla spam önleniyor,
+  log tazelenince marker temizlenip bir sonraki kesintide tekrar uyarabiliyor). SINIR:
+  bu kontrol `watch_projects.py`'nin İÇİNDE çalıştığı için, sorun `watch_projects.py`'nin
+  KENDİ görevindeyse tespit edilemez (`auto_process.py` yine de bağımsız kendi saatlik
+  tetikleyicisiyle çalışmaya devam eder, sadece bu nabız kontrolü devre dışı kalır) —
+  makine tamamen kapalıysa zaten hiçbir yerel script bir şey gönderemez, bu harici
+  altyapısı olmayan bir kişisel otomasyonun doğal sınırı.
+
 ## Açık/bilinen boşluklar (henüz yapılmadı)
 
 - TikTok/Instagram'ın AI-içerik açıklama API alan adları HÂLÂ tam doğrulanmadı (2026-09-04
@@ -268,6 +294,17 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
 merge olduktan sonra bu dal restart edilir (`git fetch origin main && git reset --hard
 origin/main` veya içerik aynıysa force-with-lease push) — merge edilmiş commit'lerin
 üzerine yeni commit yığmak yerine.
+
+**UYARI — `git reset --hard`/`git clean -f` üretim makinesinin checkout'unda ASLA
+elle çalıştırılmamalı:** yukarıdaki restart deseni sadece bu geliştirme dalı için
+güvenli (disposable, gerçek veri tutmuyor). `projects/*/state.json` gibi dosyalar
+git'e commit'li VE üretim makinesinde otomasyon tarafından sürekli commit'siz
+güncelleniyor (bkz. `git_sync.py` notu yukarıda) — bu checkout'ta bir
+`reset --hard`/`clean -f` bu commit'siz güncellemeleri KALICI OLARAK SİLER. Bu
+gerçekten oldu: `83cd3a2` commit'i ("Kaybolan Instagram upload kayıtlarını geri
+yükle") tam olarak böyle bir kazanın sonucuydu. Üretim checkout'unda temizlik
+gerekiyorsa önce `git status`/`git diff` ile neyin commit'siz olduğuna bak, gerekeni
+commit'le, sadece SONRA (gerekiyorsa) sert bir komut düşün.
 
 ## Claude Code Remote Control (opsiyonel, yerel geliştirme için)
 

@@ -1,0 +1,3 @@
+# Sadece test/geliştirme için — üretim makinesinde (Görev Zamanlayıcı) gerekmez,
+# yalnızca requirements.txt yeterli. CI ve yerel test çalıştırmaları içindir.
+pytest
