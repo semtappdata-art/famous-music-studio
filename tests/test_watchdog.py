@@ -30,7 +30,7 @@ def test_no_auto_process_log_yet_is_a_noop(monkeypatch, tmp_path):
 
 def test_fresh_log_sends_no_alert(monkeypatch, tmp_path):
     auto_log, marker = _set_paths(monkeypatch, tmp_path)
-    auto_log.write_text("[son çalıştırma]\n")
+    auto_log.write_text("[son çalıştırma]\n", encoding="utf-8")
 
     sent = {"count": 0}
     monkeypatch.setattr(wp.notify, "send", lambda *a, **k: sent.__setitem__("count", sent["count"] + 1) or True)
@@ -43,7 +43,7 @@ def test_fresh_log_sends_no_alert(monkeypatch, tmp_path):
 
 def test_stale_log_sends_exactly_one_alert(monkeypatch, tmp_path):
     auto_log, marker = _set_paths(monkeypatch, tmp_path)
-    auto_log.write_text("eski\n")
+    auto_log.write_text("eski\n", encoding="utf-8")
     stale_time = time.time() - wp.HEARTBEAT_STALE_SECONDS - 3600  # eşiğin 1 saat üzeri
     os.utime(auto_log, (stale_time, stale_time))
 
@@ -61,7 +61,7 @@ def test_stale_log_sends_exactly_one_alert(monkeypatch, tmp_path):
 
 def test_recovery_clears_marker_and_allows_realert_on_new_outage(monkeypatch, tmp_path):
     auto_log, marker = _set_paths(monkeypatch, tmp_path)
-    auto_log.write_text("eski\n")
+    auto_log.write_text("eski\n", encoding="utf-8")
     stale_time = time.time() - wp.HEARTBEAT_STALE_SECONDS - 3600
     os.utime(auto_log, (stale_time, stale_time))
 
@@ -73,7 +73,7 @@ def test_recovery_clears_marker_and_allows_realert_on_new_outage(monkeypatch, tm
     assert marker.exists()
 
     # log tazelendi (otomasyon toparlandı)
-    auto_log.write_text("yeni çalıştırma\n")
+    auto_log.write_text("yeni çalıştırma\n", encoding="utf-8")
     wp._check_heartbeat()
     assert not marker.exists()  # sağlık geri geldi, marker temizlendi
 
@@ -85,7 +85,7 @@ def test_recovery_clears_marker_and_allows_realert_on_new_outage(monkeypatch, tm
 
 def test_failed_notification_does_not_set_marker_so_it_retries(monkeypatch, tmp_path):
     auto_log, marker = _set_paths(monkeypatch, tmp_path)
-    auto_log.write_text("eski\n")
+    auto_log.write_text("eski\n", encoding="utf-8")
     stale_time = time.time() - wp.HEARTBEAT_STALE_SECONDS - 3600
     os.utime(auto_log, (stale_time, stale_time))
 

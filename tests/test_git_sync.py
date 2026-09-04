@@ -25,8 +25,8 @@ def _init_repo_pair(tmp_path):
     _run(["git", "clone", "-q", str(remote), str(local)], tmp_path)
     _run(["git", "config", "user.email", "a@a.com"], local)
     _run(["git", "config", "user.name", "a"], local)
-    (local / "code.py").write_text("kod v1\n")
-    (local / "state.json").write_text('{"x": 1}\n')
+    (local / "code.py").write_text("kod v1\n", encoding="utf-8")
+    (local / "state.json").write_text('{"x": 1}\n', encoding="utf-8")
     _run(["git", "add", "code.py", "state.json"], local)
     _run(["git", "commit", "-q", "-m", "init"], local)
     _run(["git", "push", "-q", "-u", "origin", "main"], local)
@@ -40,7 +40,7 @@ def _init_repo_pair(tmp_path):
 
 
 def _push_new_commit(dev, message="update code"):
-    (dev / "code.py").write_text("kod v2\n")
+    (dev / "code.py").write_text("kod v2\n", encoding="utf-8")
     _run(["git", "add", "code.py"], dev)
     _run(["git", "commit", "-q", "-m", message], dev)
     _run(["git", "push", "-q", "origin", "main"], dev)
@@ -52,13 +52,13 @@ def test_fast_forward_pulls_code_and_preserves_dirty_state_file(tmp_path):
 
     # runtime dosyası (state.json) yerelde commit'siz değiştirilmiş olsun —
     # tıpkı auto_process.py'nin her yüklemede yaptığı gibi.
-    (local / "state.json").write_text('{"x": 2}\n')
+    (local / "state.json").write_text('{"x": 2}\n', encoding="utf-8")
 
     logs = []
     auto_pull(str(local), logs.append)
 
-    assert (local / "code.py").read_text() == "kod v2\n"
-    assert (local / "state.json").read_text() == '{"x": 2}\n'
+    assert (local / "code.py").read_text(encoding="utf-8") == "kod v2\n"
+    assert (local / "state.json").read_text(encoding="utf-8") == '{"x": 2}\n'
     status = subprocess.run(
         ["git", "status", "--porcelain"], cwd=local, capture_output=True, text=True, check=True
     )
@@ -74,7 +74,7 @@ def test_skips_silently_on_non_main_branch(tmp_path):
     logs = []
     auto_pull(str(local), logs.append)
 
-    assert (local / "code.py").read_text() == "kod v1\n"
+    assert (local / "code.py").read_text(encoding="utf-8") == "kod v1\n"
     assert logs == []
 
 
@@ -92,7 +92,7 @@ def test_diverged_history_logs_and_gives_up_without_crashing(tmp_path):
     _, local, dev = _init_repo_pair(tmp_path)
 
     # local'de commit'li bir değişiklik yap (push'lanmamış)
-    (local / "code.py").write_text("yerel değişiklik\n")
+    (local / "code.py").write_text("yerel değişiklik\n", encoding="utf-8")
     _run(["git", "add", "code.py"], local)
     _run(["git", "commit", "-q", "-m", "yerel commit"], local)
 
@@ -103,7 +103,7 @@ def test_diverged_history_logs_and_gives_up_without_crashing(tmp_path):
     auto_pull(str(local), logs.append)  # hata fırlatmamalı
 
     # yerel commit korunmuş olmalı, ezilmemiş
-    assert (local / "code.py").read_text() == "yerel değişiklik\n"
+    assert (local / "code.py").read_text(encoding="utf-8") == "yerel değişiklik\n"
     assert any("atlandı" in m for m in logs)
 
 
