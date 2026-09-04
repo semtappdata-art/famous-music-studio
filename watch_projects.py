@@ -1,6 +1,9 @@
-"""projects/<isim>/ klasörlerini TEK SEFERLİK tarayıp Suno'dan (herhangi bir
-dosya adıyla) yeni indirilen bir ses dosyasını yakalayan, audio.wav/mp3/m4a'ya
-çeviren ve auto_process.py'yi hemen tetikleyen hafif bir kontrol scripti.
+"""projects/<isim>/ VE dj_sets/<isim>/ klasörlerini TEK SEFERLİK tarayıp
+Suno'dan (herhangi bir dosya adıyla) yeni indirilen bir ses dosyasını
+yakalayan, audio.wav/mp3/m4a'ya çeviren ve ilgili script'i (auto_process.py /
+dj_famous_process.py) hemen tetikleyen hafif bir kontrol scripti. Aynı klasöre
+(ör. Pixlr gibi bir tasarım aracından) düşen sahipsiz bir görseli de
+cover.*/art.* olarak yerleştirir — bkz. _place_stray_images().
 
 NEDEN VAR: Görev Zamanlayıcı'nın saatlik tetikleyicisi zaten otomatik
 kademelemeyi (bkz. auto_process.py, _auto_pace_count) sürekli ilerletiyor —
@@ -40,6 +43,7 @@ import notify
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECTS_DIR = os.path.join(BASE_DIR, "projects")
+DJ_SETS_DIR = os.path.join(BASE_DIR, "dj_sets")
 LOG_PATH = os.path.join(BASE_DIR, "watch_projects.log")
 AUTO_PROCESS_LOG_PATH = os.path.join(BASE_DIR, "auto_process.log")
 HEARTBEAT_MARKER_PATH = os.path.join(BASE_DIR, ".watchdog_alerted")
@@ -68,6 +72,10 @@ HEARTBEAT_STALE_SECONDS = 4 * 60 * 60
 AUDIO_EXT_TO_NAME = {".wav": "audio.wav", ".mp3": "audio.mp3", ".m4a": "audio.m4a"}
 AUDIO_NAMES = set(AUDIO_EXT_TO_NAME.values())
 
+IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+COVER_NAMES = {"cover.jpg", "cover.jpeg", "cover.png"}
+ART_NAMES = {"art.jpg", "art.jpeg", "art.png"}
+
 
 def log(msg: str) -> None:
     line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
@@ -94,6 +102,49 @@ def _find_stray_audio(project_dir: str) -> str | None:
     return None
 
 
+def _find_stray_images(project_dir: str) -> list[str]:
+    """cover.*/art.* değil ama görsel uzantılı dosyaları döner — Pixlr gibi bir
+    tasarım aracından indirilmiş, henüz yerleştirilmemiş kapak/kart görseli
+    olabilir. Ada göre sıralı döner (kararlı, tekrarlanabilir işleme sırası)."""
+    try:
+        entries = sorted(os.listdir(project_dir))
+    except OSError:
+        return []
+    strays = []
+    for name in entries:
+        ext = os.path.splitext(name)[1].lower()
+        if ext in IMAGE_EXTS and name not in COVER_NAMES and name not in ART_NAMES:
+            strays.append(os.path.join(project_dir, name))
+    return strays
+
+
+def _has_any(project_dir: str, names: set) -> bool:
+    return any(os.path.isfile(os.path.join(project_dir, name)) for name in names)
+
+
+def _place_stray_images(project_dir: str) -> None:
+    """Sahipsiz görselleri cover.*/art.* olarak yerleştirir. Kural basit ve
+    öngörülebilir: dosya adında "art" geçiyorsa art.*, geçmiyorsa (ve henüz
+    bir cover.* yoksa) cover.* olur — yaygın durum tek görsel indirmek ve bu
+    kapak olarak kullanılmak. Zaten bir cover.* varken "art" içermeyen ikinci
+    bir dosya gelirse DOKUNULMAZ — yanlış tahmin etmektense elle bırakılır."""
+    for path in _find_stray_images(project_dir):
+        if not _is_stable(path):
+            continue  # muhtemelen indirme sürüyor, bir sonraki turda tekrar bakılacak
+        base_name = os.path.basename(path)
+        ext = os.path.splitext(path)[1].lower()
+        if "art" in base_name.lower():
+            if _has_any(project_dir, ART_NAMES):
+                continue  # art zaten dolu — cover'a geri düşme, yanlış tahmin olur
+            target = os.path.join(project_dir, "art" + ext)
+        else:
+            if _has_any(project_dir, COVER_NAMES):
+                continue  # cover zaten dolu, belirsiz durum, elle yerleştirilmeli
+            target = os.path.join(project_dir, "cover" + ext)
+        os.rename(path, target)
+        log(f"  '{base_name}' -> '{os.path.basename(target)}' olarak yeniden adlandırıldı.")
+
+
 def _is_stable(path: str) -> bool:
     """Dosya boyutu STABILITY_WAIT_SECONDS sonra da aynı mı (indirme hâlâ
     sürüyorsa boyut değişir, yarım dosyayı işlemeyelim)."""
@@ -111,20 +162,27 @@ def _is_stable(path: str) -> bool:
     return size_before == size_after
 
 
-def _trigger_auto_process() -> None:
+def _trigger_script(script_name: str) -> None:
     try:
-        subprocess.run([sys.executable, os.path.join(BASE_DIR, "auto_process.py")], cwd=BASE_DIR)
+        subprocess.run([sys.executable, os.path.join(BASE_DIR, script_name)], cwd=BASE_DIR)
     except Exception as e:
-        log(f"  auto_process.py tetiklenemedi: {e}")
+        log(f"  {script_name} tetiklenemedi: {e}")
 
 
-def _scan_once() -> None:
-    if not os.path.isdir(PROJECTS_DIR):
+def _scan_dir(base_dir: str, trigger_script: str) -> None:
+    """base_dir altındaki her proje klasörünü tarar: sahipsiz görselleri
+    cover.*/art.* olarak yerleştirir (audio'dan bağımsız, her turda dener) ve
+    sahipsiz bir ses dosyası bulup audio.* adına çevirdiğinde trigger_script'i
+    (auto_process.py ya da dj_famous_process.py) tetikler."""
+    if not os.path.isdir(base_dir):
         return
-    for name in sorted(os.listdir(PROJECTS_DIR)):
-        project_dir = os.path.join(PROJECTS_DIR, name)
+    for name in sorted(os.listdir(base_dir)):
+        project_dir = os.path.join(base_dir, name)
         if not os.path.isdir(project_dir):
             continue
+
+        _place_stray_images(project_dir)
+
         if _has_audio(project_dir):
             continue
         stray = _find_stray_audio(project_dir)
@@ -135,8 +193,8 @@ def _scan_once() -> None:
         ext = os.path.splitext(stray)[1].lower()
         target = os.path.join(project_dir, AUDIO_EXT_TO_NAME[ext])
         os.rename(stray, target)
-        log(f"{name}: '{os.path.basename(stray)}' -> '{os.path.basename(target)}' olarak yeniden adlandırıldı, auto_process.py tetikleniyor...")
-        _trigger_auto_process()
+        log(f"{name}: '{os.path.basename(stray)}' -> '{os.path.basename(target)}' olarak yeniden adlandırıldı, {trigger_script} tetikleniyor...")
+        _trigger_script(trigger_script)
 
 
 def _check_heartbeat() -> None:
@@ -184,13 +242,15 @@ def main() -> None:
     except Exception as e:
         log(f"HATA (heartbeat kontrolü): {e}")
 
-    if not os.path.isdir(PROJECTS_DIR):
-        return
     trim_log(LOG_PATH)
     try:
-        _scan_once()
+        _scan_dir(PROJECTS_DIR, "auto_process.py")
     except Exception as e:
-        log(f"HATA: {e}")
+        log(f"HATA (projects/): {e}")
+    try:
+        _scan_dir(DJ_SETS_DIR, "dj_famous_process.py")
+    except Exception as e:
+        log(f"HATA (dj_sets/): {e}")
 
 
 if __name__ == "__main__":

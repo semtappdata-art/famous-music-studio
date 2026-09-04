@@ -2,6 +2,13 @@
 
 Suno API erişimi yok — bu akış manuel: prompt hazırla → Suno.com'a yapıştır → indir → proje klasörüne koy.
 
+> **Klasör açma sırası ÖNEMLİ:** `watch_projects.py` (Suno'dan indirilen ses dosyasını
+> otomatik `audio.wav`'a çevirip pipeline'ı tetikleyen izleyici) sadece ZATEN VAR OLAN
+> proje klasörlerini tarıyor — kendisi klasör açmıyor. Yani proje klasörü indirmeden
+> ÖNCE hazır olmazsa, otomasyon indirilen dosyayı hiç fark etmez. Bu yüzden aşağıdaki
+> adım sırası, klasör açmayı en başa (Suno'ya gitmeden önce) koyuyor — Claude bir
+> prompt hazırladığında bunu otomatik yapar, elle açman gerekmez.
+
 > **Lisans/ticari kullanım notu:** Bu kanaldaki her şarkı Suno çıktısı ve ticari amaçla
 > (marka hesabı) YouTube/TikTok/Instagram'a yükleniyor. Suno'nun ücretsiz/ücretli plan
 > katmanlarına göre ticari kullanım ve platform dağıtım hakları farklılık gösterebilir —
@@ -11,23 +18,30 @@ Suno API erişimi yok — bu akış manuel: prompt hazırla → Suno.com'a yapı
 
 ## Adımlar
 
-1. **Stil etiketini Suno'nun Style kutusuna yapıştır** (aşağıdaki örneğe bak, şarkıya göre uyarla)
-2. **Şarkı yapısını Lyrics kutusuna yapıştır** (bölüm etiketleri + kendi sözlerin)
-3. **Suno'da üret, `audio.wav` olarak indir**
-4. **Kapak görseli indir/hazırla** (`cover.jpg` veya `.png`)
-5. **Proje klasörü aç:** `projects/<şarkı-adı>/` (Türkçe karakter/boşluk sorun değil, önceki projelerde çalıştı)
-6. `audio.wav` ve `cover.png`'yi bu klasöre koy
-7. **(Opsiyonel) Kart içeriği:** `art.jpg/png` ekle — kartın İÇİNDE görünecek görsel (kapaktan farklı, temaya uygun bir sahne/illüstrasyon). Yoksa düz renkle doldurulur.
-8. **`meta.json` oluştur:**
+1. **Proje klasörü aç ve `meta.json` oluştur — Suno'ya gitmeden ÖNCE:**
+   `projects/<şarkı-adı>/` (Türkçe karakter/boşluk sorun değil, önceki projelerde
+   çalıştı — DJ Famous seti içinse `dj_sets/<isim>/`).
    ```json
    {"title": "Şarkı Adı", "theme": "hiphop"}
    ```
-   `theme` seçenekleri: `pop`, `rock`, `elektronik`, `akustik`, `hiphop` (Türk trap/arabesk için en yakını — "Trap" related tag'i zaten var)
-9. **Render et:**
+   `theme` seçenekleri: `pop`, `rock`, `elektronik`, `akustik`, `hiphop` (Türk trap/arabesk için en yakını — "Trap" related tag'i zaten var), `arabesk`. Claude prompt'u hazırlarken bu klasörü/dosyayı otomatik oluşturur.
+2. **Stil etiketini Suno'nun Style kutusuna yapıştır** (aşağıdaki örneğe bak, şarkıya göre uyarla)
+3. **Şarkı yapısını Lyrics kutusuna yapıştır** (bölüm etiketleri + kendi sözlerin)
+4. **Suno'da üret.** İndirirken (resmi "Download" düğmesiyle, herhangi bir dosya
+   adıyla/formatla — mp3/wav fark etmez) doğrudan 1. adımda açılan proje klasörüne
+   kaydet. `watch_projects.py` klasörü zaten izlediği için dosyayı otomatik
+   `audio.wav`'a çevirip pipeline'ı (`auto_process.py`/`dj_famous_process.py`)
+   kendiliğinden tetikler — elle `audio.wav` adına çevirmen gerekmez.
+5. **Kapak görseli indir/hazırla** (`cover.jpg` veya `.png`), proje klasörüne koy —
+   opsiyonel: eksikse `generate_cover.py` render sırasında otomatik üretir.
+6. **(Opsiyonel) Kart içeriği:** `art.jpg/png` ekle — kartın İÇİNDE görünecek görsel (kapaktan farklı, temaya uygun bir sahne/illüstrasyon). Yoksa düz renkle doldurulur.
+7. **Render'ı elle tetiklemene gerek yok** — Görev Zamanlayıcı zaten periyodik
+   çalışıyor (`auto_process.py` saatte bir, `dj_famous_process.py` haftada bir), audio
+   hazır olan projeyi kendiliğinden işler. Hemen görmek istersen elle de çalıştırabilirsin:
    ```bash
    python render.py --project "projects/<şarkı-adı>"
    ```
-10. `output/` klasöründeki 3 videoyu kontrol et
+8. `output/` klasöründeki videoları kontrol et
 
 ## Örnek Stil Etiketi (referans, şarkıya göre uyarla)
 
