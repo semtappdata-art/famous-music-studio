@@ -35,7 +35,7 @@ def _write_image(path, size="64x64", color="red"):
 
 
 def test_missing_audio_is_an_error(tmp_path):
-    (tmp_path / "meta.json").write_text('{"theme": "pop"}')
+    (tmp_path / "meta.json").write_text('{"theme": "pop"}', encoding="utf-8")
     errors, warnings = vp.validate(str(tmp_path))
     assert any("audio" in e for e in errors)
 
@@ -44,13 +44,13 @@ def test_invalid_json_meta_is_an_error(tmp_path):
     # audio.wav kasıtlı olarak yok — validate() audio kontrolünü zaten ayrı
     # test ediyor, burada sadece meta.json'daki JSON hatasına odaklanıyoruz
     # (audio yoksa ffprobe hiç çağrılmıyor, bu testi ffprobe'dan bağımsız tutar).
-    (tmp_path / "meta.json").write_text("{bozuk json")
+    (tmp_path / "meta.json").write_text("{bozuk json", encoding="utf-8")
     errors, warnings = vp.validate(str(tmp_path))
     assert any("geçersiz JSON" in e for e in errors)
 
 
 def test_unknown_theme_is_an_error(tmp_path):
-    (tmp_path / "meta.json").write_text('{"theme": "olmayan-tema"}')
+    (tmp_path / "meta.json").write_text('{"theme": "olmayan-tema"}', encoding="utf-8")
     errors, warnings = vp.validate(str(tmp_path))
     assert any("config.THEMES'te tanımlı değil" in e for e in errors)
 
