@@ -190,6 +190,32 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
 - **Log dosyaları (`auto_process.log`, `watch_projects.log`) 7 günden eskiyi tutmuyor**:
   her çalıştırmada `log_rotate.trim_log()` ile eski satırlar silinip dosya üzerine
   yeniden yazılıyor (ayrı döndürülmüş `.1`/`.2` dosyaları YOK — kullanıcı isteği).
+- **Görev Zamanlayıcı görevleri `pythonw.exe` ile çalıştırılıyor, `python.exe` DEĞİL**:
+  `python.exe` her tetiklenişte kısa süreliğine görünür bir konsol penceresi açıp
+  kapatıyordu — `watch_projects.py` dakikada bir çalıştığı için bu, ekranda sürekli
+  terminal penceresi açılıp kapanıyormuş gibi rahatsız edici bir görüntüye yol açıyordu
+  (kullanıcı geri bildirimi). `auto_process.py`/`dj_famous_process.py`/
+  `watch_projects.py` üçü de zaten kendi `.log` dosyalarına yazdığı için `pythonw.exe`'ye
+  geçmek (pencere açmayan yorumlayıcı) hiçbir tanılama bilgisini kaybettirmiyor —
+  `setup_task_scheduler.ps1` artık python.exe'nin yanındaki pythonw.exe'yi otomatik
+  bulup üç görevde de onu kullanıyor (bulamazsa python.exe'ye düşüp uyarı basıyor).
+- **`auto_process.py`/`dj_famous_process.py` her çalıştırmada başında sessizce
+  `git pull` deniyor (`git_sync.auto_pull()`)**: kullanıcı her kod düzeltmesi PR ile
+  `main`'e birleştikten sonra üretim makinesine elle `git pull` yapmak zorunda
+  kalmasın diye eklendi. SADECE `git pull --ff-only` — `projects/*/state.json` gibi
+  bazı runtime dosyaları git'e commit'li (`.gitignore`'da YOK) ve otomasyon her
+  yüklemede bunları yerel olarak (commit'siz) değiştiriyor; sert bir reset/merge bu
+  değişikliklerin üzerine yazabilirdi, fast-forward ise uzak taraf o dosyalara
+  dokunmadığı sürece yereldeki commit'siz değişiklikleri OLDUĞU GİBİ bırakıyor.
+  Sadece `main` daldayken çalışıyor (elle farklı bir dal checkout edilmişse
+  dokunmuyor) ve fast-forward mümkün değilse (ör. gerçekten çakışan bir durum,
+  ağ yok, `.git` yok) ASLA otomatik merge/reset denemiyor — sessizce log'a bir
+  satır düşüp eski koduyla devam ediyor, otomasyonu hiçbir zaman durdurmuyor.
+  `watch_projects.py`'ye BİLEREK eklenmedi — dakikada bir GitHub'a istek atmak
+  gereksiz; watcher zaten yeni dosya geldiğinde `auto_process.py`'yi tetikliyor,
+  pull orada zaten oluyor. Görev Zamanlayıcı görev TANIMINI (tetikleyici, hangi
+  script/python.exe) etkileyen değişiklikler bu mekanizmayla YAYILMAZ — o zaman
+  hâlâ `setup_task_scheduler.ps1`'in elle yeniden çalıştırılması gerekiyor.
 
 ## Beş özel subagent (`.claude/agents/`)
 
@@ -229,3 +255,24 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
 merge olduktan sonra bu dal restart edilir (`git fetch origin main && git reset --hard
 origin/main` veya içerik aynıysa force-with-lease push) — merge edilmiş commit'lerin
 üzerine yeni commit yığmak yerine.
+
+## Claude Code Remote Control (opsiyonel, yerel geliştirme için)
+
+Bu repo Windows'ta yerel olarak (Görev Zamanlayıcı + elle debug için terminal) geliştirilip
+kullanılıyor. Uzun süren bir işlem başlatılıp (ör. büyük bir render batch'i, `auto_process.py`
+çalıştırması, bir subagent denetimi) masadan uzaklaşılacaksa, oturum
+[Remote Control](https://code.claude.com/docs/en/remote-control) ile telefon/tarayıcıdan takip
+edilebilir:
+
+```
+claude remote-control
+```
+
+Bu, verilen QR kodu/URL üzerinden claude.ai/code veya Claude mobil uygulamasından bağlanmaya
+izin verir; kod çalıştırma ve dosya erişimi yine bu makinede (yerel) kalır, sadece
+görüntüleme/yönlendirme uzaktan yapılabilir. `auto_process.log`/`watch_projects.log` gibi log
+dosyalarını veya render çıktısını uzaktan kontrol etmek, ya da bir izin isteğine (permission
+prompt) telefonan yanıt vermek için kullanışlı. Zorunlu bir kurulum adımı değil — proje
+otomasyonu (`auto_process.py`, `watch_projects.py`) Görev Zamanlayıcı ile bağımsız çalışır,
+Remote Control sadece Claude Code ile yerel geliştirme/debug oturumlarını uzaktan izlemek
+içindir.

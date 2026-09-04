@@ -43,6 +43,17 @@ if (Test-Path $venvPython) {
     $pythonExe = $found.Source
 }
 
+# Görevler python.exe ile çalıştırılırsa her tetiklenişte (watch_projects.py için
+# dakikada bir) görünür bir konsol penceresi açılıp hemen kapanıyor. Üç script de
+# (auto_process.py/dj_famous_process.py/watch_projects.py) zaten kendi .log
+# dosyalarına da yazdığı için konsol çıktısı kaybolmaz — görevlerde pencere açmayan
+# pythonw.exe kullanılıyor (aynı klasörde python.exe'nin yanında bulunur).
+$pythonwExe = $pythonExe -replace 'python\.exe$', 'pythonw.exe'
+if (-not (Test-Path $pythonwExe)) {
+    Write-Warning "pythonw.exe bulunamadı ($pythonwExe) — görevler python.exe ile kurulacak, her tetiklenişte kısa bir konsol penceresi görünebilir."
+    $pythonwExe = $pythonExe
+}
+
 # auto_process.py'yi çağıran ESKİ görevleri bul ve sil (isim ne olursa olsun —
 # ör. daha önce elle kurulmuş, günde 2 kez çalışan 13:00/19:00 görevi)
 $existing = Get-ScheduledTask | Where-Object {
@@ -55,7 +66,7 @@ foreach ($t in $existing) {
 }
 
 # Yeni görev: saatte bir, süresiz tekrar eden TEK tetikleyici
-$action = New-ScheduledTaskAction -Execute $pythonExe -Argument "auto_process.py" -WorkingDirectory $repoRoot
+$action = New-ScheduledTaskAction -Execute $pythonwExe -Argument "auto_process.py" -WorkingDirectory $repoRoot
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
     -RepetitionInterval (New-TimeSpan -Hours 1) `
     -RepetitionDuration (New-TimeSpan -Days 3650)
@@ -69,7 +80,7 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
 Write-Host ""
 Write-Host "Tamam: '$taskName' görevi saatte bir çalışacak şekilde kuruldu."
 Write-Host "  script : $repoRoot\auto_process.py"
-Write-Host "  python : $pythonExe"
+Write-Host "  python : $pythonwExe"
 Write-Host ""
 Write-Host "Kontrol için:  Get-ScheduledTask -TaskName '$taskName' | Get-ScheduledTaskInfo"
 
@@ -86,7 +97,7 @@ foreach ($t in $djFamousOld) {
 }
 
 $djFamousAt = [DateTime]::ParseExact($DjFamousTime, "HH:mm", $null)
-$djFamousAction = New-ScheduledTaskAction -Execute $pythonExe -Argument "dj_famous_process.py" -WorkingDirectory $repoRoot
+$djFamousAction = New-ScheduledTaskAction -Execute $pythonwExe -Argument "dj_famous_process.py" -WorkingDirectory $repoRoot
 $djFamousTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $DjFamousDayOfWeek -At $djFamousAt -WeeksInterval 1
 # 1 saate kadar sürebilecek set videoları render+3 platform yükleme için ana
 # katalogdan (2 saat) çok daha uzun bir süre limiti (bkz. dj_sets/README.md).
@@ -122,7 +133,7 @@ foreach ($t in $watcherOld) {
     Unregister-ScheduledTask -TaskName $t.TaskName -Confirm:$false
 }
 
-$watcherAction = New-ScheduledTaskAction -Execute $pythonExe -Argument "watch_projects.py" -WorkingDirectory $repoRoot
+$watcherAction = New-ScheduledTaskAction -Execute $pythonwExe -Argument "watch_projects.py" -WorkingDirectory $repoRoot
 $watcherTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
     -RepetitionInterval (New-TimeSpan -Minutes 1) `
     -RepetitionDuration (New-TimeSpan -Days 3650)
