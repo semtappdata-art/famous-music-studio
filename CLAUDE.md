@@ -114,15 +114,24 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   **Instagram/TikTok yorumlarında düz metin linkler TIKLANAMIYOR** (WebSearch ile
   doğrulandı, 2026-09-05) — `build_youtube_comment`'in ürettiği youtu.be linki
   yine de kopyalanabilir metin olarak duruyor, ama gerçekten tıklanabilir tek
-  yer profildeki "bio link". Bu yüzden yorum metnine ikinci bir satır eklendi:
-  "Profildeki linkten de kanalımıza ulaşabilirsin 🔗" — kullanıcının Instagram
-  ve TikTok'ta bio linkini `famousmusicstudio.com`'a (GitHub Pages, `docs/`
-  klasörü — zaten Instagram/YouTube/TikTok'a çıkan linkleri var) bağlaması
-  gerekiyor, bu ELLE ve TEK SEFERLİK yapılan bir profil ayarı, API'den
-  değiştirilemiyor (bkz. `buyume_kontrol_listesi.md`, madde 5). Meta Verified
-  (ücretli, Reels'e özel tıklanabilir link) araştırıldı ama hem $49.99/ay'dan
-  başlıyor hem Content Publishing API ile uyumluluğu doğrulanamadı — kullanıcı
-  bunun yerine ücretsiz bio-link çözümünü seçti.
+  yer profildeki "bio link". Bu yüzden yorum metnine ikinci bir satır eklendi —
+  düz "profildeki linkten..." yazısı YERİNE, hesabın kendisini `@handle` ile
+  ETİKETLEYEN (mention) bir cümle: "@famous_music_studio hesabına dokun,
+  bio'daki linkten de ulaşabilirsin 🔗" (TikTok: `@famousmusicstudio`,
+  `config.SOCIAL_HANDLES`). Mention, düz URL'den FARKLI bir mekanizma —
+  caption/yorumda GERÇEKTEN tıklanabilir, tıklanınca doğrudan profile açılıyor
+  (WebSearch ile doğrulandı: "@mentions are tappable in captions" ama "links
+  in captions are not"). `build_youtube_comment(url, lang, platform)` artık
+  `platform` parametresi alıyor ("instagram"/"tiktok") — doğru handle'ı seçmek
+  için (`instagram_upload.py`/`tiktok_upload.py` çağrılarında elle geçiliyor).
+  Kullanıcının Instagram ve TikTok'ta bio linkini `famousmusicstudio.com/latest.html`'e
+  (her yeni yüklemede otomatik güncellenen, en son parçaya yönlendiren sayfa —
+  bkz. `latest_release.py`) bağlaması gerekiyor, bu ELLE ve TEK SEFERLİK yapılan
+  bir profil ayarı, API'den değiştirilemiyor (bkz. `buyume_kontrol_listesi.md`,
+  madde 5). Meta Verified (ücretli, Reels'e özel tıklanabilir link) araştırıldı
+  ama hem $49.99/ay'dan başlıyor hem Content Publishing API ile uyumluluğu
+  doğrulanamadı — kullanıcı bunun yerine ücretsiz bio-link + mention çözümünü
+  seçti.
 - **`art.jpg` METİNSİZ olmalı**: hem kartın içeriği hem blur backdrop'ın kaynağı. İçine
   metin gömülüyse blur'da okunaksız lekeye dönüşür. Bu hataya birkaç kez düşüldü (Kalbim
   Oynuyor, ilk otomasyon/Yeniden Doğacağım) — `art.* == cover.*` (byte-birebir aynı) hızlı
