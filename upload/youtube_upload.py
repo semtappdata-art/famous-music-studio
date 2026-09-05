@@ -323,14 +323,23 @@ def fix_thumbnail(project_dir: str) -> None:
             print(f"  Shorts thumbnail HATA: {e}")
 
 
-def fix_all_thumbnails(base: str = "projects") -> None:
-    """--thumbnail-only --all: base altındaki, YouTube'a zaten yüklü (state.json'da
+def fix_all_thumbnails(bases: tuple[str, ...] = ("projects", "dj_sets")) -> None:
+    """--thumbnail-only --all: bases altındaki, YouTube'a zaten yüklü (state.json'da
     youtube_video_id ve/veya youtube_shorts_video_id olan) TÜM projelerin
     thumbnail'ini tek seferde düzeltir. Zaten doğru kapakla yüklü videolarda da
-    tekrar çağırmak güvenlidir (thumbnails().set() üzerine yazar, idempotent)."""
-    if not os.path.isdir(base):
-        print(f"HATA: {base} klasörü bulunamadı.")
-        return
+    tekrar çağırmak güvenlidir (thumbnails().set() üzerine yazar, idempotent).
+    Varsayılan olarak hem ana katalog (`projects/`) hem DJ Famous setlerini
+    (`dj_sets/`) tarar — eskiden sadece `projects/` taranıyordu, bu yüzden
+    dj_sets/ projelerinin thumbnail'i hiç düzeltilmiyordu (kullanıcı geri
+    bildirimiyle tespit edildi: City Pulse Set'in kapağı YouTube'da hiç
+    görünmüyordu)."""
+    for base in bases:
+        if not os.path.isdir(base):
+            continue
+        _fix_all_thumbnails_in(base)
+
+
+def _fix_all_thumbnails_in(base: str) -> None:
     for name in sorted(os.listdir(base)):
         project_dir = os.path.join(base, name)
         if not os.path.isdir(project_dir):
