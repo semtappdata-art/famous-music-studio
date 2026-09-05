@@ -286,26 +286,9 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
         log("  YouTube: zaten yüklü, atlanıyor")
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
-            from youtube_upload import upload_video as yt_upload, load_meta as yt_load_meta
+            from youtube_upload import upload_video as yt_upload
             youtube_video_id = yt_upload(project_dir, privacy, schedule=schedule)
             log(f"  YouTube: tamam, https://youtu.be/{youtube_video_id}")
-            # Instagram/TikTok'ta caption/yorum linkleri tıklanamıyor (platform
-            # kısıtı) — bio linki famousmusicstudio.com/latest.html'e bağlanınca
-            # bu, her yeni yüklemede EN GÜNCEL şarkıya otomatik güncellenen tek
-            # gerçek tıklanabilir yol oluyor (kullanıcı onayı, 2026-09-05).
-            # SADECE bu dosyayı commit'leyip push ediyor — diğer commit'siz yerel
-            # değişikliklere (ör. state.json) dokunmuyor.
-            try:
-                title = yt_load_meta(project_dir).get("title", "Untitled")
-                latest_release.update(title, f"https://youtu.be/{youtube_video_id}")
-                push_path(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "docs/latest.html",
-                    "docs: en son parça linkini güncelle (otomatik)",
-                    log,
-                )
-            except Exception as e:
-                log(f"  latest.html güncelleme HATA: {e}")
         except Exception as e:
             log(f"  YouTube HATA: {e}")
     else:
@@ -364,6 +347,26 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
             log(f"  Instagram HATA: {e}")
     else:
         log("  Instagram atlandı: upload/instagram_token.json yok (önce instagram_auth.py çalıştır)")
+
+
+def _refresh_latest_listing() -> None:
+    """docs/latest.html'i (yayındaki TÜM şarkıların listesi — bkz. latest_release.py)
+    HER çalıştırmada yeniden üretip SADECE o dosyayı push eder — sadece yeni
+    yükleme anında değil, çünkü golden-hour zamanlamasıyla yüklenen bir video
+    private→public'e YouTube tarafından SONRADAN (bu script'in bilgisi dışında)
+    geçebiliyor; bir sonraki çalıştırma bunu otomatik yakalar (idempotent,
+    değişiklik yoksa push_path zaten no-op, gereksiz commit atmaz). Hiçbir
+    hata otomasyonu durdurmaz."""
+    try:
+        latest_release.regenerate()
+        push_path(
+            os.path.dirname(os.path.abspath(__file__)),
+            "docs/latest.html",
+            "docs: şarkı listesini güncelle (otomatik)",
+            log,
+        )
+    except Exception as e:
+        log(f"  latest.html güncelleme HATA: {e}")
 
 
 def main():
@@ -444,6 +447,7 @@ def main():
         _drain_golden_hour_queue([p for p in ready if p not in batch])
         log("Çalıştırma tamamlandı.")
     finally:
+        _refresh_latest_listing()
         _release_lock()
 
 

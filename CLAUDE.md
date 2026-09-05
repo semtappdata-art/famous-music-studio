@@ -125,10 +125,14 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   `platform` parametresi alıyor ("instagram"/"tiktok") — doğru handle'ı seçmek
   için (`instagram_upload.py`/`tiktok_upload.py` çağrılarında elle geçiliyor).
   Kullanıcının Instagram ve TikTok'ta bio linkini `famousmusicstudio.com/latest.html`'e
-  (her yeni yüklemede otomatik güncellenen, en son parçaya yönlendiren sayfa —
-  bkz. `latest_release.py`) bağlaması gerekiyor, bu ELLE ve TEK SEFERLİK yapılan
-  bir profil ayarı, API'den değiştirilemiyor (bkz. `buyume_kontrol_listesi.md`,
-  madde 5). Meta Verified (ücretli, Reels'e özel tıklanabilir link) araştırıldı
+  (yayındaki TÜM şarkıları en yeni önce listeleyen sayfa — sadece "en son"a
+  değil, eski bir paylaşımı görüp gelen biri de aradığı şarkıyı bulabiliyor;
+  `auto_process.py` HER çalıştırmada `latest_release.regenerate()` ile yeniden
+  üretip `git_sync.push_path()` ile SADECE bu dosyayı push ediyor — yeni yükleme
+  anında değil her run'da, çünkü golden-hour zamanlı bir video private→public'e
+  YouTube tarafından SONRADAN geçebiliyor, bir sonraki run bunu yakalıyor)
+  bağlaması gerekiyor, bu ELLE ve TEK SEFERLİK yapılan bir profil ayarı, API'den
+  değiştirilemiyor (bkz. `buyume_kontrol_listesi.md`, madde 5). Meta Verified (ücretli, Reels'e özel tıklanabilir link) araştırıldı
   ama hem $49.99/ay'dan başlıyor hem Content Publishing API ile uyumluluğu
   doğrulanamadı — kullanıcı bunun yerine ücretsiz bio-link + mention çözümünü
   seçti.

@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Famous Music Studio — Yeni Parça</title>
-<meta name="description" content="Famous Music Studio'nun en son yayınlanan şarkısına yönlendiriliyorsunuz.">
-<meta http-equiv="refresh" content="0; url=https://youtu.be/NMFMXdUPBT8">
+<title>Famous Music Studio — Şarkılar</title>
+<meta name="description" content="Famous Music Studio'nun tüm yayındaki şarkıları — YouTube'da dinle.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
@@ -28,43 +27,44 @@
     background: radial-gradient(ellipse at 50% 0%, var(--bg-alt) 0%, var(--bg) 65%);
     color: var(--text);
     font-family: 'Inter', -apple-system, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     padding: 6vh 1.5rem;
   }
 
-  main { max-width: 28rem; width: 100%; text-align: center; }
-
-  p.eyebrow {
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin: 0 0 0.8rem;
-  }
+  main { max-width: 28rem; width: 100%; margin: 0 auto; text-align: center; }
 
   h1 {
     font-family: 'Cormorant Garamond', serif;
     font-weight: 600;
     font-size: clamp(1.8rem, 6vw, 2.4rem);
-    margin: 0 0 1.8rem;
+    margin: 0 0 2rem;
     color: var(--gold-bright);
   }
 
-  a.button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.8rem 1.6rem;
+  h2 {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 2rem 0 0.8rem;
+    text-align: left;
+  }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+
+  li + li { margin-top: 0.6rem; }
+
+  a {
+    display: block;
+    padding: 0.8rem 1.2rem;
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: 12px;
     color: var(--text);
     text-decoration: none;
     font-size: 0.95rem;
+    text-align: left;
   }
 
-  a.button:hover, a.button:focus-visible {
+  a:hover, a:focus-visible {
     border-color: var(--gold);
     color: var(--gold-bright);
     background: rgba(201, 161, 90, 0.06);
@@ -73,12 +73,28 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow">Yeni şarkı</p>
-  <h1>Kumdan Denize</h1>
-  <a class="button" href="https://youtu.be/NMFMXdUPBT8">YouTube'da dinle</a>
+  <h1>Famous Music Studio</h1>
+  <h2>Şarkılar</h2>
+  <ul>
+    <li><a href="https://youtu.be/NMFMXdUPBT8">Kumdan Denize</a></li>
+    <li><a href="https://youtu.be/9qgIU8vcYZY">Sofraya Gelmedin</a></li>
+    <li><a href="https://youtu.be/0ePR5BUUFoQ">Yürek Yarası</a></li>
+    <li><a href="https://youtu.be/X3xRBwjUaEQ">Yeraltı</a></li>
+    <li><a href="https://youtu.be/Y8tlsFFP6kg">Sessiz Mektup</a></li>
+    <li><a href="https://youtu.be/sTXz-7V1fzc">Son Kez</a></li>
+    <li><a href="https://youtu.be/yUA9LXMlD9k">Bir Bahar Daha</a></li>
+    <li><a href="https://youtu.be/1-xofMJPVgY">Beton Krallığı</a></li>
+    <li><a href="https://youtu.be/vcZHfvpOrpc">Sabaha Kadar</a></li>
+    <li><a href="https://youtu.be/SUd_Ss-kKgU">Kalbim Oynuyor</a></li>
+    <li><a href="https://youtu.be/kZML9g4GdBs">Yeniden Doğacağım</a></li>
+    <li><a href="https://youtu.be/7gyLv84KxTk">Gece Sürüşü</a></li>
+    <li><a href="https://youtu.be/8ixjisC6Ato">Beni Bırakma</a></li>
+  </ul>
+  <h2>DJ Famous Setleri</h2>
+  <ul>
+    <li><a href="https://youtu.be/ph_qlIpHx_A">City Pulse Set</a></li>
+  </ul>
+
 </main>
-<script>
-  location.replace("https://youtu.be/NMFMXdUPBT8");
-</script>
 </body>
 </html>
