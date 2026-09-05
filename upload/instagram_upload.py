@@ -36,10 +36,15 @@ NETLIFY_SECRETS_PATH = os.path.join(UPLOAD_DIR, "netlify_client_secrets.json")
 GRAPH_API = "https://graph.instagram.com/v21.0"
 
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
+COVER_VERTICAL_NAMES = ["cover_vertical.jpg", "cover_vertical.jpeg", "cover_vertical.png"]
 
 
 def _find_cover(project_dir: str) -> str | None:
-    for name in COVER_NAMES:
+    """Reels videosu dikey (9:16) olduğu için önce cover_vertical.*'a bakar —
+    onunla üretilmiş kapak Instagram'da tam kadraj kaplar, aksi halde 16:9
+    cover.png'ye düşülür (üstte/altta ince bir şerit görünebilir, hiç kapaksız
+    kalmaktan iyidir)."""
+    for name in COVER_VERTICAL_NAMES + COVER_NAMES:
         path = os.path.join(project_dir, name)
         if os.path.isfile(path):
             return path

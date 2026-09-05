@@ -35,16 +35,25 @@ MAX_PARALLEL_RENDERS = len(PLATFORMS)
 # Ana katalog (6 tarz) tamamen Türkiye pazarına göre kurulu, "tr" — "dj" (DJ
 # Famous, bkz. dj_sets/README.md) markanın global açılımının ilk denemesi
 # olarak "en" (kullanıcı kararı, 2026-09-03).
+#
+# "art_query": art.jpg elle sağlanmadığında stock_art.py'nin Pexels'te arayacağı
+# VARSAYILAN terimler — şarkının tarzına uygun, gerçek bir mekân/atmosfer
+# fotoğrafı gelsin diye (kullanıcı isteği: kapak görseli müzik tarzını ve
+# sözlerin çağrıştırdığı mekânı anımsatsın, düz prosedürel gradyan yerine).
+# Şarkıya ÖZEL bir sahne isteniyorsa meta.json'a "art_query" yazılır, o öncelikli
+# olur — bu alan sadece hiçbir şey yazılmadığındaki tarz-bazlı taban.
+# Sorgular İNGİLİZCE: Pexels'in etiket/arama dizini ezici çoğunlukla İngilizce,
+# Türkçe terimler ("yağmurlu pencere") çok az/alakasız sonuç döndürüyor.
 THEMES = {
-    "pop": {"label": "Pop", "related": ["R&B", "Trap"], "accent": (255, 60, 140), "accent2": (80, 120, 255), "language": "tr"},
-    "rock": {"label": "Rock", "related": ["Alternative", "Punk"], "accent": (230, 35, 35), "accent2": (255, 170, 40), "language": "tr"},
-    "elektronik": {"label": "Elektronik", "related": ["Synthwave", "House"], "accent": (60, 220, 255), "accent2": (170, 60, 255), "language": "tr"},
-    "akustik": {"label": "Akustik", "related": ["Folk", "Indie"], "accent": (230, 150, 60), "accent2": (255, 90, 140), "language": "tr"},
-    "hiphop": {"label": "Hip-Hop", "related": ["Trap", "Rap"], "accent": (255, 195, 60), "accent2": (255, 90, 40), "language": "tr"},
-    "arabesk": {"label": "Arabesk", "related": ["Trap", "Türkçe Rap"], "accent": (200, 40, 90), "accent2": (255, 140, 60), "language": "tr"},
+    "pop": {"label": "Pop", "related": ["R&B", "Trap"], "accent": (255, 60, 140), "accent2": (80, 120, 255), "language": "tr", "art_mood": "bright vibrant", "art_query": "vibrant sunset city skyline pastel sky"},
+    "rock": {"label": "Rock", "related": ["Alternative", "Punk"], "accent": (230, 35, 35), "accent2": (255, 170, 40), "language": "tr", "art_mood": "dark dramatic moody", "art_query": "dramatic stormy sky dark mountains"},
+    "elektronik": {"label": "Elektronik", "related": ["Synthwave", "House"], "accent": (60, 220, 255), "accent2": (170, 60, 255), "language": "tr", "art_mood": "neon night", "art_query": "neon city night lights reflection"},
+    "akustik": {"label": "Akustik", "related": ["Folk", "Indie"], "accent": (230, 150, 60), "accent2": (255, 90, 140), "language": "tr", "art_mood": "warm golden hour", "art_query": "warm golden hour forest sunlight"},
+    "hiphop": {"label": "Hip-Hop", "related": ["Trap", "Rap"], "accent": (255, 195, 60), "accent2": (255, 90, 40), "language": "tr", "art_mood": "gritty urban night", "art_query": "urban street night city concrete"},
+    "arabesk": {"label": "Arabesk", "related": ["Trap", "Türkçe Rap"], "accent": (200, 40, 90), "accent2": (255, 140, 60), "language": "tr", "art_mood": "melancholy moody rainy", "art_query": "rainy window night melancholy blur"},
     # Ana kataloğun 6 tarzından AYRI — haftalık DJ Famous setleri için (bkz.
     # dj_sets/README.md). Kataloğun 6-slotlu tema çeşitlilik takibine dahil değil.
-    "dj": {"label": "DJ Set", "related": ["Mix", "Live Set"], "accent": (255, 210, 60), "accent2": (255, 60, 140), "language": "en"},
+    "dj": {"label": "DJ Set", "related": ["Mix", "Live Set"], "accent": (255, 210, 60), "accent2": (255, 60, 140), "language": "en", "art_mood": "nightclub stage lights", "art_query": "nightclub crowd stage lights"},
 }
 DEFAULT_THEME = "hiphop"  # meta.json'da "theme" belirtilmezse kullanılır
 
@@ -131,7 +140,45 @@ def _find_font_path() -> str:
     )
 
 
+def _find_bold_font_path() -> str:
+    """Kalın font varyantı — sadece cover.png başlığı için (künye yazısı normal
+    kalınlıkta kalıyor). Bulunamazsa hata vermez, FONT_PATH'e (normal ağırlık)
+    düşer — kalın font kozmetik bir tercih, zorunlu değil."""
+    candidates = [
+        r"C:\Windows\Fonts\segoeuib.ttf",
+        r"C:\Windows\Fonts\arialbd.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return FONT_PATH
+
+
 FONT_PATH = _find_font_path()
+FONT_BOLD_PATH = _find_bold_font_path()
+
+
+def _find_logo_path() -> str | None:
+    """Famous Music Studio amblemi (altın sunburst + wordmark, düz siyah zemin
+    üzerinde) — cover.png'de metin marka satırı yerine kullanılır. Gitignored
+    (upload/assets/*.png, assets/*.png) — üretim makinesinde elle konmuş
+    olabilir ama fresh checkout'ta YOK olabilir, bu yüzden bulunamazsa None
+    döner ve generate_cover.py sessizce düz metin satırına düşer (hata vermez)."""
+    candidates = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload", "assets", "famous_music_studio_logo_v2.png"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "assets", "logo.png"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+LOGO_PATH = _find_logo_path()
 FONT_SIZE_RATIO = 0.032  # video yüksekliğine oran — büyütüldü, okunurluk için
 FONT_COLOR = "white@0.95"  # künye yazısı net okunsun diye yüksek opaklık
 MARQUEE_SEPARATOR = "  •  "

@@ -27,10 +27,14 @@ from social_text import build_caption, build_youtube_comment, resolve_language
 
 API_BASE = "https://open.tiktokapis.com/v2"
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
+COVER_VERTICAL_NAMES = ["cover_vertical.jpg", "cover_vertical.jpeg", "cover_vertical.png"]
 
 
 def _find_cover(project_dir: str) -> str | None:
-    for name in COVER_NAMES:
+    """TikTok videosu dikey (9:16) olduğu için önce cover_vertical.*'a bakar —
+    kullanıcının uygulamadan elle seçeceği kapak tam kadraj kaplasın diye
+    (bkz. modül docstring'i, --pending-covers). Yoksa 16:9 cover.png'ye düşülür."""
+    for name in COVER_VERTICAL_NAMES + COVER_NAMES:
         path = os.path.join(project_dir, name)
         if os.path.isfile(path):
             return path
