@@ -111,6 +111,18 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
 - **YouTube linki caption'da DEĞİL**: Instagram/TikTok caption'larında dış link yok —
   bilinçli, off-platform link Explore/For You dağıtımını olumsuz etkileyebiliyor. Link
   bunun yerine paylaşım SONRASI bir yorum (`build_youtube_comment`).
+  **Instagram/TikTok yorumlarında düz metin linkler TIKLANAMIYOR** (WebSearch ile
+  doğrulandı, 2026-09-05) — `build_youtube_comment`'in ürettiği youtu.be linki
+  yine de kopyalanabilir metin olarak duruyor, ama gerçekten tıklanabilir tek
+  yer profildeki "bio link". Bu yüzden yorum metnine ikinci bir satır eklendi:
+  "Profildeki linkten de kanalımıza ulaşabilirsin 🔗" — kullanıcının Instagram
+  ve TikTok'ta bio linkini `famousmusicstudio.com`'a (GitHub Pages, `docs/`
+  klasörü — zaten Instagram/YouTube/TikTok'a çıkan linkleri var) bağlaması
+  gerekiyor, bu ELLE ve TEK SEFERLİK yapılan bir profil ayarı, API'den
+  değiştirilemiyor (bkz. `buyume_kontrol_listesi.md`, madde 5). Meta Verified
+  (ücretli, Reels'e özel tıklanabilir link) araştırıldı ama hem $49.99/ay'dan
+  başlıyor hem Content Publishing API ile uyumluluğu doğrulanamadı — kullanıcı
+  bunun yerine ücretsiz bio-link çözümünü seçti.
 - **`art.jpg` METİNSİZ olmalı**: hem kartın içeriği hem blur backdrop'ın kaynağı. İçine
   metin gömülüyse blur'da okunaksız lekeye dönüşür. Bu hataya birkaç kez düşüldü (Kalbim
   Oynuyor, ilk otomasyon/Yeniden Doğacağım) — `art.* == cover.*` (byte-birebir aynı) hızlı
@@ -231,6 +243,27 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   yazıda (`marquee_text`). Bu, yukarıdaki ZORUNLU AI-üretimi bildirimini DEĞİŞTİRMEZ —
   o ayrı, dokunulmayan bir mekanizma (containsSyntheticMedia, TikTok etiket hatırlatması,
   Instagram disclosure satırı). Kaldırılan sadece marka/keşfet amaçlı hashtag'ler.
+  **2026-09-05'te aynı kural `config.HOOK_LINES`/`HOOK_LINES_EN` ve
+  `ENGAGEMENT_QUESTIONS`/`ENGAGEMENT_QUESTIONS_EN`'e de genişletildi** — bu
+  satırlardaki "Bu şarkı tamamen yapay zeka ile yapıldı"/"Human or AI? You
+  decide" gibi AI-vurgulu hook/soru metinleri (ana kataloğun HER caption'ının
+  başında görünüyordu) kaldırılıp AI'dan bağımsız hook'larla değiştirildi
+  (kullanıcı kararı: görünür "AI ile yapıldı" bilgilendirmesi mümkün olduğunca
+  azaltılsın, sadece ZORUNLU/arka-plan mekanizmalarda kalsın). **DJ Famous
+  (`dj_sets/`) BUNDAN MUAF** — orada AI-üretimi bilinçli olarak açık şekilde
+  belirtiliyor (gerçek kişi içeriği, farklı tasarım kararı), kendi ayrı caption
+  metni kullanılıyor, `HOOK_LINES`'a bağlı değil.
+- **Instagram'da yayınlanmış bir medyayı API'den silmek MÜMKÜN DEĞİL** (bu
+  projenin kullandığı "Instagram API with Instagram Login" — `instagram_auth.py`,
+  `graph.instagram.com` — ile): medya silme (`DELETE /<media-id>`) endpoint'i
+  SADECE eski "Facebook Login" akışını (bir Facebook Sayfası üzerinden
+  bağlanan Graph API) destekliyor, WebSearch ile doğrulandı (2026-09-05).
+  Denendiğinde `IGApiException code 100 / error_subcode 33` ("Unsupported
+  delete request... does not support this operation") dönüyor. Eski bir
+  gönderiyi kaldırmak gerekiyorsa (ör. kapak tasarımı değişip eski post yeni
+  bir kopyayla değiştirildiğinde) bunu API'ye eklemeye ÇALIŞMA — kullanıcı
+  Instagram uygulamasından elle silmeli (bkz. `buyume_kontrol_listesi.md`,
+  madde 4 — 2026-09-05 kapak-tasarımı migrasyonunun canlı örneği).
 - **TikTok kapak (cover) görseli API'den ayarlanamıyor**: `video_cover_image_url` sadece
   audit'ten geçmiş Direct Post akışında var, bu projenin kullandığı Taslak/Gelen Kutusu
   akışında yok (WebSearch ile doğrulandı, Eylül 2026) — API üzerinden koda eklenebilecek

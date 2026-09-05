@@ -6,6 +6,8 @@ Kullanım:
     python upload/youtube_upload.py --project "projects/beni bırakma" --shorts
     python upload/youtube_upload.py --project "projects/beni bırakma" --thumbnail-only
     python upload/youtube_upload.py --thumbnail-only --all   # TÜM projelerin thumbnail'ini tek seferde düzeltir
+    python upload/youtube_upload.py --project "projects/beni bırakma" --description-only
+    python upload/youtube_upload.py --description-only --all   # TÜM projelerin açıklamasını tek seferde düzeltir
 
 meta.json'dan title/theme okur, output/youtube_16x9.mp4'ü yükler (upload_video),
 sonucu projects/<isim>/state.json'a yazar. --shorts ile output/shorts_9x16.mp4
@@ -358,6 +360,78 @@ def _fix_all_thumbnails_in(base: str) -> None:
             print(f"  HATA: {e}")
 
 
+def fix_description(project_dir: str) -> None:
+    """Zaten yüklenmiş video(lar) için açıklamayı (description/title/tags) güncel
+    build_snippet()/build_shorts_snippet() çıktısıyla YENİDEN yazar — video
+    upload_thumbnail'daki gibi, videoyu tekrar yüklemeden. Bazı eski videolar
+    (özellikle Shorts) açıklama eklenmeden ÖNCEki bir kod sürümüyle yüklendiği
+    için eksik/boş açıklamayla kalmıştı (kullanıcı geri bildirimiyle tespit
+    edildi, 2026-09-05) — bu onu düzeltir. state.json'dan youtube_video_id VE
+    (varsa) youtube_shorts_video_id okur, ikisini de dener. videos().update
+    part="snippet" TÜM snippet alanlarını (categoryId dahil) üzerine yazdığı
+    için build_snippet/build_shorts_snippet'in ürettiği TAM snippet gönderiliyor,
+    eksik alan bırakmıyor."""
+    state_path = os.path.join(project_dir, "state.json")
+    if not os.path.isfile(state_path):
+        print(f"  HATA: {state_path} yok — bu proje hiç yüklenmemiş.")
+        return
+    with open(state_path, "r", encoding="utf-8") as f:
+        state = json.load(f)
+
+    video_id = state.get("youtube_video_id")
+    shorts_id = state.get("youtube_shorts_video_id")
+    if not video_id and not shorts_id:
+        print("  HATA: state.json'da youtube_video_id/youtube_shorts_video_id yok.")
+        return
+
+    meta = load_meta(project_dir)
+    youtube = get_authenticated_service()
+
+    if video_id:
+        print("  uzun format:")
+        snippet = build_snippet(meta)
+        youtube.videos().update(part="snippet", body={"id": video_id, "snippet": snippet}).execute()
+        print("  Açıklama: tamam")
+    if shorts_id:
+        print("  Shorts:")
+        try:
+            snippet = build_shorts_snippet(meta, video_id)
+            youtube.videos().update(part="snippet", body={"id": shorts_id, "snippet": snippet}).execute()
+            print("  Açıklama: tamam")
+        except Exception as e:
+            print(f"  Shorts açıklama HATA: {e}")
+
+
+def fix_all_descriptions(bases: tuple[str, ...] = ("projects", "dj_sets")) -> None:
+    """--description-only --all: fix_all_thumbnails ile aynı desen — bases
+    altındaki, YouTube'a zaten yüklü TÜM projelerin açıklamasını tek seferde
+    günceller. Idempotent (üzerine yazar), zaten doğru olan projelerde de
+    güvenle tekrar çağrılabilir."""
+    for base in bases:
+        if not os.path.isdir(base):
+            continue
+        _fix_all_descriptions_in(base)
+
+
+def _fix_all_descriptions_in(base: str) -> None:
+    for name in sorted(os.listdir(base)):
+        project_dir = os.path.join(base, name)
+        if not os.path.isdir(project_dir):
+            continue
+        state_path = os.path.join(project_dir, "state.json")
+        if not os.path.isfile(state_path):
+            continue
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        if not state.get("youtube_video_id") and not state.get("youtube_shorts_video_id"):
+            continue
+        print(f"\n=== {name} ===")
+        try:
+            fix_description(project_dir)
+        except Exception as e:
+            print(f"  HATA: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Render edilmiş bir projeyi YouTube'a yükler.")
     parser.add_argument(
@@ -378,9 +452,16 @@ def main():
              "dönük düzeltme için. --project ile tek proje, --all ile TÜM projeler.",
     )
     parser.add_argument(
+        "--description-only", action="store_true",
+        help="Video zaten yüklüyse sadece açıklama/başlık/etiketleri (yeniden) günceller, "
+             "videoyu tekrar yüklemez — güncel build_snippet()/build_shorts_snippet() "
+             "çıktısıyla geriye dönük düzeltme için. --project ile tek proje, --all ile "
+             "TÜM projeler.",
+    )
+    parser.add_argument(
         "--all", action="store_true",
-        help="Sadece --thumbnail-only ile birlikte: projects/ altındaki YouTube'a zaten "
-             "yüklü TÜM projelerin thumbnail'ini tek seferde düzeltir.",
+        help="--thumbnail-only ya da --description-only ile birlikte: projects/ (+ dj_sets/) "
+             "altındaki YouTube'a zaten yüklü TÜM projeleri tek seferde düzeltir.",
     )
     parser.add_argument(
         "--no-schedule", action="store_true",
@@ -389,14 +470,22 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.thumbnail_only and args.all:
+    if args.thumbnail_only and args.description_only:
+        parser.error("--thumbnail-only ve --description-only aynı anda kullanılamaz")
+    elif args.thumbnail_only and args.all:
         fix_all_thumbnails()
     elif args.thumbnail_only:
         if not args.project:
             parser.error("--thumbnail-only için --project ya da --all gerekli")
         fix_thumbnail(args.project)
+    elif args.description_only and args.all:
+        fix_all_descriptions()
+    elif args.description_only:
+        if not args.project:
+            parser.error("--description-only için --project ya da --all gerekli")
+        fix_description(args.project)
     elif not args.project:
-        parser.error("--project gerekli (ya da --thumbnail-only --all)")
+        parser.error("--project gerekli (ya da --thumbnail-only/--description-only --all)")
     elif args.shorts:
         upload_short(args.project, args.privacy, schedule=not args.no_schedule)
     else:
