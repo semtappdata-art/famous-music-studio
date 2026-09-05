@@ -113,7 +113,7 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   bunun yerine paylaşım SONRASI bir yorum (`build_youtube_comment`).
 - **`art.jpg` METİNSİZ olmalı**: hem kartın içeriği hem blur backdrop'ın kaynağı. İçine
   metin gömülüyse blur'da okunaksız lekeye dönüşür. Bu hataya birkaç kez düşüldü (Kalbim
-  Oynuyor, ilk otomasyon/Küllerimden Geç) — `art.* == cover.*` (byte-birebir aynı) hızlı
+  Oynuyor, ilk otomasyon/Yeniden Doğacağım) — `art.* == cover.*` (byte-birebir aynı) hızlı
   bir sağlık kontrolü.
 - **Backdrop artık statik değil**: `art.jpg`'den türetilen blur arka plan, hedef
   çözünürlükten %14 büyük üretilip render sırasında yavaşça kayıyor (pan) + dar bir açı
@@ -366,7 +366,7 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
   bahsedilmiyor, bu olumsuz bir sinyal. Koda eklemeden önce kullanıcının gerçek bir API
   test isteğiyle (ör. sandbox/test hesabı) bu alanların kabul edildiğini bizzat doğrulaması
   gerekiyor — yanlış alan adı riskli olduğu için hâlâ koda eklenmedi.
-- İlk 3 şarkının (Beni Bırakma, Küllerimden Geç, Shudhniy L) Suno stil etiketleri
+- İlk 3 şarkının (Beni Bırakma, Yeniden Doğacağım, Shudhniy L) Suno stil etiketleri
   arşivlenmemiş.
 
 ## Diğer takip dosyaları

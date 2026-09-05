@@ -8,7 +8,7 @@ edilmeden — bu dosya o hatayı tekrarlamamak için tutuluyor.)
 | Şarkı | Tema | Vokal |
 |---|---|---|
 | Beni Bırakma | hiphop | (kayıt yok — önceki oturumdan) |
-| Küllerimden Geç | arabesk | (kayıt yok — önceki oturumdan) |
+| Yeniden Doğacağım | arabesk | (kayıt yok — önceki oturumdan) |
 | Shudhniy L | pop | (kayıt yok — önceki oturumdan) |
 | Kalbim Oynuyor | pop | female vocals |
 | Sabaha Kadar | elektronik | female vocals |
