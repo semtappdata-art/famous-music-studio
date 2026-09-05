@@ -199,6 +199,16 @@ SOCIAL_LINKS = {
     "tiktok": "https://www.tiktok.com/@famousmusicstudio",
     "website": "https://famousmusicstudio.com",
 }
+
+# @mention handle'ları (SOCIAL_LINKS'teki URL'lerden AYRI tutuluyor) —
+# Instagram/TikTok'ta düz metin linkler caption/yorumda TIKLANAMIYOR ama
+# "@handle" bir hesabı gerçekten ETİKETLİYORSA (mention) tıklanabilir oluyor
+# ve doğrudan o profile açılıyor (WebSearch ile doğrulandı, 2026-09-05) — bkz.
+# social_text.build_youtube_comment(). Bu, düz URL'den FARKLI bir mekanizma.
+SOCIAL_HANDLES = {
+    "instagram": "famous_music_studio",
+    "tiktok": "famousmusicstudio",
+}
 # NOT: "#AIMusic"/"#YapayZekaMüzik"/"#AIMusicChallenge"/"#SunoAI" gibi AI-vurgulu
 # ibareler BİLİNÇLİ olarak burada YOK — kullanıcı kuralı: ürettiğimiz hiçbir
 # içerikte (caption, YouTube tag, video içi kayan yazı) bu ibareler kullanılmasın.

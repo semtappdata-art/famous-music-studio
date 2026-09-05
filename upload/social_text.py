@@ -93,19 +93,25 @@ def build_ai_disclosure_line(lang: str = "tr") -> str:
     return "Bu içerik yapay zeka ile üretilmiştir."
 
 
-def build_youtube_comment(youtube_url: str, lang: str = "tr") -> str:
+def build_youtube_comment(youtube_url: str, lang: str = "tr", platform: str = "instagram") -> str:
     """Paylaşımdan SONRA ilk yorum olarak eklenecek kısa metin — caption'ın aksine
     yorumların keşfet dağıtımını etkilediğine dair bir kaygı yok, o yüzden link
     burada güvenle kullanılabiliyor. lang="en" ise İngilizce metin döner (bkz.
-    meta.json'daki "language" alanı).
+    meta.json'daki "language" alanı). platform "instagram" ya da "tiktok" —
+    hangi hesabın @handle'ının etiketleneceğini belirler (config.SOCIAL_HANDLES).
 
     İkinci satır BİLİNÇLİ olarak eklendi (kullanıcı kararı, 2026-09-05):
     Instagram/TikTok yorumlarında düz metin linkler TIKLANAMIYOR (WebSearch ile
-    doğrulandı) — youtu.be linki yine de kopyalanabilir metin olarak kalıyor,
-    ama gerçekten tıklanabilir tek yer profildeki "bio link". O linkin
-    famousmusicstudio.com'a (GitHub Pages, docs/index.html — zaten YouTube/
-    Instagram/TikTok'a çıkan linkleri var) bağlanması kullanıcının kendisinin
-    uygulamadan elle yapması gereken, tek seferlik bir profil ayarı."""
+    doğrulandı) — youtu.be linki yine de kopyalanabilir metin olarak kalıyor.
+    Gerçekten tıklanabilir tek yer profildeki "bio link" — ama caption/yoruma
+    düz "profildeki linkten..." yazmak yerine, hesabın kendisini `@handle` ile
+    ETİKETLEMEK (mention) caption/yorumda GERÇEKTEN tıklanabilir bir eleman
+    oluşturuyor (düz URL'den FARKLI bir mekanizma, WebSearch ile doğrulandı) —
+    tıklanınca doğrudan profile açılır, orada bio linki (famousmusicstudio.com/
+    latest.html, bkz. latest_release.py) görünür/tıklanabilir. Bio linkinin
+    kendisini o adrese bağlamak kullanıcının uygulamadan elle yapması gereken,
+    tek seferlik bir profil ayarı."""
+    handle = config.SOCIAL_HANDLES.get(platform, config.SOCIAL_HANDLES["instagram"])
     if lang == "en":
-        return f"🎧 Full track on YouTube: {youtube_url}\nYou can also reach our channel from the link in bio 🔗"
-    return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}\nProfildeki linkten de kanalımıza ulaşabilirsin 🔗"
+        return f"🎧 Full track on YouTube: {youtube_url}\nTap @{handle} above and check the link in bio 🔗"
+    return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}\n@{handle} hesabına dokun, bio'daki linkten de ulaşabilirsin 🔗"

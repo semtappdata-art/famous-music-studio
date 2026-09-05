@@ -180,7 +180,7 @@ def _publish_container(ig_user_id: str, access_token: str, creation_id: str, pro
         try:
             comment_resp = requests.post(
                 f"{GRAPH_API}/{media_id}/comments",
-                data={"message": build_youtube_comment(f"https://youtu.be/{video_id}", lang), "access_token": access_token},
+                data={"message": build_youtube_comment(f"https://youtu.be/{video_id}", lang, platform="instagram"), "access_token": access_token},
                 timeout=(10, 30),
             )
             comment_resp.raise_for_status()
