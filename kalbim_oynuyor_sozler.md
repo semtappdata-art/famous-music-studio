@@ -8,7 +8,7 @@ Suno'nun Lyrics kutusuna aynen yapıştırılabilir.
 **Neden bu tema:** TikTok Türkiye'de şu an viral olan tür klasik melankolik
 trap/arabesk değil — klarnet + darbuka + modern pop prodüksiyonla enerjik
 "Roman havası / Oyun havası" fusion (120-125 BPM, dans temposu). Kataloğun
-(Beni Bırakma, Küllerimden Geç, Sokaklar Beni Tanır) hepsi hüzünlü/gece
+(Beni Bırakma, Yeniden Doğacağım, Sokaklar Beni Tanır) hepsi hüzünlü/gece
 temalıydı — bu şarkı bilinçli olarak zıt kutup: kutlama, dans, sevinç.
 
 ## Stil Etiketi (Suno Style kutusuna yapıştır)

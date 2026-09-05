@@ -113,7 +113,7 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   bunun yerine paylaşım SONRASI bir yorum (`build_youtube_comment`).
 - **`art.jpg` METİNSİZ olmalı**: hem kartın içeriği hem blur backdrop'ın kaynağı. İçine
   metin gömülüyse blur'da okunaksız lekeye dönüşür. Bu hataya birkaç kez düşüldü (Kalbim
-  Oynuyor, ilk otomasyon/Küllerimden Geç) — `art.* == cover.*` (byte-birebir aynı) hızlı
+  Oynuyor, ilk otomasyon/Yeniden Doğacağım) — `art.* == cover.*` (byte-birebir aynı) hızlı
   bir sağlık kontrolü.
 - **Backdrop artık statik değil**: `art.jpg`'den türetilen blur arka plan, hedef
   çözünürlükten %14 büyük üretilip render sırasında yavaşça kayıyor (pan) + dar bir açı
@@ -366,7 +366,7 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
   bahsedilmiyor, bu olumsuz bir sinyal. Koda eklemeden önce kullanıcının gerçek bir API
   test isteğiyle (ör. sandbox/test hesabı) bu alanların kabul edildiğini bizzat doğrulaması
   gerekiyor — yanlış alan adı riskli olduğu için hâlâ koda eklenmedi.
-- İlk 3 şarkının (Beni Bırakma, Küllerimden Geç, Shudhniy L) Suno stil etiketleri
+- İlk 3 şarkının (Beni Bırakma, Yeniden Doğacağım, Shudhniy L) Suno stil etiketleri
   arşivlenmemiş.
 
 ## Diğer takip dosyaları
@@ -377,21 +377,31 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
 
 ## Git/PR alışkanlığı
 
-`claude/analiz-yap-sk8gpf` dalında geliştirilip PR ile `main`'e birleştiriliyor. Bir PR
-merge olduktan sonra bu dal restart edilir (`git fetch origin main && git reset --hard
-origin/main` veya içerik aynıysa force-with-lease push) — merge edilmiş commit'lerin
-üzerine yeni commit yığmak yerine.
+Bu proje iki farklı ortamda geliştiriliyor, her birinin kendi dal alışkanlığı var:
 
-**UYARI — `git reset --hard`/`git clean -f` üretim makinesinin checkout'unda ASLA
-elle çalıştırılmamalı:** yukarıdaki restart deseni sadece bu geliştirme dalı için
-güvenli (disposable, gerçek veri tutmuyor). `projects/*/state.json` gibi dosyalar
-git'e commit'li VE üretim makinesinde otomasyon tarafından sürekli commit'siz
-güncelleniyor (bkz. `git_sync.py` notu yukarıda) — bu checkout'ta bir
-`reset --hard`/`clean -f` bu commit'siz güncellemeleri KALICI OLARAK SİLER. Bu
-gerçekten oldu: `83cd3a2` commit'i ("Kaybolan Instagram upload kayıtlarını geri
-yükle") tam olarak böyle bir kazanın sonucuydu. Üretim checkout'unda temizlik
-gerekiyorsa önce `git status`/`git diff` ile neyin commit'siz olduğuna bak, gerekeni
-commit'le, sadece SONRA (gerekiyorsa) sert bir komut düşün.
+- **Yerel makine (Windows, üretim + yerel Claude Code oturumları)**:
+  `claude/analiz-yap-sk8gpf` dalında geliştirilip PR ile `main`'e birleştiriliyor. Bir PR
+  merge olduktan sonra bu dal restart edilir (`git fetch origin main && git reset --hard
+  origin/main` veya içerik aynıysa force-with-lease push) — merge edilmiş commit'lerin
+  üzerine yeni commit yığmak yerine.
+
+  **UYARI — `git reset --hard`/`git clean -f` üretim makinesinin checkout'unda ASLA
+  elle çalıştırılmamalı:** yukarıdaki restart deseni sadece bu geliştirme dalı için
+  güvenli (disposable, gerçek veri tutmuyor). `projects/*/state.json` gibi dosyalar
+  git'e commit'li VE üretim makinesinde otomasyon tarafından sürekli commit'siz
+  güncelleniyor (bkz. `git_sync.py` notu yukarıda) — bu checkout'ta bir
+  `reset --hard`/`clean -f` bu commit'siz güncellemeleri KALICI OLARAK SİLER. Bu
+  gerçekten oldu: `83cd3a2` commit'i ("Kaybolan Instagram upload kayıtlarını geri
+  yükle") tam olarak böyle bir kazanın sonucuydu. Üretim checkout'unda temizlik
+  gerekiyorsa önce `git status`/`git diff` ile neyin commit'siz olduğuna bak, gerekeni
+  commit'le, sadece SONRA (gerekiyorsa) sert bir komut düşün.
+
+- **Claude Code on the web**: her görev için `claude/<özet>-<rastgele>` biçiminde yeni
+  bir dal otomatik oluşturuyor (sabit tek bir dal adı YOK — farklı görevler farklı dal
+  isimleri alır, geçmiş PR'larda görülen `claude/analiz-yap-sk8gpf` yerelin sabit dalıdır,
+  bu ortamınki değil). Değişiklikler o dalda geliştirilip PR ile `main`'e birleştiriliyor.
+  Bir görev başında dal `main`'in gerisindeyse önce `git fetch origin main` ile güncel
+  `main` referansı çekilmeli.
 
 ## Claude Code Remote Control (opsiyonel, yerel geliştirme için)
 

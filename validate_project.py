@@ -121,7 +121,7 @@ def validate(project_dir: str) -> tuple[list[str], list[str]]:
 
     # 3) cover/art — geçerli görsel mi, art yanlışlıkla cover ile birebir aynı mı
     #    (CLAUDE.md: "art.jpg METİNSİZ olmalı" kuralının ihlaline işaret eder —
-    #    Kalbim Oynuyor ve ilk otomasyon/Küllerimden Geç'te birkaç kez düşülen hata)
+    #    Kalbim Oynuyor ve ilk otomasyon/Yeniden Doğacağım'da birkaç kez düşülen hata)
     cover_path = _find(project_dir, COVER_NAMES)
     art_path = _find(project_dir, ART_NAMES)
 
