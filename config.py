@@ -217,11 +217,17 @@ DISCOVERY_HASHTAGS = ["#keşfet", "#fyp", "#viral"]
 # Caption'ın ilk satırı — kaydırmayı durdurmak için merak uyandıran kısa açılış cümlesi.
 # build_caption() şarkı başlığına göre bunlardan birini deterministik seçer (her şarkı
 # için hep aynı hook, ama şarkılar arası çeşitlilik olur).
+# NOT: burada BİLİNÇLİ olarak "yapay zeka/AI ile yapıldı" gibi görünür bir vurgu YOK
+# (kullanıcı kararı, 2026-09-05) — bu içerik hook/etkileşim amaçlı, ZORUNLU bir
+# bildirim değil; zorunlu AI-üretimi bildirimi bundan tamamen ayrı ve hâlâ yerinde
+# (YouTube containsSyntheticMedia bayrağı, TikTok uygulama-içi etiket hatırlatması,
+# Instagram'da SADECE DJ Famous için build_ai_disclosure_line — hiçbiri buradaki
+# hook/soru metinlerine bağlı değil, dokunulmadı).
 HOOK_LINES = [
-    "Bu şarkı tamamen yapay zeka ile yapıldı 🤖🎵",
-    "İnsan mı yapay zeka mı, sen karar ver 👇",
-    "0'dan yapay zeka ile üretilen yeni şarkı 🎶",
-    "Bunu bir AI besteledi, inanabiliyor musun?",
+    "Bunu ilk sen keşfet 👀🎶",
+    "Kulaklığı tak, bu şarkı tam sana göre 🎧",
+    "Yeni parça, yeni hikaye 🎵",
+    "Bu şarkıyı bitirmeden geçme 👇",
 ]
 
 # Caption'ın sonunda, hashtag'lerden hemen önce — yorum sayısını artırmayı
@@ -232,7 +238,7 @@ ENGAGEMENT_QUESTIONS = [
     "Yorumda hangi türü bir sonraki duymak istersin? 👇",
     "Bu şarkı sana neyi hatırlattı, yorumda yaz 💬",
     "1'den 10'a kadar puanla 👇",
-    "Sence bu gerçekten AI mi yaptı? Yorumda tartışalım 🤔",
+    "Bu şarkıyı kaç kez tekrar dinlersin? Yorumda söyle 🔁",
 ]
 
 # --- İngilizce varyantlar (meta.json'da "language": "en" ise kullanılır) ---
@@ -244,17 +250,17 @@ ENGAGEMENT_QUESTIONS = [
 DISCOVERY_HASHTAGS_EN = ["#explore", "#fyp", "#viral"]
 
 HOOK_LINES_EN = [
-    "This track was made entirely by AI 🤖🎵",
-    "Human or AI? You decide 👇",
-    "A brand new track, created from scratch by AI 🎶",
-    "An AI composed this. Can you believe it?",
+    "Discover this one before everyone else 👀🎶",
+    "Put your headphones on, this one's for you 🎧",
+    "New track, new story 🎵",
+    "Don't scroll past this one 👇",
 ]
 
 ENGAGEMENT_QUESTIONS_EN = [
     "What genre should we drop next? Comment below 👇",
     "What does this track remind you of? Tell us in the comments 💬",
     "Rate it from 1 to 10 👇",
-    "Do you really think AI made this? Let's discuss in the comments 🤔",
+    "How many times will you replay this one? Tell us 🔁",
 ]
 
 # Video/ses kodek ayarları

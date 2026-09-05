@@ -54,3 +54,59 @@ def auto_pull(repo_dir: str, log) -> None:
             log(f"git: otomatik pull atlandı (fast-forward yapılamadı) — {detail}")
     except (subprocess.TimeoutExpired, OSError) as e:
         log(f"git: otomatik pull atlandı — {e}")
+
+
+def push_path(repo_dir: str, relpath: str, message: str, log) -> None:
+    """TEK bir dosyayı (relpath) commit'leyip `main`'e push eder — auto_pull()'ün
+    "sadece main dalında, hiçbir şey başarısız olursa otomasyonu durdurma"
+    ilkesiyle aynı, ama TERSİ yönde (pull değil push). BİLİNÇLİ olarak DAR
+    KAPSAMLI: `git add <relpath>` ile SADECE o dosya stage'leniyor, commit de
+    sadece o path'i kapsıyor — projects/*/state.json gibi yereldeki commit'siz
+    başka değişiklikler ASLA bu işleme dahil olmuyor (kullanıcı onayı: sadece
+    `docs/latest.html` için, 2026-09-05 — bkz. latest_release.py).
+
+    Değişiklik yoksa (dosya zaten güncel) sessizce çıkar, boş commit atmaz.
+    Push reddedilirse (uzak taraf ileride, ağ yok, vb.) sessizce vazgeçer —
+    bir sonraki çalıştırmada auto_pull() zaten günceller, bir sonraki
+    push_path() çağrısı yeniden dener. ASLA force push denemez."""
+    if not os.path.isdir(os.path.join(repo_dir, ".git")):
+        return
+    try:
+        branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_dir, capture_output=True, text=True, timeout=15,
+        )
+        if branch.returncode != 0 or branch.stdout.strip() != "main":
+            return
+
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--", relpath],
+            cwd=repo_dir, capture_output=True, text=True, timeout=15,
+        )
+        if status.returncode != 0 or not status.stdout.strip():
+            return  # değişiklik yok
+
+        add = subprocess.run(["git", "add", "--", relpath], cwd=repo_dir, capture_output=True, text=True, timeout=15)
+        if add.returncode != 0:
+            log(f"git: {relpath} stage edilemedi — {add.stderr.strip()}")
+            return
+
+        commit = subprocess.run(
+            ["git", "commit", "-m", message, "--", relpath],
+            cwd=repo_dir, capture_output=True, text=True, timeout=15,
+        )
+        if commit.returncode != 0:
+            log(f"git: {relpath} commit edilemedi — {commit.stderr.strip()}")
+            return
+
+        push = subprocess.run(
+            ["git", "push", "origin", "main"],
+            cwd=repo_dir, capture_output=True, text=True, timeout=60,
+        )
+        if push.returncode == 0:
+            log(f"git: {relpath} otomatik push edildi")
+        else:
+            detail = push.stderr.strip().splitlines()[-1] if push.stderr.strip() else "bilinmeyen hata"
+            log(f"git: {relpath} commit edildi ama push edilemedi — {detail}")
+    except (subprocess.TimeoutExpired, OSError) as e:
+        log(f"git: {relpath} push atlandı — {e}")

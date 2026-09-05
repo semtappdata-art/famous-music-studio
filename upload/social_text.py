@@ -97,7 +97,15 @@ def build_youtube_comment(youtube_url: str, lang: str = "tr") -> str:
     """Paylaşımdan SONRA ilk yorum olarak eklenecek kısa metin — caption'ın aksine
     yorumların keşfet dağıtımını etkilediğine dair bir kaygı yok, o yüzden link
     burada güvenle kullanılabiliyor. lang="en" ise İngilizce metin döner (bkz.
-    meta.json'daki "language" alanı)."""
+    meta.json'daki "language" alanı).
+
+    İkinci satır BİLİNÇLİ olarak eklendi (kullanıcı kararı, 2026-09-05):
+    Instagram/TikTok yorumlarında düz metin linkler TIKLANAMIYOR (WebSearch ile
+    doğrulandı) — youtu.be linki yine de kopyalanabilir metin olarak kalıyor,
+    ama gerçekten tıklanabilir tek yer profildeki "bio link". O linkin
+    famousmusicstudio.com'a (GitHub Pages, docs/index.html — zaten YouTube/
+    Instagram/TikTok'a çıkan linkleri var) bağlanması kullanıcının kendisinin
+    uygulamadan elle yapması gereken, tek seferlik bir profil ayarı."""
     if lang == "en":
-        return f"🎧 Full track on YouTube: {youtube_url}"
-    return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}"
+        return f"🎧 Full track on YouTube: {youtube_url}\nYou can also reach our channel from the link in bio 🔗"
+    return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}\nProfildeki linkten de kanalımıza ulaşabilirsin 🔗"
