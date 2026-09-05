@@ -19,6 +19,7 @@ edilmeden — bu dosya o hatayı tekrarlamamak için tutuluyor.)
 | Kırık Zincir | rock | male vocals (powerful, gritty) |
 | Sessiz Mektup | akustik | female vocals (soft, breathy) |
 | Yeraltı | hiphop | male vocals (husky, nasal, melodic+aggressive) |
+| Kumdan Denize | elektronik (Afro-House/Arabic EDM) | female vocals (polished, confident) |
 
 Yeni şarkı eklerken: yukarıdaki tabloya bir satır ekle, son 2-3 şarkıdan
 farklı bir vokal cinsiyeti/dokusu seç (mümkünse erkek/kadın dönüşümlü,

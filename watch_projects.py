@@ -112,6 +112,8 @@ def _find_stray_images(project_dir: str) -> list[str]:
         return []
     strays = []
     for name in entries:
+        if name.startswith("_"):
+            continue  # render'ın ürettiği iç dosyalar (_backdrop_pan_*.png, _bg_base_tmp.png, vb.) — kullanıcının bıraktığı bir tasarım dosyası değil
         ext = os.path.splitext(name)[1].lower()
         if ext in IMAGE_EXTS and name not in COVER_NAMES and name not in ART_NAMES:
             strays.append(os.path.join(project_dir, name))

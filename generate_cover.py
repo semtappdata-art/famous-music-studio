@@ -32,9 +32,17 @@ import shutil
 import subprocess
 
 import config
+import stock_art
 
-CANVAS_SIZE = 1600
+CANVAS_SIZE = 1600  # art.png (video kartı + backdrop kaynağı) — HER ZAMAN kare, video pipeline'ı bunu varsayıyor
+COVER_SIZE_WIDE = (1600, 900)  # cover.png — YouTube uzun-format thumbnail'i (16:9)
+COVER_SIZE_TALL = (900, 1600)  # cover_vertical.png — Shorts/TikTok/Instagram kapağı (9:16)
 CHARACTERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "characters")
+# config.LOGO_PATH kaydı düz siyah zemin üzerine koyu/mat bir altın tonuyla
+# kaydedilmiş — kapaklarda daha canlı görünsün diye colorkey'den SONRA
+# uygulanan bir parlaklık/doygunluk düzeltmesi (kullanıcı geri bildirimiyle
+# eklendi, "altın daha parlak olsun").
+LOGO_BRIGHTEN_FILTER = "eq=brightness=0.10:saturation=1.9:contrast=1.15,curves=r='0/0 0.5/0.65 1/1':g='0/0 0.5/0.55 1/1'"
 _TR_TRANSLATE = str.maketrans("çÇğĞıİöÖşŞüÜ", "cCgGiIoOsSuU")
 
 
@@ -148,7 +156,10 @@ def _add_bokeh(bg_path: str, out_path: str, accent: tuple[int, int, int], seed: 
         raise RuntimeError(f"Bokeh dokusu eklenemedi: {result.stderr[-1000:]}")
 
 
-def _add_title_text(bg_path: str, out_path: str, title: str, y_center_ratio: float = 0.5) -> None:
+def _add_title_text(
+    bg_path: str, out_path: str, title: str, y_center_ratio: float = 0.5,
+    out_w: int = CANVAS_SIZE, out_h: int = CANVAS_SIZE,
+) -> None:
     """bg_path'teki görsele başlık + sabit marka satırını ortalayarak yazar,
     out_path'e yazar (bg_path değiştirilmez). y_center_ratio, başlığın dikey
     merkezinin canvas yüksekliğine oranı — procedural gradyanda tam ortada
@@ -156,42 +167,177 @@ def _add_title_text(bg_path: str, out_path: str, title: str, y_center_ratio: flo
     büst siluetiyle çakışmasın diye başın ÜSTÜNDEKİ boş alana (küçük bir
     oran) taşınır.
 
-    Font boyutları CANVAS_SIZE (1600x1600) varsayımıyla hesaplanıyor —
-    procedural arka planlar ve karakter portreleri zaten hep bu boyutta
-    üretiliyor, ama elle sağlanan bir art.jpg (ör. DJ Famous için gerçek bir
-    fotoğraf) HERHANGİ bir çözünürlükte/en-boy oranında olabilir. Bunsuz,
-    ör. 800x800'lük bir kaynakta metin canvas'ın çok dışına taşıp kesiliyordu
-    (test sırasında tespit edildi) — bu yüzden bg_path her zaman önce
-    CANVAS_SIZE x CANVAS_SIZE'a scale+crop ediliyor (ffmpeg_utils.py'nin
-    video kartı için yaptığı aynı normalizasyon), zaten bu boyuttaki
-    kaynaklarda (karakter portreleri, procedural arka plan) no-op."""
+    out_w/out_h çıktı kanvası boyutu — generate() bunu HEM cover.png (16:9,
+    COVER_SIZE_WIDE) HEM cover_vertical.png (9:16, COVER_SIZE_TALL) için ayrı
+    ayrı çağırır (YouTube uzun-format ile Shorts/TikTok/Instagram farklı
+    thumbnail en-boy oranı bekliyor — tek kare görsel ikisinde de kenarlarda
+    çirkin pillarbox/letterbox şeridine yol açıyordu, kullanıcı geri
+    bildirimiyle tespit edildi). Font boyutları min(out_w,out_h) baz alınarak
+    hesaplanıyor ki iki farklı en-boy oranında da orantılı görünsün.
+
+    bg_path kaynağı (procedural arka plan, karakter portresi ya da elle
+    sağlanan bir art.jpg) HERHANGİ bir çözünürlükte/en-boy oranında olabilir
+    — bu yüzden her zaman önce out_w x out_h'e scale+crop ediliyor (aynı
+    normalizasyon ffmpeg_utils.py'nin video kartı için de yaptığı)."""
     rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
     title_escaped = _escape_drawtext(title)
     label_escaped = _escape_drawtext(config.STATIC_LABEL_TEXT)
-    title_fontsize = int(CANVAS_SIZE * 0.075)
-    label_fontsize = int(CANVAS_SIZE * 0.03)
-    y_center = int(CANVAS_SIZE * y_center_ratio)
+    basis = min(out_w, out_h)
+    title_fontsize = int(basis * 0.075)
+    label_fontsize = int(basis * 0.03)
+    y_center = int(out_h * y_center_ratio)
 
-    filter_complex = (
-        f"scale={CANVAS_SIZE}:{CANVAS_SIZE}:force_original_aspect_ratio=increase,"
-        f"crop={CANVAS_SIZE}:{CANVAS_SIZE},"
+    base_chain = (
+        f"scale={out_w}:{out_h}:force_original_aspect_ratio=increase,"
+        f"crop={out_w}:{out_h},"
         f"drawtext=fontfile={rel_font}:text='{title_escaped}':"
         f"fontcolor=white:fontsize={title_fontsize}:"
-        f"x=(w-text_w)/2:y={y_center}-(text_h/2),"
-        f"drawtext=fontfile={rel_font}:text='{label_escaped}':"
-        f"fontcolor=white@0.75:fontsize={label_fontsize}:"
-        f"x=(w-text_w)/2:y={y_center}+{int(title_fontsize * 0.9)}"
+        f"x=(w-text_w)/2:y={y_center}-(text_h/2)"
     )
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", bg_path,
-        "-vf", filter_complex,
-        "-frames:v", "1", "-update", "1",
-        out_path,
-    ]
+
+    if config.LOGO_PATH:
+        # Düz "Famous Music Studio" metni yerine gerçek amblem (bkz.
+        # _compose_cover_rich'teki aynı yaklaşım/not) — ortalanmış.
+        logo_h = int(basis * 0.2)
+        logo_y = y_center + int(title_fontsize * 0.85)
+        filter_complex = (
+            f"[0:v]{base_chain}[bg];"
+            f"[1:v]scale=-1:{logo_h},colorkey=0x000000:0.15:0.05,{LOGO_BRIGHTEN_FILTER},format=rgba[logo];"
+            f"[bg][logo]overlay=x=(main_w-overlay_w)/2:y={logo_y}[out]"
+        )
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", bg_path,
+            "-i", config.LOGO_PATH,
+            "-filter_complex", filter_complex,
+            "-map", "[out]",
+            "-frames:v", "1", "-update", "1",
+            out_path,
+        ]
+    else:
+        filter_complex = (
+            f"{base_chain},"
+            f"drawtext=fontfile={rel_font}:text='{label_escaped}':"
+            f"fontcolor=white@0.75:fontsize={label_fontsize}:"
+            f"x=(w-text_w)/2:y={y_center}+{int(title_fontsize * 0.9)}"
+        )
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", bg_path,
+            "-vf", filter_complex,
+            "-frames:v", "1", "-update", "1",
+            out_path,
+        ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"Başlık yazılamadı: {result.stderr[-1000:]}")
+
+
+def _compose_cover_rich(
+    bg_path: str, out_path: str, title: str, accent: tuple[int, int, int],
+    out_w: int = CANVAS_SIZE, out_h: int = CANVAS_SIZE,
+) -> None:
+    """Procedural (temasız arka plan) kapaklar için zenginleştirilmiş kompozisyon:
+    sol-alt yaslı düzen (Spotify "Now Playing" tarzı) + harf aralıklı tür etiketi +
+    gölgeli kalın başlık + ince ayraç çizgisi + alt gradyan gölgeleme (bokeh dokusu
+    metnin altına denk gelirse okunurluk garantisi) + alt kenarda tema-rengi ince bir
+    marka şeridi (kataloğun tamamında tutarlı bir görsel imza). Sadece cover.png/
+    cover_vertical.png için kullanılır — art.png (kart+backdrop kaynağı) bu
+    kompozisyondan ETKİLENMEZ, aynı metinsiz bokeh dokusu kalır.
+
+    out_w/out_h — generate() bunu HEM cover.png (16:9) HEM cover_vertical.png (9:16)
+    için ayrı çağırır. Metin bloğu buna göre ALTTAN yukarı doğru istifleniyor (sabit
+    bir üstten-oran yerine) ki kısa (900px) bir tuval taşırmasın, uzun (1600px) bir
+    tuvalde de gereksiz yere tepede kalmasın. Font boyutları min(out_w,out_h) baz
+    alınarak hesaplanıyor — iki oranda da aynı mutlak boyutta, tutarlı görünsün."""
+    rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
+    rel_font_bold = os.path.relpath(config.FONT_BOLD_PATH, os.getcwd()).replace("\\", "/")
+    title_escaped = _escape_drawtext(title)
+    brand_escaped = _escape_drawtext(config.STATIC_LABEL_TEXT)
+    accent_hex = "%02x%02x%02x" % accent
+    basis = min(out_w, out_h)
+
+    margin = int(out_w * 0.07)
+    title_fs = int(basis * 0.16)
+    subtitle_fs = int(basis * 0.048)
+    rule_w = int(out_w * 0.09)
+    bar_h = int(basis * 0.03)
+    use_logo = bool(config.LOGO_PATH)
+    # Amblem, düz metinden daha "kalın" göründüğü için daha yüksek bir slot
+    # ayrılıyor — küçük thumbnail boyutunda bile "FAMOUS" okunsun diye
+    # (kullanıcı geri bildirimiyle büyütüldü: ilk deneme çok küçüktü).
+    logo_h = int(basis * 0.30)
+    brand_h = logo_h if use_logo else subtitle_fs
+
+    # Alttan yukarı istifleme: şerit -> marka (logo/metin) -> ayraç -> başlık.
+    # Tür etiketi ("ARABESK"/"ELEKTRONİK" gibi harf aralıklı üst satır) kullanıcı
+    # isteğiyle KALDIRILDI — tarz bilgisi zaten caption/hashtag'lerde var,
+    # kapakta yer kaplıyordu. Tema rengi ayraç çizgisinde ve alt şeritte
+    # kalmaya devam ediyor, yani görsel tarz kimliği kaybolmadı.
+    y_bar = out_h - bar_h
+    margin_bottom = int(out_h * 0.05)
+    y_brand = y_bar - margin_bottom - brand_h
+    y_rule = y_brand - int(out_h * 0.025) - 3
+    y_title = y_rule - int(title_fs * 1.15)
+
+    base_chain = (
+        f"scale={out_w}:{out_h}:force_original_aspect_ratio=increase,"
+        f"crop={out_w}:{out_h},"
+        # Alt ~yarıyı kademeli karart — arka plan ne olursa olsun başlık ve altın
+        # amblem okunur kalsın. Katsayı 0.55'ten 0.72'ye çıkarıldı ve karartma
+        # daha yukarıdan (%50) başlıyor: prosedürel bokeh dokularında 0.55
+        # yetiyordu ama GERÇEK fotoğraflara geçince (bkz. stock_art.py) parlak
+        # gündüz kareleri geldi ve o kadar karartmada logo soluk kalıyordu.
+        f"geq=r='r(X,Y)*(1-0.72*max(0\\,(Y-H*0.50)/(H*0.50)))':"
+        f"g='g(X,Y)*(1-0.72*max(0\\,(Y-H*0.50)/(H*0.50)))':"
+        f"b='b(X,Y)*(1-0.72*max(0\\,(Y-H*0.50)/(H*0.50)))',"
+        # başlık — hafif gölge + kalın beyaz üst katman
+        f"drawtext=fontfile={rel_font_bold}:text='{title_escaped}':fontcolor=black@0.5:"
+        f"fontsize={title_fs}:x={margin}+4:y={y_title}+5,"
+        f"drawtext=fontfile={rel_font_bold}:text='{title_escaped}':fontcolor=white:"
+        f"fontsize={title_fs}:x={margin}:y={y_title},"
+        # ayraç çizgisi
+        f"drawbox=x={margin}:y={y_rule}:w={rule_w}:h=3:color=0x{accent_hex}@1.0:t=fill"
+    )
+
+    if use_logo:
+        # Düz "Famous Music Studio" metni yerine gerçek amblem (altın sunburst +
+        # wordmark) — logo düz SİYAH zemin üzerine kaydedilmiş (alfasız), colorkey
+        # ile siyah şeffaflaştırılıp sadece altın kısım overlay ediliyor.
+        filter_complex = (
+            f"[0:v]{base_chain}[bg];"
+            f"[1:v]scale=-1:{logo_h},colorkey=0x000000:0.15:0.05,{LOGO_BRIGHTEN_FILTER},format=rgba[logo];"
+            f"[bg][logo]overlay=x={margin}:y={y_brand}[merged];"
+            f"[merged]drawbox=x=0:y={y_bar}:w=iw:h={bar_h}:color=0x{accent_hex}@1.0:t=fill[out]"
+        )
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", bg_path,
+            "-i", config.LOGO_PATH,
+            "-filter_complex", filter_complex,
+            "-map", "[out]",
+            "-frames:v", "1", "-update", "1",
+            out_path,
+        ]
+    else:
+        # Logo asset'i bulunamadı (gitignored, bu makinede henüz konmamış olabilir)
+        # — sessizce düz metin marka satırına düş, hata verme.
+        filter_complex = (
+            f"{base_chain},"
+            f"drawtext=fontfile={rel_font}:text='{brand_escaped}':fontcolor=white@0.75:"
+            f"fontsize={subtitle_fs}:x={margin}:y={y_brand},"
+            f"drawbox=x=0:y={y_bar}:w=iw:h={bar_h}:color=0x{accent_hex}@1.0:t=fill"
+        )
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", bg_path,
+            "-vf", filter_complex,
+            "-frames:v", "1", "-update", "1",
+            out_path,
+        ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Kapak kompozisyonu başarısız: {result.stderr[-1000:]}")
 
 
 def generate(project_dir: str) -> None:
@@ -205,11 +351,15 @@ def generate(project_dir: str) -> None:
         os.path.isfile(os.path.join(project_dir, n))
         for n in ("cover.jpg", "cover.jpeg", "cover.png")
     )
+    has_cover_vertical = any(
+        os.path.isfile(os.path.join(project_dir, n))
+        for n in ("cover_vertical.jpg", "cover_vertical.jpeg", "cover_vertical.png")
+    )
     has_art = any(
         os.path.isfile(os.path.join(project_dir, n))
         for n in ("art.jpg", "art.jpeg", "art.png")
     )
-    if has_cover and has_art:
+    if has_cover and has_cover_vertical and has_art:
         return
 
     character_image = find_character_image(character) if character else None
@@ -220,6 +370,7 @@ def generate(project_dir: str) -> None:
     # bağlantısız bir kapak çıkması bir hataydı.
     existing_art = _find_existing_art(project_dir) if has_art else None
     cleanup_paths = []
+    fetched_stock_photo = False
     if character_image:
         bg_path = character_image
         bg_ext = os.path.splitext(character_image)[1]
@@ -229,29 +380,69 @@ def generate(project_dir: str) -> None:
         bg_ext = os.path.splitext(existing_art)[1]
         source_label = "elle sağlanan art görseli"
     else:
-        seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
-        base_path = os.path.join(project_dir, "_bg_base_tmp.png")
-        bg_path = os.path.join(project_dir, "_bg_tmp.png")
-        bg_ext = ".png"
-        _radial_background(base_path, theme["accent"])
-        _add_bokeh(base_path, bg_path, theme["accent"], seed)
-        cleanup_paths = [base_path, bg_path]
-        source_label = f"{theme_key} teması"
+        # Önce şarkının tarzına/sözlerine uygun GERÇEK bir fotoğraf denenir
+        # (Pexels, bkz. stock_art.py) — kullanıcı isteği: kapak soyut bir
+        # gradyan değil, tarzın çağrıştırdığı bir mekân/atmosfer olsun.
+        # Başarısızsa (anahtar/ağ/sonuç yok) sessizce eski prosedürel bokeh
+        # üretimine düşülür, otomasyon asla durmaz.
+        stock_path = os.path.join(project_dir, "_stock_art_tmp.jpg")
+        stock_query = stock_art.build_query(meta, theme, title)
+        if stock_query and stock_art.fetch_art(title, stock_query, stock_path):
+            bg_path = stock_path
+            bg_ext = ".jpg"
+            cleanup_paths = [stock_path]
+            source_label = f"Pexels görseli ({stock_query!r})"
+            fetched_stock_photo = True
+        else:
+            seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
+            base_path = os.path.join(project_dir, "_bg_base_tmp.png")
+            bg_path = os.path.join(project_dir, "_bg_tmp.png")
+            bg_ext = ".png"
+            _radial_background(base_path, theme["accent"])
+            _add_bokeh(base_path, bg_path, theme["accent"], seed)
+            cleanup_paths = [base_path, bg_path]
+            source_label = f"{theme_key} teması"
 
     cover_path = os.path.join(project_dir, "cover.png")
+    cover_vertical_path = os.path.join(project_dir, "cover_vertical.png")
     art_path = os.path.join(project_dir, f"art{bg_ext}")
+    # DJ Famous kapaklarındaki (dj_sets/) sade/ortalanmış düzen — kullanıcı
+    # isteğiyle TÜM gerçek fotoğraflara (karakter portresi, elle sağlanan
+    # görsel, Pexels stok fotoğrafı) genelleştirildi. "Zengin" sol-alt blok
+    # (ayraç + alt marka şeridi + büyük logo) kullanıcı tarafından beğenilmedi
+    # ("yapılan değişiklikler hatalı oldu") — artık SADECE gerçek bir fotoğraf
+    # hiç bulunamadığında (Pexels de başarısızsa) düşülen saf prosedürel bokeh
+    # dokusunda kullanılıyor; bir fotoğrafın üzerine o kadar dekoratif öğe
+    # binmesi fotoğrafı bastırıyordu.
+    #
+    # AYRICA: art.jpg bir kez yazıldıktan sonra "bizim indirdiğimiz stok
+    # fotoğraf" ile "kullanıcının elle koyduğu görsel" ayırt EDİLEMİYOR — ikisini
+    # aynı düzene bağlamak, yeniden çalıştırmada tasarımın sessizce değişmesini
+    # de engelliyor (bu daha önce gerçekten oldu).
+    is_photo = bool(character_image or existing_art or fetched_stock_photo)
     try:
         if not has_art:
             shutil.copy(bg_path, art_path)
             print(f"  art{bg_ext} üretildi ({source_label})")
-        if not has_cover:
-            # Karakter portresi ya da elle sağlanan bir görsel (muhtemelen bir
-            # yüz/konu içerir) arka planken başlık, üstteki boş alana taşınıyor
-            # ki üst üste binmesin — procedural gradyanda böyle bir "konu"
-            # olmadığı için tam ortada (varsayılan) kalıyor.
-            y_ratio = 0.13 if (character_image or existing_art) else 0.5
-            _add_title_text(bg_path, cover_path, title, y_center_ratio=y_ratio)
-            print(f"  cover.png üretildi ({title!r}, {source_label})")
+        # cover.png (16:9, YouTube uzun-format thumbnail'i) ve cover_vertical.png
+        # (9:16, Shorts/TikTok/Instagram kapağı) AYRI üretiliyor — tek kare görsel
+        # ikisinde de kenarlarda pillarbox/letterbox şeridine yol açıyordu
+        # (kullanıcı geri bildirimiyle tespit edildi).
+        for missing, out_path, (out_w, out_h), label in (
+            (not has_cover, cover_path, COVER_SIZE_WIDE, "cover.png"),
+            (not has_cover_vertical, cover_vertical_path, COVER_SIZE_TALL, "cover_vertical.png"),
+        ):
+            if not missing:
+                continue
+            if is_photo:
+                # DJ set stili: başlık üstteki boş alana yaslı, altında ince
+                # logo/marka satırı — fotoğrafın kendisi kompozisyonun asıl
+                # unsuru kalıyor (karakter portresinde ayrıca büst siluetiyle
+                # çakışmayı da önlüyor).
+                _add_title_text(bg_path, out_path, title, y_center_ratio=0.13, out_w=out_w, out_h=out_h)
+            else:
+                _compose_cover_rich(bg_path, out_path, title, theme["accent"], out_w=out_w, out_h=out_h)
+            print(f"  {label} üretildi ({title!r}, {source_label})")
     finally:
         for tmp_path in cleanup_paths:
             if os.path.isfile(tmp_path):

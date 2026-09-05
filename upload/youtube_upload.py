@@ -33,6 +33,7 @@ from social_text import build_caption
 from youtube_auth import get_authenticated_service
 
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
+COVER_VERTICAL_NAMES = ["cover_vertical.jpg", "cover_vertical.jpeg", "cover_vertical.png"]
 
 
 def load_meta(project_dir: str) -> dict:
@@ -163,6 +164,17 @@ def _find_cover(project_dir: str) -> str | None:
     return None
 
 
+def _find_cover_vertical(project_dir: str) -> str | None:
+    """Shorts thumbnail'i için 9:16 kapak — yoksa (eski projeler) 16:9 cover.png'ye
+    düşülür (hiç thumbnail'siz kalmaktan iyidir, sadece Shorts'un dikey kutusunda
+    üstte/altta ince bir şerit görünebilir)."""
+    for name in COVER_VERTICAL_NAMES:
+        path = os.path.join(project_dir, name)
+        if os.path.isfile(path):
+            return path
+    return _find_cover(project_dir)
+
+
 def _prepare_thumbnail_jpeg(cover_path: str) -> str:
     """YouTube thumbnails.set 2MB sınırı var — procedural PNG kapaklar (bokeh
     dokusu yüzünden) bunu kolayca aşabiliyor (bir projede 2.7MB'a çıktığı
@@ -177,12 +189,16 @@ def _prepare_thumbnail_jpeg(cover_path: str) -> str:
     return tmp_path
 
 
-def upload_thumbnail(youtube, video_id: str, project_dir: str) -> None:
-    """cover.jpg/png'yi videonun gerçek YouTube thumbnail'i olarak ayarlar.
-    Bunsuz YouTube videodan rastgele bir kare seçip thumbnail yapıyordu —
-    kartın başlıksız hâli (art.jpg) görünüyordu, tasarlanan başlıklı kapak
-    hiç kullanılmıyordu (kullanıcı geri bildirimiyle tespit edildi)."""
-    cover_path = _find_cover(project_dir)
+def upload_thumbnail(youtube, video_id: str, project_dir: str, vertical: bool = False) -> None:
+    """cover.jpg/png'yi (ya da Shorts için cover_vertical.jpg/png'yi) videonun
+    gerçek YouTube thumbnail'i olarak ayarlar. Bunsuz YouTube videodan rastgele
+    bir kare seçip thumbnail yapıyordu — kartın başlıksız hâli (art.jpg)
+    görünüyordu, tasarlanan başlıklı kapak hiç kullanılmıyordu (kullanıcı geri
+    bildirimiyle tespit edildi). vertical=True (Shorts) iken 9:16 kapak
+    kullanılır — uzun-format için 16:9 kapağın aynısını kullanmak dikey
+    thumbnail kutusunda üstte/altta çirkin bir şeride yol açıyordu (yine
+    kullanıcı geri bildirimiyle tespit edildi)."""
+    cover_path = _find_cover_vertical(project_dir) if vertical else _find_cover(project_dir)
     if not cover_path:
         print("  Thumbnail atlandı: cover.jpg/png bulunamadı")
         return
@@ -233,7 +249,7 @@ def upload_video(project_dir: str, privacy: str, schedule: bool = True) -> str:
     print(f"  tamam: https://youtu.be/{video_id}")
 
     try:
-        upload_thumbnail(get_authenticated_service(), video_id, project_dir)
+        upload_thumbnail(get_authenticated_service(), video_id, project_dir, vertical=False)
     except Exception as e:
         # Thumbnail başarısız olsa da video zaten yüklendi — akışı durdurmuyoruz,
         # sadece uyarıyoruz. Video YouTube'un otomatik seçtiği kareyle kalır.
@@ -260,7 +276,7 @@ def upload_short(project_dir: str, privacy: str, full_video_id: str | None = Non
     print(f"  tamam: https://youtube.com/shorts/{video_id}")
 
     try:
-        upload_thumbnail(get_authenticated_service(), video_id, project_dir)
+        upload_thumbnail(get_authenticated_service(), video_id, project_dir, vertical=True)
     except Exception as e:
         # upload_video()'daki ile aynı mantık: thumbnail başarısız olsa da video
         # zaten yüklendi, akışı durdurmuyoruz. Shorts'ta özel thumbnail YouTube
@@ -298,11 +314,11 @@ def fix_thumbnail(project_dir: str) -> None:
     youtube = get_authenticated_service()
     if video_id:
         print("  uzun format:")
-        upload_thumbnail(youtube, video_id, project_dir)
+        upload_thumbnail(youtube, video_id, project_dir, vertical=False)
     if shorts_id:
         print("  Shorts:")
         try:
-            upload_thumbnail(youtube, shorts_id, project_dir)
+            upload_thumbnail(youtube, shorts_id, project_dir, vertical=True)
         except Exception as e:
             print(f"  Shorts thumbnail HATA: {e}")
 
