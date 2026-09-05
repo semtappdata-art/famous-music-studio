@@ -133,6 +133,11 @@ def upload_video(project_dir: str) -> str:
         f"{API_BASE}/post/publish/inbox/video/init/", headers=_headers(access_token), json=init_body,
         timeout=(10, 30),
     )
+    if not resp.ok:
+        # raise_for_status() sadece durum kodunu gösteriyordu, TikTok'un asıl
+        # hata nedenini (error.code/message) içeren gövdeyi hiç yazdırmıyordu —
+        # 400'lerin teşhisi bu yüzden imkansızdı. Artık gövde önce basılıyor.
+        print(f"  TikTok init hatası ({resp.status_code}): {resp.text}")
     resp.raise_for_status()
     init_data = resp.json()["data"]
     publish_id = init_data["publish_id"]
