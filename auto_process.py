@@ -153,7 +153,13 @@ def _is_fully_done(project_dir: str) -> bool:
     True — bu proje için yapılacak bir şey kalmadı. Daha önce yüklenmiş ama
     youtube_shorts_video_id'si olmayan projeler (bu alan sonradan eklendi) bu
     kontrolden geçemez, yani bir sonraki çalıştırmada otomatik olarak Shorts
-    yüklemesi de yapılır (retroaktif tamamlama)."""
+    yüklemesi de yapılır (retroaktif tamamlama).
+
+    BİLEREK `youtube_captions_done`'ı SAYMIYOR: bu alan sadece bir
+    `*_sozler.md` dosyası olan projelerde set olabiliyor (bkz.
+    youtube_captions.py) — kataloğun çoğunluğunda böyle bir dosya yok, yani
+    bunu buraya eklemek o projelerin `_auto_pace_count()`'un kademeleme
+    aritmetiğinde SONSUZA KADAR "pending" kalmasına yol açardı."""
     state = _load_state(project_dir)
     return all(
         key in state
@@ -243,19 +249,48 @@ def _check_tiktok_notification(project_dir: str, state: dict) -> None:
         log(f"  TikTok bildirim HATA: {e}")
 
 
+def _check_youtube_captions(project_dir: str, state: dict) -> None:
+    """state.json'da youtube_video_id var ama youtube_captions_done yoksa
+    (gerçek sözlerle hizalanmış altyazı henüz yayınlanmadıysa) dener —
+    sözler dosyası yoksa ya da YouTube'un ASR'si henüz hazır değilse
+    sessizce atlar/bir sonraki koşuya bırakır (bkz. youtube_captions.py)."""
+    if state.get("youtube_captions_done") or not state.get("youtube_video_id"):
+        return
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
+    if not os.path.isfile(os.path.join(upload_dir, "token.json")):
+        return
+    try:
+        from youtube_captions import sync_captions as yt_sync_captions
+        result = yt_sync_captions(project_dir)
+        if result == "done":
+            log("  YouTube altyazı: gerçek sözlerle hizalanıp yayınlandı")
+        elif result == "pending":
+            log("  YouTube altyazı: ASR henüz hazır değil, sonraki koşuda tekrar denenecek")
+        # "already"/"skipped" için log basmıyoruz — sırasıyla zaten normal
+        # kalıcı durum ve her koşuda tekrarlanan gürültü olurdu.
+    except Exception as e:
+        log(f"  YouTube altyazı HATA: {e}")
+
+
 def _drain_golden_hour_queue(project_dirs: list) -> None:
     """auto-pace batch seçimine GİRMEYEN projeler için bile, ZATEN başlatılmış
     (Instagram konteyneri oluşturulmuş / TikTok'a yüklenmiş) ama golden-hour'u
     bekleyen aksiyonları kontrol eder — aksi halde bir proje uzun süre batch'e
     girmezse (kaç proje bekliyorsa ona göre kademelenen aralık nedeniyle)
     golden-hour penceresini hiç yakalayamayabilir. Render/YouTube/TikTok
-    upload/YENİ Instagram konteyneri BAŞLATMAZ, sadece bekleyeni tamamlar."""
+    upload/YENİ Instagram konteyneri BAŞLATMAZ, sadece bekleyeni tamamlar.
+    Aynı sebeple YouTube altyazı senkronizasyonu da burada kontrol ediliyor —
+    _is_fully_done() bilerek youtube_captions_done'ı SAYMIYOR (bkz. o
+    fonksiyonun docstring'i), yani 3 platforma da yüklenmiş ama altyazısı
+    henüz senkronize olmamış bir proje `pending` listesinde görünmeyebilir;
+    `ready` (sadece `pending` değil) kullanmak bunu da kapsıyor."""
     for project_dir in project_dirs:
         state = _load_state(project_dir)
         if "instagram_creation_id" in state and "instagram_media_id" not in state:
             _check_instagram_pending(project_dir)
         if state.get("tiktok_publish_id") and not state.get("tiktok_notified"):
             _check_tiktok_notification(project_dir, state)
+        _check_youtube_captions(project_dir, state)
 
 
 def process_project(project_dir: str, privacy: str, schedule: bool = True) -> None:
@@ -303,6 +338,9 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
             yt_sync_playlist(yt_service(), project_dir)
         except Exception as e:
             log(f"  YouTube playlist HATA: {e}")
+
+    if youtube_video_id:
+        _check_youtube_captions(project_dir, state)
 
     # YouTube Shorts: zaten render edilen shorts_9x16.mp4'ü AYRICA (uzun formattan
     # bağımsız) bir YouTube Short olarak yükler — küçük/yeni kanallar için Shorts
