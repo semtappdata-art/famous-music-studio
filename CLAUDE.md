@@ -31,6 +31,8 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   geçersiz meta.json/theme, art==cover metin sızması şüphesi) — `render.py` her projede
   render başlamadan önce bunu çağırır, HATA varsa render'a hiç girmez
 - `auto_process.py` — asıl production giriş noktası, `--count` kadar bekleyen projeyi işler
+- `caption_align.py` — YouTube'un otomatik (ASR) altyazısının zamanlamasını gerçek
+  sözlerle (`<slug>_sozler.md`) hizalar; `upload/youtube_captions.py` bunu çağırır
 - `upload/*.py` — platform bazlı yükleme + OAuth (youtube_auth, tiktok_auth, instagram_auth)
 - `upload/social_text.py` — caption/hashtag/etkileşim sorusu üretimi (şarkı başlığından
   deterministik seçim — aynı şarkı hep aynı satırları alır)
@@ -351,6 +353,40 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   dar seçenek. Yani mevcut kurulum zaten minimal — daha dar bir scope'a geçmek bu iki
   işlevi kırar. Kaynak: [Videos: update](https://developers.google.com/youtube/v3/docs/videos/update),
   [PlaylistItems: insert](https://developers.google.com/youtube/v3/docs/playlistItems/insert).
+- **YouTube altyazısı OTOMATİK gerçek sözlerle hizalanıyor — ama SADECE bir
+  `<slug>_sozler.md` dosyası olan projeler için** (`caption_align.py` +
+  `upload/youtube_captions.py`, `auto_process.py`'den çağrılıyor): kullanıcı
+  isteği (2026-09-06) — bu tarihte Gece Sürüşü/Sessiz Mektup/Kumdan Denize/
+  Beni Bırakma'nın YouTube altyazılarında elle bulunup düzeltilen onlarca
+  ASR hatası ("güllerimden" ↔ "küllerimden", "alar" ↔ "ağlar" gibi) bir daha
+  ELLE yapılmasın diye. Yöntem: YouTube'un kendi "Otomatik altyazılar"ının
+  (ASR) ZAMANLAMASI güvenilir (ses-analizine dayalı) ama METNİ kendi
+  duyduğu gibi yazıyor — `caption_align.align()` `difflib.SequenceMatcher`
+  ile ASR'nin kelime dizisini gerçek sözlerin (`## Temiz Sözler` bölümü)
+  kelime dizisiyle eşleştirip, eşleşen kelimeler için ASR'nin GERÇEK
+  zamanını, eşleşmeyenler için komşu eşleşmelerden doğrusal aradeğer
+  kullanıyor (bkz. modülün docstring'i: bu yaklaşım "align_captions_v2"
+  adıyla önce elle/scratchpad'de denendi, 4 şarkıda doğrulandı, SONRA koda
+  entegre edildi). **Sözler dosyası yoksa sessizce atlanır** — ASR'nin
+  kendi (potansiyel hatalı) metnini "düzeltilmiş" gibi otomatik yayınlamak
+  güvenli değil, bu insan gözden geçirmesi gerektiriyor (bkz. Beni
+  Bırakma'nın elle incelemesinde bulunan 2 belirsiz bölüm — sözler dosyası
+  olsaydı otomasyon bile bunları gerçek sözlerle çözebilirdi, ama o şarkı
+  için hâlâ bir `*_sozler.md` yok). **ASR yükleme sonrası hemen hazır
+  olmuyor** (dakikalar-saatler) — `auto_process.py` bu yüzden
+  `state.json`'da `youtube_captions_done` set olana kadar HER koşuda
+  tekrar dener (Instagram'ın golden-hour konteyner kuyruğuyla AYNI desen,
+  bkz. `_drain_golden_hour_queue`) — bilerek `_is_fully_done()`'a
+  EKLENMEDİ, yoksa sözler dosyası olmayan (kataloğun çoğunluğu) projeler
+  `_auto_pace_count()`'un kademeleme aritmetiğini kalıcı olarak bozardı
+  (asla "tam" olamayacakları için sonsuza kadar `pending` kalırlardı).
+  **Mevcut bir manuel altyazı parçası varsa `insert()` değil `update()`**
+  kullanılıyor — 2026-09-06'da Studio üzerinden ELLE düzeltilmiş 4 şarkı
+  üzerinde bu otomasyon tekrar çalıştığında duplicate bir "Manuel
+  altyazılar (2)" parçası oluşturmasın diye (idempotent, zararsız üzerine
+  yazma). Ana kataloğa (`auto_process.py`) özgü — `dj_famous_process.py`'ye
+  BİLEREK eklenmedi (DJ Famous setleri için lyrics-dosyası kuralı yok, ayrı
+  bir akış).
 
 ## Beş özel subagent (`.claude/agents/`)
 
@@ -376,14 +412,17 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
   `config.next_golden_publish_time()`/`THEMES` (golden-hour pencere sınırları dahil),
   `auto_process._auto_pace_count()` (otomatik kademeleme aritmetiği) ve
   `validate_project.validate()` (bozuk ses/art==cover sızıntısı/geçersiz tema gibi bu
-  projede tekrar tekrar düşülen hatalar) ve `stock_art` (arama terimi önceliği,
-  deterministik fotoğraf seçimi, ağ/anahtar yokken sessizce False dönmesi) için
-  testler var.
+  projede tekrar tekrar düşülen hatalar), `stock_art` (arama terimi önceliği,
+  deterministik fotoğraf seçimi, ağ/anahtar yokken sessizce False dönmesi) ve
+  `caption_align` (ASR kelime-zamanı hizalaması: eşleşen kelimede ASR zamanının
+  korunması, tekrarlanan nakarat satırlarının KENDİ ASR anına ayrışması, şarkı
+  başı/sonundaki eşleşmeyen kelimelerin tek bir ortak zamana çökmemesi, dejenere
+  sıfır-süreli cue birleştirmesi) için testler var.
   **Bu Windows makinesinde `pytest`'i düz çalıştırmak yanıltıcı:** pytest'in varsayılan
   geçici klasörü (`%LOCALAPPDATA%\Temp\pytest-of-ACER`) okunamıyor, `tmp_path` kullanan
   HER test "PermissionError" ile hata veriyor — kodla ilgisi yok. Doğru çalıştırma:
   `python -m pytest -q -p no:cacheprovider --basetemp="<scratchpad>/pytest_tmp"`
-  (böylece 61 testin hepsi geçiyor). CI'da (Linux) böyle bir sorun yok. CI her push/PR'da `pytest`'i
+  (böylece 82 testin hepsi geçiyor). CI'da (Linux) böyle bir sorun yok. CI her push/PR'da `pytest`'i
   çalıştırıyor — `ffprobe` gerektiren testler `ffprobe` yoksa (bu geliştirme ortamı gibi)
   otomatik atlanıyor, CI'da `ffmpeg` kurulduğu için hepsi çalışıyor. `requirements-dev.txt`
   sadece test için (`pytest`) — üretim makinesinde gerekmiyor.
