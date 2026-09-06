@@ -249,27 +249,36 @@ def _check_tiktok_notification(project_dir: str, state: dict) -> None:
         log(f"  TikTok bildirim HATA: {e}")
 
 
-def _check_youtube_captions(project_dir: str, state: dict) -> None:
+def _check_youtube_captions(project_dir: str, state: dict) -> bool:
     """state.json'da youtube_video_id var ama youtube_captions_done yoksa
     (gerçek sözlerle hizalanmış altyazı henüz yayınlanmadıysa) dener —
     sözler dosyası yoksa ya da YouTube'un ASR'si henüz hazır değilse
-    sessizce atlar/bir sonraki koşuya bırakır (bkz. youtube_captions.py)."""
+    sessizce atlar/bir sonraki koşuya bırakır (bkz. youtube_captions.py).
+    Döner: bu çağrı GERÇEKTEN bir YouTube API isteği yaptı mı (True) yoksa
+    yerel kontrollerle (video yok/sözler dosyası yok/zaten yapılmış/cooldown
+    içinde) mi sessizce çıktı (False) — çağıran taraf bunu, tek bir koşuda
+    kaç projenin API'ye gerçekten dokunduğunu (kota tüketimini) sınırlamak
+    için kullanır (bkz. _drain_golden_hour_queue)."""
     if state.get("youtube_captions_done") or not state.get("youtube_video_id"):
-        return
+        return False
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
     if not os.path.isfile(os.path.join(upload_dir, "token.json")):
-        return
+        return False
     try:
         from youtube_captions import sync_captions as yt_sync_captions
         result = yt_sync_captions(project_dir)
         if result == "done":
             log("  YouTube altyazı: gerçek sözlerle hizalanıp yayınlandı")
+            return True
         elif result == "pending":
             log("  YouTube altyazı: ASR henüz hazır değil, sonraki koşuda tekrar denenecek")
-        # "already"/"skipped" için log basmıyoruz — sırasıyla zaten normal
-        # kalıcı durum ve her koşuda tekrarlanan gürültü olurdu.
+            return True
+        # "already"/"skipped" yerel kontrollerle sessizce çıkar, API'ye hiç
+        # dokunmaz — kota tüketimine saymıyoruz.
+        return False
     except Exception as e:
         log(f"  YouTube altyazı HATA: {e}")
+        return True
 
 
 def _drain_golden_hour_queue(project_dirs: list) -> None:
@@ -283,14 +292,25 @@ def _drain_golden_hour_queue(project_dirs: list) -> None:
     _is_fully_done() bilerek youtube_captions_done'ı SAYMIYOR (bkz. o
     fonksiyonun docstring'i), yani 3 platforma da yüklenmiş ama altyazısı
     henüz senkronize olmamış bir proje `pending` listesinde görünmeyebilir;
-    `ready` (sadece `pending` değil) kullanmak bunu da kapsıyor."""
+    `ready` (sadece `pending` değil) kullanmak bunu da kapsıyor.
+
+    YouTube altyazı kontrolü TEK bir koşuda EN FAZLA BİR projede gerçek bir
+    API isteğine dönüşür (`_check_youtube_captions`'ın True dönmesiyle
+    anlaşılır) — `captions.list` her proje için ayrı bir istek olduğundan,
+    burada TÜM `ready` listesini (kataloğun çoğunda bir `*_sozler.md` olduğu
+    için genelde 10+ proje) gezip hepsinde API'ye dokunmak günlük YouTube
+    kotasını (10.000 birim) tek bir çalıştırmada tüketip asıl video
+    yüklemelerini engelleyebiliyordu (gerçekleşti: 2026-09-06, bkz. CLAUDE.md)."""
+    captions_checked_this_run = False
     for project_dir in project_dirs:
         state = _load_state(project_dir)
         if "instagram_creation_id" in state and "instagram_media_id" not in state:
             _check_instagram_pending(project_dir)
         if state.get("tiktok_publish_id") and not state.get("tiktok_notified"):
             _check_tiktok_notification(project_dir, state)
-        _check_youtube_captions(project_dir, state)
+        if not captions_checked_this_run:
+            if _check_youtube_captions(project_dir, state):
+                captions_checked_this_run = True
 
 
 def process_project(project_dir: str, privacy: str, schedule: bool = True) -> None:

@@ -387,6 +387,24 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   yazma). Ana kataloğa (`auto_process.py`) özgü — `dj_famous_process.py`'ye
   BİLEREK eklenmedi (DJ Famous setleri için lyrics-dosyası kuralı yok, ayrı
   bir akış).
+  **2026-09-06'da YouTube API KOTASINI TÜKETEN bir hataya yol açtı ve
+  düzeltildi**: `_drain_golden_hour_queue`, `ready` listesindeki (kataloğun
+  çoğunda bir `*_sozler.md` olduğu için genelde 10+ proje) HER projede
+  `_check_youtube_captions`'ı çağırıyordu — her çağrı (video zaten
+  altyazılıysa/sözler dosyası yoksa hariç) en az bir `captions.list` API
+  isteği demek, bu da tek bir `auto_process.py` koşusunda günlük 10.000
+  birimlik kotanın büyük kısmını tüketip ASIL video yüklemelerini (her biri
+  ~1600 birim) engelleyebiliyordu (gerçekleşti — bir koşuda ~13 proje
+  kontrol edilirken kota bitti, "quotaExceeded" hataları hem altyazı hem
+  sonraki Instagram/video işlemlerinde art arda geldi). Düzeltme:
+  `_drain_golden_hour_queue` artık TEK bir koşuda EN FAZLA BİR projede
+  gerçek bir API isteğine izin veriyor (`_check_youtube_captions` artık
+  bool dönüyor — video/sözler dosyası yok gibi tamamen yerel kontrollerle
+  sessizce çıktıysa False, ASR kontrolü için GERÇEKTEN API'ye dokunduysa
+  True) — ilk gerçek deneme sonrası döngü sonraki projeler için captions
+  kontrolünü atlar. Aynı desen `process_project()` içindeki tekil çağrı
+  için sorun değil (zaten aynı anda işlenen proje sayısı `--count`/otomatik
+  kademelemeyle sınırlı, tipik olarak 1).
 
 ## Beş özel subagent (`.claude/agents/`)
 
