@@ -59,8 +59,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "upl
 
 import generate_cover
 import render as render_module
+import latest_release
 from log_rotate import trim_log
-from git_sync import auto_pull
+from git_sync import auto_pull, push_path
 
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
 RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4"]
@@ -152,7 +153,13 @@ def _is_fully_done(project_dir: str) -> bool:
     True — bu proje için yapılacak bir şey kalmadı. Daha önce yüklenmiş ama
     youtube_shorts_video_id'si olmayan projeler (bu alan sonradan eklendi) bu
     kontrolden geçemez, yani bir sonraki çalıştırmada otomatik olarak Shorts
-    yüklemesi de yapılır (retroaktif tamamlama)."""
+    yüklemesi de yapılır (retroaktif tamamlama).
+
+    BİLEREK `youtube_captions_done`'ı SAYMIYOR: bu alan sadece bir
+    `*_sozler.md` dosyası olan projelerde set olabiliyor (bkz.
+    youtube_captions.py) — kataloğun çoğunluğunda böyle bir dosya yok, yani
+    bunu buraya eklemek o projelerin `_auto_pace_count()`'un kademeleme
+    aritmetiğinde SONSUZA KADAR "pending" kalmasına yol açardı."""
     state = _load_state(project_dir)
     return all(
         key in state
@@ -242,19 +249,68 @@ def _check_tiktok_notification(project_dir: str, state: dict) -> None:
         log(f"  TikTok bildirim HATA: {e}")
 
 
+def _check_youtube_captions(project_dir: str, state: dict) -> bool:
+    """state.json'da youtube_video_id var ama youtube_captions_done yoksa
+    (gerçek sözlerle hizalanmış altyazı henüz yayınlanmadıysa) dener —
+    sözler dosyası yoksa ya da YouTube'un ASR'si henüz hazır değilse
+    sessizce atlar/bir sonraki koşuya bırakır (bkz. youtube_captions.py).
+    Döner: bu çağrı GERÇEKTEN bir YouTube API isteği yaptı mı (True) yoksa
+    yerel kontrollerle (video yok/sözler dosyası yok/zaten yapılmış/cooldown
+    içinde) mi sessizce çıktı (False) — çağıran taraf bunu, tek bir koşuda
+    kaç projenin API'ye gerçekten dokunduğunu (kota tüketimini) sınırlamak
+    için kullanır (bkz. _drain_golden_hour_queue)."""
+    if state.get("youtube_captions_done") or not state.get("youtube_video_id"):
+        return False
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
+    if not os.path.isfile(os.path.join(upload_dir, "token.json")):
+        return False
+    try:
+        from youtube_captions import sync_captions as yt_sync_captions
+        result = yt_sync_captions(project_dir)
+        if result == "done":
+            log("  YouTube altyazı: gerçek sözlerle hizalanıp yayınlandı")
+            return True
+        elif result == "pending":
+            log("  YouTube altyazı: ASR henüz hazır değil, sonraki koşuda tekrar denenecek")
+            return True
+        # "already"/"skipped" yerel kontrollerle sessizce çıkar, API'ye hiç
+        # dokunmaz — kota tüketimine saymıyoruz.
+        return False
+    except Exception as e:
+        log(f"  YouTube altyazı HATA: {e}")
+        return True
+
+
 def _drain_golden_hour_queue(project_dirs: list) -> None:
     """auto-pace batch seçimine GİRMEYEN projeler için bile, ZATEN başlatılmış
     (Instagram konteyneri oluşturulmuş / TikTok'a yüklenmiş) ama golden-hour'u
     bekleyen aksiyonları kontrol eder — aksi halde bir proje uzun süre batch'e
     girmezse (kaç proje bekliyorsa ona göre kademelenen aralık nedeniyle)
     golden-hour penceresini hiç yakalayamayabilir. Render/YouTube/TikTok
-    upload/YENİ Instagram konteyneri BAŞLATMAZ, sadece bekleyeni tamamlar."""
+    upload/YENİ Instagram konteyneri BAŞLATMAZ, sadece bekleyeni tamamlar.
+    Aynı sebeple YouTube altyazı senkronizasyonu da burada kontrol ediliyor —
+    _is_fully_done() bilerek youtube_captions_done'ı SAYMIYOR (bkz. o
+    fonksiyonun docstring'i), yani 3 platforma da yüklenmiş ama altyazısı
+    henüz senkronize olmamış bir proje `pending` listesinde görünmeyebilir;
+    `ready` (sadece `pending` değil) kullanmak bunu da kapsıyor.
+
+    YouTube altyazı kontrolü TEK bir koşuda EN FAZLA BİR projede gerçek bir
+    API isteğine dönüşür (`_check_youtube_captions`'ın True dönmesiyle
+    anlaşılır) — `captions.list` her proje için ayrı bir istek olduğundan,
+    burada TÜM `ready` listesini (kataloğun çoğunda bir `*_sozler.md` olduğu
+    için genelde 10+ proje) gezip hepsinde API'ye dokunmak günlük YouTube
+    kotasını (10.000 birim) tek bir çalıştırmada tüketip asıl video
+    yüklemelerini engelleyebiliyordu (gerçekleşti: 2026-09-06, bkz. CLAUDE.md)."""
+    captions_checked_this_run = False
     for project_dir in project_dirs:
         state = _load_state(project_dir)
         if "instagram_creation_id" in state and "instagram_media_id" not in state:
             _check_instagram_pending(project_dir)
         if state.get("tiktok_publish_id") and not state.get("tiktok_notified"):
             _check_tiktok_notification(project_dir, state)
+        if not captions_checked_this_run:
+            if _check_youtube_captions(project_dir, state):
+                captions_checked_this_run = True
 
 
 def process_project(project_dir: str, privacy: str, schedule: bool = True) -> None:
@@ -303,6 +359,9 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
         except Exception as e:
             log(f"  YouTube playlist HATA: {e}")
 
+    if youtube_video_id:
+        _check_youtube_captions(project_dir, state)
+
     # YouTube Shorts: zaten render edilen shorts_9x16.mp4'ü AYRICA (uzun formattan
     # bağımsız) bir YouTube Short olarak yükler — küçük/yeni kanallar için Shorts
     # akışı, uzun format önerilen videolar sisteminden çok daha erişilebilir bir
@@ -346,6 +405,26 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
             log(f"  Instagram HATA: {e}")
     else:
         log("  Instagram atlandı: upload/instagram_token.json yok (önce instagram_auth.py çalıştır)")
+
+
+def _refresh_latest_listing() -> None:
+    """docs/latest.html'i (yayındaki TÜM şarkıların listesi — bkz. latest_release.py)
+    HER çalıştırmada yeniden üretip SADECE o dosyayı push eder — sadece yeni
+    yükleme anında değil, çünkü golden-hour zamanlamasıyla yüklenen bir video
+    private→public'e YouTube tarafından SONRADAN (bu script'in bilgisi dışında)
+    geçebiliyor; bir sonraki çalıştırma bunu otomatik yakalar (idempotent,
+    değişiklik yoksa push_path zaten no-op, gereksiz commit atmaz). Hiçbir
+    hata otomasyonu durdurmaz."""
+    try:
+        latest_release.regenerate()
+        push_path(
+            os.path.dirname(os.path.abspath(__file__)),
+            "docs/latest.html",
+            "docs: şarkı listesini güncelle (otomatik)",
+            log,
+        )
+    except Exception as e:
+        log(f"  latest.html güncelleme HATA: {e}")
 
 
 def main():
@@ -426,6 +505,7 @@ def main():
         _drain_golden_hour_queue([p for p in ready if p not in batch])
         log("Çalıştırma tamamlandı.")
     finally:
+        _refresh_latest_listing()
         _release_lock()
 
 
