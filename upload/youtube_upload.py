@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
-from social_text import build_caption
+from social_text import build_caption, hashtag, pick_deterministic, resolve_language
 from youtube_auth import get_authenticated_service
 
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
@@ -47,22 +47,51 @@ def load_meta(project_dir: str) -> dict:
 
 
 def build_snippet(meta: dict) -> dict:
+    """Uzun format (youtube_16x9.mp4) açıklaması. Dil resolve_language() ile
+    belirlenir (stile göre otomatik, meta.json'daki "language" öncelikli) —
+    DJ Famous ("dj" teması, "en") gibi İngilizce projelerde de doğru dilde
+    üretilsin diye (eskiden burası hardcoded Türkçe idi, DJ Famous'un uzun
+    format videosu bile Türkçe açıklama alıyordu). Hook + keşfet/tür
+    hashtag'leri + etkileşim sorusu artık Shorts/TikTok/Instagram'ın kullandığı
+    build_caption() ile AYNI havuzlardan (config.HOOK_LINES/DISCOVERY_HASHTAGS/
+    ENGAGEMENT_QUESTIONS, aynı deterministik seçim) geliyor — eskiden bu üçü de
+    sadece kısa-format caption'da vardı, uzun format elinde tek marka
+    hashtag'iyle (#FamousMusicStudio) kalıyordu. Link bloğu (Instagram/TikTok/
+    Website) uzun formata ÖZGÜ kalıyor — build_caption bunu içermiyor çünkü
+    Instagram/TikTok caption'ında dış link YOK (bkz. build_caption docstring)."""
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
     genre_tags = [theme["label"]] + theme.get("related", [])
     links = config.SOCIAL_LINKS
-    hashtags = " ".join(config.BRAND_HASHTAGS)
+
+    if resolve_language(meta) == "en":
+        discovery_hashtags = config.DISCOVERY_HASHTAGS_EN
+        hook = pick_deterministic(title, config.HOOK_LINES_EN)
+        engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS_EN, salt=7)
+        follow_line = "Follow for more tracks 🎵"
+    else:
+        discovery_hashtags = config.DISCOVERY_HASHTAGS
+        hook = pick_deterministic(title, config.HOOK_LINES)
+        engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS, salt=7)
+        follow_line = "Yeni şarkılar için takipte kalın 🎵"
+
+    genre_hashtags = [hashtag(theme["label"])] + [hashtag(t) for t in theme.get("related", [])]
+    hashtags = " ".join(config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags)
 
     description = (
-        f"{title} | {config.STATIC_LABEL_TEXT}\n\n"
-        f"Yeni şarkılar için takipte kalın 🎵\n\n"
+        f"{hook}\n\n{title} | {config.STATIC_LABEL_TEXT}\n\n"
+        f"{follow_line}\n\n"
         f"📷 Instagram: {links['instagram']}\n"
         f"🎵 TikTok: {links['tiktok']}\n"
         f"🌐 Website: {links['website']}\n\n"
+        f"{engagement_question}\n\n"
         f"{hashtags}"
     )
-    tags = genre_tags + [config.STATIC_LABEL_TEXT]
+    # Tags (arama/öneri sinyali, açıklamada görünmez) — tema etiketlerine ek olarak
+    # keşfet hashtag'lerinin # işaretsiz hâli de eklendi (eskiden sadece tema +
+    # STATIC_LABEL_TEXT vardı, YouTube'un izin verdiği alana kıyasla dardı).
+    tags = genre_tags + [config.STATIC_LABEL_TEXT] + [h.lstrip("#") for h in discovery_hashtags]
 
     return {
         "title": title,
@@ -90,7 +119,8 @@ def build_shorts_snippet(meta: dict, full_video_id: str | None = None) -> dict:
     if full_video_id:
         description += f"\n\n🎧 Şarkının tamamı kanalımızda: https://youtu.be/{full_video_id}"
 
-    tags = genre_tags + [config.STATIC_LABEL_TEXT, "Shorts"]
+    discovery_hashtags = config.DISCOVERY_HASHTAGS_EN if resolve_language(meta) == "en" else config.DISCOVERY_HASHTAGS
+    tags = genre_tags + [config.STATIC_LABEL_TEXT, "Shorts"] + [h.lstrip("#") for h in discovery_hashtags]
 
     return {
         "title": f"{title} #Shorts",
