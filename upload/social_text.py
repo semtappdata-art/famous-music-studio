@@ -13,15 +13,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 
-def _hashtag(text: str) -> str:
+def hashtag(text: str) -> str:
     return "#" + "".join(ch for ch in text if ch.isalnum())
 
 
-def _pick(title: str, options: list, salt: int = 0) -> str:
+def pick_deterministic(title: str, options: list, salt: int = 0) -> str:
     """Şarkı başlığına (+ salt) göre deterministik bir satır seçer — aynı şarkı hep
     aynı satırı alır, farklı şarkılar arasında çeşitlilik olur. salt, aynı başlıktan
     türeyen birden fazla seçimin (hook + engagement question gibi) her zaman aynı
-    ikilide eşleşmemesi için kullanılıyor."""
+    ikilide eşleşmemesi için kullanılıyor. Public (youtube_upload.build_snippet de
+    aynı hook/soru havuzlarından aynı mantıkla seçim yapmak için kullanıyor)."""
     index = (sum(ord(ch) for ch in title) + salt) % len(options)
     return options[index]
 
@@ -51,13 +52,13 @@ def build_caption(meta: dict) -> str:
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
-    genre_hashtags = [_hashtag(theme["label"])] + [_hashtag(t) for t in theme.get("related", [])]
+    genre_hashtags = [hashtag(theme["label"])] + [hashtag(t) for t in theme.get("related", [])]
 
     if resolve_language(meta) == "en":
         discovery_hashtags = config.DISCOVERY_HASHTAGS_EN
         hashtags = " ".join(config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags)
-        hook = _pick(title, config.HOOK_LINES_EN)
-        engagement_question = _pick(title, config.ENGAGEMENT_QUESTIONS_EN, salt=7)
+        hook = pick_deterministic(title, config.HOOK_LINES_EN)
+        engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS_EN, salt=7)
         return (
             f"{hook}\n\n{title} 🎵\n\n"
             f"Feel free to use this track in your edits 🔥\n\n"
@@ -66,8 +67,8 @@ def build_caption(meta: dict) -> str:
         )
 
     hashtags = " ".join(config.BRAND_HASHTAGS + config.DISCOVERY_HASHTAGS + genre_hashtags)
-    hook = _pick(title, config.HOOK_LINES)
-    engagement_question = _pick(title, config.ENGAGEMENT_QUESTIONS, salt=7)
+    hook = pick_deterministic(title, config.HOOK_LINES)
+    engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS, salt=7)
 
     return (
         f"{hook}\n\n{title} 🎵\n\n"
@@ -93,11 +94,25 @@ def build_ai_disclosure_line(lang: str = "tr") -> str:
     return "Bu içerik yapay zeka ile üretilmiştir."
 
 
-def build_youtube_comment(youtube_url: str, lang: str = "tr") -> str:
+def build_youtube_comment(youtube_url: str, lang: str = "tr", platform: str = "instagram") -> str:
     """Paylaşımdan SONRA ilk yorum olarak eklenecek kısa metin — caption'ın aksine
     yorumların keşfet dağıtımını etkilediğine dair bir kaygı yok, o yüzden link
     burada güvenle kullanılabiliyor. lang="en" ise İngilizce metin döner (bkz.
-    meta.json'daki "language" alanı)."""
+    meta.json'daki "language" alanı). platform "instagram" ya da "tiktok" —
+    hangi hesabın @handle'ının etiketleneceğini belirler (config.SOCIAL_HANDLES).
+
+    İkinci satır BİLİNÇLİ olarak eklendi (kullanıcı kararı, 2026-09-05):
+    Instagram/TikTok yorumlarında düz metin linkler TIKLANAMIYOR (WebSearch ile
+    doğrulandı) — youtu.be linki yine de kopyalanabilir metin olarak kalıyor.
+    Gerçekten tıklanabilir tek yer profildeki "bio link" — ama caption/yoruma
+    düz "profildeki linkten..." yazmak yerine, hesabın kendisini `@handle` ile
+    ETİKETLEMEK (mention) caption/yorumda GERÇEKTEN tıklanabilir bir eleman
+    oluşturuyor (düz URL'den FARKLI bir mekanizma, WebSearch ile doğrulandı) —
+    tıklanınca doğrudan profile açılır, orada bio linki (famousmusicstudio.com/
+    latest.html, bkz. latest_release.py) görünür/tıklanabilir. Bio linkinin
+    kendisini o adrese bağlamak kullanıcının uygulamadan elle yapması gereken,
+    tek seferlik bir profil ayarı."""
+    handle = config.SOCIAL_HANDLES.get(platform, config.SOCIAL_HANDLES["instagram"])
     if lang == "en":
-        return f"🎧 Full track on YouTube: {youtube_url}"
-    return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}"
+        return f"🎧 Full track on YouTube: {youtube_url}\nTap @{handle} above and check the link in bio 🔗"
+    return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}\n@{handle} hesabına dokun, bio'daki linkten de ulaşabilirsin 🔗"

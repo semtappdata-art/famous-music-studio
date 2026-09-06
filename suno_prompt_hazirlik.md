@@ -1,6 +1,25 @@
 # Yeni Şarkı Kontrol Listesi (Suno → Video)
 
-Suno API erişimi yok — bu akış manuel: prompt hazırla → Suno.com'a yapıştır → indir → proje klasörüne koy.
+Suno API erişimi yok — bu akış Suno.com'un kendi arayüzünden yürütülüyor:
+prompt hazırla → Suno.com'a yapıştır → indir → proje klasörüne koy.
+
+> **2026-09-06'dan itibaren bu artık kullanıcının değil Claude'un iş planı**
+> (kullanıcı kararı: "bu akışı kaydet artık bu iş planımız", ilk uçtan uca
+> örnek: "Sokaklar Beni Tanır"). Yani Claude, tarayıcı otomasyonuyla
+> Suno.com'a bizzat gidip aşağıdaki adımların TAMAMINI (üretim dahil)
+> yürütür — kullanıcının kendisinin Suno'da üretim yapıp indirmesini
+> BEKLEMESİ gerekmiyor. Pratik notlar:
+> - Sözleri Suno'nun Lyrics kutusuna TEK dev bir blok olarak yapıştırmak
+>   editörü DONDURABİLİYOR — bölüm bölüm (Intro, Verse 1, ...) küçük
+>   parçalar halinde yapıştır.
+> - Stiller kutusu bazen alakasız bir otomatik öneriyle geliyor — mutlaka
+>   temizleyip kendi stil etiketini yaz.
+> - Üretim bitince oynatma ikonu (▶) görünene kadar bekle (süre görünmesi
+>   tek başına yeterli değil, birkaç saniye daha işleniyor olabilir).
+> - İndirilen dosyayı `Downloads` klasöründen proje klasörüne
+>   `audio.mp3`/`audio.wav` olarak taşı, sonra `auto_process.process_project(
+>   project_dir, privacy, schedule=True)`'ı DOĞRUDAN çağır (`--count 1`
+>   otomatik kademeleme YENİ eklenen şarkıyı değil en eski bekleyeni seçer).
 
 > **Klasör açma sırası ÖNEMLİ:** `watch_projects.py` (Suno'dan indirilen ses dosyasını
 > otomatik `audio.wav`'a çevirip pipeline'ı tetikleyen izleyici) sadece ZATEN VAR OLAN
