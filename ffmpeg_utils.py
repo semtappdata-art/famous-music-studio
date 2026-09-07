@@ -106,7 +106,16 @@ def ensure_art_backdrop(art_path: str, width: int, height: int) -> str:
             f"scale={bg_w}:{bg_h}:force_original_aspect_ratio=increase,"
             f"crop={bg_w}:{bg_h},"
             f"gblur=sigma={sigma},"
-            f"eq=brightness=-0.12:saturation=1.15"
+            # Eskiden sabit eq=brightness=-0.12 kullanılıyordu — bu, koyu/gece
+            # temalı art.jpg'lerde (Pexels stok fotoğrafları çoğunlukla gece/
+            # yağmur/atmosfer imgeleri, bkz. stock_art.py) güçlü blur'la
+            # birleşince arka planı neredeyse tamamen siyaha çöktürüyordu
+            # (kullanıcı geri bildirimi: "kapak arkası çok koyu oluyor").
+            # curves ile siyahları TAMAMEN ezmeyen bir eğri kullanılıyor —
+            # gölgeler hâlâ koyu kalıyor (atmosfer korunuyor) ama düz siyah
+            # yerine hafif doku/renk kalıyor. Parlak/gündüz fotoğraflarda etkisi
+            # neredeyse hissedilmiyor, sadece koyu kaynaklarda fark yaratıyor.
+            f"eq=saturation=1.2,curves=all='0/0.07 0.5/0.58 1/1'"
         ),
         "-frames:v", "1", "-update", "1",
         backdrop_path,
