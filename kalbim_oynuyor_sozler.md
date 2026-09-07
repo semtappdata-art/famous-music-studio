@@ -65,6 +65,46 @@ Kalbim oynuyor...
 Sen de oynuyorsun...
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+Işıklar yanınca, davul çalınca
+Kalbim oynuyor, durmuyor artık
+
+Sokak lambası neon, ayaklar yerde durmuyor
+Herkes bir ağızdan söylüyor bu şarkıyı
+Klarnet başlayınca omuzlar oynar
+Bu gece kimse üzgün değil, bu gece herkes bizim
+
+Bir el kaldır, bir dönüş daha
+Darbuka vursun, kalbim atsın
+Ne dün kaldı ne yarın var
+Sadece bu an, sadece biz
+
+Kalbim oynuyor, durmuyor, durmuyor
+Bu gece hiçbir şey eskisi gibi olmuyor
+Gözlerin parlıyor, sen de biliyorsun
+Kalbim oynuyor, sen de oynuyorsun
+
+Masalar kalkmış, herkes ayakta
+Kadeh kaldırıyor, "yaşasın bu gece" diye
+Yıldızlar bile iniyor sokağa
+Böyle bir gece bir daha gelir mi bilmiyorum
+
+Kalbim oynuyor, durmuyor, durmuyor
+Bu gece hiçbir şey eskisi gibi olmuyor
+Gözlerin parlıyor, sen de biliyorsun
+Kalbim oynuyor, sen de oynuyorsun
+
+Dur biraz, nefes al, etrafına bak
+Bu an hiç bitmesin istiyorum
+Müzik susana kadar, sabah olana kadar
+Kalbim oynasın, kalbim oynasın
+
+Kalbim oynuyor...
+Sen de oynuyorsun...
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe belirtildi ("female vocals" + Türkçe sözler, Suno dili
