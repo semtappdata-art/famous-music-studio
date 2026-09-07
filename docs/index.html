@@ -40,15 +40,36 @@
     text-align: center;
   }
 
-  .logo {
+  .logo-wrap {
+    position: relative;
     width: clamp(140px, 30vw, 200px);
-    height: auto;
+    margin: 0 auto 2rem;
     border-radius: 50%;
+    overflow: hidden;
     box-shadow:
       0 0 30px 6px rgba(230, 193, 126, 0.45),
       0 0 80px 16px rgba(201, 161, 90, 0.3);
-    margin-bottom: 2rem;
+  }
+
+  .logo {
+    display: block;
+    width: 100%;
+    height: auto;
+    /* brightness() sadece piksel değerini çarpıyor — siyah zemin (0,0,0)
+       çarpımdan etkilenmiyor, sadece altın/sarı piksel gerçekten parlıyor.
+       Bu yüzden ayrı bir overlay/mask katmanı yerine doğrudan img üzerinde
+       animasyon: "sadece logo içi sarı alan hareketli parlaklık kazansın". */
     filter: brightness(1.2) saturate(1.4) contrast(1.12);
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo { animation: none; }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { filter: brightness(1.2) saturate(1.4) contrast(1.12); }
+    50% { filter: brightness(1.55) saturate(1.7) contrast(1.12); }
   }
 
   h1 {
@@ -132,7 +153,9 @@
 </head>
 <body>
 <main>
-  <img class="logo" src="assets/logo.png" alt="Famous Music Studio logosu">
+  <div class="logo-wrap">
+    <img class="logo" src="assets/logo.png" alt="Famous Music Studio logosu">
+  </div>
   <h1>Famous Music Studio</h1>
   <p class="tagline">AI destekli müzik prodüksiyon stüdyosu. Orijinal şarkılar ve müzik videoları üretiyoruz.</p>
 
