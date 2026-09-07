@@ -1,7 +1,7 @@
 {
   "youtube_video_id": "kZML9g4GdBs",
   "youtube_uploaded_at": "2026-09-01T14:46:26",
-  "youtube_privacy": "unlisted",
+  "youtube_privacy": "public",
   "tiktok_publish_id": "v_inbox_file~v2.7681993089162348551",
   "tiktok_uploaded_at": "2026-09-05T13:19:35",
   "tiktok_privacy": "DRAFT_INBOX",
@@ -15,6 +15,6 @@
   "youtube_playlist_id": "PLcJHfZF85FI0",
   "youtube_shorts_video_id": "Y6eK2nIBXqA",
   "youtube_shorts_uploaded_at": "2026-09-04T00:00:00",
-  "youtube_shorts_privacy": "unlisted",
+  "youtube_shorts_privacy": "public",
   "youtube_shorts_publish_at": null
 }
