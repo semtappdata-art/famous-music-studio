@@ -25,6 +25,9 @@ dj_sets/*/audio.wav
 dj_sets/*/audio.mp3
 dj_sets/*/audio.m4a
 dj_sets/*/_backdrop_*.png
+# Ham DJ set segmentleri: final crossfade'li sete karışınca işlevsiz kalıyor,
+# repoyu (ve GitHub'ın 50MB dosya uyarısını) şişiriyordu — arşive taşındı.
+dj_sets/*/_segments/
 # dj_sets/*'in art/cover'ı katalogdakinin aksine GERÇEK bir kişinin fotoğrafı/
 # görüntüsü (bkz. dj_sets/README.md) — Suno ses dosyaları gibi kişisel/hassas,
 # repoya (potansiyel olarak herkese açık bir GitHub deposuna) commit edilmiyor.
