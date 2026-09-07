@@ -111,11 +111,12 @@ def ensure_art_backdrop(art_path: str, width: int, height: int) -> str:
             # yağmur/atmosfer imgeleri, bkz. stock_art.py) güçlü blur'la
             # birleşince arka planı neredeyse tamamen siyaha çöktürüyordu
             # (kullanıcı geri bildirimi: "kapak arkası çok koyu oluyor").
-            # curves ile siyahları TAMAMEN ezmeyen bir eğri kullanılıyor —
-            # gölgeler hâlâ koyu kalıyor (atmosfer korunuyor) ama düz siyah
-            # yerine hafif doku/renk kalıyor. Parlak/gündüz fotoğraflarda etkisi
-            # neredeyse hissedilmiyor, sadece koyu kaynaklarda fark yaratıyor.
-            f"eq=saturation=1.2,curves=all='0/0.07 0.5/0.58 1/1'"
+            # Artık pozitif bir brightness + siyahları belirgin şekilde
+            # kaldıran bir curves eğrisi kullanılıyor — arka plan kasıtlı
+            # olarak KARTIN kendisinden (art.jpg, ham hâli) daha AÇIK tonda
+            # duruyor (kullanıcı isteği: "arka fon kapaktan açık tonda olsun")
+            # — kart öne çıkıyor, arka plan geride/loş bir hale bürünüyor.
+            f"eq=brightness=0.08:saturation=1.2,curves=all='0/0.12 0.5/0.68 1/1'"
         ),
         "-frames:v", "1", "-update", "1",
         backdrop_path,
