@@ -42,7 +42,22 @@ CHARACTERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chara
 # kaydedilmiş — kapaklarda daha canlı görünsün diye colorkey'den SONRA
 # uygulanan bir parlaklık/doygunluk düzeltmesi (kullanıcı geri bildirimiyle
 # eklendi, "altın daha parlak olsun").
-LOGO_BRIGHTEN_FILTER = "eq=brightness=0.10:saturation=1.9:contrast=1.15,curves=r='0/0 0.5/0.65 1/1':g='0/0 0.5/0.55 1/1'"
+# 2026-09-07: değer bir kez daha yükseltildi (brightness 0.10->0.16,
+# contrast 1.15->1.25) — koyu/siyaha yakın fotoğraf arka planlarında
+# (bkz. LOGO_GLOW_FILTER notu) logo hâlâ soluk kalıyordu.
+LOGO_BRIGHTEN_FILTER = "eq=brightness=0.16:saturation=1.9:contrast=1.25,curves=r='0/0 0.5/0.7 1/1':g='0/0 0.5/0.6 1/1'"
+# Koyu/siyaha yakın arka planlarda (gece fotoğrafları, karartılmış bokeh
+# tabanı) ince sunburst çizgileri ve küçük "FAMOUS" yazısı arka planla aynı
+# tona düşüp neredeyse görünmez oluyordu (kullanıcı geri bildirimi: "logo
+# siyah zeminde çok kayboluyor"). Çözüm parlaklığı daha da artırmak yerine
+# (gerçek altın tonunu soldurup beyaza yakınlaştırırdı) logonun ARKASINA
+# bulanıklaştırılmış+parlatılmış bir "hâle" (glow) kopyası eklemek — netlik
+# arka plandan bağımsız hep sağlanıyor, çünkü bulanık kopya arka planla ne
+# olursa olsun kontrast oluşturuyor. Boyut/konum DEĞİŞMİYOR (glow, keskin
+# logoyla AYNI overlay x/y'sini kullanıyor) — sadece `gblur` ile kenarların
+# dışına taşıp ekstra parlaklıkla (`eq=brightness`) daha görünür bir ışıma
+# oluşturuyor.
+LOGO_GLOW_FILTER = "gblur=sigma=14,eq=brightness=0.55:saturation=1.6,format=rgba"
 _TR_TRANSLATE = str.maketrans("çÇğĞıİöÖşŞüÜ", "cCgGiIoOsSuU")
 
 
@@ -202,8 +217,10 @@ def _add_title_text(
         logo_y = y_center + int(title_fontsize * 0.85)
         filter_complex = (
             f"[0:v]{base_chain}[bg];"
-            f"[1:v]scale=-1:{logo_h},colorkey=0x000000:0.15:0.05,{LOGO_BRIGHTEN_FILTER},format=rgba[logo];"
-            f"[bg][logo]overlay=x=(main_w-overlay_w)/2:y={logo_y}[out]"
+            f"[1:v]scale=-1:{logo_h},colorkey=0x000000:0.15:0.05,{LOGO_BRIGHTEN_FILTER},format=rgba,split=2[logo][logo_src];"
+            f"[logo_src]{LOGO_GLOW_FILTER}[glow];"
+            f"[bg][glow]overlay=x=(main_w-overlay_w)/2:y={logo_y}[bg_glow];"
+            f"[bg_glow][logo]overlay=x=(main_w-overlay_w)/2:y={logo_y}[out]"
         )
         cmd = [
             "ffmpeg", "-y",
@@ -306,8 +323,10 @@ def _compose_cover_rich(
         # ile siyah şeffaflaştırılıp sadece altın kısım overlay ediliyor.
         filter_complex = (
             f"[0:v]{base_chain}[bg];"
-            f"[1:v]scale=-1:{logo_h},colorkey=0x000000:0.15:0.05,{LOGO_BRIGHTEN_FILTER},format=rgba[logo];"
-            f"[bg][logo]overlay=x={margin}:y={y_brand}[merged];"
+            f"[1:v]scale=-1:{logo_h},colorkey=0x000000:0.15:0.05,{LOGO_BRIGHTEN_FILTER},format=rgba,split=2[logo][logo_src];"
+            f"[logo_src]{LOGO_GLOW_FILTER}[glow];"
+            f"[bg][glow]overlay=x={margin}:y={y_brand}[bg_glow];"
+            f"[bg_glow][logo]overlay=x={margin}:y={y_brand}[merged];"
             f"[merged]drawbox=x=0:y={y_bar}:w=iw:h={bar_h}:color=0x{accent_hex}@1.0:t=fill[out]"
         )
         cmd = [
