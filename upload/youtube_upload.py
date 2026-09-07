@@ -70,11 +70,24 @@ def build_snippet(meta: dict) -> dict:
         hook = pick_deterministic(title, config.HOOK_LINES_EN)
         engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS_EN, salt=7)
         follow_line = "Follow for more tracks 🎵"
+        video_title = title
+        lyrics_tags = []
     else:
         discovery_hashtags = config.DISCOVERY_HASHTAGS
         hook = pick_deterministic(title, config.HOOK_LINES)
         engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS, salt=7)
         follow_line = "Yeni şarkılar için takipte kalın 🎵"
+        # "dj" (DJ Famous) enstrümantal/canlı set, "sözleri" arama niyeti taşımıyor —
+        # sadece ana kataloğun şarkı temalarına uygulanıyor. Video başlığına arama
+        # niyeti (Türkçe dinleyicilerin en sık arama kalıbı: "<şarkı adı> sözleri")
+        # eklendi — eskiden başlık sadece şarkı adıydı, YouTube arama trafiği
+        # neredeyse sıfırdı (Studio analitiğiyle doğrulandı, 2026-09-06).
+        if theme_key == "dj":
+            video_title = title
+            lyrics_tags = []
+        else:
+            video_title = f"{title} (Sözleri) | Türkçe {theme['label']} Şarkısı"
+            lyrics_tags = [f"{title} sözleri", "sözleri", "lyrics"]
 
     genre_hashtags = [hashtag(theme["label"])] + [hashtag(t) for t in theme.get("related", [])]
     hashtags = " ".join(config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags)
@@ -91,10 +104,10 @@ def build_snippet(meta: dict) -> dict:
     # Tags (arama/öneri sinyali, açıklamada görünmez) — tema etiketlerine ek olarak
     # keşfet hashtag'lerinin # işaretsiz hâli de eklendi (eskiden sadece tema +
     # STATIC_LABEL_TEXT vardı, YouTube'un izin verdiği alana kıyasla dardı).
-    tags = genre_tags + [config.STATIC_LABEL_TEXT] + [h.lstrip("#") for h in discovery_hashtags]
+    tags = genre_tags + [config.STATIC_LABEL_TEXT] + [h.lstrip("#") for h in discovery_hashtags] + lyrics_tags
 
     return {
-        "title": title,
+        "title": video_title,
         "description": description,
         "tags": tags,
         "categoryId": "10",  # Music
@@ -280,8 +293,9 @@ def upload_video(project_dir: str, privacy: str, schedule: bool = True) -> str:
     video_id = _upload(video_path, snippet, privacy, publish_at=publish_at)
     print(f"  tamam: https://youtu.be/{video_id}")
 
+    youtube = get_authenticated_service()
     try:
-        upload_thumbnail(get_authenticated_service(), video_id, project_dir, vertical=False)
+        upload_thumbnail(youtube, video_id, project_dir, vertical=False)
     except Exception as e:
         # Thumbnail başarısız olsa da video zaten yüklendi — akışı durdurmuyoruz,
         # sadece uyarıyoruz. Video YouTube'un otomatik seçtiği kareyle kalır.
