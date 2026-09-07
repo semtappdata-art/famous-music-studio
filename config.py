@@ -200,6 +200,10 @@ SOCIAL_LINKS = {
     "website": "https://famousmusicstudio.com",
 }
 
+# YouTube kanal handle'ı (@ işaretsiz) — DJ Famous açıklama şablonunda
+# "Subscribe ... 👉 @handle" satırı için (bkz. youtube_upload.build_snippet).
+YOUTUBE_HANDLE = "Famous_musics_studio"
+
 # @mention handle'ları (SOCIAL_LINKS'teki URL'lerden AYRI tutuluyor) —
 # Instagram/TikTok'ta düz metin linkler caption/yorumda TIKLANAMIYOR ama
 # "@handle" bir hesabı gerçekten ETİKETLİYORSA (mention) tıklanabilir oluyor

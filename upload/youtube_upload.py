@@ -72,6 +72,17 @@ def build_snippet(meta: dict) -> dict:
         follow_line = "Follow for more tracks 🎵"
         video_title = title
         lyrics_tags = []
+        # DJ Famous setleri için kullanıcının referans aldığı bir YouTube DJ-mix
+        # kanalının (ör. "GUESTMIX | ... | MENU") açıklama formatı: kısa,
+        # doğrudan "kanala abone ol" + "Instagram'da takip et" satırları,
+        # handle'a gerçekten tıklanabilir (@mention) bağlantı veriyor —
+        # kullanıcı isteği: "açıklamalarda bu tarz olsun" (2026-09-07).
+        if theme_key == "dj":
+            follow_line = (
+                f"Subscribe to the {config.STATIC_LABEL_TEXT} channel 👉 "
+                f"@{config.YOUTUBE_HANDLE}\n"
+                f"Follow the journey on Instagram 👉 {links['instagram']}"
+            )
     else:
         discovery_hashtags = config.DISCOVERY_HASHTAGS
         hook = pick_deterministic(title, config.HOOK_LINES)
