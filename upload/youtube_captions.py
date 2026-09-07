@@ -78,7 +78,7 @@ def _find_caption_tracks(youtube, video_id: str):
     asr_id = None
     manual_id = None
     for item in resp.get("items", []):
-        if item["snippet"].get("trackKind") == "ASR":
+        if (item["snippet"].get("trackKind") or "").lower() == "asr":
             asr_id = item["id"]
         elif manual_id is None:
             manual_id = item["id"]
@@ -159,8 +159,11 @@ def sync_captions(project_dir: str) -> str:
         return "done"
     finally:
         for p in (asr_path, out_path):
-            if os.path.isfile(p):
-                os.remove(p)
+            try:
+                if os.path.isfile(p):
+                    os.remove(p)
+            except OSError:
+                pass
         try:
             os.rmdir(tmp_dir)
         except OSError:
