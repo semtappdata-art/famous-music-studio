@@ -8,6 +8,9 @@ upload/instagram_token.json
 upload/netlify_client_secrets.json
 upload/instagram_auth_state.json
 upload/tiktok_auth_state.json
+upload/facebook_client_secrets.json
+upload/facebook_token.json
+upload/facebook_auth_state.json
 notify_config.json
 stock_art_config.json
 
