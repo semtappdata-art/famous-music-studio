@@ -406,6 +406,28 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   için sorun değil (zaten aynı anda işlenen proje sayısı `--count`/otomatik
   kademelemeyle sınırlı, tipik olarak 1).
 
+## Hermes Agent (opsiyonel ikinci ajan)
+
+Nous Research'ün açık kaynak terminal ajanı Hermes Agent, kullanıcı isteğiyle
+(2026-09-08) bu repoya tanıtıldı — Claude Code'un YERİNE değil, yanında. Kurulum ve
+kullanım: `hermes_agent_kurulum.md` + `setup_hermes_agent.ps1` (UTF-8 BOM'lu). Bilinmesi
+gerekenler:
+
+- Hermes proje bağlamı olarak `.hermes.md` → `AGENTS.md` → `CLAUDE.md` sırasıyla ilk
+  bulduğunu yükler; bu repoda BİLEREK `AGENTS.md`/`.hermes.md` YOK — tek bağlam kaynağı
+  bu dosya (`CLAUDE.md`) kalsın, iki kopya zamanla ayrışır.
+- `.hermes/skills/famous-music-studio/SKILL.md` proje-yerel Hermes skill'i: hangi script
+  ne zaman çalışır, `state.json`/`git reset` tuzakları, doğrulama adımları. Detay için
+  `.claude/skills/suno-video-render/SKILL.md`'ye yönlendirir (içerik ÇİFTLENMEDİ).
+  Repo bir kez `hermes skills trust` ile güvenilir işaretlenmeden yüklenmez.
+- Görev Zamanlayıcı görevleri Hermes cron'a TAŞINMADI ve taşınmamalı (çift tetikleme
+  riski) — Hermes cron sadece rapor/hatırlatma gibi yan işler için.
+- Anthropic OAuth yolu yalnızca Claude Max + ekstra kredi ile çalışıyor (Pro ile değil);
+  aksi hâlde `ANTHROPIC_API_KEY`/OpenRouter. Anahtarlar `%LOCALAPPDATA%\hermes\.env`'de,
+  repoda değil.
+- `tests/test_hermes_skill.py` skill frontmatter'ını, atıf yaptığı dosyaların varlığını
+  ve `.ps1`'in BOM'unu test ediyor.
+
 ## Beş özel subagent (`.claude/agents/`)
 
 Salt-okunur denetçiler — kod yazmazlar, sadece bulgu raporlarlar:
@@ -474,7 +496,8 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
 
 ## Diğer takip dosyaları
 
-`buyume_kontrol_listesi.md` (elle yapılan büyüme adımları), `trend_hashtag_notlari.md`
+`buyume_kontrol_listesi.md` (elle yapılan büyüme adımları), `hermes_agent_kurulum.md`
+(Hermes Agent kurulumu), `trend_hashtag_notlari.md`
 (hashtag/saat araştırması, periyodik güncellenmeli), `ses_ve_tarz_takibi.md` (vokal
 çeşitliliği), `suno_prompt_hazirlik.md` (yeni şarkı ekleme adımları + lisans notu).
 
