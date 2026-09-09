@@ -24,6 +24,9 @@ pip install -r requirements.txt
 (`requirements.txt`'teki sürümler kasıtlı sabitlenmedi — istersen kendi ortamında bir kere
 `pip freeze > requirements.txt` çalıştırıp tam sürümleri kaydedebilirsin.)
 
+Opsiyonel: repoyu Claude Code'un yanında [Hermes Agent](https://github.com/NousResearch/hermes-agent)
+ile de kullanmak için `.\setup_hermes_agent.ps1` — detay: [hermes_agent_kurulum.md](hermes_agent_kurulum.md).
+
 ## Adım Adım Kullanım
 
 1. **Ses dosyasını ekle** — Suno'dan indirdiğin şarkıyı şu klasöre kaydet:
