@@ -277,6 +277,13 @@ def _check_youtube_captions(project_dir: str, state: dict) -> bool:
         # dokunmaz — kota tüketimine saymıyoruz.
         return False
     except Exception as e:
+        # Tamamlanmamış söz dosyası arıza DEĞİL: insanın sözleri yazmasını
+        # bekliyor. "HATA" olarak loglanınca durum panelinde asla kaybolmayan
+        # bir alarma dönüşüyor ve gerçek arızaların yanında gürültü yapıyordu.
+        from caption_align import LyricsNotReady
+        if isinstance(e, LyricsNotReady):
+            log(f"  YouTube altyazı atlandı: {e}")
+            return False
         log(f"  YouTube altyazı HATA: {e}")
         return True
 

@@ -160,3 +160,42 @@ def test_no_matching_words_raises_instead_of_silently_misaligning(tmp_path):
     lyrics_path = _write(tmp_path, "l.md", _lyrics_md("tamamen farkli bir dil xyzq"))
     with pytest.raises(RuntimeError):
         caption_align.align(asr_path, lyrics_path, video_duration=10)
+
+
+# --- tamamlanmamış söz dosyaları ---
+# "Temiz Sözler yok" iki farklı durumu gizliyordu: gerçek bir arıza ve henüz
+# yazılmamış sözler. İkincisi her koşuda "HATA" olarak loglanıp durum panelinde
+# asla kaybolmayan bir alarma dönüşüyordu (gerçek örnek: sofraya_gelmedin).
+
+def test_eksik_isaretli_dosya_taninir():
+    md = ("# Bir Şarkı\n"
+          "## Sözler (ekran görüntülerinden yakalanan parçalar — EKSİK, tamamlanmalı)\n"
+          "bir iki\n")
+    assert caption_align.lyrics_marked_incomplete(md) is True
+
+
+def test_tamamlanmis_dosya_eksik_sayilmaz():
+    md = "# Bir Şarkı\n" + _lyrics_md("bir iki\nuc dort")
+    assert caption_align.lyrics_marked_incomplete(md) is False
+
+
+def test_eksik_dosya_ayri_istisna_atar(tmp_path):
+    """Eksik işaretli dosya LyricsNotReady atmalı — düz RuntimeError değil.
+
+    auto_process bu tipe bakıp "HATA" yerine bilgi satırı logluyor."""
+    asr = "1\n00:00:01,000 --> 00:00:03,000\nmerhaba dunya\n"
+    asr_path = _write(tmp_path, "asr.srt", asr)
+    md_path = _write(tmp_path, "eksik_sozler.md",
+                     "## Sözler (EKSİK, tamamlanmalı)\nmerhaba\n")
+    with pytest.raises(caption_align.LyricsNotReady):
+        caption_align.align(asr_path, md_path, 10.0)
+
+
+def test_gercek_arizada_hala_runtimeerror(tmp_path):
+    """İşaretsiz ama bölümü olmayan dosya GERÇEK arıza sayılmaya devam etmeli."""
+    asr = "1\n00:00:01,000 --> 00:00:03,000\nmerhaba dunya\n"
+    asr_path = _write(tmp_path, "asr.srt", asr)
+    md_path = _write(tmp_path, "bozuk_sozler.md", "# Baslik\nrastgele metin\n")
+    with pytest.raises(RuntimeError) as exc:
+        caption_align.align(asr_path, md_path, 10.0)
+    assert not isinstance(exc.value, caption_align.LyricsNotReady)
