@@ -494,6 +494,17 @@ def main():
             # (Instagram konteyneri / TikTok yüklemesi) ama golden-hour'u bekleyen
             # aksiyonlar olabilir — onları yine de kontrol et.
             _drain_golden_hour_queue(ready)
+            # "İşlenecek proje yok" — durum panelinin _RUN_START_RE'si bu ifadeyi
+            # bir koşunun BAŞLANGICI olarak tanıyor. (Panel 2026-09'da
+            # Desktop/jarvis-panel'den Hermes eklentisine taşındı:
+            # %LOCALAPPDATA%/hermes/plugins/jarvis-hud/dashboard/plugin_api.py
+            # — aynı kalıbı orası da kullanıyor.) Bu satır
+            # olmadan bu erken-dönüş yolu hiçbir "koşu başlangıcı" işareti
+            # bırakmıyordu, bu yüzden panel widget'ı BİR ÖNCEKİ koşunun (artık
+            # çözülmüş) hatalarını süresiz göstermeye devam ediyordu — gerçek
+            # bir örnekte (2026-09-08) çözülen bir "Temiz Sözler eksik" hatası
+            # kullanıcıya hâlâ mevcutmuş gibi sesli/yazılı aktarılmıştı.
+            log("İşlenecek proje yok bu koşuda (count=0), sadece golden-hour kontrolü yapıldı.")
             return
 
         batch = pending[:count]
