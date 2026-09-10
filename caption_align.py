@@ -47,6 +47,30 @@ def clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+class LyricsNotReady(RuntimeError):
+    """Söz dosyası var ama "## Temiz Sözler" bölümü henüz YAZILMAMIŞ.
+
+    Gerçek bir arızadan (bozuk dosya, eksik ASR vs.) ayrı tutuluyor: bu durum
+    insanın sözleri tamamlamasını bekleyen normal bir iş, her koşuda "HATA"
+    olarak raporlanınca durum panelinde kalıcı bir alarma dönüşüyordu.
+    """
+
+
+def lyrics_marked_incomplete(md_content: str) -> bool:
+    """Söz dosyası kendini "eksik" diye işaretlemiş mi.
+
+    Bu projede eksik dosyalar başlıklarında açıkça belirtiliyor, ör.:
+        ## Sözler (ekran görüntülerinden yakalanan parçalar — EKSİK, tamamlanmalı)
+    """
+    for satir in md_content.splitlines():
+        if not satir.lstrip().startswith("#"):
+            continue
+        d = satir.lower()
+        if "eksik" in d or "tamamlanmalı" in d or "tam olmayabilir" in d:
+            return True
+    return False
+
+
 def extract_clean_lyrics(md_content: str):
     """`*_sozler.md`'deki "## Temiz Sözler" bölümünü (köşeli parantez
     etiketsiz, doğrudan kullanılabilir sürüm) çeker — bkz. CLAUDE.md'deki
@@ -156,6 +180,10 @@ def align(asr_srt_path: str, lyrics_md_path: str, video_duration: float):
     md = open(lyrics_md_path, encoding="utf-8").read()
     lyrics = extract_clean_lyrics(md)
     if not lyrics:
+        if lyrics_marked_incomplete(md):
+            raise LyricsNotReady(
+                f"{lyrics_md_path}: sözler henüz tamamlanmamış "
+                "(dosya kendini 'eksik' olarak işaretlemiş).")
         raise RuntimeError(f"{lyrics_md_path}: '## Temiz Sözler' bölümü bulunamadı.")
     real_cues = split_into_cues(lyrics)
 
