@@ -16,6 +16,11 @@ import json
 import os
 import sys
 
+# Windows konsolu Türkçe kod sayfasında (cp1254) ✓/✗ gibi karakterleri
+# basamayıp çöküyordu — çıktı akışı UTF-8'e sabitleniyor.
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
 GIZLI = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                      "upload", "netlify_client_secrets.json")
 
