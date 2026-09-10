@@ -65,6 +65,46 @@ Sabaha kadar...
 Güneş doğana kadar...
 ```
 
+## Temiz Sözler
+
+```
+Şehir uyanmadan, biz hâlâ buradayız
+Işıklar sönmeden, bir şarkı daha
+
+Telefonlar cepte kaldı, saat kaç kimse bilmiyor
+Ayaklarım yorgun ama kalbim hâlâ oynuyor
+Bir bakış, bir gülüş, bir el havaya kalkıyor
+Bu gece bitmesin, bu an hep böyle kalsın
+
+Nefes al, bırak kendini
+Müzik senin, gece senin
+Ne yarın var ne bir endişe
+Sadece biz, sadece şimdi
+
+Sabaha kadar dönelim, dönelim
+Güneş doğana kadar susmayalım
+Kalbimiz aynı ritimde atıyor
+Sabaha kadar, sabaha kadar
+
+Deniz kenarında sesler yankılanıyor
+Herkes birbirine yabancı ama aynı şeyi arıyor
+Bir özgürlük anı, bir nefeslik kaçış
+Bu gece kimse yalnız değil, bu gece hepimiz biriz
+
+Sabaha kadar dönelim, dönelim
+Güneş doğana kadar susmayalım
+Kalbimiz aynı ritimde atıyor
+Sabaha kadar, sabaha kadar
+
+Yavaşla... etrafına bak
+Bu ışıklar, bu sesler, bu an
+Belki bir daha hiç gelmez böylesi
+O yüzden şimdi, o yüzden burada
+
+Sabaha kadar...
+Güneş doğana kadar...
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe belirtildi ("female vocals" + Türkçe sözler)
