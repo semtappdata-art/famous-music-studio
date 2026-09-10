@@ -22,6 +22,8 @@ edilmeden — bu dosya o hatayı tekrarlamamak için tutuluyor.)
 | Kumdan Denize | elektronik (Afro-House/Arabic EDM) | female vocals (polished, confident) |
 | Sokaklar Beni Tanır | hiphop | male vocals (deep, world-weary) |
 | Küllerimden Geç | arabesk | (yeni kayıt yok — "Yeniden Doğacağım"ın sesi yeniden markalandı) |
+| Kader Ortakları | hiphop (Pop-Hip-Hop, arabesk-vokal etkili) | erkek-erkek düet — Male 1: warm smooth tenor, Male 2: raspy gritty baritone |
+| Bu Gece Kazandık | pop (dance-arabesk-pop) | erkek-erkek düet — Male 1: tender warm melismatic tenor (vibrato), Male 2: bright energetic nasal-edged voice (ritmik süsleme) |
 
 Yeni şarkı eklerken: yukarıdaki tabloya bir satır ekle, son 2-3 şarkıdan
 farklı bir vokal cinsiyeti/dokusu seç (mümkünse erkek/kadın dönüşümlü,
