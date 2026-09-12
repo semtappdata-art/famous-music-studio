@@ -123,6 +123,23 @@ UPLOAD_TIMESTAMP_KEYS = (
 # (diğer platformlar ondan türüyor), yani "kanal en son ne zaman YENİ bir şey
 # yayınladı" sorusunun tek doğal çapası bu.
 YENI_YAYIN_TIMESTAMP_KEYS = ("youtube_uploaded_at",)
+# ...VE videonun PUBLIC OLDUĞU an (2026-09-12). Yeni yayın anı =
+# max(youtube_uploaded_at, youtube_publish_at) — bkz. `_son_yeni_yayin_ani`.
+# NEDEN: bir video yüklendiği andan GEÇ public olabilir — zamanlanmış yayın
+# (private + publishAt) ya da sonradan public'e alınan bir video. Taban yalnız
+# yükleme damgasından ölçülseydi, eski tarihli ama bugün public olan bir şarkının
+# arkasından yeni şarkı AYNI GÜN çıkabilirdi. İzleyicinin gördüğü yayın deseni
+# YÜKLEME değil PUBLIC anıdır.
+# SOMUT VAKA (2026-09-12): `Bu Gece Kazandık` 8 Eylül'de public yüklendi, sonra
+# kayıtsız şekilde unlisted'a çekildi. Yeniden public'e zamanlama DENENDİ ama
+# YouTube `invalidPublishAt` ile reddetti — publishAt yalnız HİÇ yayınlanmamış
+# videoda kabul ediliyor. Yani önceden yayınlanmış bir video için bu alanı elle
+# (gerçek public anıyla) yazmak gerekir; `upload/set_privacy.py` state'e yazmaz.
+# Biçim farklı (UTC "...Z", `youtube_upload._compute_publish_at`) — o yüzden
+# `_last_upload_time`'ın yerel-saat ayrıştırıcısına VERİLMİYOR. Günlük pencere
+# (`UPLOAD_TIMESTAMP_KEYS`) bunu SAYMAZ: o "en son ne zaman bir şey paylaştık"
+# sorusu, değişmedi.
+YENI_YAYIN_PUBLIC_ANI_KEYS = ("youtube_publish_at",)
 
 
 # Kilit BİZDE mi? Sadece kendi kilidimizin mtime'ını tazelemek için (bkz. log()).
@@ -397,6 +414,36 @@ def _last_upload_time(project_dirs: list, keys: tuple = UPLOAD_TIMESTAMP_KEYS):
     return latest
 
 
+def _son_yeni_yayin_ani(project_dirs: list):
+    """52 saatlik taban için "en son YENİ şarkı ne zaman izleyiciye çıktı".
+
+    Proje başına yayın anı = max(yükleme anı, public olma anı): zamanlanmış
+    (private + publishAt) bir video yüklendiği an değil, public olduğu an
+    çıkmış sayılır. Public anı GELECEKTEYSE dönen değer de gelecekte olur;
+    `_auto_pace_count` bunu "o andan itibaren 52 saat" olarak bekletir.
+    Okunamayan publish_at yok sayılır (yükleme anı yine sayılır) — tabanı
+    ne kısaltır ne de kalıcı olarak kilitler. Hiç damga yoksa None."""
+    from datetime import datetime
+
+    latest = _last_upload_time(project_dirs, YENI_YAYIN_TIMESTAMP_KEYS)
+    for project_dir in project_dirs:
+        state = _load_state(project_dir)
+        for key in YENI_YAYIN_PUBLIC_ANI_KEYS:
+            deger = state.get(key)
+            if not isinstance(deger, str) or not deger:
+                continue
+            try:
+                an = datetime.fromisoformat(deger.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if an.tzinfo is None:
+                continue          # saat dilimsiz publish_at yazan kod yok; tahmin etme
+            t = an.timestamp()
+            if latest is None or t > latest:
+                latest = t
+    return latest
+
+
 def _auto_pace_count(pending: list, ready: list, count: int = 1) -> int:
     """--count elle verilmediğinde kaç proje işleneceğini OTOMATİK belirler:
     bekleyen proje sayısına göre 24 saati eşit aralıklara böler (ör. 9 proje
@@ -448,7 +495,8 @@ def _auto_pace_count(pending: list, ready: list, count: int = 1) -> int:
 
     taban_kalan = 0.0
     if yeni_yayin:
-        son_yeni = _last_upload_time(ready, YENI_YAYIN_TIMESTAMP_KEYS)
+        # Yükleme anı İLE public olma anının GEÇ olanı (bkz. _son_yeni_yayin_ani).
+        son_yeni = _son_yeni_yayin_ani(ready)
         if son_yeni is not None:
             taban_kalan = MIN_YAYIN_ARALIGI_SN - (simdi - son_yeni)
 

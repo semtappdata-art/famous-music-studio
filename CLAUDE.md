@@ -54,7 +54,7 @@ audio.wav → generate_cover.py (eksikse cover/art üretir)
   bir JSON bırakıyordu — `uyumluluk._durum()` sertleştikten sonra bunun bedeli "boru hattı
   tamamen durur"a çıktı. state.json'ı elle yazan YENİ kod ekleme, bu modülü kullan.
 - `dj_tarama_kontrol.py` — DJ setleri + derlemeler için Content ID karantinası (aşağıya bkz.)
-- `saglik_kontrol.py` — sessiz duruşları yakalar; 2026-09-12 itibarıyla YEDİ adım
+- `saglik_kontrol.py` — sessiz duruşları yakalar; 2026-09-12 itibarıyla DOKUZ adım
   (aşağıda "Testler ve otomatik sağlık izleme"); saatlik koşudan, bildirimler günde bir
 - `gorev_sarmalayici.py` — üç Görev Zamanlayıcı görevinin de GERÇEK giriş noktası
   (`pythonw.exe gorev_sarmalayici.py <betik>.py`). Bir görev çalışmadığında bakılacak İLK
@@ -998,11 +998,13 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   makine tamamen kapalıysa zaten hiçbir yerel script bir şey gönderemez, bu harici
   altyapısı olmayan bir kişisel otomasyonun doğal sınırı.
 
-- **`saglik_kontrol.kontrol_et()` artık YEDİ adım** (2026-09-12). Hepsi
+- **`saglik_kontrol.kontrol_et()` artık DOKUZ adım** (2026-09-12). Hepsi
   `auto_process.main()`'in `finally` bloğundan; YENİ zamanlayıcı görevi EKLENMEDİ.
   Dördü eski (Instagram token süresi · Netlify kimlik bilgisi · Görev Zamanlayıcı görev
-  TANIMI · ses/tarz takibi tutarlılığı), üçü bugün eklendi — üçü de "önceki adımların
-  göremediği kör nokta" olduğu için var:
+  TANIMI · ses/tarz takibi tutarlılığı), beşi bugün eklendi — beşi de "önceki adımların
+  göremediği kör nokta" olduğu için var. (Bu satır gün içinde iki kez BAYATLADI: önce
+  "yedi" yazılıp sekizinci adım anlatılmadan eklendi. Yeni adım eklerken sayıyı VE
+  aşağıdaki listeyi birlikte güncelle.)
   - **`kacan_kosu()` — eşik 4 saat.** Diğer adımların hepsi "koşu gerçekleşti"
     VARSAYIMININ üstüne kurulu; koşu hiç tetiklenmezse hiçbiri çalışmaz ve log'a TEK SATIR
     bile düşmez (kaçan koşunun tanımı bu: geriye hiçbir iz BIRAKMAZ). Ölçüt log DEĞİL kendi
@@ -1037,7 +1039,32 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
     kayar, elle güncellenecek ikinci bir sayı OLMAZ. **BEKLEYEN PROJE ŞARTI ZORUNLU**:
     katalog bittiyse sessizlik NORMALDİR (Suno kotası yüzünden kanal haftalarca meşru
     biçimde sessiz kalabilir) ve alarm YANLIŞ olurdu.
-  ÇAĞRI SIRASI anlamlı: `yayin_durgunlugu` `kacan_kosu`'dan ÖNCE, `kacan_kosu` EN SONDA —
+  - **`uretim_kuyrugu_bos()` — eşik 104 saat (`2 × YAYIN_TABANI_SN`), TÜRETİLMİŞ.**
+    `yayin_durgunlugu`'nun tam tersi kör nokta: o adım BEKLEYEN proje varken yayın durunca
+    alarm verir; bu adım kuyruk BOŞKEN uzun süre yeni proje gelmezse. Suno kotası yüzünden
+    sessizlik meşru olabilir, o yüzden eşik yayın tabanının iki katı. İki adım aynı
+    `_yayin_taramasi()` listesini okuduğu için AYNI ANDA alarm vermeleri MANTIKEN imkânsız
+    (biri bekleyen var der, diğeri yok) — bu ayrım bir `ast` muhafızıyla kilitli.
+  - **`youtube_gizlilik_kaymasi()` — eşik yok, kayma VAR/YOK.** Önceki sekiz adımın hiçbiri
+    YouTube'da GERÇEKLEŞEN gizliliği sormuyordu. `Bu Gece Kazandık` 8 Eylül'de public
+    yüklendi, sonra KAYITSIZ şekilde (büyük ihtimalle Studio'dan elle) unlisted'a çekildi;
+    state 4 gün "public" dedi ve state'e güvenen modüller (bio sayfası, Instagram, geri
+    doldurmalar) unlisted bir şarkıyı yayın hattına soktu. KÖK NEDEN: `youtube_upload`
+    state'e İSTENEN gizliliği yazıyor, istatistik okuması `status` çekmiyordu.
+    **Ölçen** `youtube_stats.get_stats_batch` (aynı `videos.list` isteğine `status` eklendi
+    — çağrı başına hâlâ 1 birim), gerçek değeri AYRI alana yazıyor (`*_privacy_gercek`).
+    **`youtube_privacy` alanına ASLA yazılmıyor** — `latest_release`, `ek_platform_backfill`,
+    `facebook_backfill`, `derleme` o alanın sözleşmesine bağlı. **Söyleyen** bu adım: ağa
+    çıkmaz, yalnız state okur; her koşuda log UYARI, günde en fazla bir bildirim. İstisnalar:
+    `kopya_notu` (Küllerimden Geç bilerek unlisted), henüz ölçüm yok, bekleyen zamanlanmış
+    yayın (`private` + gelecekteki `*_publish_at`). **KARAR VERMEZ**: kaymanın hangi tarafta
+    düzeltileceği (Studio'da geri public mi, state'te unlisted mi) insan kararı.
+    Tuzak: YouTube `publishAt`'i yalnız HİÇ yayınlanmamış videoda kabul ediyor
+    (`invalidPublishAt`) — önceden public olmuş bir videoyu "yarın 12:00'de public olsun"
+    diye zamanlamak MÜMKÜN DEĞİL; public anı elle tetiklenip `*_publish_at` state'e elle
+    yazılmalı ki tempo sayacı (`auto_process._son_yeni_yayin_ani`) onu görsün.
+  ÇAĞRI SIRASI anlamlı: `yayin_durgunlugu`, `uretim_kuyrugu` ve `youtube_gizlilik`
+  `kacan_kosu`'dan ÖNCE, `kacan_kosu` EN SONDA —
   çünkü o adım "saatlik hattın SONUNA ulaşıldı" damgasını atıyor; yukarıdaki adımlardan
   biri beklenmedik şekilde patlarsa damga da atılmaz ve bir SONRAKİ koşu bunu boşluk
   olarak görür (istenen davranış).
