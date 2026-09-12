@@ -77,10 +77,11 @@ CARD_ART_COLOR = "0x151515"
 # Arka plan: ortada hafif aydınlık (merkez falloff, accent tonunda) + asimetrik bokeh blob
 # (complementary cool-blue tonunda) → dramatik derinlik, card "floating" hissi.
 BG_CENTER_BRIGHTNESS = 28  # merkezdeki radial falloff parlaklığı (0-255) — düşürüldü, arka plan daha derin/karanlık
-BG_BOKEH_POS = (0.8, 0.7)  # bokeh blob merkezi, (x,y) genişlik/yükseklik oranı (0-1)
-BG_BOKEH_RADIUS_RATIO = 0.45  # min(W,H)'e oran, bokeh yarıçapı — ne kadar kapsadığı
-BG_BOKEH_BRIGHTNESS = 50  # bokeh blob'ün en parlak merkez noktası (0-255)
-BG_BOKEH_COLOR = (80, 180, 255)  # cool cyan-blue, accent rengiyle complementary
+# BG_BOKEH_POS/RADIUS_RATIO/BRIGHTNESS/COLOR KALDIRILDI (2026-09-11): dördü de
+# hiçbir yerden okunmuyordu — ensure_vignette() bokeh blob'unun konumunu/
+# yarıçapını/parlaklığını/rengini kendi içinde sabit kodluyor, bu sabitler eski
+# bir tasarımdan kalmaydı. (BG_CENTER_BRIGHTNESS yukarıda DURUYOR: o gerçekten
+# okunuyor, bkz. ffmpeg_utils.py:154.)
 
 # Arka plan artık statik değil, video boyunca yavaşça kayıyor (pan): kaynak görsel
 # hedef çözünürlükten biraz büyük üretiliyor, render sırasında crop x/y zamanla
@@ -106,6 +107,44 @@ MARQUEE_GAP_RATIO = 0.02  # kartın altı ile kayan yazı arası (yüksekliğe o
 # ffmpeg kullanıyor) "Famous Music Studio" yazısının piksel genişliğini kabaca tahmin
 # etmek için ortalama karakter genişliği oranı (Segoe UI, orantılı sans-serif font).
 FONT_CHAR_WIDTH_RATIO = 0.55
+
+# --- AÇILIŞ (ilk saniyeler) ---
+# NEDEN (2026-09-11, olcum_temel_cizgi.json / kitle_tutma_28gun ölçümü):
+# 8 uzun videonun kitle tutma eğrisinde kaybın TAMAMI başta toplanıyor —
+# videonun %1'inden %3'üne (yani ~2. saniyeden ~6,5. saniyeye) ortalama 25
+# puan, oradan %10'a kadar (~22. saniye) sadece ~12 puan daha. Yani sorun
+# "düzgün azalma" değil, 2.-7. saniyede bir uçurum.
+# O saniyelerde ekranda ÖLÇÜLEN değişim (kare(0) ile kare(11) arası ortalama
+# mutlak fark, 0-255 gri): 7,3-8,6 — yani ~%3. Pratikte donmuş bir kare.
+# Üstelik ilk karede şarkı adı HİÇBİR YERDE yazmıyor (kayan künye yazısı
+# t=0'da şeridin sağ dışında başlıyor) ve kadraj, tıklanan küçük resimle
+# uyuşmuyor: küçük resim tam ekran fotoğraf + büyük başlık, video ise aynı
+# fotoğrafın ekranın ~%24'ünü kaplayan küçültülmüş kart hâli.
+# ÇÖZÜM: video projenin KENDİ cover.png'siyle (birebir YouTube küçük resmi)
+# tam ekran açılıyor, kısa bir bekleme sonrası karta çözülüyor (cross-dissolve).
+# Tek değişiklikle üç açık birden kapanıyor: tıklama sürekliliği, ilk karede
+# başlık, ve tam uçurumun olduğu saniyelerde gerçek hareket.
+INTRO_KAPAK = True
+INTRO_KAPAK_BEKLEME = 0.9   # kapak tam ekran sabit kalma süresi (sn)
+INTRO_KAPAK_COZULME = 1.5   # karta çözülme süresi (sn) — bitiş: bekleme+çözülme
+# Sadece uzun formatta. Shorts akışında küçük resim izleyiciye HİÇ gösterilmiyor
+# (bkz. buyume_analizi.md Bulgu 3), yani orada tıklama sürekliliği diye bir şey
+# yok; 45 saniyelik bir kesitte 2,4 saniyeyi kapak ekranına vermek ise net kayıp.
+INTRO_KAPAK_PLATFORMLAR = {"youtube_16x9"}
+
+# Suno çıktıları başta dijital sessizlikle geliyor — 18 projede ölçüldü:
+# 0,15 sn ile 2,65 sn arası, medyan ~1,1 sn (-99 dB, yani mutlak sessizlik).
+# O sürede izleyici ne ses duyuyor ne hareket görüyor. Kırpılıyor.
+# DÜRÜST NOT: sessizlik süresi ile açılış tutması arasında ÖLÇÜLEBİLİR bir
+# ilişki YOK (n=8, Sessiz Mektup en kısa sessizliğe sahip ve en kötü üçte;
+# sıra korelasyonu ~0). Yani bu, veriyle kanıtlanmış bir düzeltme değil —
+# "hiçbir şey olmayan saniyeyi at" mantığıyla yapılmış ucuz bir temizlik.
+# Kapatmak için: INTRO_SESSIZLIK_KIRP = False.
+INTRO_SESSIZLIK_KIRP = True
+INTRO_SESSIZLIK_ESIGI = "-50dB"  # silencedetect eşiği
+INTRO_SESSIZLIK_PAY = 0.12       # atağın başı kesilmesin diye bırakılan pay (sn)
+INTRO_SESSIZLIK_MAKS = 3.0       # güvenlik tavanı: tespit bozulsa bile şarkıdan
+                                 # bundan fazlası ASLA kırpılmaz (sn)
 
 PROGRESS_BAR_HEIGHT_RATIO = 0.008  # yüksekliğe oran — kalınlaştırıldı, görünürlük için
 PROGRESS_BAR_MARGIN_RATIO = 0.08  # kenarlardan içeri, genişliğe oran
@@ -180,7 +219,11 @@ def _find_logo_path() -> str | None:
 
 LOGO_PATH = _find_logo_path()
 FONT_SIZE_RATIO = 0.032  # video yüksekliğine oran — büyütüldü, okunurluk için
-FONT_COLOR = "white@0.95"  # künye yazısı net okunsun diye yüksek opaklık
+FONT_COLOR = "white@0.95"
+# Yazi golgesi - SADECE video arka planli render'da (DJ setleri).
+# Sabit gorsel arka plan koyu oldugu icin orada golgeye gerek yok.
+FONT_SHADOW_COLOR = "black@0.55"
+FONT_SHADOW_OFFSET = 2  # künye yazısı net okunsun diye yüksek opaklık
 MARQUEE_SEPARATOR = "  •  "
 MARQUEE_REPEAT = 6  # metnin geniş ekranlarda da kesintisiz görünmesi için tekrar sayısı
 MARQUEE_SPEED_PX_S = 60
@@ -226,7 +269,16 @@ BRAND_HASHTAGS = ["#FamousMusicStudio"]
 
 # Keşfet/For You dağıtımını hedefleyen genel hashtag'ler — marka hashtag'lerinden
 # ayrı tutuluyor çünkü bunlar zamanla değişebilir (trend_hashtag_notlari.md'ye bak).
-DISCOVERY_HASHTAGS = ["#keşfet", "#fyp", "#viral"]
+# 2026-09-10: sabit üçlü yerine HAVUZ. Sebep: her paylaşımda birebir aynı
+# hashtag setini tekrarlamak tekdüzelik sinyali; ayrıca caption'ın yarısı zaten
+# sabitti. build_caption() bu havuzdan şarkıya göre deterministik 3 tane seçer —
+# aynı şarkı hep aynı seti alır (arşiv tutarlılığı), şarkılar arası çeşitlenir.
+# AI-vurgulu hashtag KOYMA (bkz. yukarıdaki not, kullanıcı kararı 2026-09-05).
+DISCOVERY_HASHTAGS = [
+    "#keşfet", "#fyp", "#viral", "#keşfetteyiz", "#müzik",
+    "#şarkı", "#yenişarkı", "#türkçemüzik", "#foryou",
+]
+DISCOVERY_HASHTAG_COUNT = 3
 
 # Caption'ın ilk satırı — kaydırmayı durdurmak için merak uyandıran kısa açılış cümlesi.
 # build_caption() şarkı başlığına göre bunlardan birini deterministik seçer (her şarkı
@@ -242,6 +294,42 @@ HOOK_LINES = [
     "Kulaklığı tak, bu şarkı tam sana göre 🎧",
     "Yeni parça, yeni hikaye 🎵",
     "Bu şarkıyı bitirmeden geçme 👇",
+    "İlk on saniye yeter, anlarsın 🎧",
+    "Sesi aç, gerisi kendiliğinden gelir 🔊",
+    "Bu akşamın şarkısı belli oldu 🌙",
+    "Bir dinle, aklından çıkmasın 🎶",
+    "Kaydırıp geçme, dönüp geleceksin 👀",
+    "Bu ritim seni yakalar 🔥",
+    "Yeni parça yayında 🎵",
+    "Sessiz izleme, ses şart 🔊",
+    "Bunu listene ekleyeceksin, şimdiden söyleyeyim 📲",
+    "Bu şarkı gece dinlenir 🌃",
+]
+
+# Caption'ın orta bölümü de artık sabit değil (2026-09-10). Önceden
+# "Bu sesi edit/kesit videolarında kullanabilirsin 🔥" ve "Yeni şarkılar için
+# takipte kalın" satırları HER paylaşımda birebir aynıydı; caption'ın yarısı
+# şarkıdan bağımsız tekrar ediyordu.
+USE_LINES = [
+    "Bu sesi edit/kesit videolarında kullanabilirsin 🔥",
+    "Edit'lerinde bu sesi rahatça kullan 🔥",
+    "Kesitlerinde kullanmak serbest 🎬",
+    "Bu ses senin videolarında da güzel durur 🔥",
+    "İstersen edit'ine ekle, sorun değil 🎬",
+    "Videolarında kullanmak istersen buyur 🔥",
+    "Bu parçayı edit'lerde duymak isterim 🎬",
+    "Kesit yaparsan bu ses tam oturur 🔥",
+]
+
+FOLLOW_LINES = [
+    "Yeni şarkılar için takipte kalın",
+    "Yeni parçalar için takip et 🎵",
+    "Her hafta yeni şarkı — takipte kal",
+    "Devamı gelecek, takipte kal 🎶",
+    "Yeni işler için takip etmeyi unutma",
+    "Takip et, yenileri kaçırma 🎧",
+    "Daha fazlası için takipteyiz 🎵",
+    "Sıradaki parça için takipte kal 🔔",
 ]
 
 # Caption'ın sonunda, hashtag'lerden hemen önce — yorum sayısını artırmayı
@@ -253,7 +341,133 @@ ENGAGEMENT_QUESTIONS = [
     "Bu şarkı sana neyi hatırlattı, yorumda yaz 💬",
     "1'den 10'a kadar puanla 👇",
     "Bu şarkıyı kaç kez tekrar dinlersin? Yorumda söyle 🔁",
+    "Hangi kısmı tekrar tekrar dinledin? 👇",
+    "Bu şarkı hangi anını hatırlattı? 💬",
+    "Bunu kime dinletirsin, etiketle 👇",
+    "Sözler mi ritim mi? Yorumda söyle 💬",
+    "Kaç saniyede kaptırdın kendini? ⏱️",
+    "Buna başka bir isim verseydin ne olurdu? 💭",
+    "Nakarat mı giriş mi daha iyi? 👇",
+    "Bunu listene ekler misin? 📲",
+    "Bu şarkı hangi saatte dinlenir? 🌙",
+    "Hangi tarzı daha çok yakıştırdın? 🎧",
 ]
+
+# DJ setlerinde arka planı stok videodan kurmak (bkz. stock_video.py).
+# YALNIZCA dj_sets/ için ve yalnızca uzun formatta (16x9) uygulanıyor:
+# 4 dakikalık bir şarkıda tek görsel sorun değil, 80 dakikalık bir sette
+# hiç değişmeyen bir kare izleyiciyi kaçırıyor. Kapatılırsa setler eski
+# bulanık art.jpg arka planına döner — hiçbir şey bozulmaz.
+DJ_ARKA_PLAN_VIDEO = True
+
+# DJ setlerinde sci-fi HUD kaplaması (bkz. dj_hud.py). Arka plan videosuyla
+# aynı kapsam: YALNIZCA dj_sets/ ve yalnızca uzun formatta. Dikey 45 saniyelik
+# kesitte köşe ayraçları kadrajı daraltıyor, orada kapalı.
+DJ_HUD = True
+
+# SAHNE MODU: arka plan artık kartın ARKASINDAKİ dekor değil, kadrajın
+# KENDİSİ. Kart kaldırılıyor, görüntü bulanıklaştırılmıyor, HUD onu
+# çerçeveliyor - referanstaki ("NOXELUNE HOUSE") düzenin mantığı bu.
+#
+# Neden ayrı bir mod: mevcut tasarım arka planı BİLEREK bulanık ve koyu
+# tutuyor ki ortadaki kart öne çıksın. Aynı kareye hem kart hem net bir
+# sahne koymak ikisini de zayıflatıyor - biri diğerini boğuyor. Bu yüzden
+# ikisi ayrı düzen, aynı anda açılmıyor.
+DJ_SAHNE_MODU = True
+
+
+# --- DJ setlerinde yayin oncesi Content ID taramasi ----------------------
+# NEDEN: City Pulse Set (4 Eylul 2026) yayinlandiktan SONRA telif itirazi aldi
+# - Suno ciktisi "Bring Me To Life (Tiesto, FORS)" ile eslesti, 4 ayri yerde
+# toplam 106 saniye. Sonuc: para kazanma kapali + 2 ulkede engelli. O anda
+# icerik zaten 6 platformdaydi.
+#
+# YouTube Content ID taramasini videonun gizlilik ayarindan BAGIMSIZ yapiyor.
+# Bu yuzden set once `private` yukleniyor, tarama otursun diye bekleniyor,
+# temizse herkese aciliyor ve diger platformlara ancak o zaman gidiyor.
+#
+# Yalnizca dj_sets/ icin. Ana katalog (gunde 2 sarki, 4 dakikalik tek parca)
+# degismiyor - risk profili farkli ve gunluk akisi 2 saat geciktirmek boru
+# hattini gereksiz karmasiklastirir.
+DJ_ON_TARAMA = True
+
+# Taramanin oturmasi icin beklenecek sure. YouTube genelde 1 saat icinde
+# tamamliyor; 2 saat rahat bir pay.
+DJ_TARAMA_BEKLEME_SN = 2 * 60 * 60
+
+# Sahne modunda blur neredeyse sıfır: görüntünün kendisi gösteriliyor.
+# Tamamen 0 değil - hafif bir yumuşatma stok kliplerin sıkıştırma
+# gürültüsünü bastırıyor ve üstteki yazıları okunur tutuyor.
+DJ_SAHNE_BLUR_SIGMA = 1.5
+DJ_SAHNE_EGRISI = "0/0.02 0.5/0.46 1/0.92"
+
+# Video arka plan, kartın ARKASINDA durmalı — ham stok klip fazla dikkat çekiyor
+# ve koyu art.jpg kartı yutuyordu (ilk denemede kart neredeyse görünmez oldu).
+# Sabit görsel arka planla (ensure_art_backdrop) aynı mantık uygulanıyor:
+# bulanıklaştır + siyahları kaldır, böylece kart ve yazılar öne çıkıyor.
+# Blur sabit görseldekinden (sigma ~48) çok daha HAFİF — hareketin okunması,
+# yani videonun video olduğunun anlaşılması gerekiyor.
+DJ_ARKA_PLAN_BLUR_SIGMA = 14
+# Sabit gorsel arka plandaki (ffmpeg_utils.ensure_art_backdrop) ile AYNI
+# islem: pozitif parlaklik + siyahlari kaldiran egri. Ilk denemede daha
+# zayif bir egri kullanilmisti (0/0.10 0.5/0.62) ve koyu kliplerde -- duman,
+# gece govdesi -- arka plan neredeyse siyaha cokup karti yine yutuyordu.
+# Kullanicinin sabit arka plan icin verdigi karar burada da gecerli:
+# "arka fon kapaktan acik tonda olsun".
+DJ_ARKA_PLAN_PARLAKLIK = "brightness=0.08:saturation=1.2"
+# Ust uc 1/0.88: parlak klipler (altin bokeh, gun batimi) kayan yaziyi
+# yutuyordu - yazi acik renkli ve arka plan beyaza dogru gidince kontrast
+# kalmiyor. Sabit gorsel arka planda bu sorun hic yoktu cunku o goruntu
+# koyu art.jpg'den tureiyordu; video havuzunda ise parlak klipler var.
+# Siyahlar hala kaldiriliyor (kart one ciksin), sadece tepe bastiriliyor.
+DJ_ARKA_PLAN_EGRISI = "0/0.14 0.5/0.70 1/0.88"
+
+
+# --- DJ setlerinin muzik stili -------------------------------------------
+# SORUN: her set `theme: "dj"` kullaniyordu, yani deep house bir set ile
+# techno bir set YouTube/TikTok gozunde birebir ayni sinyali veriyordu -
+# ayni hashtag, ayni etiket, ayni stok goruntu. Iki set de AYNI kitleye
+# dusuyor; ikinci set birinciyi genisletmiyor, tekrar ediyor.
+# COZUM: meta.json'a `set_style` alani. Tema ("dj") marka kimligi olarak
+# kaliyor, stil ise kesif sinyalini ayristiriyor: kendi hashtag'leri, kendi
+# stok video sorgulari, kendi Suno tarifi. Alan YOKSA hicbir sey degismiyor
+# (eski setler aynen calisir) - bu yuzden geriye donuk guvenli.
+SET_STILLERI = {
+    "deep_house": {
+        "label": "Deep House",
+        "etiketler": ["Deep House", "Melodic House", "Chillout Mix", "Lounge Music"],
+        "video_sorgulari": [
+            "rain window night city lights",
+            "smoke slow motion dark background",
+            "neon lights bokeh night abstract",
+            "city night traffic timelapse",
+        ],
+        "suno_stil": "deep house, melodic, warm analog bass, soft female vocal chops, 120 bpm, late night lounge",
+    },
+    "techno_chill": {
+        # Deep house'un dinleyicisiyle ortusuyor ama aynisi degil: techno
+        # tarafi "focus/work/study" ve "night drive" aramalarini yakaliyor,
+        # deep house daha cok "lounge/relax" tarafinda. Kasitli olarak sert
+        # techno DEGIL - kanalin mevcut sakin tonundan kopmadan komsu bir
+        # kitleye aciliyor.
+        "label": "Techno Chill",
+        "etiketler": ["Melodic Techno", "Chill Techno", "Focus Music", "Night Drive"],
+        "video_sorgulari": [
+            "night highway lights motion blur",
+            "tunnel lights driving pov night",
+            "abstract dark geometric motion loop",
+            "industrial dark fog light beams",
+            "aerial city night lights slow",
+            "particles dark blue slow motion",
+        ],
+        "suno_stil": "melodic techno, hypnotic arpeggio, deep sub bass, airy pads, no vocals, 124 bpm, late night drive",
+    },
+}
+
+
+def set_stili(meta: dict) -> dict | None:
+    """meta.json'daki `set_style` icin stil tanimi; yoksa None."""
+    return SET_STILLERI.get(meta.get("set_style") or "")
 
 # --- İngilizce varyantlar (meta.json'da "language": "en" ise kullanılır) ---
 # İlk kullanım: DJ Famous (bkz. dj_sets/README.md) — markanın uzun vadeli global
@@ -261,13 +475,48 @@ ENGAGEMENT_QUESTIONS = [
 # (kullanıcı kararı, 2026-09-03). Ana katalog (`projects/`) meta.json'larında
 # "language" alanı YOK, yani varsayılan ("tr") değişmedi — bu varyantlar sadece
 # language="en" olan projeler için devreye giriyor.
-DISCOVERY_HASHTAGS_EN = ["#explore", "#fyp", "#viral"]
+DISCOVERY_HASHTAGS_EN = [
+    "#explore", "#fyp", "#viral", "#foryoupage", "#music",
+    "#newmusic", "#newsong", "#musicdiscovery", "#indiemusic",
+]
 
 HOOK_LINES_EN = [
     "Discover this one before everyone else 👀🎶",
     "Put your headphones on, this one's for you 🎧",
     "New track, new story 🎵",
     "Don't scroll past this one 👇",
+    "Ten seconds in and you'll know 🎧",
+    "Turn it up, the rest follows 🔊",
+    "Tonight's track just landed 🌙",
+    "Play it once, it stays with you 🎶",
+    "Scroll past and you'll come back 👀",
+    "This rhythm catches you 🔥",
+    "New track out now 🎵",
+    "Don't watch this on mute 🔊",
+    "You're adding this to your playlist 📲",
+    "This one's for late nights 🌃",
+]
+
+USE_LINES_EN = [
+    "Feel free to use this track in your edits 🔥",
+    "Use this sound in your edits, it's free 🔥",
+    "Clip it, edit it, it's yours 🎬",
+    "This sound works great in your videos 🔥",
+    "Drop it into your edit, no problem 🎬",
+    "Use it in your videos if you like 🔥",
+    "I'd love to hear this in your edits 🎬",
+    "This sound fits your clips perfectly 🔥",
+]
+
+FOLLOW_LINES_EN = [
+    "Follow for more tracks",
+    "Follow for new drops 🎵",
+    "New music every week — follow along",
+    "More coming, stay tuned 🎶",
+    "Don't miss the next one, follow",
+    "Follow so you don't miss a drop 🎧",
+    "More where this came from 🎵",
+    "Follow for the next track 🔔",
 ]
 
 ENGAGEMENT_QUESTIONS_EN = [
@@ -275,6 +524,16 @@ ENGAGEMENT_QUESTIONS_EN = [
     "What does this track remind you of? Tell us in the comments 💬",
     "Rate it from 1 to 10 👇",
     "How many times will you replay this one? Tell us 🔁",
+    "Which part did you rewind? 👇",
+    "What moment does this bring back? 💬",
+    "Who needs to hear this? Tag them 👇",
+    "Lyrics or the beat? Tell us 💬",
+    "How fast did it pull you in? ⏱️",
+    "What would you have named this one? 💭",
+    "Chorus or intro — which hits harder? 👇",
+    "Adding this to your playlist? 📲",
+    "What time of day is this track for? 🌙",
+    "Which style suits it best? 🎧",
 ]
 
 # Video/ses kodek ayarları
@@ -296,6 +555,45 @@ PRESET = "medium"
 # videonun CANLIYA ÇIKTIĞI an birbirinden ayrılabiliyor — auto_process.py
 # kendi kademeleme mantığına göre istediği saatte render+upload yapmaya devam
 # eder, YouTube tarafı ise bir sonraki golden-hour penceresine kadar bekletir.
+# --- Yeni platformlar: OPT-IN -----------------------------------------------
+# Facebook / Telegram / Bluesky modulleri yazildi ama saatlik otomasyona
+# KAPALI baslatiliyor. Iki kapi birden var ve ikisi de gecilmeli:
+#   1. buradaki bayrak True olacak,
+#   2. ilgili kimlik dosyasi (upload/*_token.json | *_client_secrets.json) var olacak.
+#
+# Neden cift kapi: kimlik dosyasi kondugu anda platformun otomatik yayina
+# baslamasi istenmiyor. Once elle bir kez calistirilip ciktisi gozle
+# dogrulanmali (`python upload/<modul>.py --project ... --dry-run`), ancak
+# ondan sonra buradaki bayrak acilmali. Bayragi acmadan once o platformdan
+# hicbir sey yayinlanmaz.
+# DJ Famous setleri icin AYRI bayraklar - EK_PLATFORMLAR'dan kasitli olarak
+# bagimsiz. Sebep dj_sets/README.md'de: setler GERCEK, taninabilir bir kisiyi
+# konu aliyor ve "yeni bir kullanim/platform eklenecekse tekrar teyit edilmeli"
+# kurali var. Tek bir sozluk olsaydi, katalog icin Facebook'u acmak DJ Famous'u
+# da sessizce yeni bir platforma tasirdi - onay bir daha sorulmadan.
+# Onay 2026-09-10'da bu ucu icin ayrica alindi.
+EK_PLATFORMLAR_DJ = {
+    "facebook": True,
+    "telegram": True,
+    "bluesky": True,
+}
+
+EK_PLATFORMLAR = {
+    # 2026-09-10: uçtan uca doğrulandı — Reels yüklendi (video_id
+    # 1421888749896337), YouTube linki yorumu eklendi, state.json yazıldı.
+    "facebook": True,
+    # 2026-09-10: uçtan uca doğrulandı — @hermes_famous_asistan kanalına
+    # (id -1004337174284) uzun format gönderildi, message_id=3. Aynı bot
+    # Hermes asistanı da çalıştırıyor ama kanal gönderilerine tepki
+    # vermiyor (eşleştirme listesinde yalnızca kullanıcının DM'i var).
+    "telegram": True,
+    # 2026-09-10: uçtan uca doğrulandı — famousmusicstudio.bsky.social
+    # hesabına video gönderildi (3mv6owocx562t), aspectRatio ve facet'ler
+    # doğru geldi. E-posta doğrulaması ŞART (video için), yapıldı.
+    "bluesky": True,
+}
+
+
 GOLDEN_HOURS = [(12, 14), (18, 22)]  # (başlangıç, bitiş) — TR yerel saat, [başlangıç, bitiş)
 TR_TZ = timezone(timedelta(hours=3))
 

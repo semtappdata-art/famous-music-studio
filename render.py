@@ -13,16 +13,34 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import config
 import ffmpeg_utils
+import uyumluluk
 import validate_project
 from audio_highlight import find_highlight
 
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
+COVER_VERTICAL_NAMES = ["cover_vertical.jpg", "cover_vertical.jpeg", "cover_vertical.png"]
 ART_NAMES = ["art.jpg", "art.jpeg", "art.png"]
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
 
 
 def find_cover(project_dir: str) -> str | None:
     for name in COVER_NAMES:
+        path = os.path.join(project_dir, name)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def find_intro_cover(project_dir: str, width: int, height: int) -> str | None:
+    """Açılışta tam ekran gösterilecek kapak — platformun oranına göre YATAY
+    (cover.png, 16:9) ya da DİKEY (cover_vertical.png, 9:16) olanı.
+
+    NEDEN kapak, art.jpg değil: amaç ilk karenin izleyicinin TIKLADIĞI görselle
+    birebir aynı olması (bkz. config.INTRO_KAPAK). cover.png zaten YouTube'a
+    yüklenen küçük resmin ta kendisi — başlık yazısı ve logosuyla birlikte.
+    art.jpg ise başlıksız, kare bir görsel; tıklama sürekliliğini kurmuyor."""
+    names = COVER_VERTICAL_NAMES if height > width else COVER_NAMES
+    for name in names:
         path = os.path.join(project_dir, name)
         if os.path.isfile(path):
             return path
@@ -110,15 +128,55 @@ def render_project(project_dir: str) -> bool:
     else:
         print(f"  highlight (meta.json'dan): {highlight_start:.1f}s - {highlight_end:.1f}s")
 
+    # Proje klasöründe backdrop.mp4 varsa (DJ setleri için stock_video.py
+    # üretiyor) arka plan bulanık art.jpg yerine o video oluyor — ama YALNIZCA
+    # uzun formatta. 45 saniyelik bir Short'ta tek görsel zaten sıkıcı değil;
+    # asıl sorun 80 dakikalık sette hiç değişmeyen bir karede.
+    backdrop_path = os.path.join(project_dir, "backdrop.mp4")
+    if not os.path.isfile(backdrop_path):
+        backdrop_path = None
+    else:
+        print(f"  arka plan: video ({backdrop_path}) — uzun formatta")
+
+    # HUD kaplaması — arka plan videosuyla AYNI kapsamda: sadece backdrop.mp4
+    # olan projelerde (yani DJ setlerinde) ve sadece uzun formatta. Kapsamı
+    # backdrop'a bağlamak bilinçli: HUD tek başına, sabit bulanık art.jpg
+    # arka planın üzerinde bağlamsız bir çerçeve gibi duruyor.
+    hud_hazir = {}
+
+    def _hud(width, height):
+        if not (config.DJ_HUD and backdrop_path):
+            return None
+        if (width, height) not in hud_hazir:
+            try:
+                import dj_hud
+                hud_hazir[(width, height)] = dj_hud.ensure_hud(width, height)
+            except Exception as e:
+                print(f"  UYARI: HUD üretilemedi, kaplamasız devam ediliyor: {e}")
+                hud_hazir[(width, height)] = None
+        return hud_hazir[(width, height)]
+
     def render_one(platform_key, width, height):
         output_path = os.path.join(output_dir, f"{platform_key}.mp4")
         print(f"  -> {platform_key} ({width}x{height}) render ediliyor...")
         use_highlight = platform_key in config.HIGHLIGHT_PLATFORMS
+        # Açılış kapağı sadece config.INTRO_KAPAK_PLATFORMLAR'daki platformlarda —
+        # Shorts akışında küçük resim izleyiciye hiç gösterilmediği için orada
+        # tıklama sürekliliği diye bir şey yok.
+        intro_cover = (find_intro_cover(project_dir, width, height)
+                       if platform_key in config.INTRO_KAPAK_PLATFORMLAR else None)
         ffmpeg_utils.render_video(
             art_path, audio_path, output_path, width, height, title, theme,
             marquee_override=marquee_override,
             start_time=highlight_start if use_highlight else None,
             end_time=highlight_end if use_highlight else None,
+            backdrop_video=None if use_highlight else backdrop_path,
+            hud_path=None if use_highlight else _hud(width, height),
+            # Sahne modu sadece uzun formatta: 45 saniyelik dikey
+            # kesitte kart hâlâ doğru iş - kapak kimliğini o taşıyor.
+            kart_goster=not (config.DJ_SAHNE_MODU and backdrop_path
+                             and not use_highlight),
+            intro_cover=intro_cover,
         )
         return platform_key, output_path
 
@@ -154,23 +212,27 @@ def main():
     parser = argparse.ArgumentParser(description="Suno ses dosyalarından çoklu platform video üretir.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--project", help="Tek bir proje klasörü (örn. projects/sarki-adi)")
-    group.add_argument("--all", action="store_true", help="projects/ altındaki tüm klasörleri render et")
+    group.add_argument(
+        "--all", action="store_true",
+        # Yardım metni KANONIK listeden türüyor: elle yazılsaydı dördüncü bir
+        # kök açıldığında sessizce eskirdi (bkz. uyumluluk.KOK_ADLARI).
+        help="%s altındaki tüm proje klasörlerini render et"
+             % ", ".join("%s/" % k for k in uyumluluk.KOK_ADLARI))
     args = parser.parse_args()
 
     if args.project:
         project_dirs = [args.project]
     else:
-        base = "projects"
-        if not os.path.isdir(base):
-            print(f"HATA: {base} klasörü bulunamadı.")
-            sys.exit(1)
-        project_dirs = [
-            os.path.join(base, name)
-            for name in sorted(os.listdir(base))
-            if os.path.isdir(os.path.join(base, name))
-        ]
+        # NEDEN kanonik listeye bağlandı: burada kök listesi ELLE sayılıyordu
+        # ("projects") ve `dj_sets/` ile `derlemeler/` eklendiğinde bu satır
+        # sessizce geride kaldı — elle yapılan tam-katalog koşusu kataloğun bir
+        # bölümünü HİÇ görmüyor, üstelik hata da vermiyordu. Ayrıca göreli
+        # "projects" yanlış cwd'de os.path.isdir'den False alıp "klasör yok"
+        # diyordu; uyumluluk.KOKLER MUTLAK, yani cwd'den bağımsız.
+        project_dirs = list(uyumluluk.proje_klasorleri())
         if not project_dirs:
-            print(f"HATA: {base} altında hiç proje klasörü yok.")
+            print("HATA: hiçbir içerik kökünde (%s) proje klasörü yok."
+                  % ", ".join(uyumluluk.KOK_ADLARI))
             sys.exit(1)
 
     all_ok = True
