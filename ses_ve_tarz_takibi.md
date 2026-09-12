@@ -67,6 +67,7 @@ YANSITMIYOR.
 | Kader Ortakları | hiphop (Pop-Hip-Hop, arabesk-vokal etkili) | 90 | **düet: erkek-erkek** — Male 1: warm smooth melancholic tenor, Male 2: raspy gritty passionate baritone |
 | Bu Gece Kazandık | pop (dance-arabesk-pop) | 118 | **düet: erkek-erkek** — Male 1: tender warm melismatic tenor (vibrato), Male 2: bright energetic nasal-edged voice |
 | Sabah Senin | rock | 78 | smoky husky low-register female vocals — düet DEĞİL |
+| Yükseliş **(ses henüz yok)** | hiphop | (yok) | smoky laid-back female vocals — düet DEĞİL |
 
 **Sütun işaretleri:** `(yok)` = stil etiketi VAR ama içinde BPM yazmıyor.
 `(kayıt yok)` = şarkının hiç arşivlenmiş stil etiketi yok (ilk üç şarkı +
@@ -103,6 +104,13 @@ Küllerimden Geç; bkz. CLAUDE.md "Açık/bilinen boşluklar").
   tempo/tema kümelenmesinde sayılır (kataloğun en hızlısı: 138 BPM).
 - **Küllerimden Geç** yeni bir kayıt değil (`Yeniden Doğacağım` ile aynı ses),
   YouTube'da bilerek `unlisted`. Vokal çeşitliliği sayımına DAHİL EDİLMEMELİ.
+
+- **Yükseliş** PR #50 sonrası `main`'e ayrı bir oturumda eklendi (sözler + stil etiketi
+  + `projects/Yükseliş/` kapak/meta); `audio.wav` henüz YOK, yani üretilmedi. O oturum
+  bu dosyanın eski (3 sütunlu) sürümüne bakarak "smoky, laid-back henüz kullanılmamış"
+  dedi — ama `Sabah Senin` zaten "smoky husky" kadın vokal. Yükseliş olduğu gibi
+  üretilirse kadın vokal üst üste ikiye çıkar ve "smoky" dokusu tekrarlanır; yukarıdaki
+  "Sıradaki" notuyla çelişiyor. Üretmeden önce vokal seçimi yeniden düşünülmeli.
 
 ## Yeni şarkı eklerken
 
