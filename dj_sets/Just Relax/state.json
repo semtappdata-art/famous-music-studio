@@ -17,5 +17,57 @@
   "instagram_creation_id": "18093414089265431",
   "instagram_container_created_at": "2026-09-07T16:21:22",
   "instagram_media_id": "18104801272948974",
-  "instagram_uploaded_at": "2026-09-07T18:58:47"
+  "instagram_uploaded_at": "2026-09-07T18:58:47",
+  "youtube_views": 114,
+  "youtube_likes": 5,
+  "youtube_comments": 2,
+  "youtube_shorts_views": 88,
+  "youtube_shorts_likes": 3,
+  "youtube_shorts_comments": 0,
+  "youtube_stats_checked_at": "2026-09-11T16:12:21",
+  "dj_clips": [
+    {
+      "dosya": "clip_01.mp4",
+      "bas": 332.53,
+      "son": 377.53,
+      "bayt": 2505728
+    },
+    {
+      "dosya": "clip_02.mp4",
+      "bas": 1491.35,
+      "son": 1536.35,
+      "bayt": 2512728
+    },
+    {
+      "dosya": "clip_03.mp4",
+      "bas": 2101.41,
+      "son": 2146.41,
+      "bayt": 2514612
+    }
+  ],
+  "dj_clips_uretildi": "2026-09-10T23:11:32",
+  "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mv7rppjjwk2t",
+  "bluesky_post_cid": "bafyreigp5jdx6sc23emgnk5a2guvctqokovaibnuiyvw2euk74qzio6gpe",
+  "bluesky_uploaded_at": "2026-09-11T07:57:20",
+  "telegram_shorts_message_id": 5,
+  "telegram_shorts_uploaded_at": "2026-09-11T07:57:55",
+  "telegram_chat_id": "-1004337174284",
+  "facebook_reels_id": "1054815960702540",
+  "facebook_uploaded_at": "2026-09-11T07:59:10",
+  "facebook_scheduled_for": "2026-09-11T12:00:00+03:00",
+  "facebook_comment_pending": false,
+  "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
+  "youtube_thumbnail_kapak_surumu": "v2_buyuk_baslik",
+  "youtube_views_prev": 80,
+  "youtube_likes_prev": 5,
+  "youtube_comments_prev": 1,
+  "youtube_shorts_views_prev": 88,
+  "youtube_shorts_likes_prev": 3,
+  "youtube_shorts_comments_prev": 0,
+  "youtube_stats_prev_at": "2026-09-10T19:15:38",
+  "youtube_playlists": [
+    "PLV3ve3aiAwU4",
+    "PLIfBoPfEuEWQ"
+  ],
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ"
 }

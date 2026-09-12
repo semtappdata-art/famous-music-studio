@@ -17,5 +17,56 @@
   "instagram_creation_id": "18093465419265431",
   "instagram_container_created_at": "2026-09-07T20:17:19",
   "instagram_media_id": "18141559390605993",
-  "instagram_uploaded_at": "2026-09-07T20:17:38"
+  "instagram_uploaded_at": "2026-09-07T20:17:38",
+  "youtube_views": 118,
+  "youtube_likes": 5,
+  "youtube_comments": 2,
+  "youtube_shorts_views": 8,
+  "youtube_shorts_likes": 2,
+  "youtube_shorts_comments": 0,
+  "youtube_stats_checked_at": "2026-09-11T16:12:21",
+  "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mv7rqj27ps2t",
+  "bluesky_post_cid": "bafyreig77h2r4heapqorlqze6binftouys4gz2yj4x5hrsnqx3wk7z5a4i",
+  "bluesky_uploaded_at": "2026-09-11T07:57:47",
+  "telegram_shorts_message_id": 6,
+  "telegram_shorts_uploaded_at": "2026-09-11T07:58:53",
+  "telegram_chat_id": "-1004337174284",
+  "facebook_reels_id": "1513519290582609",
+  "facebook_uploaded_at": "2026-09-11T07:59:27",
+  "facebook_scheduled_for": "2026-09-11T12:45:00+03:00",
+  "facebook_comment_pending": false,
+  "telif_araliklari": [
+    [
+      180.0,
+      190.0
+    ],
+    [
+      330.0,
+      388.5
+    ],
+    [
+      2188.5,
+      2215.5
+    ],
+    [
+      3855.5,
+      3866.0
+    ]
+  ],
+  "telif_eser": "Bring Me To Life - Tiesto, FORS",
+  "telif_notu": "YouTube Content ID eslesmesi (4 Eylul 2026). Bu araliklar YouTube'daki surumden ELLE cikarildi; yerel audio.wav hala iceriyor. Turev uretimde (klip, yeniden render) kacinilmali.",
+  "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
+  "youtube_thumbnail_kapak_surumu": "v2_buyuk_baslik",
+  "youtube_views_prev": 115,
+  "youtube_likes_prev": 5,
+  "youtube_comments_prev": 1,
+  "youtube_shorts_views_prev": 8,
+  "youtube_shorts_likes_prev": 2,
+  "youtube_shorts_comments_prev": 0,
+  "youtube_stats_prev_at": "2026-09-10T19:15:38",
+  "youtube_playlists": [
+    "PLV3ve3aiAwU4",
+    "PLIfBoPfEuEWQ"
+  ],
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ"
 }
