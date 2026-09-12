@@ -338,14 +338,43 @@ kopar.
 
 ### B1. YouTube Reporting API'yi aç — **SON TARİH 2026-10-11, kaçarsa veri GERİ GELMEZ**
 
+**DURUM (2026-09-12 güncellendi)** Kod tarafı **BİTTİ**, API tarafı **HÂLÂ
+KAPALI**. Kullanıcı bugün Console'dan etkinleştirdiğini bildirdi, ama canlı
+doğrulama bunu DESTEKLEMİYOR: `jobs().list()` 11 kez çağrıldı (ilk deneme +
+60 sn arayla 10 deneme, ~10 dakikaya yayıldı) ve **hepsi HTTP 403
+`SERVICE_DISABLED`** döndü. Hata gövdesi `consumer: projects/1026223060773`
+diyor — yani token DOĞRU projeye gidiyor, sorun yayılma (propagation)
+gecikmesi olarak açıklanamayacak kadar uzun sürdü. Muhtemel sebep: Console'da
+**başka bir proje** seçiliydi ya da **YouTube Data API / Analytics API**
+etkinleştirildi, `youtubereporting.googleapis.com` değil.
+**Job OLUŞTURULMADI** (oluşturulamadı) — 30 günlük geriye doldurma sayacı
+HÂLÂ BAŞLAMADI, son tarih hâlâ 2026-10-11.
+
 **Ne yapılacak**
 1. https://console.developers.google.com/apis/api/youtubereporting.googleapis.com/overview?project=1026223060773
-   → **ETKİNLEŞTİR**.
-2. Etkinleştikten sonra bir "reporting job" oluşturulması gerekiyor — bu kod
-   tarafı, API kapalıyken yazılamıyordu.
+   → **ETKİNLEŞTİR**. Sayfanın üstündeki proje seçicinin `1026223060773`
+   olduğunu ve API adının **"YouTube Reporting API"** yazdığını (Data/Analytics
+   DEĞİL) doğrula; buton "ETKİNLEŞTİR" yerine "YÖNET" diyorsa zaten açıktır.
+2. Açıldıktan sonra **repo kökünde**:
+   ```
+   python upload/youtube_reporting.py --kur --kuru   # önce kuru koşu
+   python upload/youtube_reporting.py --kur          # job'ları OLUŞTURUR
+   python upload/youtube_reporting.py --durum
+   ```
+   `--kur` idempotenttir (aynı rapor tipi için ikinci job açmaz) ve rapor tipi
+   adını TAHMİN ETMEZ — önce `reportTypes().list` ile API'nin kendi listesine
+   bakar. Kimlik mevcut `upload/analytics_token.json`'dan geliyor, izni
+   (`yt-analytics.readonly`) ZATEN yeterli: **yeni tarayıcı onayı GEREKMİYOR**
+   ve `upload/token.json`'a DOKUNULMUYOR.
+3. Job'dan ~24-48 saat sonra: `python upload/youtube_reporting.py --indir`
+   (CSV'ler `olcum_reporting/` altına iner).
 
 **NEREDE** Google Cloud Console (tarayıcı), proje `1026223060773`.
-Şu anki durum: HTTP 403 **`SERVICE_DISABLED`**.
+Şu anki durum: HTTP 403 **`SERVICE_DISABLED`** (2026-09-12'de 11 kez doğrulandı).
+
+**KOD** `upload/youtube_reporting.py` (yeni) + `tests/test_youtube_reporting.py`
+(20 test, ağa çıkmıyor). Saatlik hatta **bilerek bağlı değil** — kotalı,
+gecikmeli, günlük bir ölçüm işi (CLAUDE.md, ÜÇ SORU / (B) şıkkı).
 
 **NEDEN TARİHLİ (ertelenirse telafisi YOK)** Küçük resim **gösterimi** ve
 **tıklanma oranı** (`video_thumbnail_impressions`,
