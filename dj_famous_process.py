@@ -18,13 +18,14 @@ tam yüklenmemiş) HER seti işler.
 kararı, bkz. dj_sets/README.md):
   - YouTube: containsSyntheticMedia=True (youtube_upload.py'de zaten her
     yüklemede otomatik set ediliyor, burada ek bir şey gerekmiyor).
-  - TikTok: tiktok_upload.py yüklerken "AI-generated content" etiketini
-    TikTok uygulamasından elle açman gerektiğini zaten hatırlatıyor (genel,
-    her proje için geçerli bir reminder).
-  - Instagram: Meta'nın resmi 'is_ai_generated' API alanı doğrulanamadığı
-    için (bkz. instagram_upload.py'deki not) caption'ın SONUNA
-    social_text.build_ai_disclosure_line() ile tek, göze az batan bir satır
-    ekleniyor — ana katalogda BU SATIR YOK, sadece DJ Famous'ta.
+  - TikTok / Instagram / Facebook (2026-09-13 kullanıcı kararı): açıklamada
+    hashtag'lerden önce TEK satır config.AI_BEYAN_SATIRLARI — DJ setleri için
+    "Selection & mix: DJ Famous · Music: AI-assisted". Meta'nın resmi
+    'is_ai_generated' API alanı doğrulanamadığı için (bkz. instagram_upload.py)
+    yazılı satır kullanılıyor; satırı social_text.build_caption(meta,
+    ai_beyani=True) ekliyor (eskiden caption SONUNA ayrı bir satır ekleniyordu —
+    ikisi birlikte ÇİFT beyan olurdu). TikTok'ta taslak yayını yayın kitiyle
+    (upload/tiktok_yayin_kiti.py).
 """
 
 import argparse
@@ -702,13 +703,17 @@ def process_set(project_dir: str, privacy: str, schedule: bool) -> None:
     elif os.path.isfile(os.path.join(upload_dir, "instagram_token.json")):
         try:
             from instagram_upload import upload_video as ig_upload
-            from social_text import build_caption, build_ai_disclosure_line, resolve_language
+            from social_text import build_caption
             meta_path = os.path.join(project_dir, "meta.json")
             meta = {}
             if os.path.isfile(meta_path):
                 with open(meta_path, "r", encoding="utf-8") as f:
                     meta = json.load(f)
-            caption = build_caption(meta) + "\n\n" + build_ai_disclosure_line(resolve_language(meta))
+            # AI beyanı TEK satır, hashtag'lerden önce (2026-09-13): eskiden
+            # caption'ın SONUNA build_ai_disclosure_line ile ayrı bir satır
+            # ekleniyordu; Instagram hattı artık beyanı kendisi taşıdığı için aynı
+            # yolu kullanmak ÇİFT beyanı önlüyor. Metin: config.AI_BEYAN_SATIRLARI.
+            caption = build_caption(meta, ai_beyani=True)
             _log_instagram_result(ig_upload(project_dir, caption=caption))
         except Exception as e:
             log(f"  Instagram HATA: {e}")

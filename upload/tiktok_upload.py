@@ -124,7 +124,7 @@ def upload_video(project_dir: str) -> str:
         video_id = existing_state.get("youtube_video_id")
         if video_id:
             youtube_url = f"https://youtu.be/{video_id}"
-    suggested_caption = build_caption(meta)
+    suggested_caption = build_caption(meta, ai_beyani=True)   # AI beyanı açıklamada (config.AI_BEYAN_SATIRLARI)
     suggested_comment = build_youtube_comment(youtube_url, resolve_language(meta), platform="tiktok") if youtube_url else None
     print("  --- TikTok'ta yayınlarken caption olarak yapıştır ---")
     print(f"  {suggested_caption}")
@@ -249,6 +249,12 @@ def upload_video(project_dir: str) -> str:
         existing_state["tiktok_suggested_comment"] = suggested_comment
     if cover_path:
         existing_state["tiktok_cover_hint"] = cover_path
+    # YENİ YÜKLEME = YAYIN KİTİ (2026-09-13): bu taslağın hatırlatması düz metin
+    # DEĞİL, `tiktok_yayin_kiti.py`nin eksiksiz kiti (kapak, açıklama, ayarlar,
+    # ilk yorum, onay satırı). İşaret, `notify_pending_publish`'in AYNI şarkı için
+    # ikinci bir (düz metin) mesaj göndermesini engelliyor. Kit, doğrulama bu
+    # taslakta SEND_TO_USER_INBOX okuyunca ve tempo kapıları izin verince gider.
+    existing_state["tiktok_hatirlatma"] = "kit"
     # ATOMIK yazim (state_io): eskiden hedefin USTUNE dogrudan yaziliyordu.
     # `open(..., "w")` dosyayi once SIFIRLIYOR; `json.dump` bitmeden surec
     # olurse diskte YARIM bir JSON kaliyor ve `uyumluluk._durum()`
@@ -312,6 +318,11 @@ def notify_pending_publish(project_dir: str) -> bool:
     with open(state_path, "r", encoding="utf-8") as f:
         state = json.load(f)
     if not state.get("tiktok_publish_id") or state.get("tiktok_notified"):
+        return False
+    if state.get("tiktok_hatirlatma") == "kit":
+        # Yeni yüklemenin hatırlatması YAYIN KİTİ (bkz. upload_video). Düz metin
+        # burada da giderse aynı şarkı için iki mesaj olur. `tiktok_notified`
+        # yazılmıyor: kit kapıları o alanı KULLANMIYOR, ve bu dal zaten mesaj yok.
         return False
     # SIRA ÖNEMLİ: kanal kontrolü golden-hour kontrolünden ÖNCE.
     # NEDEN: notify_config.json 2026-09-11'e kadar hiç yoktu; bu kontrol sonra

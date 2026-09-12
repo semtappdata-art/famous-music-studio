@@ -51,62 +51,11 @@ def load_meta(project_dir: str) -> dict:
     return {}
 
 
-def _derleme_temalari(meta: dict) -> list:
-    """Derlemedeki her parçanın tema anahtarı (çoklu, seçim sırasıyla).
-
-    Birincil kaynak `meta["derleme_temalari"]` — derleme.py bunu yazıyor.
-    GERİYE DÖNÜK YOL: bu alan eklenmeden ÖNCE üretilmiş derlemelerde (ör. bu
-    değişiklik yazılırken render'da olan "Gece Seansı Vol. 1") alan yok; o
-    durumda temalar `derleme_liste`'deki parça adlarından kaynak projelerin
-    meta.json'ına bakılarak okunuyor. Aksi hâlde tür bilgisi hiç bulunamaz ve
-    derleme, meta'daki tek `theme` alanına (karma bir derlemede yanıltıcı)
-    geri düşerdi. Okuma hatası yutuluyor: eksik tür etiketi yüklemeyi
-    durdurmaya değmez.
-    """
-    temalar = [t for t in (meta.get("derleme_temalari") or []) if t]
-    if temalar:
-        return temalar
-    kok = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for parca in meta.get("derleme_liste") or []:
-        yol = os.path.join(kok, "projects", str(parca.get("ad", "")), "meta.json")
-        try:
-            with open(yol, "r", encoding="utf-8") as f:
-                tema = json.load(f).get("theme")
-        except (OSError, ValueError):
-            continue
-        if tema:
-            temalar.append(tema)
-    return temalar
-
-
-def _derleme_tur_bilgisi(meta: dict) -> tuple:
-    """(başlıkta kullanılacak tür adı, etiket listesi) — derlemedeki parçalardan.
-
-    NEDEN: derlemenin meta.json'ındaki tek `theme` alanı derlemeyi anlatmıyor
-    (eskiden --en-iyi ile tema verilmediği için config.DEFAULT_THEME'e düşüyor
-    ve 13 parçalık karma bir derleme "Türkçe Hip-Hop Şarkısı" diye
-    yayınlanıyordu). Tür artık parçaların temalarından türetiliyor.
-
-    Baskın tema parçaların YARISINDAN fazlasını kapsıyorsa başlıkta o türün adı
-    kullanılıyor; kapsamıyorsa derleme gerçekten KARMA demektir ve "Müzik"
-    deniyor — "Gece Seansı Vol. 1"de en kalabalık tema 13 parçanın 5'i; buna
-    "Hip-Hop derlemesi" demek ilk sürümdeki yanlışın daha yumuşak bir hâli
-    olurdu. Etiketler (tags) yine TÜM temaları içeriyor: orada çoğulluk
-    yanıltıcı değil, arama sinyali.
-    """
-    temalar = _derleme_temalari(meta)
-    sayac = collections.Counter(temalar)
-    etiketler = []
-    for anahtar, _ in sayac.most_common():
-        etiket = config.THEMES.get(anahtar, {}).get("label")
-        if etiket and etiket not in etiketler:
-            etiketler.append(etiket)
-    tur = "Müzik"
-    if sayac:
-        baskin, adet = sayac.most_common(1)[0]
-        if adet * 2 > len(temalar):
-            tur = config.THEMES.get(baskin, {}).get("label") or "Müzik"
-    return tur, etiketler
+# `_derleme_temalari` / `_derleme_tur_bilgisi` 2026-09-13'te `social_text`'e
+# TAŞINDI (TikTok yayın kiti açıklaması da derleme türünü istiyor ve
+# social_text OAuth bağımlılığı çekmemeli). Aynı adlarla içe aktarılıyor:
+# `youtube_playlists` ve testler `from youtube_upload import ...` ile alıyor.
+from social_text import _derleme_temalari, _derleme_tur_bilgisi  # noqa: E402,F401
 
 
 def build_snippet(meta: dict) -> dict:

@@ -1,0 +1,564 @@
+{
+ "not": "build_caption() çıktısı, TikTok kit değişikliğinden ÖNCE (2026-09-13) üretildi. Tek beklenen fark: #RB -> #RnB.",
+ "kayitlar": [
+  {
+   "kaynak": "projects/Beni Bırakma",
+   "meta": {
+    "title": "Beni Bırakma",
+    "theme": "hiphop"
+   },
+   "caption": "Bir dinle, aklından çıkmasın 🎶\n\nBeni Bırakma 🎵\n\nBu sesi edit/kesit videolarında kullanabilirsin 🔥\n\nYeni şarkılar için takipte kalın\n\nYorumda hangi türü bir sonraki duymak istersin? 👇\n\n#FamousMusicStudio #yenişarkı #viral #türkçemüzik #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "projects/Beton Krallığı",
+   "meta": {
+    "title": "Beton Krallığı",
+    "theme": "hiphop",
+    "art_query": "brutalist concrete building night urban skyline cinematic",
+    "custom_hooks": [
+     "Sabah beşte kalkanlar bilir 🌆",
+     "Bu şehir yedi ama büyüttü 🏙️",
+     "Beton duvarlar tanık oldu 🧱"
+    ],
+    "custom_questions": [
+     "Sen hangi saatte kalkıyorsun? 👇",
+     "Bu şehir sana ne öğretti? 💬"
+    ]
+   },
+   "caption": "Sabah beşte kalkanlar bilir 🌆\n\nBeton Krallığı 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\nSen hangi saatte kalkıyorsun? 👇\n\n#FamousMusicStudio #foryou #türkçemüzik #yenişarkı #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "projects/Bir Bahar Daha",
+   "meta": {
+    "title": "Bir Bahar Daha",
+    "theme": "pop",
+    "custom_hooks": [
+     "Bir bahar daha geldi, o yok 🌸",
+     "Artık peşinden koşmuyorum 🚶",
+     "Bu bahar sadece bana ait 🌿"
+    ],
+    "custom_questions": [
+     "Sen ne zaman peşinden koşmayı bıraktın? 💬",
+     "Hangi mevsim sana iyi geliyor? 👇"
+    ]
+   },
+   "caption": "Bu bahar sadece bana ait 🌿\n\nBir Bahar Daha 🎵\n\nİstersen edit'ine ekle, sorun değil 🎬\n\nYeni işler için takip etmeyi unutma\n\nSen ne zaman peşinden koşmayı bıraktın? 💬\n\n#FamousMusicStudio #keşfetteyiz #viral #fyp #Pop #RB #Trap"
+  },
+  {
+   "kaynak": "projects/Bu Gece Kazandık",
+   "meta": {
+    "title": "Bu Gece Kazandık",
+    "theme": "pop",
+    "custom_hooks": [
+     "Uzun kışlardan sonra ilk gülüş 🎉",
+     "Ceketi fırlat, meydan bizim 🥁",
+     "Bu gece hesap kapandı ✨"
+    ],
+    "custom_questions": [
+     "Sen en son ne zaman kazandın? 💬",
+     "Bu şarkı hangi zaferini hatırlattı? 👇"
+    ]
+   },
+   "caption": "Uzun kışlardan sonra ilk gülüş 🎉\n\nBu Gece Kazandık 🎵\n\nBu ses senin videolarında da güzel durur 🔥\n\nDevamı gelecek, takipte kal 🎶\n\nBu şarkı hangi zaferini hatırlattı? 👇\n\n#FamousMusicStudio #yenişarkı #keşfetteyiz #keşfet #Pop #RB #Trap"
+  },
+  {
+   "kaynak": "projects/Gece Sürüşü",
+   "meta": {
+    "title": "Gece Sürüşü",
+    "theme": "pop"
+   },
+   "caption": "Bunu ilk sen keşfet 👀🎶\n\nGece Sürüşü 🎵\n\nKesit yaparsan bu ses tam oturur 🔥\n\nSıradaki parça için takipte kal 🔔\n\nSözler mi ritim mi? Yorumda söyle 💬\n\n#FamousMusicStudio #keşfet #şarkı #fyp #Pop #RB #Trap"
+  },
+  {
+   "kaynak": "projects/Kader Ortakları",
+   "meta": {
+    "title": "Kader Ortakları",
+    "theme": "hiphop",
+    "custom_hooks": [
+     "Cebinde son sigara, ateş yok 🚬",
+     "Aynı mahalle, aynı sızı 🌧️",
+     "Islak asfaltta iki gölge 🌃"
+    ],
+    "custom_questions": [
+     "Kader ortağın kim? Etiketle 👇",
+     "Aynı taşa bastığın biri var mı? 💬"
+    ]
+   },
+   "caption": "Cebinde son sigara, ateş yok 🚬\n\nKader Ortakları 🎵\n\nBu ses senin videolarında da güzel durur 🔥\n\nDevamı gelecek, takipte kal 🎶\n\nAynı taşa bastığın biri var mı? 💬\n\n#FamousMusicStudio #müzik #viral #keşfet #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "projects/Kalbim Oynuyor",
+   "meta": {
+    "title": "Kalbim Oynuyor",
+    "theme": "pop",
+    "custom_hooks": [
+     "Klarnet başlayınca omuzlar oynar 🎺",
+     "Darbuka vursun, kalp atsın 🥁",
+     "Bu gece kimse üzgün değil 💃"
+    ],
+    "custom_questions": [
+     "Bu şarkıda ilk neren oynadı? 👇",
+     "Hangi düğünde çalsın bu? 💬"
+    ]
+   },
+   "caption": "Bu gece kimse üzgün değil 💃\n\nKalbim Oynuyor 🎵\n\nBu sesi edit/kesit videolarında kullanabilirsin 🔥\n\nYeni şarkılar için takipte kalın\n\nBu şarkıda ilk neren oynadı? 👇\n\n#FamousMusicStudio #keşfet #şarkı #fyp #Pop #RB #Trap"
+  },
+  {
+   "kaynak": "projects/Kumdan Denize",
+   "meta": {
+    "title": "Kumdan Denize",
+    "theme": "elektronik",
+    "art_query": "golden desert dunes meeting ocean aerial cinematic",
+    "custom_hooks": [
+     "Motor susar, şehir uyanır 🌙",
+     "Riyad'dan kıyıya uzanan yol 🏜️",
+     "Her virajda yeni bir kapı 🚗"
+    ],
+    "custom_questions": [
+     "Gece sürüşü mü sahil mi? 👇",
+     "Bu şarkı hangi yolculuğu hatırlattı? 💬"
+    ]
+   },
+   "caption": "Her virajda yeni bir kapı 🚗\n\nKumdan Denize 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\nGece sürüşü mü sahil mi? 👇\n\n#FamousMusicStudio #keşfetteyiz #şarkı #türkçemüzik #Elektronik #Synthwave #House"
+  },
+  {
+   "kaynak": "projects/Küllerimden Geç",
+   "meta": {
+    "title": "Küllerimden Geç",
+    "theme": "arabesk",
+    "custom_hooks": [
+     "Küllerin altında hâlâ kor var 🔥",
+     "Düştüm ama bitmedim 🕯️",
+     "Yeniden doğmak da bir seçim 🌅"
+    ],
+    "custom_questions": [
+     "Sen küllerinden kaç kez geçtin? 💬",
+     "Yeniden başlamak zor mu geldi? 👇"
+    ]
+   },
+   "caption": "Yeniden doğmak da bir seçim 🌅\n\nKüllerimden Geç 🎵\n\nEdit'lerinde bu sesi rahatça kullan 🔥\n\nYeni parçalar için takip et 🎵\n\nYeniden başlamak zor mu geldi? 👇\n\n#FamousMusicStudio #keşfetteyiz #viral #fyp #Arabesk #Trap #TürkçeRap"
+  },
+  {
+   "kaynak": "projects/Kırık Zincir",
+   "meta": {
+    "title": "Kırık Zincir",
+    "theme": "rock",
+    "custom_hooks": [
+     "Zincir kırıldı, ses çıkardı ⛓️",
+     "Yıllarca sustum, artık değil 🎸",
+     "Kendi sesimi buldum 🔊"
+    ],
+    "custom_questions": [
+     "Sen hangi zinciri kırdın? 💬",
+     "Kime 'yapamazsın' dedirtmedin? 👇"
+    ]
+   },
+   "caption": "Yıllarca sustum, artık değil 🎸\n\nKırık Zincir 🎵\n\nİstersen edit'ine ekle, sorun değil 🎬\n\nYeni işler için takip etmeyi unutma\n\nSen hangi zinciri kırdın? 💬\n\n#FamousMusicStudio #foryou #keşfetteyiz #türkçemüzik #Rock #Alternative #Punk"
+  },
+  {
+   "kaynak": "projects/Sabah Senin",
+   "meta": {
+    "title": "Sabah Senin",
+    "theme": "rock",
+    "art_query": "empty city street at dawn first light cinematic",
+    "custom_hooks": [
+     "Gece benden, sabah senin 🌙",
+     "Sabahı sana sakladım 🌅",
+     "Üstünü örterim, gece bende kalsın 🎸"
+    ],
+    "custom_questions": [
+     "Senin sabahını kim saklıyor? 💬",
+     "Eve döndüğünde ilk ne yaparsın? 👇"
+    ]
+   },
+   "caption": "Gece benden, sabah senin 🌙\n\nSabah Senin 🎵\n\nKesit yaparsan bu ses tam oturur 🔥\n\nSıradaki parça için takipte kal 🔔\n\nEve döndüğünde ilk ne yaparsın? 👇\n\n#FamousMusicStudio #fyp #keşfet #foryou #Rock #Alternative #Punk"
+  },
+  {
+   "kaynak": "projects/Sabaha Kadar",
+   "meta": {
+    "title": "Sabaha Kadar",
+    "theme": "elektronik",
+    "art_query": "blue hour twilight city skyline dark cinematic",
+    "custom_hooks": [
+     "Şehir uyanmadan biz buradayız 🌃",
+     "Saat kaç kimse bilmiyor ⏰",
+     "Bir şarkı daha, ışıklar sönmeden 🔦"
+    ],
+    "custom_questions": [
+     "Sabahı kiminle ettin? 💬",
+     "Bu şarkı hangi geceyi hatırlattı? 👇"
+    ]
+   },
+   "caption": "Bir şarkı daha, ışıklar sönmeden 🔦\n\nSabaha Kadar 🎵\n\nBu parçayı edit'lerde duymak isterim 🎬\n\nDaha fazlası için takipteyiz 🎵\n\nSabahı kiminle ettin? 💬\n\n#FamousMusicStudio #fyp #yenişarkı #viral #Elektronik #Synthwave #House"
+  },
+  {
+   "kaynak": "projects/Sessiz Mektup",
+   "meta": {
+    "title": "Sessiz Mektup",
+    "theme": "akustik",
+    "art_query": "misty lake quiet dawn soft fog cinematic",
+    "custom_hooks": [
+     "Bir mektup yazdım, göndermedim ✉️",
+     "Eski defterlerde saklısın 📖",
+     "Bazı anılar hiç silinmiyor 🕊️"
+    ],
+    "custom_questions": [
+     "Hiç göndermediğin bir mektup var mı? 💬",
+     "Kimin gülüşünü hâlâ hatırlıyorsun? 👇"
+    ]
+   },
+   "caption": "Eski defterlerde saklısın 📖\n\nSessiz Mektup 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\nHiç göndermediğin bir mektup var mı? 💬\n\n#FamousMusicStudio #viral #müzik #yenişarkı #Akustik #Folk #Indie"
+  },
+  {
+   "kaynak": "projects/Sofraya Gelmedin",
+   "meta": {
+    "title": "Sofraya Gelmedin",
+    "theme": "arabesk",
+    "custom_hooks": [
+     "Masada iki tabak, biri hep boş 🍽️",
+     "Kapıyı çalsan yeter, açarım 🚪",
+     "Baba-oğul, arada yıllar 💔"
+    ],
+    "custom_questions": [
+     "Sen kime 'kapıyı çalsan yeter' derdin? 💬",
+     "Sofranda kimin yeri boş? 👇"
+    ]
+   },
+   "caption": "Baba-oğul, arada yıllar 💔\n\nSofraya Gelmedin 🎵\n\nVideolarında kullanmak istersen buyur 🔥\n\nTakip et, yenileri kaçırma 🎧\n\nSofranda kimin yeri boş? 👇\n\n#FamousMusicStudio #fyp #keşfet #foryou #Arabesk #Trap #TürkçeRap"
+  },
+  {
+   "kaynak": "projects/Sokaklar Beni Tanır",
+   "meta": {
+    "title": "Sokaklar Beni Tanır",
+    "theme": "hiphop",
+    "custom_hooks": [
+     "Neon tabelalar adımı yazar 🌆",
+     "Bir sigara, bir yağmur, bir sen eksik 🌧️",
+     "Şehir söner, ben ayaktayım 🚬"
+    ],
+    "custom_questions": [
+     "Hangi sokak seni tanır? 💬",
+     "Sensiz yabancılaşan bir şehir var mı? 👇"
+    ]
+   },
+   "caption": "Neon tabelalar adımı yazar 🌆\n\nSokaklar Beni Tanır 🎵\n\nKesit yaparsan bu ses tam oturur 🔥\n\nSıradaki parça için takipte kal 🔔\n\nSensiz yabancılaşan bir şehir var mı? 👇\n\n#FamousMusicStudio #şarkı #foryou #viral #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "projects/Son Kez",
+   "meta": {
+    "title": "Son Kez",
+    "theme": "akustik",
+    "custom_hooks": [
+     "Elimde hâlâ o eski anahtar 🔑",
+     "Işık yanmıyordu, biliyordum 🌑",
+     "Sessizce bitmeliydi belki 🍂"
+    ],
+    "custom_questions": [
+     "Hangi anahtarı hâlâ atamadın? 💬",
+     "Sessizce biten bir şey oldu mu? 👇"
+    ]
+   },
+   "caption": "Işık yanmıyordu, biliyordum 🌑\n\nSon Kez 🎵\n\nVideolarında kullanmak istersen buyur 🔥\n\nTakip et, yenileri kaçırma 🎧\n\nSessizce biten bir şey oldu mu? 👇\n\n#FamousMusicStudio #şarkı #yenişarkı #türkçemüzik #Akustik #Folk #Indie"
+  },
+  {
+   "kaynak": "projects/Yeniden Doğacağım",
+   "meta": {
+    "title": "Yeniden Doğacağım",
+    "theme": "arabesk",
+    "custom_hooks": [
+     "Küllerin altında hâlâ kor var 🔥",
+     "Düştüm ama bitmedim 🕯️",
+     "Yeniden doğmak da bir seçim 🌅"
+    ],
+    "custom_questions": [
+     "Sen küllerinden kaç kez geçtin? 💬",
+     "Yeniden başlamak zor mu geldi? 👇"
+    ],
+    "kopya_notu": "'Küllerimden Geç' ile AYNI ses (audio.wav md5 eşit) ve AYNI sözler. BU sürüm KOPYA: uzun format videosunda kapak kartı eksik (YouTube'un videodan aldığı otomatik karelerde kart boş, 2026-09-12'de ölçüldü). Kullanıcı 2026-09-12 akşamı uzun formatı (kZML9g4GdBs) Studio'dan liste dışına aldı; Shorts (Y6eK2nIBXqA) 2026-09-12 22:40'ta API ile unlisted yapıldı (AI beyanı korundu). Asıl kayıt = 'Küllerimden Geç'. Silinmedi."
+   },
+   "caption": "Küllerin altında hâlâ kor var 🔥\n\nYeniden Doğacağım 🎵\n\nBu ses senin videolarında da güzel durur 🔥\n\nDevamı gelecek, takipte kal 🎶\n\nYeniden başlamak zor mu geldi? 👇\n\n#FamousMusicStudio #şarkı #viral #foryou #Arabesk #Trap #TürkçeRap"
+  },
+  {
+   "kaynak": "projects/Yeraltı",
+   "meta": {
+    "title": "Yeraltı",
+    "theme": "hiphop",
+    "custom_hooks": [
+     "Yeraltında ışık az, biz görürüz 🕶️",
+     "Burda kurallar başka ⚡",
+     "Herkes korkar, biz evimizdeyiz 🔦"
+    ],
+    "custom_questions": [
+     "Sana hayatı ne öğretti? 💬",
+     "Kaç kez düşüp kalktın? 👇"
+    ]
+   },
+   "caption": "Yeraltında ışık az, biz görürüz 🕶️\n\nYeraltı 🎵\n\nVideolarında kullanmak istersen buyur 🔥\n\nTakip et, yenileri kaçırma 🎧\n\nKaç kez düşüp kalktın? 👇\n\n#FamousMusicStudio #müzik #yenişarkı #foryou #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "projects/Yükseliş",
+   "meta": {
+    "title": "Yükseliş",
+    "theme": "hiphop"
+   },
+   "caption": "Yeni parça yayında 🎵\n\nYükseliş 🎵\n\nKesit yaparsan bu ses tam oturur 🔥\n\nSıradaki parça için takipte kal 🔔\n\nBu şarkıyı kaç kez tekrar dinlersin? Yorumda söyle 🔁\n\n#FamousMusicStudio #müzik #viral #keşfet #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "projects/Yürek Yarası",
+   "meta": {
+    "title": "Yürek Yarası",
+    "theme": "arabesk",
+    "custom_hooks": [
+     "Bir yara açtın, kapanmadı 💔",
+     "Her geçen arabada gölgeni ararım 🚗",
+     "Kalbim hep aynı yerde takılı 🎶"
+    ],
+    "custom_questions": [
+     "Hangi yara hâlâ kapanmadı? 💬",
+     "Sesi kalan biri var mı? 👇"
+    ]
+   },
+   "caption": "Bir yara açtın, kapanmadı 💔\n\nYürek Yarası 🎵\n\nBu ses senin videolarında da güzel durur 🔥\n\nDevamı gelecek, takipte kal 🎶\n\nSesi kalan biri var mı? 👇\n\n#FamousMusicStudio #türkçemüzik #keşfetteyiz #foryou #Arabesk #Trap #TürkçeRap"
+  },
+  {
+   "kaynak": "dj_sets/City Pulse Set",
+   "meta": {
+    "title": "City Pulse Set",
+    "theme": "dj",
+    "marquee_text": "DJ Famous  •  City Pulse Set  •  #DJFamous"
+   },
+   "caption": "Tonight's track just landed 🌙\n\nCity Pulse Set 🎵\n\nUse this sound in your edits, it's free 🔥\n\nFollow for new drops 🎵\n\nWhich style suits it best? 🎧\n\n#FamousMusicStudio #music #fyp #musicdiscovery #DJSet #Mix #LiveSet"
+  },
+  {
+   "kaynak": "dj_sets/Just Relax",
+   "meta": {
+    "title": "Just Relax",
+    "theme": "dj",
+    "marquee_text": "DJ Famous  •  Just Relax (Midnight Deep House Mix)  •  #DJFamous",
+    "art_query": "woman silhouette smoke midnight moody lounge window city lights",
+    "set_style": "deep_house"
+   },
+   "caption": "New track out now 🎵\n\nJust Relax 🎵\n\nUse it in your videos if you like 🔥\n\nFollow so you don't miss a drop 🎧\n\nHow many times will you replay this one? Tell us 🔁\n\n#FamousMusicStudio #newmusic #indiemusic #viral #DJSet #Mix #LiveSet #DeepHouse #MelodicHouse #ChilloutMix #LoungeMusic"
+  },
+  {
+   "kaynak": "dj_sets/Night Drive",
+   "meta": {
+    "title": "Night Drive",
+    "theme": "dj",
+    "set_style": "techno_chill",
+    "marquee_text": "DJ Famous  •  Night Drive (Melodic Techno Mix)  •  #DJFamous",
+    "art_query": "car dashboard night highway rain neon reflection"
+   },
+   "caption": "Scroll past and you'll come back 👀\n\nNight Drive 🎵\n\nThis sound fits your clips perfectly 🔥\n\nFollow for the next track 🔔\n\nWhat does this track remind you of? Tell us in the comments 💬\n\n#FamousMusicStudio #musicdiscovery #fyp #music #DJSet #Mix #LiveSet #MelodicTechno #ChillTechno #FocusMusic #NightDrive"
+  },
+  {
+   "kaynak": "derlemeler/Gece Seansı Vol. 1",
+   "meta": {
+    "title": "Gece Seansı Vol. 1",
+    "theme": "hiphop",
+    "derleme": true,
+    "derleme_liste": [
+     {
+      "sira": 1,
+      "ad": "Beni Bırakma",
+      "zaman": "0:00"
+     },
+     {
+      "sira": 2,
+      "ad": "Sofraya Gelmedin",
+      "zaman": "3:23"
+     },
+     {
+      "sira": 3,
+      "ad": "Kalbim Oynuyor",
+      "zaman": "5:12"
+     },
+     {
+      "sira": 4,
+      "ad": "Kader Ortakları",
+      "zaman": "8:36"
+     },
+     {
+      "sira": 5,
+      "ad": "Beton Krallığı",
+      "zaman": "11:20"
+     },
+     {
+      "sira": 6,
+      "ad": "Sabaha Kadar",
+      "zaman": "13:33"
+     },
+     {
+      "sira": 7,
+      "ad": "Yeraltı",
+      "zaman": "16:44"
+     },
+     {
+      "sira": 8,
+      "ad": "Yeniden Doğacağım",
+      "zaman": "19:13"
+     },
+     {
+      "sira": 9,
+      "ad": "Sokaklar Beni Tanır",
+      "zaman": "22:46"
+     },
+     {
+      "sira": 10,
+      "ad": "Gece Sürüşü",
+      "zaman": "25:05"
+     },
+     {
+      "sira": 11,
+      "ad": "Sessiz Mektup",
+      "zaman": "29:00"
+     },
+     {
+      "sira": 12,
+      "ad": "Son Kez",
+      "zaman": "32:15"
+     },
+     {
+      "sira": 13,
+      "ad": "Yürek Yarası",
+      "zaman": "35:47"
+     }
+    ],
+    "marquee_text": "Gece Seansı Vol. 1  •  Famous Music Studio",
+    "art_query": "night city skyline lights long exposure",
+    "derleme_notu": "Bu 13 parça kanalın kendi üretimi; sıralama izlenme sayısına göre değil, ENERJİ EĞRİSİNE göre kuruldu: sakin bir açılış, yükselen orta bölüm, Gece Sürüşü ile tepe, ve en sakin parçayla iniş. Parçalar arasında 6 saniyelik gerçek geçişler var — tek tek dinlemekten farklı, kesintisiz bir akış olarak tasarlandı."
+   },
+   "caption": "Bu şarkı gece dinlenir 🌃\n\nGece Seansı Vol. 1 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\nBunu kime dinletirsin, etiketle 👇\n\n#FamousMusicStudio #yenişarkı #keşfetteyiz #keşfet #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "sentetik:pop",
+   "meta": {
+    "title": "Örnek Şarkı",
+    "theme": "pop"
+   },
+   "caption": "Bu şarkı gece dinlenir 🌃\n\nÖrnek Şarkı 🎵\n\nBu parçayı edit'lerde duymak isterim 🎬\n\nDaha fazlası için takipteyiz 🎵\n\nBunu kime dinletirsin, etiketle 👇\n\n#FamousMusicStudio #türkçemüzik #yenişarkı #şarkı #Pop #RB #Trap"
+  },
+  {
+   "kaynak": "sentetik:pop",
+   "meta": {
+    "title": "Gece Yarısı R&B",
+    "theme": "pop"
+   },
+   "caption": "Bu ritim seni yakalar 🔥\n\nGece Yarısı R&B 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\n1'den 10'a kadar puanla 👇\n\n#FamousMusicStudio #türkçemüzik #müzik #fyp #Pop #RB #Trap"
+  },
+  {
+   "kaynak": "sentetik:rock",
+   "meta": {
+    "title": "Örnek Şarkı",
+    "theme": "rock"
+   },
+   "caption": "Bu şarkı gece dinlenir 🌃\n\nÖrnek Şarkı 🎵\n\nBu parçayı edit'lerde duymak isterim 🎬\n\nDaha fazlası için takipteyiz 🎵\n\nBunu kime dinletirsin, etiketle 👇\n\n#FamousMusicStudio #türkçemüzik #yenişarkı #şarkı #Rock #Alternative #Punk"
+  },
+  {
+   "kaynak": "sentetik:rock",
+   "meta": {
+    "title": "Gece Yarısı R&B",
+    "theme": "rock"
+   },
+   "caption": "Bu ritim seni yakalar 🔥\n\nGece Yarısı R&B 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\n1'den 10'a kadar puanla 👇\n\n#FamousMusicStudio #türkçemüzik #müzik #fyp #Rock #Alternative #Punk"
+  },
+  {
+   "kaynak": "sentetik:elektronik",
+   "meta": {
+    "title": "Örnek Şarkı",
+    "theme": "elektronik"
+   },
+   "caption": "Bu şarkı gece dinlenir 🌃\n\nÖrnek Şarkı 🎵\n\nBu parçayı edit'lerde duymak isterim 🎬\n\nDaha fazlası için takipteyiz 🎵\n\nBunu kime dinletirsin, etiketle 👇\n\n#FamousMusicStudio #türkçemüzik #yenişarkı #şarkı #Elektronik #Synthwave #House"
+  },
+  {
+   "kaynak": "sentetik:elektronik",
+   "meta": {
+    "title": "Gece Yarısı R&B",
+    "theme": "elektronik"
+   },
+   "caption": "Bu ritim seni yakalar 🔥\n\nGece Yarısı R&B 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\n1'den 10'a kadar puanla 👇\n\n#FamousMusicStudio #türkçemüzik #müzik #fyp #Elektronik #Synthwave #House"
+  },
+  {
+   "kaynak": "sentetik:akustik",
+   "meta": {
+    "title": "Örnek Şarkı",
+    "theme": "akustik"
+   },
+   "caption": "Bu şarkı gece dinlenir 🌃\n\nÖrnek Şarkı 🎵\n\nBu parçayı edit'lerde duymak isterim 🎬\n\nDaha fazlası için takipteyiz 🎵\n\nBunu kime dinletirsin, etiketle 👇\n\n#FamousMusicStudio #türkçemüzik #yenişarkı #şarkı #Akustik #Folk #Indie"
+  },
+  {
+   "kaynak": "sentetik:akustik",
+   "meta": {
+    "title": "Gece Yarısı R&B",
+    "theme": "akustik"
+   },
+   "caption": "Bu ritim seni yakalar 🔥\n\nGece Yarısı R&B 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\n1'den 10'a kadar puanla 👇\n\n#FamousMusicStudio #türkçemüzik #müzik #fyp #Akustik #Folk #Indie"
+  },
+  {
+   "kaynak": "sentetik:hiphop",
+   "meta": {
+    "title": "Örnek Şarkı",
+    "theme": "hiphop"
+   },
+   "caption": "Bu şarkı gece dinlenir 🌃\n\nÖrnek Şarkı 🎵\n\nBu parçayı edit'lerde duymak isterim 🎬\n\nDaha fazlası için takipteyiz 🎵\n\nBunu kime dinletirsin, etiketle 👇\n\n#FamousMusicStudio #türkçemüzik #yenişarkı #şarkı #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "sentetik:hiphop",
+   "meta": {
+    "title": "Gece Yarısı R&B",
+    "theme": "hiphop"
+   },
+   "caption": "Bu ritim seni yakalar 🔥\n\nGece Yarısı R&B 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\n1'den 10'a kadar puanla 👇\n\n#FamousMusicStudio #türkçemüzik #müzik #fyp #HipHop #Trap #Rap"
+  },
+  {
+   "kaynak": "sentetik:arabesk",
+   "meta": {
+    "title": "Örnek Şarkı",
+    "theme": "arabesk"
+   },
+   "caption": "Bu şarkı gece dinlenir 🌃\n\nÖrnek Şarkı 🎵\n\nBu parçayı edit'lerde duymak isterim 🎬\n\nDaha fazlası için takipteyiz 🎵\n\nBunu kime dinletirsin, etiketle 👇\n\n#FamousMusicStudio #türkçemüzik #yenişarkı #şarkı #Arabesk #Trap #TürkçeRap"
+  },
+  {
+   "kaynak": "sentetik:arabesk",
+   "meta": {
+    "title": "Gece Yarısı R&B",
+    "theme": "arabesk"
+   },
+   "caption": "Bu ritim seni yakalar 🔥\n\nGece Yarısı R&B 🎵\n\nKesitlerinde kullanmak serbest 🎬\n\nHer hafta yeni şarkı — takipte kal\n\n1'den 10'a kadar puanla 👇\n\n#FamousMusicStudio #türkçemüzik #müzik #fyp #Arabesk #Trap #TürkçeRap"
+  },
+  {
+   "kaynak": "sentetik:dj",
+   "meta": {
+    "title": "Örnek Şarkı",
+    "theme": "dj"
+   },
+   "caption": "This one's for late nights 🌃\n\nÖrnek Şarkı 🎵\n\nI'd love to hear this in your edits 🎬\n\nMore where this came from 🎵\n\nWho needs to hear this? Tag them 👇\n\n#FamousMusicStudio #musicdiscovery #newsong #newmusic #DJSet #Mix #LiveSet"
+  },
+  {
+   "kaynak": "sentetik:dj",
+   "meta": {
+    "title": "Gece Yarısı R&B",
+    "theme": "dj"
+   },
+   "caption": "This rhythm catches you 🔥\n\nGece Yarısı R&B 🎵\n\nClip it, edit it, it's yours 🎬\n\nNew music every week — follow along\n\nRate it from 1 to 10 👇\n\n#FamousMusicStudio #musicdiscovery #music #fyp #DJSet #Mix #LiveSet"
+  },
+  {
+   "kaynak": "sentetik:set:deep_house",
+   "meta": {
+    "title": "Sample Set",
+    "theme": "dj",
+    "set_style": "deep_house"
+   },
+   "caption": "Ten seconds in and you'll know 🎧\n\nSample Set 🎵\n\nUse this sound in your edits, it's free 🔥\n\nFollow for new drops 🎵\n\nAdding this to your playlist? 📲\n\n#FamousMusicStudio #musicdiscovery #newmusic #foryoupage #DJSet #Mix #LiveSet #DeepHouse #MelodicHouse #ChilloutMix #LoungeMusic"
+  },
+  {
+   "kaynak": "sentetik:set:techno_chill",
+   "meta": {
+    "title": "Sample Set",
+    "theme": "dj",
+    "set_style": "techno_chill"
+   },
+   "caption": "Ten seconds in and you'll know 🎧\n\nSample Set 🎵\n\nUse this sound in your edits, it's free 🔥\n\nFollow for new drops 🎵\n\nAdding this to your playlist? 📲\n\n#FamousMusicStudio #musicdiscovery #newmusic #foryoupage #DJSet #Mix #LiveSet #MelodicTechno #ChillTechno #FocusMusic #NightDrive"
+  }
+ ]
+}

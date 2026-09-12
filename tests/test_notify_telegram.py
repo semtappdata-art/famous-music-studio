@@ -495,3 +495,128 @@ def test_ag_hatasinda_token_LOGA_DUSMUYOR(monkeypatch, tmp_path):
     assert SAHTE_TOKEN not in metin
     assert "gizli-token" in metin
     assert "Gecici olabilir" in metin
+
+
+# --------------------------------------------------------------------------
+# (h) send_photo / send_text — TikTok yayın kiti (2026-09-13)
+#
+# Kapak fotoğrafı ve kopyalamaya hazır metinler YALNIZ Telegram'dan gider:
+# ntfy fotoğraf taşımaz ve "yayınladım <ad>" yanıtını okuyan Hermes Telegram'da.
+# Aynı yayın kanalı kapısı; token maskeli; getUpdates yok.
+# --------------------------------------------------------------------------
+
+def _foto_post(kayit, yanit=None):
+    def _post(url, data=None, files=None, headers=None, timeout=None, **kw):
+        url.encode("ascii")
+        for ad, deger in (headers or {}).items():
+            ad.encode("latin-1")
+            str(deger).encode("latin-1")
+        kayit.append({"url": url, "data": data, "files": files, "timeout": timeout})
+        return yanit if yanit is not None else _SahteYanit(200)
+    return _post
+
+
+def _foto(tmp_path, bayt=2048):
+    yol = tmp_path / "cover_vertical.png"
+    yol.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * bayt)
+    return str(yol)
+
+
+def test_send_photo_telegrama_sendphoto_ile_gidiyor(monkeypatch, tmp_path):
+    _kur(monkeypatch, tmp_path,
+         config={"telegram_chat_id": OPERATOR_CHAT},
+         sirlar={"bot_token": SAHTE_TOKEN, "chat_id": YAYIN_CHAT})
+    kayit = []
+    monkeypatch.setattr(notify.requests, "post", _foto_post(kayit))
+    assert notify.send_photo(_foto(tmp_path), "Kırık Zincir (T1A2B)") is True
+    assert len(kayit) == 1
+    assert kayit[0]["url"].endswith("/sendPhoto")
+    assert kayit[0]["data"]["chat_id"] == OPERATOR_CHAT
+    assert kayit[0]["data"]["caption"] == "Kırık Zincir (T1A2B)"
+    assert "parse_mode" not in kayit[0]["data"]
+    assert "photo" in kayit[0]["files"]
+    assert kayit[0]["timeout"] is not None
+
+
+def test_send_photo_yayin_kanalina_GONDERMIYOR(monkeypatch, tmp_path):
+    _kur(monkeypatch, tmp_path,
+         config={"telegram_chat_id": YAYIN_CHAT},
+         sirlar={"bot_token": SAHTE_TOKEN, "chat_id": YAYIN_CHAT})
+    log_path = _sahte_main_log(monkeypatch, tmp_path)
+    # requests.post autouse fixture'da YASAK — çağrılırsa test patlar.
+    assert notify.send_photo(_foto(tmp_path), "x") is False
+    assert any("yayin chat id" in s for s in _satirlar(log_path))
+
+
+def test_send_photo_ntfyye_DUSMUYOR(monkeypatch, tmp_path):
+    _kur(monkeypatch, tmp_path, config={"ntfy_topic": "fms-test"}, sirlar=None)
+    _sahte_main_log(monkeypatch, tmp_path)
+    assert notify.send_photo(_foto(tmp_path), "x") is False
+
+
+def test_send_photo_ag_hatasinda_token_LOGA_DUSMUYOR(monkeypatch, tmp_path):
+    _kur(monkeypatch, tmp_path,
+         config={"telegram_chat_id": OPERATOR_CHAT},
+         sirlar={"bot_token": SAHTE_TOKEN, "chat_id": YAYIN_CHAT})
+    log_path = _sahte_main_log(monkeypatch, tmp_path)
+
+    def _patlayan(*a, **k):
+        raise OSError("Max retries exceeded with url: /bot%s/sendPhoto" % SAHTE_TOKEN)
+
+    monkeypatch.setattr(notify.requests, "post", _patlayan)
+    assert notify.send_photo(_foto(tmp_path), "x") is False
+    metin = io.open(log_path, encoding="utf-8").read()
+    assert SAHTE_TOKEN not in metin and "gizli-token" in metin
+
+
+def test_send_photo_aciklama_1024_karakterde_kirpiliyor(monkeypatch, tmp_path):
+    _kur(monkeypatch, tmp_path,
+         config={"telegram_chat_id": OPERATOR_CHAT},
+         sirlar={"bot_token": SAHTE_TOKEN, "chat_id": YAYIN_CHAT})
+    kayit = []
+    monkeypatch.setattr(notify.requests, "post", _foto_post(kayit))
+    assert notify.send_photo(_foto(tmp_path), "ş" * 1500) is True
+    giden = kayit[0]["data"]["caption"]
+    assert len(giden) <= 1024 and giden.endswith("…")
+
+
+def test_send_photo_10_mb_ustu_istek_atmiyor(monkeypatch, tmp_path):
+    _kur(monkeypatch, tmp_path,
+         config={"telegram_chat_id": OPERATOR_CHAT},
+         sirlar={"bot_token": SAHTE_TOKEN, "chat_id": YAYIN_CHAT})
+    log_path = _sahte_main_log(monkeypatch, tmp_path)
+    buyuk = tmp_path / "buyuk.png"
+    with open(buyuk, "wb") as f:
+        f.seek(10 * 1024 * 1024)
+        f.write(b"0")
+    # requests.post autouse fixture'da YASAK.
+    assert notify.send_photo(str(buyuk), "x") is False
+    assert any("10 MB" in s for s in _satirlar(log_path))
+    assert notify.send_photo(str(tmp_path / "yok.png"), "x") is False
+
+
+def test_send_photo_ve_send_text_imzasi():
+    import inspect
+    assert list(inspect.signature(notify.send_photo).parameters) == ["path", "caption"]
+    assert list(inspect.signature(notify.send_text).parameters) == ["message"]
+
+
+def test_send_text_basliksiz_telegram_ntfyye_dusmuyor(monkeypatch, tmp_path):
+    _kur(monkeypatch, tmp_path,
+         config={"telegram_chat_id": OPERATOR_CHAT, "ntfy_topic": "fms-test"},
+         sirlar={"bot_token": SAHTE_TOKEN, "chat_id": YAYIN_CHAT})
+    kayit = []
+    monkeypatch.setattr(notify.requests, "post", _latin1_kati_post(kayit))
+    aciklama = "Kırık Zincir — Türkçe Rock 🎵\n\n#FamousMusicStudio #KırıkZincir"
+    assert notify.send_text(aciklama) is True
+    govde = json.loads(kayit[0]["data"].decode("utf-8"))
+    assert govde["text"] == aciklama, "başka karakter yok: kopyalamaya hazır"
+    assert "parse_mode" not in govde
+    assert kayit[0]["url"].endswith("/sendMessage")
+
+    notify._uyarilanlar.clear()
+    _kur(monkeypatch, tmp_path, config={"ntfy_topic": "fms-test"}, sirlar=None)
+    _sahte_main_log(monkeypatch, tmp_path)
+    monkeypatch.setattr(notify.requests, "post", _latin1_kati_post(kayit))
+    assert notify.send_text("x") is False
+    assert len(kayit) == 1, "ntfy'ye düşülmedi"

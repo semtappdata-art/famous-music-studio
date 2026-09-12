@@ -261,10 +261,9 @@ SOCIAL_HANDLES = {
 # içerikte (caption, YouTube tag, video içi kayan yazı) bu ibareler kullanılmasın.
 # AI-üretimi olduğunun ZORUNLU bildirimi (platform politikası gereği) bundan AYRI
 # ve hâlâ yerinde: YouTube'da containsSyntheticMedia API bayrağı
-# (youtube_upload.py), TikTok'ta uygulama içi "AI-generated content" etiketi
-# hatırlatması (tiktok_upload.py), Instagram'da caption'a eklenen tek satır
-# (social_text.build_ai_disclosure_line, sadece DJ Famous'ta) — bunlar hashtag/
-# marka etiketi değil, gerçek zorunlu bildirim mekanizmaları, dokunulmadı.
+# (youtube_upload.py); TikTok kit / Instagram / Facebook açıklamasında hashtag'lerden
+# önce tek satır AI_BEYAN_SATIRLARI (2026-09-13 kullanıcı kararı, bkz. dosya sonu) —
+# bunlar hashtag/marka etiketi değil, gerçek zorunlu bildirim mekanizmaları.
 BRAND_HASHTAGS = ["#FamousMusicStudio"]
 
 # Keşfet/For You dağıtımını hedefleyen genel hashtag'ler — marka hashtag'lerinden
@@ -286,9 +285,8 @@ DISCOVERY_HASHTAG_COUNT = 3
 # NOT: burada BİLİNÇLİ olarak "yapay zeka/AI ile yapıldı" gibi görünür bir vurgu YOK
 # (kullanıcı kararı, 2026-09-05) — bu içerik hook/etkileşim amaçlı, ZORUNLU bir
 # bildirim değil; zorunlu AI-üretimi bildirimi bundan tamamen ayrı ve hâlâ yerinde
-# (YouTube containsSyntheticMedia bayrağı, TikTok uygulama-içi etiket hatırlatması,
-# Instagram'da SADECE DJ Famous için build_ai_disclosure_line — hiçbiri buradaki
-# hook/soru metinlerine bağlı değil, dokunulmadı).
+# (YouTube containsSyntheticMedia bayrağı; TikTok kit/Instagram/Facebook açıklamasında
+# AI_BEYAN_SATIRLARI satırı — hiçbiri buradaki hook/soru metinlerine bağlı değil).
 HOOK_LINES = [
     "Bunu ilk sen keşfet 👀🎶",
     "Kulaklığı tak, bu şarkı tam sana göre 🎧",
@@ -615,3 +613,130 @@ def next_golden_publish_time(now: datetime | None = None) -> datetime | None:
             if candidate > now:
                 candidates.append(candidate)
     return min(candidates)
+
+
+# --- TikTok YAYIN KİTİ (upload/tiktok_yayin_kiti.py, 2026-09-13) ---
+# Taslak (inbox) akışında API açıklama/gizlilik/AI etiketi/duet-stitch ALAMIYOR
+# (hepsi Direct Post'a özgü); kullanıcı taslağı TikTok uygulamasından ELLE
+# yayınlıyor. Kit bunun eksiksiz kontrol listesini Telegram'dan gönderiyor.
+# Eşikler YALNIZ burada — kit modülü bunları çağrı anında okuyor, kopyalamıyor.
+#
+# TEMPO: bekleyen taslakların çoğu zaten yayında olabilir ve kanalın en büyük
+# riski "toplu üretilmiş AI içerik" politikası; kit, önceki kit ONAYLANMADAN
+# (tiktok_published_at) yenisini zaten göndermiyor, bu tavanlar onun üstünde.
+# ANA ŞALTER: False iken kit sırası HİÇBİR ŞEY göndermez ve state'e yazmaz, yalnız
+# koşu başına tek log satırı ("kit kapalı (config)"). Canlıda KAPALI başlıyor
+# (koordinatör kararı 2026-09-13): tam test takımı yeşil ve commit atıldıktan sonra
+# elle açılacak. Kod canlı checkout'tan saatlik koşuyla çalıştığı için, inceleme
+# bitmeden gerçek Telegram mesajı gitmesin diye. İKİ KAPI okuyor (tek sabit):
+# auto_process._tiktok_kit_sirasi() modülü hiç çağırmaz; kit_gonder_sirasi() da
+# ayrıca kontrol eder (modül başka yoldan çağrılırsa diye).
+TIKTOK_KIT_AKTIF = False
+TIKTOK_KIT_GUNLUK_TAVAN = 1        # TR takvim günü başına en fazla kit
+TIKTOK_KIT_HAFTALIK_TAVAN = 4      # son 7 gün (kayan) içinde en fazla kit
+TIKTOK_KIT_ARALIK_SAAT = 36        # iki kit arası en az (saat)
+TIKTOK_KIT_HATIRLATMA_SAAT = 48    # onaysız kit için TEK hatırlatma eşiği (saat)
+# Kit yalnız API durumu SEND_TO_USER_INBOX olan taslağa gidiyor; okuma bayatsa
+# (kullanıcı bu arada yayınlamış olabilir) gitmiyor. Doğrulama günde bir ve koşu
+# başına 10 taslak sorguluyor (en eski önce) — ~17 taslakta her biri ~2 günde
+# bir tazeleniyor; 72 saat bu döngüye bir gün pay bırakıyor.
+TIKTOK_KIT_DURUM_TAZELIK_SAAT = 72
+
+# TikTok'ta AI BEYANI NEREDE:
+#   "etiket"          = uygulamadaki "Yapay zekayla üretilen içerik" anahtarı AÇIK
+#                       (kitin ayar listesinde),
+#   "aciklama"        = açıklamada AI_BEYAN_SATIRLARI satırı; anahtar KAPALI,
+#   "etiket+aciklama" = ikisi birden.
+# VARSAYILAN "aciklama" — kullanıcı kararı 2026-09-13: TikTok kuralları açıklamada
+# yazılı beyanı kabul ediyor (https://www.tiktok.com/community-guidelines/en/integrity-authenticity).
+# Tanınmayan değer fail-closed: ikisi birden (kit uyarısıyla). "Beyan yok" modu
+# BİLEREK YOK.
+TIKTOK_AI_BEYANI = "aciklama"
+
+# ZORUNLU AI BEYAN SATIRI — açıklama metnine giden TEK kaynak (kullanıcı kararı
+# 2026-09-13). Bu bir HASHTAG ya da hook DEĞİL: yukarıdaki "AI-vurgulu ibare yok"
+# kuralının (BRAND_HASHTAGS / HOOK_LINES üstündeki notlar) istisnası olan ZORUNLU
+# beyan kategorisinde; YouTube'daki containsSyntheticMedia bayrağının yazılı eşi.
+# NEREDE: TikTok kit açıklaması + Instagram + Facebook açıklaması, hashtag
+# bloğundan HEMEN ÖNCE ayrı satır (social_text.build_caption(meta, ai_beyani=True),
+# build_tiktok_kit_caption). YouTube açıklamasına EKLENMEZ (bayrak var), Telegram ve
+# Bluesky DEĞİŞMEZ (beyan kuralı yok). Kaynaklar:
+#   https://www.tiktok.com/community-guidelines/en/integrity-authenticity
+#   https://transparency.meta.com/policies/community-standards/manipulated-media/
+#   https://support.google.com/youtube/answer/14328491
+# KURALLAR: söz kısmı ÖNCE; ifade "AI destekli" ("yapay zeka" DEĞİL); kamuya açık
+# HİÇBİR metinde üretim aracının adı geçmez (kullanıcı kararı). Seçim
+# social_text.ai_beyan_turu(): DJ seti -> "dj", derleme -> "vokalli", şarkıda
+# vokalsiz YALNIZ kanıtla (gerekçe orada); belirsizse "vokalli". Dil
+# social_text.resolve_language() ("en" -> İngilizce, diğer her şey Türkçe).
+AI_BEYAN_SATIRLARI = {
+    "tr": {
+        "vokalli": "Söz: Famous Music Studio · Müzik ve vokal: AI destekli",
+        "vokalsiz": "Müzik: AI destekli · Famous Music Studio",
+        "dj": "Seçki ve miks: DJ Famous · Müzik: AI destekli",
+    },
+    "en": {
+        "vokalli": "Lyrics: Famous Music Studio · Music & vocals: AI-assisted",
+        "vokalsiz": "Music: AI-assisted · Famous Music Studio",
+        "dj": "Selection & mix: DJ Famous · Music: AI-assisted",
+    },
+}
+
+# Kit açıklamasındaki toplam hashtag hedefi (tekrar elenirse 5'e düşebilir).
+TIKTOK_KIT_ETIKET_SAYISI = 6
+
+# Tema bazlı TÜRKÇE keşif etiketleri — YALNIZ TikTok kit açıklaması (diğer
+# platformlar DISCOVERY_HASHTAGS ile aynen kalıyor, arşiv tutarlılığı).
+# #fyp / #foryou / #viral YOK: TikTok Creator Academy "loosely related
+# keywords/hashtags can work against you" diyor. #keşfet en fazla BİR kez (kod
+# da ayrıca en fazla bir #keşfet* seçiyor). AI vurgulu etiket YOK (bkz.
+# BRAND_HASHTAGS üstündeki kullanıcı kuralı).
+TEMA_KESIF_ETIKETLERI = {
+    "pop": ["#türkçepop", "#popmüzik", "#yenişarkı", "#türkçemüzik", "#şarkı", "#keşfet"],
+    "rock": ["#türkçerock", "#rockmüzik", "#alternatifrock", "#yenişarkı", "#türkçemüzik", "#keşfet"],
+    "elektronik": ["#elektronikmüzik", "#türkçeelektronik", "#synthwave", "#yenişarkı", "#türkçemüzik", "#keşfet"],
+    "akustik": ["#akustikmüzik", "#türkçeakustik", "#folk", "#yenişarkı", "#türkçemüzik", "#keşfet"],
+    "hiphop": ["#türkçerap", "#türkçehiphop", "#rap", "#yenişarkı", "#türkçemüzik", "#keşfet"],
+    "arabesk": ["#arabeskrap", "#türkçerap", "#duygusalşarkılar", "#yenişarkı", "#türkçemüzik", "#keşfet"],
+    "derleme": ["#türkçemüzik", "#şarkılar", "#playlist", "#keşfet"],
+    "_varsayilan": ["#türkçemüzik", "#yenişarkı", "#şarkı", "#keşfet"],
+}
+
+# DJ setleri İNGİLİZCE (tema dili "en"): önce SET_STILLERI etiketleri, sonra bu havuz.
+TIKTOK_SET_ETIKETLERI_EN = ["#DJMix", "#LiveSet", "#ElectronicMusic", "#HouseMusic", "#MixSet"]
+
+# Set ve derleme ŞARKI hook'u ALMIYOR: "New track out now" / "Bu şarkıyı
+# bitirmeden geçme" bir sete ya da 13 parçalık bir derlemeye yanlış. Ayrı havuzlar.
+TIKTOK_SET_HOOKS_EN = [
+    "Press play and let the set take over 🎧",
+    "One mix, zero skips 🎧",
+    "Set the mood for the night 🌙",
+    "Headphones on, the mix does the rest 🎧",
+    "A full set, one continuous flow 🔁",
+    "Late-night mix, no interruptions 🌃",
+    "Stay for the drop, then stay for the rest 🔊",
+    "Your next hour, sorted 🎶",
+]
+TIKTOK_SET_SORULARI_EN = [
+    "Where would you play this mix? 👇",
+    "Which moment of the set hit hardest? 💬",
+    "Deep house or techno next? 👇",
+    "Studying, driving or late night — when is this for? 🌙",
+    "Rate the mix from 1 to 10 👇",
+    "Longer set next time? 💬",
+]
+TIKTOK_DERLEME_HOOKS = [
+    "Tek tek arama, hepsi bir arada 🎧",
+    "Uzun bir gece için hazır liste 🌙",
+    "Sıradaki şarkıyı seçme, akış hazır 🔁",
+    "Bir oturuşta baştan sona dinlenir 🎧",
+    "Kulaklığı tak, liste kendiliğinden aksın 🎶",
+    "Gece boyu çalacak bir seçki 🌃",
+]
+TIKTOK_DERLEME_SORULARI = [
+    "Listede en sevdiğin hangisi? 👇",
+    "Hangi parçayla başlamalıydı? 💬",
+    "Bir sonraki derlemeye hangi şarkı girsin? 👇",
+    "Bu listeyi hangi saatte açarsın? 🌙",
+    "Sıralamayı sen yapsan ilk hangisi olurdu? 💬",
+]

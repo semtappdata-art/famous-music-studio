@@ -20,10 +20,15 @@ RESMÎ DOKÜMAN (developers.tiktok.com, "Get Post Status", 2026-09-13 okundu):
 KARARLAR:
   * EŞLEŞTİRME publish_id ile — başlıkla DEĞİL (TikTok başlıkları içerikle
     uyuşmuyor, 2026-09-12 ölçüldü).
-  * İŞARET YALNIZ `PUBLISH_COMPLETE` + DOLU post id'de. `PUBLISH_COMPLETE` tek
-    başına işaret DEĞİL: "Sadece ben" gönderisi ya da moderasyondaki gönderi de
-    aynı durumu verir, post id vermez. O zaman yalnız durum yazılır, karar
-    kullanıcı onayına kalır.
+  * İŞARET `PUBLISH_COMPLETE` TEK BAŞINA (KARAR DEĞİŞTİ, 2026-09-13). Eski
+    kural "PUBLISH_COMPLETE + dolu post id" idi; gerekçesi "Sadece ben"/moderasyon
+    gönderisinin post id vermemesiydi. ÖLÇÜM bunu boşa çıkardı: kullanıcının
+    yayınladığı `Gece Sürüşü` PUBLISH_COMPLETE döndü ve post id alanı yanıtta
+    HİÇ yoktu — eski kural bu hesapta hiç tetiklenmezdi. İşaretin amacı İKİNCİ
+    PAYLAŞIMI ÖNLEMEK; "Sadece ben" yapılmış bir yayın da taslağı tüketir.
+    Görünürlük bilinmediği için kaynak metni bunu açıkça söyler ("görünürlük
+    bilinmiyor"). Post id gelirse `tiktok_post_ids` yine yazılır. Bu işaret
+    TikTok yayın kitini de besler: yayında bulunan taslağa kit gitmez.
   * `tiktok_published_at` = TESPİT ANI (API zaman vermiyor); kaynak alanı bunu
     açıkça "yaklaşık, tespit anı" diye söylüyor.
   * `build_plan()` `hazir=False` ise (yayin_beklet, uyumluluk HATA, ikiz kapısı)
@@ -53,6 +58,7 @@ yenileme mevcut `tiktok_auth.get_access_token()` ile, koşu başına bir kez ve
 yalnız aday varken. Token değeri hiçbir log/bildirim/state metnine girmez.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -91,7 +97,7 @@ GECICI_HATA_TAVANI = 7
 GENEL_HATA_KODLARI = ("access_token_invalid", "scope_not_authorized",
                       "rate_limit_exceeded")
 
-KAYNAK_ETIKETI = "TikTok API publish/status (otomatik doğrulama)"
+KAYNAK_ETIKETI = "TikTok API PUBLISH_COMPLETE (otomatik)"
 _ZAMAN = "%Y-%m-%dT%H:%M:%S"
 _HATA_ALANLARI = ("tiktok_status_hata", "tiktok_status_hata_sayisi",
                   "tiktok_status_sonraki_deneme")
@@ -368,12 +374,9 @@ def _isle(proje, ad, pid, token, post, uyku, t, damga, log, sonuc) -> None:
             % (ad, fail_reason or "sebep yok"))
         return
 
-    if status != "PUBLISH_COMPLETE" or not ids:
+    if status != "PUBLISH_COMPLETE":
         _guncelle(proje, pid, _temel)
         sonuc["yalniz_durum"].append(ad)
-        if status == "PUBLISH_COMPLETE":
-            log("  TikTok doğrulama: '%s' PUBLISH_COMPLETE ama post id yok ('Sadece ben' "
-                "ya da moderasyon) — işaretlenmedi, kullanıcı onayına bırakıldı" % ad)
         return
 
     try:
@@ -394,12 +397,15 @@ def _isle(proje, ad, pid, token, post, uyku, t, damga, log, sonuc) -> None:
 
     def _yayinda(d):
         _temel(d)
-        d["tiktok_post_ids"] = ids
+        if ids:                         # gelmediyse uydurulmaz (bu hesapta hiç gelmedi)
+            d["tiktok_post_ids"] = ids
     if not _guncelle(proje, pid, _yayinda):
         return
+    # Damga TESPİT ANI (API yayın zamanı vermiyor) ve görünürlük bilinmiyor
+    # (herkese açık da "Sadece ben" de aynı durumu veriyor).
     yazildi, _ = TPP.isaretle_yayinlandi(
         proje, zaman=damga,
-        kaynak="%s, %s — yaklaşık, tespit anı (API yayın zamanı vermiyor)"
+        kaynak="%s, %s — yaklaşık zaman; görünürlük bilinmiyor"
                % (KAYNAK_ETIKETI, damga))
     if yazildi:
         sonuc["isaretlenen"].append(ad)
@@ -413,7 +419,13 @@ def _bildir(sonuc: dict, log) -> None:
     işaretler GERİ ALINMAZ — olgu doğru, yalnız haber gitmedi."""
     if not sonuc["isaretlenen"]:
         return
-    metin = "TikTok'ta yayında doğrulandı (API): " + ", ".join(sonuc["isaretlenen"])
+    # Özet TEK mesaj: kaç taslak, adlarıyla. İlk koşularda eski taslakların çoğu
+    # (kullanıcının çoktan yayınladıkları) burada toplu çıkacak; kullanıcı neden
+    # bunlara kit gelmediğini bu mesajdan anlamalı.
+    metin = ("TikTok'ta yayında bulundu (API): %d taslak — %s. Yayınlandı olarak "
+             "işaretlendi (zaman yaklaşık, görünürlük bilinmiyor); bu taslaklara yayın "
+             "kiti gönderilmeyecek." % (len(sonuc["isaretlenen"]),
+                                        ", ".join(sonuc["isaretlenen"])))
     try:
         gitti = notify.send("TikTok yayını doğrulandı", metin)
     except Exception as e:                                   # noqa: BLE001
@@ -435,3 +447,88 @@ def gunluk_dogrulama(log=print, simdi=None, **kw) -> dict:
     if sonuc.get("tamamlandi"):
         _kaydet({GUN_DAMGASI: bugun})
     return sonuc
+
+
+# --------------------------------------------------------------------------
+# Kayıtlı durumdan işaretleme — API'ye ÇIKMAZ, ELLE çalıştırılır
+# --------------------------------------------------------------------------
+
+KAYITLI_KAYNAK_ETIKETI = "TikTok API PUBLISH_COMPLETE (kayıtlı durumdan)"
+
+
+def kayitli_durumdan_isaretle(uygula: bool = False, log=print) -> dict:
+    """State'te ZATEN `PUBLISH_COMPLETE` okunmuş taslakları işaretler — İSTEK YOK.
+
+    NEDEN (2026-09-13): 02:23 saatlik koşusu 6 taslakta PUBLISH_COMPLETE okudu ama
+    canlı checkout'taki yarım bir düzenleme (modül sürüm karışıklığı -> TypeError)
+    yüzünden `build_plan` çöktü; işaret yazılmadı ve günlük damga atıldı. Durum
+    state'te doğru duruyor; yeniden sorgulamak gereksiz istek, beklemek de işareti
+    günlerce geciktirir (koşu başına 10 aday, en eski okunan önce).
+
+    KURAL `dogrula()` ile AYNI: işaretsiz, denenmez olmayan, `build_plan`
+    `hazir=True`. Damga = kayıtlı durum okumasının anı (`tiktok_status_checked_at`,
+    yoksa şimdi). Bayat `tiktok_status_isaret_engeli` notu işaretle birlikte silinir.
+    Yazan tek fonksiyon yine `tiktok_publish_plan.isaretle_yayinlandi`.
+
+    ÇAĞIRAN: yalnız operatör (CLI, varsayılan KURU). Saatlik hatta BİLEREK bağlı
+    değil: kayıtlı bir okumayı otomatik "yayınlandı"ya çevirmek, ölçüm hattının
+    kendisinin yaptığı işti — bu yol yalnız o hattın bir kez kaçırdığı kayıtlar için.
+    """
+    sonuc = {"isaretlenecek": [], "isaretlenen": [], "engellenen": [], "hatalar": []}
+    for proje in uyumluluk.proje_klasorleri():
+        d = TPP._durum_oku(proje)
+        pid = d.get("tiktok_publish_id")
+        if (not pid or d.get("tiktok_published_at") or d.get("tiktok_status_denenmez")
+                or d.get("tiktok_publish_status") != "PUBLISH_COMPLETE"):
+            continue
+        ad = _ad(proje)
+        try:
+            plan = TPP.build_plan(proje)
+        except Exception as e:                               # noqa: BLE001
+            plan = {"hazir": False, "engel": "plan hesaplanamadı (%s)" % type(e).__name__}
+        if not plan.get("hazir"):
+            engel = _temiz(plan.get("engel") or "sebep bilinmiyor", sinir=160)
+            sonuc["engellenen"].append((ad, engel))
+            log("  işaretlenmez (plan engeli): %s — %s" % (ad, engel))
+            continue
+        okundu = str(d.get("tiktok_status_checked_at") or "")
+        damga = okundu if _ts(okundu) is not None else _damga(time.time())
+        sonuc["isaretlenecek"].append(ad)
+        if not uygula:
+            log("  [kuru] işaretlenecek: %s (durum okuması %s)" % (ad, okundu or "zamanı yok"))
+            continue
+        try:
+            _guncelle(proje, str(pid), lambda x: x.pop("tiktok_status_isaret_engeli", None))
+            yazildi, _ = TPP.isaretle_yayinlandi(
+                proje, zaman=damga,
+                kaynak="%s, durum okuması %s — yaklaşık zaman; görünürlük bilinmiyor"
+                       % (KAYITLI_KAYNAK_ETIKETI, okundu or damga))
+        except TPP.IsaretlemeHatasi as e:
+            sonuc["hatalar"].append(ad)
+            log("  yazılamadı: %s — %s" % (ad, _temiz(e)))
+            continue
+        if yazildi:
+            sonuc["isaretlenen"].append(ad)
+            log("  işaretlendi: %s (%s)" % (ad, damga))
+    return sonuc
+
+
+def main(argv=None) -> int:
+    TPP._cikti_utf8()
+    ap = argparse.ArgumentParser(
+        description="TikTok taslak durumu — API'ye ÇIKMAYAN yardımcılar (günlük sorgu "
+                    "auto_process'ten gider).")
+    ap.add_argument("--kayitli-durumdan", action="store_true", required=True, dest="kayitli",
+                    help="State'te PUBLISH_COMPLETE okunmuş, işaretsiz ve hazir=True "
+                         "taslakları işaretle (varsayılan KURU)")
+    ap.add_argument("--uygula", action="store_true", help="Gerçekten yaz (yoksa kuru)")
+    args = ap.parse_args(argv)
+    s = kayitli_durumdan_isaretle(uygula=args.uygula)
+    print("Özet: işaretlenecek %d, işaretlenen %d, plan engeli %d, hata %d%s" % (
+        len(s["isaretlenecek"]), len(s["isaretlenen"]), len(s["engellenen"]),
+        len(s["hatalar"]), "" if args.uygula else " — KURU, hiçbir şey yazılmadı (--uygula ile yaz)"))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

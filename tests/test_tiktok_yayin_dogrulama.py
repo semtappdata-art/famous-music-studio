@@ -174,14 +174,15 @@ def test_publish_complete_post_id_ile_isaretliyor_kaynak_ve_tek_bildirim(kok, bi
         assert d["tiktok_publish_status"] == "PUBLISH_COMPLETE"
         assert d["tiktok_status_checked_at"]
         k = d["tiktok_published_kaynak"]
-        assert k.startswith("TikTok API publish/status (otomatik doğrulama), ")
-        assert "tespit anı" in k and "yaklaşık" in k
+        assert k.startswith("TikTok API PUBLISH_COMPLETE (otomatik), ")
+        assert "yaklaşık zaman" in k and "görünürlük bilinmiyor" in k
         assert "tiktok_dogrulandi" not in d, "yayınlamak gözle doğrulamak değildir"
 
     assert len(bildirim["send"]) == 1, bildirim["send"]
     baslik, mesaj = bildirim["send"][0]
-    assert mesaj.startswith("TikTok'ta yayında doğrulandı (API): ")
+    assert mesaj.startswith("TikTok'ta yayında bulundu (API): 2 taslak — ")
     assert "Gece Sürüşü" in mesaj and "Son Kez" in mesaj
+    assert "kit" in mesaj, "özet, bu taslaklara kit gitmeyeceğini söylemeli"
     assert sorted(sonuc["isaretlenen"]) == ["Gece Sürüşü", "Son Kez"]
 
 
@@ -197,7 +198,7 @@ def test_mevcut_isaretleme_fonksiyonu_kullaniliyor(kok, bildirim, monkeypatch):
     monkeypatch.setattr(TPP, "isaretle_yayinlandi", _sarmal)
     _kos(_Ag({"v~1": _ok("PUBLISH_COMPLETE", ["1"])}))
     assert len(cagri) == 1
-    assert cagri[0]["kaynak"].startswith("TikTok API publish/status")
+    assert cagri[0]["kaynak"].startswith("TikTok API PUBLISH_COMPLETE (otomatik)")
 
 
 def test_ikinci_kosuda_ayni_proje_icin_bildirim_yok(kok, bildirim):
@@ -225,22 +226,32 @@ def test_bildirim_basarisiz_isareti_geri_almiyor(kok, bildirim, monkeypatch):
 # 2. İşaretlememesi gereken durumlar
 # --------------------------------------------------------------------------
 
-def test_publish_complete_post_id_yoksa_isaret_yok_durum_yazildi(kok, bildirim):
+def test_publish_complete_post_id_yoksa_da_isaretliyor(kok, bildirim):
+    """KARAR DEĞİŞTİ (2026-09-13). Eski test "post id yoksa işaret yok" diyordu:
+    "Sadece ben"/moderasyondaki gönderi de PUBLISH_COMPLETE verir, post id vermez.
+    Gerçek ölçüm bunu boşa çıkardı: kullanıcının HERKESE AÇIK yayınladığı
+    `Gece Sürüşü` PUBLISH_COMPLETE döndü ve post id alanı yanıtta HİÇ yoktu —
+    eski kural bu hesapta hiç tetiklenmezdi. İşaretin amacı ikinci paylaşımı
+    önlemek; "Sadece ben" yapılmış bir yayın da taslağı TÜKETİR. Görünürlük
+    bilinmediği için kaynak metni bunu açıkça söylüyor."""
     p = _proje(kok, "Sarki", {"tiktok_publish_id": "v~1"})
     sonuc, satirlar = _kos(_Ag({"v~1": _ok("PUBLISH_COMPLETE")}))
     d = _durum(p)
-    assert "tiktok_published_at" not in d
-    assert "tiktok_post_ids" not in d
+    assert d["tiktok_published_at"]
+    assert "tiktok_post_ids" not in d, "post id gelmediyse uydurulmaz"
     assert d["tiktok_publish_status"] == "PUBLISH_COMPLETE"
     assert d["tiktok_status_checked_at"]
-    assert bildirim["send"] == []
-    assert any("Sarki" in s for s in satirlar), "görünür olmalı"
+    assert "görünürlük bilinmiyor" in d["tiktok_published_kaynak"]
+    assert sonuc["isaretlenen"] == ["Sarki"]
+    assert len(bildirim["send"]) == 1 and "1 taslak" in bildirim["send"][0][1]
 
 
-def test_bos_post_id_listesi_de_isaret_degil(kok, bildirim):
+def test_bos_post_id_listesi_de_isaretliyor(kok, bildirim):
     p = _proje(kok, "Sarki", {"tiktok_publish_id": "v~1"})
     _kos(_Ag({"v~1": _ok("PUBLISH_COMPLETE", [])}))
-    assert "tiktok_published_at" not in _durum(p)
+    d = _durum(p)
+    assert d["tiktok_published_at"]
+    assert "tiktok_post_ids" not in d
 
 
 def test_inboxta_bekleyen_taslak_yalniz_durum(kok, bildirim):
@@ -524,3 +535,57 @@ def test_patlayan_kanca_yutuluyor(monkeypatch):
     monkeypatch.setattr(auto_process, "log", satirlar.append)
     auto_process._tiktok_yayin_dogrulama()              # istisna FIRLATMAZ
     assert any("TikTok yayın doğrulama HATA" in s for s in satirlar), satirlar
+
+
+# --------------------------------------------------------------------------
+# 7. Kayıtlı durumdan işaretleme — API'ye ÇIKMADAN (2026-09-13)
+#
+# 02:23 koşusunda 6 taslak PUBLISH_COMPLETE okundu ama canlı checkout'taki
+# yarım bir düzenleme (sürüm karışıklığı -> TypeError) yüzünden işaretlenmedi ve
+# günlük damga atıldı. Durum state'te zaten doğru: yeniden sorgu gerekmez.
+# --------------------------------------------------------------------------
+
+def _kayitli(kok, ad, status="PUBLISH_COMPLETE", **ek):
+    d = {"tiktok_publish_id": "v~" + ad, "tiktok_publish_status": status,
+         "tiktok_status_checked_at": "2026-09-13T02:23:10",
+         "tiktok_status_isaret_engeli": "plan hesaplanamadı (TypeError)"}
+    d.update(ek)
+    return _proje(kok, ad, d)
+
+
+def test_kayitli_durumdan_kuru_varsayilan_hicbir_sey_yazmaz(kok, bildirim):
+    p = _kayitli(kok, "Yayinda")
+    once = _durum(p)
+    satirlar = []
+    sonuc = TYD.kayitli_durumdan_isaretle(log=satirlar.append)
+    assert sonuc["isaretlenecek"] == ["Yayinda"] and sonuc["isaretlenen"] == []
+    assert _durum(p) == once
+    assert any("Yayinda" in s for s in satirlar)
+
+
+def test_kayitli_durumdan_uygula_isaretler_apiye_cikmaz(kok, bildirim):
+    hazir = _kayitli(kok, "Yayinda")
+    engelli = _kayitli(kok, "Bekletilen", yayin_beklet="telif incelemesi")
+    taslak = _kayitli(kok, "Taslakta", status="SEND_TO_USER_INBOX")
+    zaten = _kayitli(kok, "Zaten", tiktok_published_at="2026-09-01T10:00:00")
+    sonuc = TYD.kayitli_durumdan_isaretle(uygula=True, log=lambda s: None)
+
+    d = _durum(hazir)
+    assert d["tiktok_published_at"] == "2026-09-13T02:23:10", "damga = kayıtlı durum okuması"
+    assert "kayıtlı durumdan" in d["tiktok_published_kaynak"]
+    assert "görünürlük bilinmiyor" in d["tiktok_published_kaynak"]
+    assert "tiktok_status_isaret_engeli" not in d, "bayat TypeError notu temizlenir"
+    assert "tiktok_published_at" not in _durum(engelli), "hazir=False işaretlenmez"
+    assert "tiktok_published_at" not in _durum(taslak)
+    assert _durum(zaten)["tiktok_published_at"] == "2026-09-01T10:00:00"
+    assert sonuc["isaretlenen"] == ["Yayinda"]
+    assert [a for a, _ in sonuc["engellenen"]] == ["Bekletilen"]
+    # gercek_ag_yasak autouse: requests.post / socket patlardı
+
+
+def test_kayitli_durumdan_cli_kuru_cikis_0(kok, bildirim, capsys):
+    p = _kayitli(kok, "Yayinda")
+    once = _durum(p)
+    assert TYD.main(["--kayitli-durumdan"]) == 0
+    assert _durum(p) == once
+    assert "KURU" in capsys.readouterr().out
