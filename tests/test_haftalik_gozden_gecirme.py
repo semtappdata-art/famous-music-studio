@@ -436,7 +436,8 @@ def test_izlenme_suresi_kayitli_ozetten_okunuyor(durum, sahte_saglik,
     assert agsiz["istek"] == 0
 
 
-def test_izlenme_raporu_ozeti_damgaya_yaziyor(durum, monkeypatch, tmp_path):
+def test_izlenme_raporu_ozeti_damgaya_yaziyor(durum, monkeypatch, tmp_path,
+                                               bildirimler):
     """Bağlantı testi: özet KAYDEDİLMEZSE haftalık rapor izlenme süresini
     sonsuza kadar 'veri yok' gösterir — sessizce."""
     ozet = {os.path.join("C:", "x", "projects"):
