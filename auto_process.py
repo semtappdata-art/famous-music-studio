@@ -1586,6 +1586,22 @@ def _gunluk_izlenme() -> None:
         log(f"  Günlük izlenme HATA: {e}")
 
 
+def _tiktok_yayin_dogrulama() -> None:
+    """TikTok taslaklari yayinlandi mi? — API'den SALT OKUNUR, gunde bir.
+
+    Kullanici taslagi uygulamadan ELLE yayinliyor; Telegram onayini unutursa
+    depo bunu hic bilmiyordu (bkz. upload/tiktok_yayin_dogrulama.py). YENI bir
+    Gorev Zamanlayici gorevi EKLENMEDI ve `_is_fully_done()`a EKLENMEDI
+    (CLAUDE.md, secenek B): kendi hiz siniri ve kosu tavani olan bir supurge.
+    Gun damgasi fonksiyonun ICINDE (upload/saglik_durum.json); gunun geri
+    kalaninda aga dokunmaz. Hicbir hata otomasyonu durdurmaz.
+    """
+    try:
+        from tiktok_yayin_dogrulama import gunluk_dogrulama
+        gunluk_dogrulama(log)
+    except Exception as e:
+        log(f"  TikTok yayın doğrulama HATA: {maskele(str(e))}")
+
 def _facebook_yorumlari() -> None:
     """Canliya cikmis zamanlanmis Facebook gonderilerine YouTube yorumunu ekler.
 
@@ -1795,6 +1811,7 @@ def main():
         _izlenme_raporu()
         _haftalik_gozden_gecirme()
         _gunluk_izlenme()
+        _tiktok_yayin_dogrulama()
         _release_lock()
 
 

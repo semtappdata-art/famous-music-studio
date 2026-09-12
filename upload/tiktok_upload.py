@@ -302,8 +302,8 @@ def notify_pending_publish(project_dir: str) -> bool:
     """state.json'da 'tiktok_publish_id' var ama henüz bildirim gönderilmediyse
     (tiktok_notified yok) ve şu an bir golden-hour penceresindeysek telefona
     ntfy.sh üzerinden bir hatırlatma bildirimi gönderir ve tiktok_notified=true
-    kaydeder (bir daha hatırlatmaz — TikTok API'sinden kullanıcının taslağı
-    gerçekten yayınlayıp yayınlamadığını öğrenmenin bir yolu yok). Bildirim
+    kaydeder (bir daha hatırlatmaz). Yayın olgusu ayrı yazılıyor: Telegram onayı
+    (`tiktok_yayin_onayi.py`) ve API'den salt okunur doğrulama (`tiktok_yayin_dogrulama.py`). Bildirim
     gönderildiyse True döner; golden-hour dışındaysa, zaten bildirildiyse ya da
     notify_config.json kurulmadıysa False döner."""
     state_path = os.path.join(project_dir, "state.json")

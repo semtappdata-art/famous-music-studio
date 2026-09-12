@@ -34,7 +34,8 @@ import auto_process as ap                            # noqa: E402
 _FINALLY = ("_refresh_latest_listing", "_refresh_stats", "_refresh_comments",
             "_facebook_backfill", "_ek_platform_backfill", "_facebook_yorumlari",
             "_facebook_veri_erisimi", "_dj_tarama", "_saglik_kontrol",
-            "_izlenme_raporu", "_haftalik_gozden_gecirme", "_gunluk_izlenme")
+            "_izlenme_raporu", "_haftalik_gozden_gecirme", "_gunluk_izlenme",
+            "_tiktok_yayin_dogrulama")
 
 
 def _damga(saat_once):
