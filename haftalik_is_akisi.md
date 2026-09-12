@@ -74,8 +74,12 @@ Rapor `BEKLEYEN`'de iş gösterdiyse **bu gün boş geçer.**
 
 ### Çarşamba / Cumartesi — boş
 
-Salı indirilen parça render edilip kuyruğa giriyor. **İlk yayına kabaca 2,5–3 gün var**
-(kuyruk sırası + 52 saatlik taban) — tasarım, arıza değil. "Hiçbir şey olmadı" normal.
+Salı indirilen parça render edilip kuyruğa giriyor. **Makinenin kendi işi ~10-15 dakika**
+(kapak ~30 sn, render şarkı süresinin ~1,4 katı, 6 platform yüklemesi ~2,5 dk — ölçüm:
+`uretim_hazirlik_suresi.md`); Suno ve saatlik bekleme dahil ~1-1¾ saat. **Takvimdeki
+gecikme makineden değil kurallardan:** kuyruk BOŞSA ilk yayın 1-14 saat, önünde şarkı
+varsa her biri için 52 saat eklenir — salı üretilen parça kuyrukta 3-5 gün bekleyebilir.
+Makine gece kapalıysa (7 günde saatlerin %25'i) o saatler de eklenir — tasarım, arıza değil. "Hiçbir şey olmadı" normal.
 Elle `--count` verme: kotayı öldüren tek düğme o.
 
 ### Perşembe — dağıtım vardiyası
@@ -110,8 +114,12 @@ Elle `--count` verme: kotayı öldüren tek düğme o.
 
 ## 2. Üretim akışı — 15 adımlık kontrol listesi
 
-Salı vardiyasında sırayla. Şablon: **`vardiya_sozler.md`** ("Vardiya", rock, kadın vokal,
-78 BPM).
+Salı vardiyasında sırayla. Şablon: **`sabah_senin_sozler.md`** (rock, kadın vokal, 78 BPM —
+"Vardiya" olarak yazılıp reddedilen ve 2026-09-12'de `Sabah Senin` olarak yeniden yazılıp
+ÜRETİLEN profil; `vardiya_sozler.md` diye bir dosya YOK). Bölüm iskeleti ve sözlük kuralları:
+`suno_prompt_hazirlik.md`. **Sıradaki şarkı KADIN vokal OLAMAZ** (`ses_ve_tarz_takibi.md`
+SON DURUM) — `main`'den gelen `Yükseliş` "smoky" kadın vokal olarak planlı, vokali
+değiştirilmeden üretilmemeli.
 
 **A. Karar (10 dk)**
 
@@ -126,8 +134,10 @@ Salı vardiyasında sırayla. Şablon: **`vardiya_sozler.md`** ("Vardiya", rock,
 
 > **İskeleyi TEK KOMUTLA kur — 3., 4. ve 5. adımı birlikte yapar:**
 > ```
-> python yeni_parca.py "Vardiya" --tema rock            # yazar
-> python yeni_parca.py "Vardiya" --tema rock --dry-run  # sadece ne yapacağını gösterir
+> python yeni_parca.py "<Şarkı Adı>" --tema <tema>            # yazar
+> python yeni_parca.py "<Şarkı Adı>" --tema <tema> --dry-run  # sadece ne yapacağını gösterir
+> # ("Vardiya" örneği KALDIRILDI: o profil 2026-09-12'de `Sabah Senin` olarak üretildi —
+> #  örneği aynen yapıştırmak zaten üretilmiş bir şarkı için yeni klasör açardı.)
 > ```
 > Komut: `projects/<Ad>/` açar, `meta.json`'ı (`title` + `theme`) yazar, repo
 > köküne `<slug>_sozler.md` **şablonunu** koyar (üç zorunlu bölüm + "Temiz Sözler"
@@ -141,7 +151,7 @@ Salı vardiyasında sırayla. Şablon: **`vardiya_sozler.md`** ("Vardiya", rock,
 
 3. **Sözler dosyasını yaz** (komutun bıraktığı şablonu DOLDUR): repo **KÖKÜNDE**
    `<slug>_sozler.md` — `projects/` altında DEĞİL.
-   "Vardiya" → `vardiya_sozler.md`. Üç bölüm zorunlu: `## Stil Etiketi` (BPM **etikete
+   "Sabah Senin" → `sabah_senin_sozler.md` (slug kuralı: `stock_art._slugify`). Üç bölüm zorunlu: `## Stil Etiketi` (BPM **etikete
    yazılacak**, sonda kapanış tanımı — yumuşak temalarda `gentle fade-out ending`, sert
    temalarda `strong final hit ending, no abrupt cutoff`) · `## Sözler` (etiketli) ·
    `## Temiz Sözler` (etiketsiz, aynı satır listesi).
@@ -175,16 +185,22 @@ Salı vardiyasında sırayla. Şablon: **`vardiya_sozler.md`** ("Vardiya", rock,
 11. **Tek varyant indir, doğrudan 4. adımdaki klasöre**, Suno'nun verdiği adla.
     ⚠ İki varyantı aynı klasöre koyma: aynı md5 artık UYARI değil **HATA**, boru hattını
     durdurur. İkinciyi repo **dışında** sakla.
-    ⚠ Tetikleme yolu 2026-09-12'de değişti; ilk parçada doğrula. Koşu 5. dakikada ölüyorsa
-    dosyayı doğrudan `audio.wav` adıyla bırak — iş saatlik göreve kalır (limit 2 saat).
-12. **Tetiklemeyi doğrula (2 dk):** `gorev_izleri/watch_projects.log` → `BAŞLADI`;
-    `auto_process.log` → projenin adı. 10 dakikada iz yoksa klasör adını/konumunu kontrol et.
+    ⚠ Tetikleme yolu 2026-09-12'de değişti: izleyici `auto_process.py`'yi `Popen` +
+    `CREATE_BREAKAWAY_FROM_JOB` ile başlatıyor, yani render izleyici görevinin 5 dakikalık
+    limitinden KOPUK (render ~6-8 dk sürse de kesilmez — koddan doğrulandı). Dosyayı
+    doğrudan `audio.wav` adıyla bırakırsan izleyici tetiklemez; iş ilk saatlik koşuya kalır
+    (ölçülen: 51 dk).
+12. **Tetiklemeyi doğrula (2 dk):** `auto_process.log`'daki "N bekleyen proje var" sayısı
+    ARTTI mı ve projenin adı geçiyor mu. (`gorev_izleri/watch_projects.log`'daki `BAŞLADI`
+    her dakika zaten yazıldığı için tetiklemeyi KANITLAMAZ.) Dosya `audio.wav` adıyla
+    konduysa ilk iz 60 dakikaya kadar gecikebilir.
 13. **`output/` klasöründeki iki mp4'ü aç ve oynat.** Yarım kalan render diskte "var"
     görünür ve yüklemeye geçilir; 5 saniyelik kontrol bu riski kapatır.
 
 **E. Yayın sonrası**
 
-14. **Bekle — 2,5–3 gün.** Elle tetikleme yok, `--count` yok.
+14. **Bekle — kuyruk boşsa saatler, önünde şarkı varsa her biri için +52 saat.** Elle
+    tetikleme yok, `--count` yok. Güncel takvim: `uretim_hazirlik_suresi.md`.
 15. **Pazar kapanışında `ses_ve_tarz_takibi.md`'yi güncelle** (tablo satırı + SON DURUM —
     üretim haftasında, yayını bekleme); TikTok taslağını bir sonraki Perşembe vardiyasında
     yayınla ve işaretle.
@@ -292,9 +308,13 @@ doldurmalar bitmeden hiç işlenmez.
 
 ## 6. Bu hafta — 2026-09-14 → 2026-09-20 (ISO 2026-W38)
 
-Bugün **Cumartesi 12 Eylül**. Çevrimin ilk turu Pazartesi başlıyor; hafta sonu boş
-(boru hattı iki geri doldurmayı — Kader Ortakları, Bu Gece Kazandık → Instagram — kendi
-işliyor).
+Bugün **Cumartesi 12 Eylül**. Çevrimin ilk turu Pazartesi başlıyor; hafta sonu boş.
+Boru hattının kendi işlediği (2026-09-12 gece itibarıyla, ölçüm: `uretim_hazirlik_suresi.md`):
+`Kader Ortakları` Instagram/Facebook → 13 Eyl öğle penceresi · `Küllerimden Geç` Shorts →
+görünürlük planıyla golden-hour'da public · `Sabah Senin` → sırası gelince render + yeni
+yayın. **`Bu Gece Kazandık` BEKLETMEDE** (`yayin_beklet`) — eski görselle hiçbir yere çıkmaz;
+yeniden render'ı elle yapılacak (denetim E-16). Bekletme `Sabah Senin`'in YouTube'a
+yüklenmesinden ÖNCE kaldırılırsa, klasörü daha eski olduğu için onun önüne geçer.
 
 | Tarih | Yapılacak | Süre |
 |---|---|---|
@@ -302,13 +322,13 @@ işliyor).
 | 14 Eyl Pzt | **E-2 · Reporting API'yi aç** (Google Cloud Console, tek tık; bugün `cekilebildi_mi=false`, 403) | 5 dk |
 | 14 Eyl Pzt | **E-13 · ntfy aboneliğini doğrula** (telefonda konuya abone ol, test bildirimi gelsin) | 3 dk |
 | 14 Eyl Pzt | **E-10 P1 · robocopy yedek** (111 MB, hedef klasör paylaşıma kapalı) | 5 dk |
-| **15 Eyl Sal** | **Üretim · "Vardiya"** (rock, kadın vokal, 78 BPM). `vardiya_sozler.md` **yazıldı** — §2'nin 1-3. adımları bitti, **4. adımdan başla**: `projects/Vardiya/` klasörünü aç → `{"title": "Vardiya", "theme": "rock"}` → Chrome çevirisi kapalı → stil etiketi + sözler → indir. ⚠ Pazartesi raporu `BEKLEYEN`'de iş gösteriyorsa **bu günü atla.** | 45 dk |
+| **15 Eyl Sal** | **Üretim · sıradaki şarkı — ERKEK ya da DÜET vokal** ("Vardiya" profili 2026-09-12'de `Sabah Senin` olarak zaten üretildi, son üretim KADIN vokal). `Yükseliş` kadın vokal planlı: vokali değiştirmeden üretme. ⚠ Kuyrukta `Sabah Senin` (ve bekletmedeki `Bu Gece Kazandık`) varken yeni parça 3-5 gün bekler; Pazartesi raporu `BEKLEYEN`'de iş gösteriyorsa **bu günü atla.** | 45 dk |
 | 16 Eyl Çar | — (render + kuyruk, otomatik) | 0 |
 | **17 Eyl Prş** | **E-9 + E-11 ·** Instagram'da kopya Reels'leri **arşivle** (silme): `Dc5vAXxgGIf`, `Dcv6i1PjYUy`, `Dcv5AiRgSsc` — `Dc-5CR9j2XO` (`18087131705485174`, Küllerimden Geç) **KALACAK** (2026-09-12 gece kararı; eski satır tam tersini diyordu) + kalan eski kapaklı gönderiler (E-11). Aynı oturumda **E-12 ·** bekleyen 1 yorumu yanıtla. | 10 dk |
 | 17 Eyl Prş | **E-6 ilk kutu ·** 3-5 TikTok taslağı yayınla + `--yayinlandi-hepsi` ile işaretle (City Pulse Set, Yeniden Doğacağım ve Küllerimden Geç hariç) | 15 dk |
 | 18 Eyl Cum | **Dokunma** — DJ görevi 18:00'de koşuyor | 0 |
 | 19 Eyl Cmt | — | 0 |
-| **20 Eyl Paz** | **Kapanış ·** `ses_ve_tarz_takibi.md`'ye Vardiya satırı (rock / 78 / smoky husky low-register female) **+ SON DURUM satırı** ("son üretim KADIN vokal, tekli"). Vardiya bu tarihe kadar yayına çıkmamış olabilir — **satır yine de yazılır** (dosya üretim sırasını tutuyor). Bio linkini gözle doğrula. | 15 dk |
+| **20 Eyl Paz** | **Kapanış ·** `ses_ve_tarz_takibi.md`'de `Sabah Senin` satırı ZATEN var (rock / 78 / smoky husky low-register female); Salı üretimi yapıldıysa O şarkının satırını ekle **+ SON DURUM satırını** güncelle. Yayına çıkmamış olsa da **satır yazılır** (dosya üretim sırasını tutuyor). Bio linkini gözle doğrula. | 15 dk |
 
 **Toplam: ~1 saat 45 dakika.**
 

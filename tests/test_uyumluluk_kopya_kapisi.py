@@ -326,6 +326,18 @@ def test_gercek_katalogdaki_cift_hala_isaretli():
     assert not uyumluluk._kopya_notu_var(da, ma), (
         "asıl kayıtta (`%s`) `kopya_notu` OLMAMALI — not kopyayı işaretler" % asil)
     # Kapının KENDİSİ: iki taraf da md5 HATASI almamalı.
+    # Bu kısım GERÇEK ses dosyası ister: `projects/*/audio.*` .gitignore'da, yani
+    # CI checkout'unda YOK — md5 hesaplanamaz, kapı bulgu üretemez ve alttaki
+    # "UYARI kalmalı" iddiası ortam yüzünden düşer (2026-09-12'de CI tam olarak
+    # bununla kırmızıya döndü; yerelde 1383/1383 yeşildi). Ürün arızası değil,
+    # ortam farkı. Yukarıdaki kopya_notu / yayından-çekilme iddiaları yalnız
+    # İZLENEN state/meta dosyalarını okuduğu için CI'da KOŞMAYA DEVAM ediyor —
+    # atlanan yalnız md5 kısmı.
+    for p in (pa, pk):
+        if not any(os.path.isfile(os.path.join(p, "audio" + uzanti))
+                   for uzanti in (".wav", ".mp3", ".m4a")):
+            pytest.skip("ses dosyası bu ortamda yok (gitignore / CI): %s"
+                        % os.path.basename(p))
     for p in (pa, pk):
         hatalar, uyarilar = uyumluluk.kontrol(p, "yukleme")
         assert _md5_bulgusu(hatalar) == [], (p, hatalar)
