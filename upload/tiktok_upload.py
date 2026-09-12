@@ -10,6 +10,7 @@ açık yayınlanamaz. Detay: https://developers.tiktok.com/docs/en/content-posti
 """
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -282,6 +283,21 @@ def _kanal_yok_uyar_bir_kez() -> None:
     )
 
 
+def yayin_kodu(publish_id) -> str | None:
+    """Taslağın kısa, kararlı kodu (ör. "T3F2A") — Telegram onay yanıtı için.
+
+    NEDEN publish_id'den türetiliyor, klasör adından DEĞİL: kod TASLAĞIN
+    kendisini gösteriyor. Proje yeniden yüklenirse (yeni publish_id) eski
+    hatırlatmadaki kod artık eşleşmez — eski bir mesaja verilen yanıt yeni
+    taslağı işaretlemesin diye. Çakışma (16^4 alan, ~25 proje) mümkün ama
+    zararsız: `tiktok_yayin_onayi.py` birden çok eşleşmede İŞARETLEMEZ.
+    `tiktok_publish_id` olmayan projenin kodu yok (işaretlenebilir de değil).
+    """
+    if not publish_id:
+        return None
+    return "T" + hashlib.sha1(str(publish_id).encode("utf-8")).hexdigest()[:4].upper()
+
+
 def notify_pending_publish(project_dir: str) -> bool:
     """state.json'da 'tiktok_publish_id' var ama henüz bildirim gönderilmediyse
     (tiktok_notified yok) ve şu an bir golden-hour penceresindeysek telefona
@@ -310,9 +326,20 @@ def notify_pending_publish(project_dir: str) -> bool:
         return False  # golden-hour değil, bir sonraki kontrolde tekrar denenecek
 
     title = _load_meta(project_dir).get("title", "Untitled")
+    # YANIT TALİMATI (2026-09-13): "yayınladım" işaretinin tek yazanı bir CLI
+    # komutuydu ve unutuluyordu. Bot Hermes gateway'iyle PAYLAŞILIYOR — yanıtı
+    # depo OKUMAZ (getUpdates ikinci tüketici olup Hermes'in mesajlarını çalar),
+    # Hermes okur ve `.hermes/skills/tiktok-yayin-onayi` becerisiyle
+    # `upload/tiktok_yayin_onayi.py`yi çalıştırır. Hermes bu mesajı GÖRMEDİĞİ
+    # için (başka süreç gönderiyor) yanıt kendi başına yeterli olmalı: şarkı
+    # adı yanıtın İÇİNDE. Kalıp `tests/test_tiktok_yayin_onayi.py`de betikle
+    # uçtan uca eşleştiriliyor.
+    kod = yayin_kodu(state.get("tiktok_publish_id"))
     sent = notify.send(
         "TikTok",
-        f"'{title}' TikTok'ta taslak olarak bekliyor — uygulamadan yayınlayabilirsin.",
+        f"'{title}' TikTok'ta taslak olarak bekliyor — uygulamadan yayınlayabilirsin.\n"
+        f"Yayınladıysan bu sohbete yaz: yayınladım {title}\n"
+        f"(kod: {kod} — ad yerine 'yayınladım {kod}' de olur)",
     )
     if not sent:
         return False
