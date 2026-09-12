@@ -49,7 +49,7 @@ def _probe_format(path: str) -> tuple[str, str, str]:
         ["ffprobe", "-v", "error", "-select_streams", "a:0",
          "-show_entries", "stream=sample_rate,channels,codec_name",
          "-of", "default=noprint_wrappers=1:nokey=1", path],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     parts = result.stdout.strip().splitlines()
     if len(parts) < 3:
@@ -94,7 +94,7 @@ def merge(set_dir: str, crossfade: float = 3.0) -> str:
     cmd += ["-filter_complex", filter_complex, "-map", "[aout]", output_path]
 
     print(f"\nffmpeg ile birleştiriliyor (crossfade={crossfade}s, {len(files)} parça)...")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         print(result.stderr[-4000:])
         raise RuntimeError("ffmpeg birleştirme başarısız oldu.")
@@ -114,7 +114,7 @@ def main():
     probe = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "default=noprint_wrappers=1:nokey=1", output_path],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     duration = float(probe.stdout.strip())
     minutes = int(duration // 60)
