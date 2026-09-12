@@ -54,8 +54,13 @@ audio.wav → generate_cover.py (eksikse cover/art üretir)
   bir JSON bırakıyordu — `uyumluluk._durum()` sertleştikten sonra bunun bedeli "boru hattı
   tamamen durur"a çıktı. state.json'ı elle yazan YENİ kod ekleme, bu modülü kullan.
 - `dj_tarama_kontrol.py` — DJ setleri + derlemeler için Content ID karantinası (aşağıya bkz.)
-- `saglik_kontrol.py` — sessiz duruşları yakalar: Instagram token süresi (son 10 gün) +
-  Netlify kimlik bilgisi (`netlify_kontrol.py`); saatlik koşudan, bildirimler günde bir
+- `saglik_kontrol.py` — sessiz duruşları yakalar; 2026-09-12 itibarıyla YEDİ adım
+  (aşağıda "Testler ve otomatik sağlık izleme"); saatlik koşudan, bildirimler günde bir
+- `gorev_sarmalayici.py` — üç Görev Zamanlayıcı görevinin de GERÇEK giriş noktası
+  (`pythonw.exe gorev_sarmalayici.py <betik>.py`). Bir görev çalışmadığında bakılacak İLK
+  yer onun yazdığı `gorev_izleri/<betik>.log`'dur, `auto_process.log` DEĞİL.
+- `upload/ai_beyani_onar.py` — geçmişte SİLİNMİŞ `containsSyntheticMedia` beyanını geri
+  yazan ELLE kampanya; zamanlayıcıda BİLEREK yok, varsayılanı kuru koşu
 - `upload/ek_platform_backfill.py` (Telegram/Bluesky) + `upload/facebook_backfill.py` —
   geri doldurma; ikisi de golden-hour VE günlük tavan olmak üzere İKİ kapıdan geçiyor
 - `upload/youtube_analytics.py` — izlenme SÜRESİ ölçümü. AYRI bir `analytics_token.json`
@@ -401,6 +406,43 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
     `published=false` + `scheduled_publish_time`), bu yüzden orada da kendi
     kuyruğumuza gerek yok ve `--no-schedule` orada da geçerli. **Telegram/Bluesky**'da
     zamanlama yok — script o an çalıştığında gönderiliyorlar.
+- **Instagram konteynerinde 23 SAATLİK YAŞ KAPISI, ve o kapı `_konteyner_yayindan_yeni()`
+  ile Graph API çağrısının da ÖNÜNDE** (`instagram_upload.KONTEYNER_OMRU_SN`,
+  `_konteyner_bayat()`, 2026-09-12): `Gece Sürüşü`/`Kalbim Oynuyor` state'lerinde 7 GÜNLÜK
+  konteynerler duruyordu ve her golden-hour'da yayınlanmaya çalışılıyordu. Instagram bu
+  ölü konteynerler için `status_code` olarak EXPIRED **DÖNDÜRMÜYOR** — `media_publish`
+  adımında HTTP 500 `{"is_transient": true}` veriyor, yani "geçici" diyen KALICI bir hata
+  (11 Eylül'de 8 boşa API çağrısı; kendiliğinden ASLA düzelmiyor). Bu yüzden ölçüt
+  Instagram'ın cevabı değil BİZİM yazdığımız `instagram_container_created_at` damgası.
+  **24 değil 23 saat, ve payın gerekçesi var**: damga YEREL saatle yazılıyor, Instagram'ın
+  saati bizimkiyle birebir aynı olmak zorunda değil, ve sınıra dakikalar kala yayın
+  denemesi yarış durumu demek. 23 saat, golden-hour pencereleri arasındaki en kötü aralığı
+  (~14 saat) hâlâ rahatça kapsıyor — yani bu kapı GERÇEKTEN bekleyen hiçbir konteyneri
+  erken düşürmez. **SIRA BİLİNÇLİ**: kapı en başta olduğu için, konteyner son yayından
+  yeni OLMASA bile (yani "zaten yayınlanmış" dalından çıkılacak olsa bile) ölü kayıt
+  temizleniyor. Aşağıda olsaydı o kayıtlar state'te SONSUZA KADAR kalırdı — canlıda tam
+  olarak böyle **13 ölü kayıt** birikmişti ve `auto_process` her koşuda 13 sahte "bekleyen
+  konteyner" satırı basıyordu (gerçekte bekleyen TEK proje vardı); 2026-09-12'de temizlendi.
+  Damga YOKSA/BOZUKSA kapı KAPANMIYOR (False): "yaşını bilmiyorum"u "sil"e çevirmek,
+  gerçekten bekleyen bir konteyneri sessizce düşürüp gönderiyi hiç yayınlamamak olurdu.
+- **Instagram'da yeniden deneme YALNIZ 5xx + `is_transient: true`; taşıma hatası (timeout /
+  bağlantı kopması) BİLEREK DENENMİYOR** (`instagram_upload._graph_istek`, `_gecici_5xx_mi`,
+  2026-09-12). Ayrım tek cümlede: **tam bir HTTP yanıt geldiyse** Instagram isteği
+  İŞLEMEDİĞİNİ kendi söylüyor → yayın oluşmadı, tekrar güvenli; **yanıt kaybolduysa** istek
+  işlenmiş OLABİLİR ve `media_publish` **İDEMPOTENT DEĞİL** — aynı Reel kanalda iki kez
+  çıkar, ki bu deponun en büyük tekil riskinin ("inauthentic / toplu üretilmiş AI içerik")
+  ta kendisi. Bu yüzden `except RequestException` dalı HİÇ yeniden denemiyor ve öyle
+  KALMALI (aynı gerekçe Telegram `sendVideo`, Bluesky `createRecord`, Facebook `/videos`,
+  YouTube `videos.insert`/`comments.insert` için de geçerli). Çıplak 5xx TEK BAŞINA da
+  yetmiyor: bayat konteynerler de 500 veriyordu ve orada tekrar denemek yalnızca boşa API
+  çağrısıydı, çünkü hata KALICIYDI — bu yüzden Instagram'ın KENDİ `is_transient`
+  işaretine bakılıyor. 4xx bu dala GİRMİYOR (400/401/403 = kimlik/izin/kota/politika;
+  tekrar kotayı yakar ve hız sınırına takar). Tavan dar (8+32 sn, en kötü 40 sn; jitter,
+  backoff büyütme, pencere kontrolü YOK): kapatılan risk tek ve dar — golden-hour
+  penceresinin SON dakikalarına denk gelen gerçek bir geçici 500'ün doğal tekrar şansının
+  kalmaması. **`upload/ag_yeniden_deneme.py`'ye EKLENMEDİ, bilerek**: o modül TAŞIMA
+  KATMANI istisnalarını (`requests.exceptions.*`) sınıflandırıyor; HTTP 500 bir istisna
+  DEĞİL, BAŞARIYLA ALINMIŞ bir yanıttır — `sinifla()` bu vakayı hiç görmez.
 - **`notify.send()` ntfy'ye JSON GÖVDESİYLE gönderiyor, HTTP BAŞLIĞIYLA DEĞİL**
   (2026-09-11 arızası): eski sürüm başlığı `headers={"Title": ...}` ile yolluyordu, ama
   `requests`ın altındaki `http.client` HTTP başlıklarını **latin-1** ile kodluyor ve
@@ -413,6 +455,15 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   (`https://ntfy.sh/`, `https://ntfy.sh/<topic>` değil). Koruma:
   `tests/test_notify_turkce_baslik.py` (depodaki TÜM `notify.send()` çağrılarının
   başlıklarını `ast` ile tarıyor).
+- **`notify.uyar_bir_kez()` TELEFONA GİTMEZ — yalnızca log'a yazar.** Telefona giden TEK
+  yol `notify.send()`, ve otomasyonda onu çağıran TEK yer `saglik_kontrol._bildir()`
+  (günde bir). Kapı noktalarındaki docstring'ler `uyar_bir_kez`'i bildirim gibi okutuyor;
+  DEĞİL. Bu ayrım 2026-09-12'de gerçek bir boşluğa sebep oldu: `uyumluluk` kapıları
+  fail-closed yapıldıktan sonra kapanan bir kapı projeyi atlıyor ve geriye YALNIZCA bir
+  log satırı kalıyor — yani kanal günlerce sessizce durabilir ve kimse haberdar olmazdı
+  (`saglik_kontrol.yayin_durgunlugu` tam bu boşluk için eklendi). Kural: bir korumanın
+  operatöre ULAŞMASI gerekiyorsa `saglik_kontrol`'e adım ekle; `uyar_bir_kez` "koşu başına
+  bir kez log'a" disiplinidir, alarm değil.
 - **Paylaşım metinlerinin dili (caption/hashtag/YouTube yorumu) artık STİLE göre
   otomatik (`config.THEMES[...]["language"]`, `social_text.resolve_language()`)**:
   kullanıcı isteği — Suno'da üretilen müziğin STİLİNE göre dil hazırlığı otomatik
@@ -488,9 +539,12 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   seçiyor — video karesi seçmek zorunda değil. Detay: README.md, "Kimlik doğrulama" →
   TikTok adımı.
 - **TikTok'a ELLE yayın yaparken caption/ilk yorum `upload/tiktok_publish_plan.py`'den
-  ALINIR, asistanın kafasından UYDURULMAZ**: bu modül depoda hiçbir yerden referans
-  almıyor (ne `auto_process.py`, ne `tiktok_upload.py`, ne Görev Zamanlayıcı) — var
-  olma sebebi tam olarak bu elle adım. TikTok yayını higgsfield MCP bağlayıcısı
+  ALINIR, asistanın kafasından UYDURULMAZ**: modülü ÇALIŞTIRAN hiçbir kod yok (ne
+  `auto_process.py`, ne `tiktok_upload.py`, ne Görev Zamanlayıcı) — var olma sebebi tam
+  olarak bu elle adım. ("Hiçbir yerden referans almıyor" YANLIŞTI ve modülü ölü
+  gösteriyordu: `.claude/skills/fms-tiktok-yayin/SKILL.md`, `buyume_kontrol_listesi.md` ve
+  `haftalik_is_akisi.md` ona BELGE olarak referans veriyor; olmayan şey otomatik ÇAĞRI.)
+  TikTok yayını higgsfield MCP bağlayıcısı
   üzerinden bir asistan oturumundan yapılıyor (kendi app'imizin `video.publish` izni
   yok); metin o sırada yeniden yazılırsa boru hattının ürettiğinden farklı olur.
   Doğru kullanım:
@@ -548,6 +602,21 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   Suno'dan bir DJ Famous setini indirip `dj_sets/<isim>/` klasörüne elle kaydederken
   bu boşluk fark edildi (`_scan_once()` → parametrik `_scan_dir(base_dir,
   trigger_script)`'e genelleştirildi, `projects/` ve `dj_sets/` için ayrı ayrı çağrılıyor).
+  **AÇIK ARIZA — 2026-09-12'de bulundu, düzeltmesi bu satır yazılırken AKIŞTA (paralel
+  ajan). Çözülmüş sayma; kapandığını `git log -- watch_projects.py` ile DOĞRULA.**
+  `watch_projects.COVER_NAMES` yalnızca `cover.jpg/jpeg/png` içeriyor — **`cover_vertical.png`
+  YOK**, oysa `generate_cover.py` kapağı İKİ oranda üretiyor (yukarıdaki kapak maddesi).
+  Sonuç zinciri: 28 dikey kapak her dakika "sahipsiz görsel" sanılıyor → her biri
+  `_is_stable()` içinde `time.sleep(3)` yiyor → tarama **84 saniye** sürüyor (ÖLÇÜLDÜ:
+  `gorev_izleri/watch_projects.log`, arka arkaya "BİTTİ ... süre=84.2sn"). Tek başına
+  sadece israf; üç şeyle birleşince zarar gerçek: (1) watcher görevinin
+  `ExecutionTimeLimit`'i **5 dakika**; (2) `_trigger_script` ENGELLEYİCİ (`subprocess.run`,
+  tetiklenen `auto_process.py` bitene kadar bekliyor); (3) süre limiti dolunca Görev
+  Zamanlayıcı süreç AĞACINI öldürüyor. Yani tetiklenen koşu ortasından kesiliyor, kilidi
+  kalıyor ve saatlik hat `LOCK_STALE_SECONDS` (4 saat) boyunca duruyor. En pahalı sonucu
+  ise render'ın yarıda kesilmesi: `auto_process._is_rendered()` YALNIZCA dosya VARLIĞINA
+  bakıyor (`os.path.isfile`), yani **yarım bir mp4'e True der** ve bir sonraki koşu o bozuk
+  videoyu render etmeden YÜKLER.
 - **`.ps1` dosyaları UTF-8 BOM'suz kaydedilirse Windows PowerShell 5.1'de BOZULUR**:
   `setup_task_scheduler.ps1` ilk yazıldığında BOM'suzdu — Türkçe karakterler (ı, ğ, ş,
   İ, —) ANSI kod sayfasıyla yanlış okunup parse hatalarına yol açıyordu (script hiç
@@ -566,6 +635,55 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   geçmek (pencere açmayan yorumlayıcı) hiçbir tanılama bilgisini kaybettirmiyor —
   `setup_task_scheduler.ps1` artık python.exe'nin yanındaki pythonw.exe'yi otomatik
   bulup üç görevde de onu kullanıyor (bulamazsa python.exe'ye düşüp uyarı basıyor).
+- **Üç görev de betikleri DOĞRUDAN değil `gorev_sarmalayici.py` üzerinden çalıştırıyor**
+  (2026-09-12): `pythonw.exe`'de `sys.stdout`/`sys.stderr` **None**'dır ve Görev
+  Zamanlayıcı'nın stderr'i yönlendireceği bir yer yoktur — bir betik KENDİ log dosyasını
+  açmadan ÖNCE ölürse (import hatası, sözdizimi hatası, eksik bağımlılık, DLL) geriye TEK
+  BAYT iz kalmıyordu; TaskScheduler Operational olay günlüğü de bu makinede KAPALI, yani
+  ikinci bir kaynak da yok. Kanıt: 2026-09-11'de 12:12/13:12/14:12 saatlik koşuları log'da
+  HİÇ görünmüyor (yerlerinde +20 dk kaymış telafi koşuları var), ve 02:12'deki "eski kilit
+  dosyası (10732s)" satırı kilidini bırakmadan ÖLEN bir koşunun izi. Sarmalayıcı
+  `gorev_izleri/<betik>.log`'a BAŞLADI / ÇÖKTÜ+traceback / BİTTİ rc+süre yazıyor; böylece
+  üç arıza biçimi ayırt edilebiliyor: **çöktü** · **takıldı/öldü** (BAŞLADI var, eşleşen
+  BİTTİ YOK) · **hiç tetiklenmedi** (o saate ait BAŞLADI bile yok). Dört ayrıntı gerekçeli:
+  - **Kapanış ölümleri artık yakalanıyor**: `calistir()` dönerken hata akışı KAPATILMIYOR
+    ve `sys.stderr` `None`'a geri ALINMIYOR. Bir betiğin ölümü `calistir()` döndükten
+    SONRA da olabiliyor (`atexit` kancası, `__del__` sonlandırıcısı, arka plan thread'i);
+    eski sürümde böyle bir koşu "BAŞLADI + BİTTİ rc=0" (tertemiz) görünüyordu ve Görev
+    Zamanlayıcı da `LastTaskResult=0` diyordu — sahte bir betikle ÖLÇÜLDÜ.
+  - **`_buda()` ATOMİK** (`.tmp` + `fsync` + `os.replace`): eski sürüm hedefi
+    `open(yol, "w")` ile açıyordu, yani ÖNCE sıfırlayıp sonra dolduruyordu — ve budama HER
+    koşunun İLK işi (dakikalık izleyicide günde 1440 kez). Bu makinede süreçler
+    `TerminateProcess` ile ölüyor (pile geçiş, `ExecutionTimeLimit`), yani o pencerede
+    öldürülmek tam da ölümün KANITI olacak dosyayı SIFIRLAMAK demekti. `state_io.py` aynı
+    dersi `state.json` için zaten öğrenmişti.
+  - **`os.chdir(KOK)`** — `-WorkingDirectory`'ye GÜVENİLMİYOR: boru hattı göreli yollarla
+    çalışıyor ve yanlış cwd HATA VERMİYOR, sadece "bulunamadı" oluyor
+    (`find_ready_projects()` boş liste döner, log'a "İşlenecek proje yok" yazılır ve
+    otomasyon HER KOŞUDA başarıyla hiçbir şey yapmaz). `uyumluluk.KOKLER` vakasının
+    birebir aynısı. Fark varsa hem düzeltiliyor hem İZ bırakılıyor.
+  - **İz dosyasına giden TÜM yollar `gizli_maskele`'den geçiyor**: `_yaz()` (tek yazma
+    noktası), `traceback.format_exc()` ve yönlendirilmiş `sys.stderr` (`_MaskeliAkis`).
+    `writelines` AYRI tanımlı, `buffer`/`detach` KAPALI — `__getattr__` ile alt akışa
+    devredilseydi maskeleyici ATLANIRDI (traceback modülü o yolları kullanabiliyor).
+    Gerekçe: `try/except` ile sarılmamış, token taşıyan bir `requests` çağrısının
+    `ConnectionError` mesajı TAM istek URL'ini taşır (2026-09-04'te `dj_famous_process.log`'a
+    gerçek bir Instagram token'ı böyle düştü) ve `log_rotate.trim_log()` bu klasöre
+    UĞRAMIYOR — buraya düşen sızıntı sonradan TEMİZLENMEZ, maskeleme YAZARKEN olmak
+    zorunda. `gizli_maskele` yüklenemezse sarmalayıcı çalışmaya DEVAM eder (maskelenmemiş
+    iz, izsizlikten iyidir) ama sessiz kalmaz: koşu başına bir "MASKELEYİCİ YÜKLENEMEDİ"
+    satırı düşer.
+- **Görev Zamanlayıcı 2026-09-12'de YENİDEN KURULDU — "makine pilde iken üç görev de
+  durur" notu ARTIK GEÇERSİZ.** Doğrulandı: üç görevin de `Arguments` alanı artık
+  sarmalayıcıyı MUTLAK yolla çağırıyor, ve `DisallowStartIfOnBatteries` /
+  `StopIfGoingOnBatteries` üçünde de **False**. Eskiden ikisi de True'ydu: makine fişten
+  çıkınca otomasyonun TAMAMI — dakikalık watcher, yani ikinci emniyet ağı dahil — sessizce
+  duruyordu; 11 Eylül 21:12 → 12 Eylül 06:46 arasındaki 9,5 saatlik boşluk (9 kaçan tetik)
+  tam olarak buydu. **Kurulum YÜKSELTİLMİŞ PowerShell gerektiriyor**: görevler yükseltilmiş
+  bağlamda kurulu olduğu için normal kullanıcıda `Unregister-ScheduledTask`
+  `HRESULT 0x80070005 Erişim engellendi` veriyor — silme başarısız olduğu için hiçbir görev
+  KAYBOLMUYOR (zararsız), ama script yarıda kalır ve kurulum yapılmamış olur.
+  Doğrulama: `gorev_izleri/` altında üç dosyanın da tazelenmesi.
 - **`auto_process.py`/`dj_famous_process.py` her çalıştırmada başında sessizce
   `git pull` deniyor (`git_sync.auto_pull()`)**: kullanıcı her kod düzeltmesi PR ile
   `main`'e birleştikten sonra üretim makinesine elle `git pull` yapmak zorunda
@@ -600,6 +718,30 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   `containsSyntheticMedia: True`'su; kaybı uyarı düzeyinde ve meta ELLE yazılan bir
   dosya, bir yazım hatasının tüm kanalı durdurması ağır kaçar. Gerekçenin tamamı
   `uyumluluk.kontrol()` içindeki yorumda — değiştirmeden önce ORADAN oku.
+  **2026-09-12: kapı artık YEDİ çağrı noktasında ve HEPSİ FAIL-CLOSED.** Noktalar: ana hat
+  (`auto_process.process_project`), `dj_famous_process.process_set`, `validate_project`
+  (render), İKİ geri doldurma süpürgesi (`upload/ek_platform_backfill.py`,
+  `upload/facebook_backfill.py`) ve `dj_clips.py`'de İKİ nokta — `yayina_uygun_mu`'nun SON
+  adımı (bilerek en sonda: üstündeki kapılar saf state okuması, bu ise diskteki tüm
+  kökleri gezip gerektiğinde md5 hesaplıyor) + `kesit_yayinla`'nın İLK adımı (ağa çıkılan
+  son nokta; `kesit_yayinla` dışarıya açık bir giriş ve `yayina_uygun_mu`'dan geçmek
+  ZORUNDA değil, orada `return` değil `raise` var ki süpürge "yayınlandı" sanmasın).
+  `upload/tiktok_publish_plan.build_plan()` sekizinci kapı ama farklı sınıf: orası
+  otomasyon değil, ELLE yapılan adımın kapısı (yukarıdaki TikTok maddesi).
+  **Fail-closed gerekçesi:** eski kod `kontrol()`ün istisnasını "görmezden geliniyor" diye
+  loglayıp DEVAM ediyordu — yani garanti yalnızca kapı düzgün DÖNDÜĞÜNDE geçerliydi.
+  "Bilmiyorum" ile "temiz" aynı şey DEĞİL; bu kapıya bağlı iki gerçek koruma (City Pulse
+  Set'in HÂLÂ açık telif itirazı, `Küllerimden Geç` md5 kopyası) yanlış tarafa düşerse
+  sonuç GERİ ALINAMAZ bir yayındır (Instagram'da yayınlanmış medya API'den silinemiyor).
+  Ters yönün maliyeti bu projenin BİR koşu gecikmesi. KAPSAM: `return` yalnızca O PROJEYİ
+  atlıyor, koşuyu değil — `for project_dir in batch` devam eder, `finally`'deki süpürgeler
+  yine çalışır.
+  **Aynı gün GİZLİ bir İKİNCİ fail-open da kapandı**: `if _uh: return` kararı `try`
+  bloğunun İÇİNDEydi ve `uyumluluk.rapor_yaz()` ile AYNI `except`i paylaşıyordu — yani
+  raporlama adımı patlarsa HATA kararı sessizce kaybolup yayın devam ediyordu. Artık karar
+  ile rapor AYRI sarmalanıyor: kararın girdisi (`_uh`) zaten elde; rapor yazılamazsa
+  log'a ismiyle düşer ama kapı kararı BUNDAN ETKİLENMEZ. Ders genel: bir kapının kararını
+  bir RAPORLAMA adımıyla aynı `try`a koymak, kapıyı o raporun sağlamlığına bağlar.
 - **DJ setleri VE derlemeler Content ID karantinasından geçer (`dj_tarama_kontrol.py`)**:
   YouTube'a önce `private` yüklenir (`dj_tarama_bekliyor`), diğer platformlara HİÇ
   gitmez; `config.DJ_TARAMA_BEKLEME_SN` (2 saat) dolunca SAATLİK koşudan kontrol edilir
@@ -618,6 +760,26 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   TEK BAŞINA yetmiyor: `videos.list(part="status")` `containsSyntheticMedia`'yı GERİ
   DÖNDÜRMÜYOR (yazılabilir ama OKUNAMAZ), yani round-trip onu sessizce kaybettirir —
   o alan her yazımda AÇIKÇA yeniden set ediliyor.
+- **`upload/set_privacy.py` AYNI TUZAĞIN İKİNCİ KURBANIYDI: zorunlu AI beyanını
+  SİLİYORDU** (2026-09-12'de düzeltildi, GEÇMİŞ hasar HENÜZ onarılmadı). Gövdede yalnızca
+  `privacyStatus` gidiyordu, yani betiğin HER çalıştırması dokunduğu videonun
+  `containsSyntheticMedia: True` (YouTube'a karşı ZORUNLU beyan) ve
+  `selfDeclaredMadeForKids: False` alanlarını sessizce siliyordu — ve
+  `videos.list(part="status")` `containsSyntheticMedia`'yı GERİ DÖNDÜRMEDİĞİ için "hangi
+  videoda silinmiş" diye API'den bakmanın YOLU YOK, yalnızca Studio'dan görülür. Betik
+  artık mevcut `status`u okuyup birleştiriyor (`guvenli_status_govdesi()`). Hasar üç
+  yazım olayından geliyor — `444daac` + `2d6da01` (2026-09-07, tüm katalog Content ID
+  taraması için unlisted'a çekilip geri public yapıldı) ve 2026-09-11 `Küllerimden Geç` —
+  yani **~32-42 videoda beyan silinmiş KABUL EDİLMELİ**. Onarım için
+  `upload/ai_beyani_onar.py` yazıldı: ELLE çalışır, hiçbir zamanlayıcı görevine BAĞLI
+  DEĞİL (video başına 51 birim kota; saatlik hatta bağlamak asıl yüklemeleri düşürürdü —
+  2026-09-06'da `_drain_golden_hour_queue` ile tam olarak bu oldu), **varsayılanı KURU
+  KOŞU** (`--uygula` açıkça verilmeli), her video KENDİ mevcut gizliliğine yazılır
+  (gizlilik YouTube'dan okunur, okunamazsa video ATLANIR) ve bir "güvenlik kemeri" hiçbir
+  videoyu `unlisted`/`private`'tan `public`'e çeviremez. Hedef listesi SABİT DEĞİL,
+  `uyumluluk.proje_klasorleri()`'nden türetiliyor (bu deponun "bayatlayan sabit liste"
+  hata sınıfı). 2026-09-12 itibarıyla `upload/ai_beyani_onarim.json` YOK — yani kampanya
+  HENÜZ HİÇ ÇALIŞMADI.
 - **Kilit deseni: `O_CREAT|O_EXCL` ile ATOMİK alma + nabız `log()`'un İÇİNDE**
   (`auto_process.py`; `dj_famous_process.py` aynı desen): `os.path.exists` + `open`
   ikilisi yarış durumu yaratıyordu, iki süreç aynı anda "kilit yok" görüp ikisi de devam
@@ -633,14 +795,33 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   derleme dalı var: tür, parçaların temalarının ÇOĞUNLUĞUNDAN türüyor ve çoğunluk yarıyı
   GEÇMİYORSA "Müzik" deniyor (`_derleme_tur_bilgisi`, `adet * 2 > len(temalar)`) — karma
   bir derlemeye "Hip-Hop Derlemesi" demek aynı yanlışın yumuşak hâli.
+- **`derleme.py`'nin telif kapısı `telif_araliklari` YANINDA `telif_eser`'e de bakıyor**
+  (`TELIF_ISARETLERI`, 2026-09-12): bu iki alanı da depoda **HİÇBİR KOD ÜRETMİYOR** —
+  `dj_tarama_kontrol.py` karantinayı kurar ama `telif_*` YAZMAZ, alanlar ELLE yazılıyor.
+  Yani kapı "operatör HER İKİ yarıyı da doldurur" KONVANSİYONUNA dayanıyordu: Content ID
+  eşleşmesi eserin TAMAMINI kapsadığında ya da aralıklar henüz çıkarılmadığında
+  `telif_eser` tek başına yazılır ve o şarkı derlemeye GİRERDİ. Maliyet asimetrik olduğu
+  için karar kolay: yanlış pozitifin bedeli bir şarkının bir derlemede eksik kalması
+  (üstelik log'a düşerek), yanlış negatifin bedeli City Pulse Set'in HÂLÂ açık olan telif
+  itirazının üstüne İKİNCİ bir ihlal. `telif_notu` BİLEREK listede YOK: o serbest bir
+  metin alanı ve "kontrol edildi, telif yok" gibi TERSİ bir cümle de taşıyabilir — kapıyı
+  bir notun VARLIĞINA bağlamak "işaret" ile "yorum"u karıştırmak olurdu. Boş liste (`[]`)
+  işaret SAYILMAZ (state göçünde temizlenmiş kayıt tam böyle görünüyor), bozuk tip ise
+  SAYILIR: "bu alanı okuyamıyorum" ile "temiz" aynı şey değil.
 
-- **`upload/youtube_playlists.py` ÜÇ katmanlı, ve üyelik kapısı `state.json` DEĞİL
+- **`upload/youtube_playlists.py` DÖRT katmanlı, ve üyelik kapısı `state.json` DEĞİL
   YouTube'un KENDİSİ**: (1) tarz playlist'leri (`config.THEMES`) — keşif/kimlik;
   (2) `_tum_sarkilar` — SADECE ana kataloğun (`projects/`) uzun formatları tek zincirde,
   enerji eğrisine göre sıralı (`derleme._enerji` İÇE AKTARILIYOR, kopyalanmıyor —
   kopyalamak `state_io`ya yol açan hatanın ta kendisiydi); (3) `_shorts` AYRI, çünkü
   her Short aynı şarkının dikey kesiti: tek listede olsalardı dinleyici aynı şarkıyı
-  arka arkaya iki kez duyardı. "Zaten ekli mi" kapısı `playlistItems.list` (1 birim,
+  arka arkaya iki kez duyardı. (4) `_derlemeler` — derlemelerin kendi rafı; 2026-09-11'de
+  "Gece Seansı Vol. 1" canlı olarak YANLIŞ listeye girdikten sonra eklendi: başlıktaki tür
+  `_derleme_tur_bilgisi` ile parçaların ÇOĞUNLUĞUNDAN türerken playlist seçimi hâlâ
+  `meta["theme"]`e bakıyordu, yani aynı karar iki yerde iki ayrı kuralla veriliyordu.
+  Karma bir derlemenin tarz playlist'i yok — dördüncü katman olmasa kanalın en uzun, en
+  çok izlenme süresi üreten varlığı HİÇBİR listede kalmazdı.
+  "Zaten ekli mi" kapısı `playlistItems.list` (1 birim,
   süreç ömrü önbellekli); eskiden `state.json`'daki `youtube_playlist_id`, yani YEREL bir
   İDDİA kapı olarak kullanılıyordu ve bir videoyu ("Beton Krallığı") kalıcı olarak
   listesiz bırakmıştı.
@@ -767,6 +948,16 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   paketini çalıştırmak üretimin emniyet ağını kapatıyordu. Koruma dosya ADINA bağlı
   (yolun bugünkü kullanımına değil), yeni test dosyalarının hiçbir şey yapmasına gerek
   YOK — "unutulacak liste" tuzağı bilerek kapatıldı.
+  **2026-09-12'de korumaya İKİ ad daha eklendi, ikisi de "log kirlenmesi"nden ağır.**
+  `DURUM_DOSYASI` (`upload/saglik_durum.json`): bir bildirim damgası dosyası sanılıyordu,
+  ama `saglik_kontrol.kacan_kosu()` ile ÖLÇÜM KAYNAĞI oldu — `son_kosu_ts` "saatlik hattın
+  sonuna en son ne zaman ulaşıldı"yı tutuyor ve kaçan koşu tespiti TAM OLARAK o damgayla
+  yapılıyor; `kontrol_et()` çağıran tek bir test bile üretime "son koşu: şimdi" yazıyordu,
+  yani gece ölen bir otomasyonun 9 saatlik boşluğu sabah pytest çalıştırmak yüzünden
+  GÖRÜNMEZ olurdu (nabız gözcüsüyle birebir aynı bedel). `HEDEF_KOK` (`derleme.py`): gerçek
+  `derlemeler/` klasörü ve `derleme.uret()` oraya klasör AÇIP video YAZIYOR — oradaki her
+  klasör `dj_famous_process --base derlemeler` için "bekleyen set" demek ve o çağrı saatlik
+  hattan otomatik tetiklenebiliyor, yani bir test artığı YAYIN KUYRUĞUNA girebilirdi.
   CI'da (Linux) böyle bir sorun yok. CI her push/PR'da `pytest`'i
   çalıştırıyor — `ffprobe` gerektiren testler `ffprobe` yoksa (bu geliştirme ortamı gibi)
   otomatik atlanıyor, CI'da `ffmpeg` kurulduğu için hepsi çalışıyor. `requirements-dev.txt`
@@ -784,6 +975,63 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   tetikleyicisiyle çalışmaya devam eder, sadece bu nabız kontrolü devre dışı kalır) —
   makine tamamen kapalıysa zaten hiçbir yerel script bir şey gönderemez, bu harici
   altyapısı olmayan bir kişisel otomasyonun doğal sınırı.
+
+- **`saglik_kontrol.kontrol_et()` artık YEDİ adım** (2026-09-12). Hepsi
+  `auto_process.main()`'in `finally` bloğundan; YENİ zamanlayıcı görevi EKLENMEDİ.
+  Dördü eski (Instagram token süresi · Netlify kimlik bilgisi · Görev Zamanlayıcı görev
+  TANIMI · ses/tarz takibi tutarlılığı), üçü bugün eklendi — üçü de "önceki adımların
+  göremediği kör nokta" olduğu için var:
+  - **`kacan_kosu()` — eşik 4 saat.** Diğer adımların hepsi "koşu gerçekleşti"
+    VARSAYIMININ üstüne kurulu; koşu hiç tetiklenmezse hiçbiri çalışmaz ve log'a TEK SATIR
+    bile düşmez (kaçan koşunun tanımı bu: geriye hiçbir iz BIRAKMAZ). Ölçüt log DEĞİL kendi
+    damgamız (`saglik_durum.json`), ve damga hangi dala girilirse girilsin HER koşuda
+    tazeleniyor — aksi hâlde bir kez oluşan boşluk sonsuza kadar raporlanırdı.
+    **Makine kapalı/uykuda = NORMAL**: boşluk, makinenin KESİNTİSİZ ayakta olduğu süreden
+    uzunsa log'a satır düşer ama TELEFON ÇALMAZ. Burada bir tuzak var: `LastBootUpTime`
+    TEK BAŞINA YETMİYOR, çünkü **uyku açılış zamanını SIFIRLAMAZ** — gece uyuyan bir
+    dizüstüde uptime koca bir sayı olur ve "makine ayaktaydı" YALANINI söyler; gerçek
+    sinyal, uptime ile son UYANMA olayının (Power-Troubleshooter, Id 1) KÜÇÜĞÜ.
+    **Güç durumu OKUNAMAZSA bildirim GİDER** (bilerek): "bilmiyorum" masumiyet karinesi
+    değildir — sessiz kalmak tam da bu modülün yakalamak için var olduğu deseni geri
+    getirirdi. 24 saatten sonra (`UZUN_SESSIZLIK_ESIGI_SN`) sebep artık önemsiz, her
+    hâlükârda uyarılıyor.
+  - **`git_senkron()` — eşik 6 saat, ve DAL değil SONUÇ ölçülüyor.**
+    `latest_release.regenerate()` `docs/latest.html`'i her koşuda DİSKTE doğru üretiyordu,
+    ama `git_sync.push_path()` ilk iş olarak dala bakıp `main` değilse sessizce `return`
+    ediyor; üretim klasörü başka bir dalda durduğu için bio linkinin gösterdiği TEK
+    tıklanabilir sayfa 7 GÜN boyunca CANLI'da bayat kaldı ve ne log'a ne bildirime tek
+    satır düştü. Adım dalı DEĞİL, yereldeki sayfa ile `origin/main`'dekinin GİRİŞ
+    SAYILARINI karşılaştırıyor (`git show`, ağa çıkmadan): sayfa güncelse dal `main`
+    olmasa bile telefon ÇALMAZ. Dal kapısının kendisi doğru; kapatılan şey kapının
+    SESSİZLİĞİ.
+  - **`yayin_durgunlugu()` — eşik 78 saat, SABİT DEĞİL TÜRETİLMİŞ.** İlk altı adımın
+    hiçbiri "en son ne zaman bir şey YAYINLANDI" diye SORMUYOR: `kacan_kosu` kendi
+    damgasına bakıyor (her koşuda tazeleniyor), `git_senkron` yerel/canlı FARKINI ölçüyor
+    (hiçbir şey yayınlanmazsa iki taraf eşit kalır), kalan dördü ön koşullara bakıyor —
+    yani koşu yapılıyor, ortam sağlıklı görünüyor ve kanal GÜNLERCE sessizce durabiliyordu
+    (özellikle uyumluluk kapıları fail-closed olduktan sonra: kapanan kapı projeyi atlar,
+    geriye yalnızca bir log satırı kalır). Eşik `1.5 × YAYIN_TABANI_SN` — yani 52 saatlik
+    `auto_process.MIN_YAYIN_ARALIGI_SN`'in 1,5 katı; taban değişirse eşik kendiliğinden
+    kayar, elle güncellenecek ikinci bir sayı OLMAZ. **BEKLEYEN PROJE ŞARTI ZORUNLU**:
+    katalog bittiyse sessizlik NORMALDİR (Suno kotası yüzünden kanal haftalarca meşru
+    biçimde sessiz kalabilir) ve alarm YANLIŞ olurdu.
+  ÇAĞRI SIRASI anlamlı: `yayin_durgunlugu` `kacan_kosu`'dan ÖNCE, `kacan_kosu` EN SONDA —
+  çünkü o adım "saatlik hattın SONUNA ulaşıldı" damgasını atıyor; yukarıdaki adımlardan
+  biri beklenmedik şekilde patlarsa damga da atılmaz ve bir SONRAKİ koşu bunu boşluk
+  olarak görür (istenen davranış).
+- **Haftalık gözden geçirme — `weekly_report.haftalik_gozden_gecirme()`** (2026-09-12):
+  "bu hafta ne oldu / ne bekliyor / senin işin ne" özeti, telefona TEK bildirim.
+  **YENİ bir zamanlayıcı görevi YOK** (bu belgenin kendi kuralı): `auto_process.main()`'in
+  `finally` bloğundan çağrılıyor ve pencere kontrolü fonksiyonun İÇİNDE — haftanın geri
+  kalanında diske de ağa da hiç dokunmuyor. Pencere **pazartesi 09:00 sonrası, golden-hour
+  DIŞI**: haftanın sorusu hafta BAŞINDA sorulur (cuma akşamı gelen özet pazartesiye kadar
+  bayatlar), ISO hafta damgası da pazartesi değişiyor, ve cuma 18:00'deki haftalık DJ
+  koşusunun damgası pazartesi sabahı çoktan diskte — yani hafta rapora TAM giriyor.
+  **SIFIR YouTube API isteği**: bütün sayılar `state.json`'lardan ve `izlenme_raporu()`nun
+  bıraktığı anlık görüntüden okunuyor. Makine pazartesi kapalıysa rapor KAYBOLMAZ (haftanın
+  ilk uygun koşusunda çıkar — pilde duran görevler bu depoda gerçek bir vakaydı);
+  gönderilemezse hafta damgası ATILMAZ, yoksa temel çizgi kayar ve bir sonraki haftanın
+  "değişim" sayısı sessizce yanlış olurdu.
 
 ## TARİHLİ RANDEVU — 2026-10-09: ölçüm penceresi
 
@@ -808,6 +1056,40 @@ python olcum_temel_cizgi.py --karsilastir  # temel çizgi <-> yeni ölçüm
   2026-08-14..2026-09-10 ve 2026-09-12..2026-10-09 aralıklarını CSV dışa aktar.
   (Detay ve gerekçenin tamamı `olcum_temel_cizgi.py` docstring'inde.)
 
+### İKİNCİ TARİH — 2026-10-11: YouTube Reporting API'yi AÇ
+
+Google Cloud Console'da tek tık, ~5 dk. **Ertelenemez**: Reporting job yalnızca
+KURULMADAN ÖNCEKİ 30 GÜNÜ geriye dolduruyor, 40 kapak 2026-09-11'de değişti ve temel çizgi
+tam o pencerede — her gecikme günü temel çizgiden BİR GÜN siliyor. 2026-09-12'de
+doğrulandı: `olcum_temel_cizgi.json` → `cekilebildi_mi = false` (403 SERVICE_DISABLED).
+Alternatif yol YOK — Analytics API `impressions`/`impressionClickThroughRate` metriklerini
+TANIMIYOR (dört ayrı denemeyle kayıtlı); yedek yalnızca Studio → Analizler → Erişim CSV'si,
+yani yukarıdaki "elle tek ek adım"ın ta kendisi.
+
+### 2026-09-12'de YANLIŞ ÇIKAN İKİ SAYI — tekrar kullanma
+
+- **"DJ seti Suno kotası başına ~12 kat verimli" YANLIŞ BÖLMEYDİ.** Gerçek Analytics
+  verisiyle ölçülen: 2 set 28 günde 1.377 dk, 18 şarkı 1.521 dk → **video başına 8,2 kat**
+  (688 vs 84 dk). KOTA başına bölünce avantaj KAYBOLUYOR: bir set 12-16 Suno indirmesi
+  yiyor (`dj_sets/Night Drive/SUNO.md`), yani indirme başına 43-57 dk; tekil şarkı 84,5 dk
+  (1.521/18). **Kota başına ŞARKI daha verimli, set değil.** Karar yine set lehine ayakta
+  ama gerekçesi kota değil **VİDEO SAYISI**: az sayıda uzun video, kanalın en büyük riski
+  olan "toplu üretilmiş AI içerik" sinyalini düşürüyor. Sonuç kural: set yapılacaksa
+  **12 parça, 16 değil** (45-60 dk).
+- **"Yıllık ~2.620 saat izlenme" projeksiyonu ŞİŞİK.** 28 günlük izlenme süresinin
+  **%83'ü son 7 günde** oluşmuş, yani rakam tek seferlik bir hızlanmayı sabit hız sanıyor.
+  Gerçekçi taban **~784 saat/yıl**. Büyüme kararlarını şişik rakama dayandırma.
+
+### Ortaklığın (YPP) asıl darboğazı ABONE, izlenme saati DEĞİL
+
+Bu, 2026-09-12'ye kadar hiçbir belgede yazmıyordu ve strateji tarafında en pahalı
+boşluktu: 28 günde net **+28 abone**; bu hızda 1.000 abone ≈ **2,7 yıl**, ve 4.000 saat
+eşiği ondan ÖNCE dolacak. Yani "izlenme süresini artıran" her fikir (uzun format, derleme,
+DJ seti) doğru ama YETERSİZ — eşiği belirleyen değişken abone kazanımı, ve onu artıran
+işler çoğunlukla kodun DIŞINDA (bkz. `buyume_kontrol_listesi.md`). ⚠ Buna dayanan bir
+karar vermeden önce: YPP'nin 4.000 saat eşiğinin Shorts izlenmesini sayıp saymadığı bu
+ortamdan DOĞRULANAMADI, Studio'dan elle teyit gerekiyor.
+
 ## Açık/bilinen boşluklar (henüz yapılmadı)
 
 - TikTok/Instagram'ın AI-içerik açıklama API alan adları HÂLÂ tam doğrulanmadı (2026-09-04
@@ -827,6 +1109,10 @@ python olcum_temel_cizgi.py --karsilastir  # temel çizgi <-> yeni ölçüm
 `buyume_kontrol_listesi.md` (elle yapılan büyüme adımları), `trend_hashtag_notlari.md`
 (hashtag/saat araştırması, periyodik güncellenmeli), `ses_ve_tarz_takibi.md` (vokal
 çeşitliliği), `suno_prompt_hazirlik.md` (yeni şarkı ekleme adımları + lisans notu).
+`denetim_bulgulari_2026-09-12.md` — 2026-09-12'deki 14 salt-okunur denetimin HÂLÂ AÇIK
+bulguları (arşiv değil, EYLEM listesi: kararlar, elle yapılacaklar, kod işleri, ölçüm
+takvimi, ve "araştırıldı, YOK" diye kapatılmış yollar). Yeni bir işe başlamadan önce oraya
+bak — aynı şeyi ikinci kez araştırmayı önlemek için yazıldı.
 
 ## Git/PR alışkanlığı
 
