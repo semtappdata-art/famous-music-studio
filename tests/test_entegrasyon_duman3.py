@@ -13,8 +13,9 @@ doğrulanmamıştı (2026-09-12 gece kapanış koşusu):
      "işaretli proje süpürgede aday olmuyor VE yükleyici tek istek atmıyor".
   2. `upload/tiktok_publish_plan.py` — politika kapısı + ikiz kapısı +
      `--yayinlandi-hepsi --dry-run` + cp1254 konsol (alt süreçte).
-  3. `saglik_kontrol.kontrol_et()` — ALTI adım birlikte (Instagram token,
-     Netlify, görev tanımları, ses takibi, git senkronu, kaçan koşu); görev
+  3. `saglik_kontrol.kontrol_et()` — YEDİ adım birlikte (Instagram token,
+     Netlify, görev tanımları, ses takibi, git senkronu, yayın durgunluğu,
+     kaçan koşu); görev
      tanımı verisi bu makineden 2026-09-12 01:00'de SALT OKUMA ile alınan
      GERÇEK şekil (bozuk). `kacan_kosu` (2026-09-12) bu fikstürde ilk koşudur —
      durum dosyası tmp'de ve boş, yani damga yok: sessizce damgalar, bildirim
@@ -504,13 +505,27 @@ def saglik(tmp_path, monkeypatch):
     return SK, gonderilen
 
 
-def test_kontrol_et_alti_adimi_da_donduruyor_ve_gercek_gorev_tanimi_bozuk(saglik):
+def test_kontrol_et_yedi_adimi_da_donduruyor_ve_gercek_gorev_tanimi_bozuk(
+        saglik, monkeypatch):
     SK, gonderilen = saglik
+    # YEDİNCİ ADIM (2026-09-12, yayin_durgunlugu) GERÇEK kataloğu okuyor
+    # (`uyumluluk.proje_klasorleri()`); bu fikstürde onu sabitlemek ŞART, aksi
+    # halde test makinenin o günkü yayın geçmişine göre bazen bildirim
+    # gönderir ve aşağıdaki bildirim kümesi rastgele kırılırdı. Adımın kendi
+    # davranışı tests/test_yayin_durgunlugu.py'de kilitli; burada denetlenen
+    # tek şey `kontrol_et()`in ADIM KÜMESİ.
+    monkeypatch.setattr(SK, "_yayin_taramasi", lambda: {
+        "son_ts": SK.time.time(), "son_kaynak": "Sahte/youtube_uploaded_at",
+        "bekleyen": ["Sahte"], "proje": 1,
+    })
     loglar = []
     sonuc = SK.kontrol_et(log=loglar.append)
 
     assert set(sonuc) == {"instagram_token", "netlify", "gorev_tanimlari",
-                          "ses_takibi", "git_senkron", "kacan_kosu"}
+                          "ses_takibi", "git_senkron", "yayin_durgunlugu",
+                          "kacan_kosu"}
+    # Yedinci adım: taze damga -> sessiz (yanlış alarm yok).
+    assert sonuc["yayin_durgunlugu"]["durum"] == "tamam"
     # Beşinci adım (2026-09-12): bu fikstürde damga yok -> ilk koşu, sessiz.
     assert sonuc["kacan_kosu"]["durum"] == "ilk_kosu"
     # Altıncı adım (2026-09-12, git_senkron): damgası da yok -> en fazla
