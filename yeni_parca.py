@@ -38,6 +38,7 @@ hattı tetiklemez.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -220,6 +221,93 @@ def meta_icerigi(baslik: str, tema: str) -> str:
                       ensure_ascii=False, indent=2) + LF
 
 
+# --- Bölüm iskeleti (suno_prompt_hazirlik.md, "Bölüm iskeleti kuralı") -------
+#
+# NEDEN DÖRT: kullanıcı geri bildirimi (2026-09-12) "Suno parçaları hep aynı
+# başlangıç oluyor". Ölçüm suçluyu buldu ve suçlu stil etiketi DEĞİLDİ (16
+# etiket arası ortalama Jaccard 0,143) — bu dosyadaki TEK SABİT şablondu:
+# etiketli 18 sözler dosyasının 15'i birebir aynı sırada, üretilmiş 17 şarkının
+# 17'si [Intro] ile başlıyordu. Suno [Intro]yu ENSTRÜMANTAL AÇILIŞ işareti
+# sayıyor, yani altına söz konsa bile önce kendi tür-varsayılanı girişini
+# üretiyor: aynı girdi, aynı çıktı. Bu bir Suno kusuru değil, şablonun kusuru.
+#
+# SEÇİM DETERMİNİSTİK, RASTGELE DEĞİL. Rastgele olsaydı bir sonraki oturum aynı
+# şarkı için başka iskelet üretir, sözler dosyası ile üretilmiş ses birbirini
+# tutmaz ve arşiv sessizce tutarsızlaşırdı. Aynı desen depoda zaten var
+# (stock_art._secim_indeksi).
+ISKELETLER = (
+    # 0 — Intro YOK, doğrudan söz
+    ("Verse 1", "Pre-Chorus", "Chorus", "Verse 2", "Chorus", "Bridge",
+     "Chorus", "Outro"),
+    # 1 — nakaratla soğuk açılış
+    ("Chorus", "Verse 1", "Pre-Chorus", "Chorus", "Verse 2", "Bridge",
+     "Chorus", "Outro"),
+    # 2 — açılışı SEN tarif ediyorsun
+    ("Instrumental Intro", "Verse 1", "Pre-Chorus", "Chorus", "Verse 2",
+     "Chorus", "Bridge", "Outro"),
+    # 3 — mevcut (DOYMUŞ) şablon; katalogda 15 kez kullanıldı
+    ("Intro", "Verse 1", "Pre-Chorus", "Chorus", "Verse 2", "Chorus",
+     "Bridge", "Outro"),
+)
+
+# Bölüm başına yer tutucu.
+BOLUM_YER_TUTUCU = {
+    "Intro": "<DOLDUR: 2 satır>",
+    "Instrumental Intro": ("<DOLDUR: etiketi enstrüman + bar sayısıyla YENİDEN "
+                           "YAZ, ör. [Instrumental Intro - 4 bars baglama]>"),
+    "Verse 1": "<DOLDUR: 4 satır>",
+    "Verse 2": "<DOLDUR: 4 satır>",
+    "Pre-Chorus": "<DOLDUR: 4 satır>",
+    "Chorus": "<DOLDUR: 4 satır — şarkının çengeli>",
+    "Bridge": "<DOLDUR: 4 satır>",
+    "Outro": ("<DOLDUR: İKİ TAM, BİTMİŞ cümle — '...' YOK\n"
+              "(suno_prompt_hazirlik.md, 'Kapanış (Outro) kuralı')>"),
+}
+
+# "Intro kuralı" ŞARKININ İLK ANLATI BÖLÜMÜNE uygulanır — 1 numaralı iskelette
+# açılış nakarattır ve nakaratın işi zaten çapayı vermektir, o yüzden kural
+# oradan sonraki ilk kıtaya kayar (suno_prompt_hazirlik.md aynı çözümü yazıyor).
+INTRO_KURALI = ("<DOLDUR: %s satır — İLK SATIR temayı DOĞRUDAN ADLANDIRMAZ; "
+                "somut bir\nan/mekân/duyu imgesiyle açar "
+                "(suno_prompt_hazirlik.md, 'Intro kuralı')>")
+
+
+def iskelet_sec(baslik: str) -> int:
+    """Başlıktan deterministik iskelet indeksi (0-3).
+
+    Formül suno_prompt_hazirlik.md'de yazılı olanın BİREBİR aynısı olmak
+    zorunda; tests/test_yeni_parca.py bunu belgeye karşı doğruluyor."""
+    seed = int(hashlib.sha256(baslik.encode("utf-8")).hexdigest()[:8], 16)
+    return seed % len(ISKELETLER)
+
+
+def iskelet_satirlari(baslik: str) -> list:
+    """Seçilen iskeletin etiketli satır listesi (yer tutucularla)."""
+    bolumler = ISKELETLER[iskelet_sec(baslik)]
+    anlatilar = [b for b in bolumler
+                 if b not in ("Chorus", "Instrumental Intro")]
+    ilk_anlati = anlatilar[0] if anlatilar else None
+
+    satirlar = []
+    chorus_gorulmedi = True
+    for b in bolumler:
+        if satirlar:
+            satirlar.append("")
+        satirlar.append("[%s]" % b)
+        if b == "Chorus":
+            if chorus_gorulmedi:
+                chorus_gorulmedi = False
+                metin = BOLUM_YER_TUTUCU[b]
+            else:
+                metin = "<DOLDUR: yukarıdaki Chorus'un BİREBİR aynısı>"
+        elif b == ilk_anlati:
+            metin = INTRO_KURALI % ("2" if b == "Intro" else "4")
+        else:
+            metin = BOLUM_YER_TUTUCU[b]
+        satirlar.extend(metin.split("\n"))
+    return satirlar
+
+
 def sozler_sablonu(baslik: str, tema: str, stil: str, son_durum: str) -> str:
     """`<slug>_sozler.md` ŞABLONU — CRLF satır sonu.
 
@@ -227,34 +315,11 @@ def sozler_sablonu(baslik: str, tema: str, stil: str, son_durum: str) -> str:
     "şablon" ilan ediyor): başlık + üç ZORUNLU bölüm (`## Stil Etiketi`,
     `## Sözler`, `## Temiz Sözler`) + `## Notlar`.
     SÖZLER UYDURULMUYOR — yer tutucular var.
+
+    Bölüm sırası artık SABİT DEĞİL: başlıktan deterministik olarak seçilen
+    dört iskeletten biri (bkz. ISKELETLER / iskelet_sec).
     """
-    etiketli = [
-        "[Intro]",
-        "<DOLDUR: 2 satır — İLK SATIR temayı DOĞRUDAN ADLANDIRMAZ; somut bir",
-        "an/mekân/duyu imgesiyle açar (suno_prompt_hazirlik.md, 'Intro kuralı')>",
-        "",
-        "[Verse 1]",
-        "<DOLDUR: 4 satır>",
-        "",
-        "[Pre-Chorus]",
-        "<DOLDUR: 4 satır>",
-        "",
-        "[Chorus]",
-        "<DOLDUR: 4 satır — şarkının çengeli>",
-        "",
-        "[Verse 2]",
-        "<DOLDUR: 4 satır>",
-        "",
-        "[Chorus]",
-        "<DOLDUR: yukarıdaki Chorus'un BİREBİR aynısı>",
-        "",
-        "[Bridge]",
-        "<DOLDUR: 4 satır>",
-        "",
-        "[Outro]",
-        "<DOLDUR: İKİ TAM, BİTMİŞ cümle — '...' YOK",
-        "(suno_prompt_hazirlik.md, 'Kapanış (Outro) kuralı')>",
-    ]
+    etiketli = iskelet_satirlari(baslik)
     # "Temiz Sözler" = etiketli bölümün BİREBİR aynısı, köşeli parantez
     # etiketleri çıkarılmış. Şablon bunu PROGRAMATİK olarak türetiyor ki iki
     # bölüm daha ilk günden sapmasın (caption_align 0,25 eşleşme eşiğiyle

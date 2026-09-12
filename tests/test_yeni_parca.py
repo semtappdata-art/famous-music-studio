@@ -180,12 +180,21 @@ def test_sozler_sablonunda_temiz_sozler_bolumu_var(tmp_path):
     # Üç ZORUNLU bölümün üçü de (haftalik_is_akisi.md §2, 3. adım).
     assert "## Stil Etiketi" in metin
     assert "## Sözler" in metin
-    # Etiketli bölüm gerçekten Suno bölüm etiketleri içeriyor...
-    assert "[Intro]" in metin and "[Chorus]" in metin and "[Outro]" in metin
+    # Etiketli bölüm gerçekten Suno bölüm etiketleri içeriyor.
+    # `[Intro]` ÇİVİLENMİYOR: bölüm iskeleti 2026-09-12'den beri başlıktan
+    # deterministik seçiliyor ve dördün üçünde `[Intro]` YOK. "Vardiya" bugün
+    # 3 numaralı (doymuş, Intro'lu) iskelete düşüyor — yani bu satır eskiden
+    # ŞANS ESERİ geçiyordu. Beklenti artık seçilen iskeletten türetiliyor.
+    import yeni_parca
+    bolumler = yeni_parca.ISKELETLER[yeni_parca.iskelet_sec("Vardiya")]
+    for bolum in bolumler:
+        assert "[%s]" % bolum in metin, bolum
+    assert "[Chorus]" in metin and "[Outro]" in metin
     # ...ve "Temiz Sözler" bölümünde ETİKET YOK (etiketsiz kopya).
     temiz = metin.split("## Temiz Sözler", 1)[1]
-    for etiket in ("[Intro]", "[Verse 1]", "[Chorus]", "[Outro]"):
-        assert etiket not in temiz, "%s Temiz Sözler bölümüne sızmış" % etiket
+    for bolum in set(bolumler) | {"Intro", "Verse 1", "Chorus", "Outro"}:
+        assert "[%s]" % bolum not in temiz, \
+            "[%s] Temiz Sözler bölümüne sızmış" % bolum
 
 
 def test_temiz_sozler_etiketli_bolumle_ayni_satir_listesi(tmp_path):
@@ -194,10 +203,12 @@ def test_temiz_sozler_etiketli_bolumle_ayni_satir_listesi(tmp_path):
     assert _calistir(kok, "Vardiya", "rock") == 0
     with io.open(os.path.join(kok, "vardiya_sozler.md"), encoding="utf-8") as f:
         metin = f.read()
+    # Blokları `[Intro]` ile aramak ARTIK YANLIŞ — dört iskeletin üçünde o
+    # etiket yok. Çapa her iskelette bulunan `[Chorus]`.
     bloklar = metin.split("```")
-    etiketli = [s for s in bloklar if "[Intro]" in s][0].strip().splitlines()
+    etiketli = [s for s in bloklar if "[Chorus]" in s][0].strip().splitlines()
     temiz = [s for s in bloklar
-             if s.strip() and "[Intro]" not in s and "DOLDUR: 2 satır" in s]
+             if s.strip() and "[Chorus]" not in s and "DOLDUR:" in s]
     assert temiz, "Temiz Sözler kod bloğu bulunamadı"
     temiz_satir = temiz[-1].strip().splitlines()
     etiketsiz = [s for s in etiketli if not s.startswith("[")]
