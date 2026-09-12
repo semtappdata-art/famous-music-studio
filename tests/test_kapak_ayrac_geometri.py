@@ -119,7 +119,30 @@ def test_satir_yuksekligi_sabiti_gercek_olcumle_uyusuyor(tmp_path):
     ciz("Çp", a)
     ciz("Çp" + nl + "Çp", b)
     olculen = (alt(b) - alt(a)) / fs
-    assert abs(olculen - gc.DRAWTEXT_SATIR_YUKSEKLIGI) < 0.02, (
-        "drawtext satır yüksekliği %.4f em ölçüldü ama sabit %.4f — "
-        "generate_cover.DRAWTEXT_SATIR_YUKSEKLIGI güncellenmeli"
-        % (olculen, gc.DRAWTEXT_SATIR_YUKSEKLIGI))
+
+    # SABİT BİR FONTUN METRİĞİDİR, EVRENSEL DEĞİL (2026-09-12, CI'da ölçüldü):
+    # drawtext satır yüksekliğini fontun kendi `height` metriğinden alıyor.
+    # 1.3333, üretimdeki `segoeuib.ttf` için ölçüldü; Linux CI'da o font YOK,
+    # `config._find_bold_font_path` DejaVuSans-Bold'a düşüyor ve orada 1.1667
+    # çıkıyor (bu makinede arialbd.ttf: 1.1528). Yani CI'da "sabit == ölçüm"
+    # beklemek, üretimde hiç kullanılmayan bir fontu sınamak olurdu.
+    #
+    # KORUNAN DEĞİŞMEZ İKİ KATMANLI:
+    #  * Sabitin ÖLÇÜLDÜĞÜ fontta (Segoe UI Bold) birebir eşleşme — üretimi
+    #    sınayan asıl kontrol; sabit bayatlarsa Windows'ta hâlâ düşer.
+    #  * Başka HER fontta sabit ölçümün ALTINDA kalmamalı. Yön asimetrik:
+    #    `y_title = y_rule - fs*(SATIR_YUKSEKLIGI*n + BOSLUK)`, yani sabit
+    #    gerçekten BÜYÜKSE blok yukarı kayar ve ayraç payı ARTAR (zararsız);
+    #    KÜÇÜKSE son satır ayracın içine iner — docstring'deki "pay sessizce
+    #    erir" arızası tam olarak bu yön. Font değişirse bu kontrol yine düşer.
+    olcum_fontu = os.path.basename(config.FONT_BOLD_PATH).lower()
+    if olcum_fontu == "segoeuib.ttf":
+        assert abs(olculen - gc.DRAWTEXT_SATIR_YUKSEKLIGI) < 0.02, (
+            "drawtext satır yüksekliği %.4f em ölçüldü ama sabit %.4f — "
+            "generate_cover.DRAWTEXT_SATIR_YUKSEKLIGI güncellenmeli"
+            % (olculen, gc.DRAWTEXT_SATIR_YUKSEKLIGI))
+    else:
+        assert olculen <= gc.DRAWTEXT_SATIR_YUKSEKLIGI + 0.02, (
+            "%s fontunda drawtext satır yüksekliği %.4f em, sabit %.4f bunun "
+            "ALTINDA — iki satırlı başlık ayracın içine iner"
+            % (olcum_fontu, olculen, gc.DRAWTEXT_SATIR_YUKSEKLIGI))

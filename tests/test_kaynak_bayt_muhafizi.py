@@ -62,10 +62,36 @@ etmez hâle gelirdi.
 import ast
 import io
 import os
+import subprocess
 
 import pytest
 
 _KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _izlenen_dosyalar(uzantilar):
+    """git'te izlenen ve `_dosyalar` süzgecinin KAPSAMASI gereken dosyaların
+    mutlak, normalize yolları; git yoksa ya da depo değilse None.
+
+    Diskte OLMAYAN izlenen dosyalar (yerelde silinmiş, henüz commit'lenmemiş)
+    dışarıda: tarama onları zaten göremez, alarm yanlış olurdu."""
+    try:
+        r = subprocess.run(["git", "ls-files", "-z"], cwd=_KOK,
+                           capture_output=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if r.returncode != 0:
+        return None
+    sonuc = []
+    for goreli in r.stdout.decode("utf-8", "surrogateescape").split(chr(0)):
+        if not goreli or not goreli.endswith(uzantilar):
+            continue
+        if any(parca in ATLANAN_KLASORLER for parca in goreli.split("/")[:-1]):
+            continue
+        yol = os.path.normpath(os.path.join(_KOK, goreli))
+        if os.path.isfile(yol):
+            sonuc.append(yol)
+    return sonuc
 
 # `.claude` = ajan worktree kopyaları; içerik kökleri = üretim çıktısı.
 ATLANAN_KLASORLER = {
@@ -201,10 +227,35 @@ def test_tarama_gercekten_dosya_goruyor():
     py = list(_dosyalar((".py",)))
     hepsi = list(_dosyalar(TARANAN_UZANTILAR))
     assert len(py) >= 100, "Beklenenden az .py tarandı: %d" % len(py)
-    assert len(hepsi) >= len(py) + 40, "md/json taraması kapsam dışı kalmış"
     # Worktree kopyaları kapsam dışı kalmalı, yoksa her ajan dalı depo
     # kalitesini bozabilir hâle gelir.
     assert not [y for y in hepsi if (os.sep + ".claude" + os.sep) in y]
+
+    # SAYIM GIT'TE İZLENEN DOSYALARA DAYANIYOR (2026-09-12, Linux CI'da düştü):
+    # eski kural `len(hepsi) >= len(py) + 40` idi ve yalnızca GELİŞTİRME
+    # makinesinde tutuyordu. Ölçüldü: 155 .py'nin 155'i de izleniyor, ama
+    # 60 md/json'un 22'si gitignore'lu token/gizli anahtar/durum dosyası
+    # (`upload/token.json`, `notify_config.json`, `saglik_durum.json` ...).
+    # CI checkout'unda bunlar YOK -> 193 < 195. Eşiği düşürmek yerine sınanan
+    # şey değişti: "süzgeç izlenen bir kaynak dosyayı ELİYOR mu" — sayıdan
+    # daha sıkı, çünkü tek bir dosyanın düşmesini bile yakalıyor ve iki
+    # makinede de aynı sonucu veriyor.
+    izlenen = _izlenen_dosyalar(TARANAN_UZANTILAR)
+    if izlenen is None:
+        pytest.skip("git yok ya da depo bir git çalışma ağacı değil")
+    taranan = set(os.path.normcase(os.path.normpath(y)) for y in hepsi)
+    eksik = sorted(os.path.relpath(y, _KOK) for y in izlenen
+                   if os.path.normcase(y) not in taranan)
+    assert not eksik, "git'te izlenen ama taranmayan dosya(lar): %s" % eksik[:20]
+    # `git ls-files` boş/eksik dönerse yukarıdaki alt küme kontrolü boşa
+    # geçerdi; taban bu yüzden İZLENEN sayılar üzerinde. 2026-09-12 ölçümü:
+    # 155 .py + 38 md/json izleniyor. Taban silmelere yer bırakacak kadar
+    # aşağıda, "tarama çöktü" durumunu yakalayacak kadar yukarıda.
+    izlenen_py = [y for y in izlenen if y.endswith(".py")]
+    assert len(izlenen_py) >= 100, "git'te beklenenden az .py: %d" % len(izlenen_py)
+    assert len(izlenen) - len(izlenen_py) >= 30, (
+        "md/json taraması kapsam dışı kalmış: izlenen md/json = %d"
+        % (len(izlenen) - len(izlenen_py)))
 
 
 # --------------------------------------------------------------------------
