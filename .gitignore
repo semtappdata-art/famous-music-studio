@@ -1,18 +1,28 @@
 # Hassas kimlik bilgileri — asla commit edilmemeli
-upload/client_secrets.json
-upload/token.json
-upload/tiktok_client_secrets.json
-upload/tiktok_token.json
-upload/instagram_client_secrets.json
-upload/instagram_token.json
-upload/netlify_client_secrets.json
-upload/instagram_auth_state.json
-upload/tiktok_auth_state.json
-upload/facebook_client_secrets.json
-upload/facebook_token.json
-upload/facebook_auth_state.json
+#
+# DESEN TABANLI (2026-09-11 güvenlik denetimi): eskiden burada tek tek TAM YOL
+# sayılıyordu ve her yeni kimlik dosyası listeye yazılmayı unutuyordu —
+# `upload/analytics_token.json` (refresh_token + client_secret) tam olarak böyle
+# kapsam dışında kalmıştı. Artık ad deseni yeten her yeni dosya otomatik kapsanıyor.
+upload/*token*.json
+upload/*client_secrets*.json
+upload/*auth_state*.json
+# .example dosyaları kurulum rehberinin parçası, commit'lenmeli: yukarıdaki
+# desenler `.json` ile BİTTİĞİ için `*.json.example` zaten eşleşmiyor —
+# bu satır o güvenceyi açıkça yazıya döküyor.
+!upload/*.example
+# Desene uymayan, ama içine token/hata metni yazılabilen dosyalar:
+# facebook_veri_erisimi.json'a ağ hatasında kısmi token sızabiliyor
+# (facebook_upload.py, str(e)[:200]).
+upload/facebook_veri_erisimi.json
+upload/saglik_durum.json
 notify_config.json
 stock_art_config.json
+# Elle alınan yedekler (`*.bak.<saat>`): orijinali gitignore'da olan bir sır
+# dosyasının kopyası hiçbir desene uymuyordu (stock_art_config.json.bak.141649
+# → Pexels anahtarı gibi) — tek bir `git add -A` ile commit'lenebilirdi.
+*.bak
+*.bak.*
 
 # Render çıktıları ve büyük binary dosyalar
 projects/*/output/
@@ -37,8 +47,45 @@ dj_sets/*/art.png
 dj_sets/*/cover.jpg
 dj_sets/*/cover.jpeg
 dj_sets/*/cover.png
+# dj_sets/_arda/: yukaridaki art/cover kurallari dosya ADINA bakiyor; ayni
+# klasordeki cover.jpg ignore edilirken `arda_02_arac_onden.jpg`,
+# `kirpik/arda_05_kirp.jpg` gibi 13 kare desene uymadigi icin ACIKTA kaliyordu.
+# Bu klasor DJ Famous'un (GERCEK bir kisi) yuz referans fotograflarini tutuyor;
+# kirpilmamis karelerde ucuncu kisiler de var. Verilen onay "AI servisine
+# yukleyip sahne uretmek" icindi, herkese acik bir depoda YAYIMLAMAK degil.
+# Depo public (github.com/semtappdata-art/famous-music-studio) — kullanici karari:
+# bu klasor depoya GIRMEZ. README.md dahil (icinde kisinin adi/tarifi geciyor).
+dj_sets/_arda/
+# Content ID'nin City Pulse Set'te isaretledigi 3. taraf muzik kesitleri
+# (kanit/calisma malzemesi). O setin ACIK bir telif itirazi var; kesitleri
+# herkese acik bir depoya koymak itirazin ustune bir de dagitim iddiasi ekler.
+dj_sets/*/_telif_bolumleri/
+# Telifsizlestirilmis tam set ham sesi (913 MB) — GitHub'in 100 MB sert
+# dosya sinirinin 9 kati, tek basina push'u reddettirir. Turetilmis dosya:
+# ham setten _telif_bolumleri kesilerek yeniden uretilebilir.
+dj_sets/*/audio_telifsiz.wav
+# DJ set arka plan videosu (66 MB) — GitHub'in 50 MB uyari esiginin ustunde,
+# render girdisi olarak yeniden saglanabilir. Not: yeniden URETILEMEYEN elle
+# secilmis bir stok klipse, ignore yeterli degil, HARICI yedek gerekir.
+dj_sets/*/backdrop.mp4
 assets/*.png
 upload/assets/*.png
+
+# derlemeler/: ucuncu icerik koku (2026-09-11). projects/ ve dj_sets/ ile AYNI
+# ayrim uygulaniyor — TURETILMIS/agir olan disarida, meta veri ve kapaklar
+# izleniyor: meta.json + state.json yayin kaydidir, kaybi CIFT YUKLEME demek
+# (projects/*/state.json bu yuzden izleniyor). `**` kullaniliyor cunku
+# `_iptal/<ad>/` bir seviye daha derinde ve `derlemeler/*/audio.wav` onu kacirir.
+# Toplam 1,4 GB; icinde 100 MB sinirini asan 4 dosya var.
+derlemeler/**/output/
+derlemeler/**/audio.wav
+derlemeler/**/audio.mp3
+derlemeler/**/audio.m4a
+derlemeler/**/_backdrop_*.png
+# marka/: sosyal profil malzemesi. Banner/kapak PNG'leri uretici script'ten
+# yeniden uretilebilir ve kucuk (izleniyor); dj_sahne_onizleme.mp4 ise 19 MB ve
+# DJ'in goruntusunu tasiyor — video olarak depoya girmiyor.
+marka/*.mp4
 
 # Python
 __pycache__/
@@ -55,3 +102,25 @@ dj_famous_process.log
 .dj_famous_process.lock
 watch_projects.log
 .watchdog_alerted
+# Görev Zamanlayıcı iz dosyaları (gorev_sarmalayici.py: BAŞLADI/ÇÖKTÜ/BİTTİ
+# damgaları). Tanı amaçlı, makineye özel ve dakikada bir büyüyen dosyalar —
+# commit'lenecek bir şey değiller. AYRICA: takip edilirlerse her koşuda
+# değişen bu dosyalar `git_sync.auto_pull()`'un `--ff-only` pull'unu
+# "yerel değişiklikler üzerine yazılır" diye SESSİZCE engelleyebilir,
+# yani kod güncellemeleri üretim makinesine hiç ulaşmaz.
+gorev_izleri/
+comments_cache.json
+# yorum_taslaklari.json: YouTube yorum yanit KUYRUGU — gercek izleyici
+# handle'lari, yorum metinleri, yorum ID'leri ve kime ne zaman yanit verildigi.
+# Hemen ustundeki comments_cache.json ile AYNI SINIF veri; o ignore'dayken
+# bunun acik kalmasi tutarsizlikti. Ayrica her kosuda degisen bir ara-durum.
+yorum_taslaklari.json
+# reply.txt: projeyle ilgisi olmayan bir oturum testi transkripti, hicbir modul
+# okumuyor. Silinebilir; commit'lenmemesi icin burada.
+reply.txt
+.stock_video_cache/
+
+# Atomik state.json yaziminin gecici dosyasi (state_io._atomik_yaz). Normalde
+# os.replace ile aninda tuketiliyor; guc kesintisi/kill sonrasi artik kalirsa
+# commit'lenmesin.
+*.json.tmp
