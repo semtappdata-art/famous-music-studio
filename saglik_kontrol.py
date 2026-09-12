@@ -835,6 +835,78 @@ def _geri_kalma_metni(sn: float) -> str:
     return _sure_metni(sn)
 
 
+# --- Eksik içerikleri ADIYLA yazmak (2026-09-13) ---------------------------
+#
+# GERÇEK VAKA: bildirim yalnız SAYI veriyordu ("5 içerik canlıda YOK (canlı
+# 14, olması gereken 18)") ve sayfanın linkini gösteriyordu. Kullanıcı linki
+# açtı, DJ bölümünde `Just Relax`'i göremedi ve bunu AYRI bir arıza sandı.
+# Sayı "ne kadar" der, "hangisi" demez; kullanıcının sayfada gözüyle
+# karşılaştırabileceği şey ad.
+#
+# KAYNAK: kimlik kümesi zaten elde (`_sayfa_girisleri`); ad için ağa ÇIKILMIYOR,
+# state'lerdeki `youtube_video_id` / `youtube_shorts_video_id` ile eşleniyor.
+# Kök listesi ELLE SAYILMIYOR: `uyumluluk.proje_klasorleri()` (bkz.
+# `_yayin_taramasi` gerekçesi). Eşleşmeyen kimlik HAM yazılıyor — sessizce
+# düşürmek, "5 eksik" deyip dört ad göstermek olurdu.
+EKSIK_AD_TAVANI = 8           # telefonda okunacak; fazlası "ve N tane daha"
+_KOK_EKLERI = {"dj_sets": " (DJ set)", "derlemeler": " (derleme)"}
+_AD_KIMLIK_ANAHTARLARI = ("youtube_video_id", "youtube_shorts_video_id")
+
+
+# Ad metni cp1254 güvenliği için dosyadaki TEK `_cp1254_guvenli` kullanılıyor
+# (aşağıda, üretim kuyruğu bölümünde). İkinci bir tanım SESSİZCE ezilirdi.
+
+
+def _kimlik_ad_haritasi() -> dict:
+    """YouTube video/Shorts kimliği -> görünen ad. HİÇBİR ŞEY YAZMAZ, ağa çıkmaz.
+
+    Ad: `meta.json` `title`, yoksa/okunamazsa klasör adı. DJ set ve derleme
+    kökleri ada ek alıyor — bio sayfasında ayrı bölümlerde duruyorlar ve
+    kullanıcı onları o bölümde arıyor.
+    """
+    import uyumluluk
+
+    harita = {}
+    for yol in uyumluluk.proje_klasorleri():
+        state = _proje_state(yol)
+        kimlikler = [state.get(a) for a in _AD_KIMLIK_ANAHTARLARI]
+        kimlikler = [k for k in kimlikler if isinstance(k, str) and k]
+        if not kimlikler:
+            continue
+        ad = os.path.basename(yol)
+        try:
+            with open(os.path.join(yol, "meta.json"), "r", encoding="utf-8") as f:
+                baslik = json.load(f).get("title")
+            if isinstance(baslik, str) and baslik.strip():
+                ad = baslik.strip()
+        except (OSError, ValueError, AttributeError):
+            pass
+        etiket = _cp1254_guvenli(ad) + _KOK_EKLERI.get(
+            os.path.basename(os.path.dirname(yol)), "")
+        for k in kimlikler:
+            harita.setdefault(k, etiket)
+    return harita
+
+
+def _eksik_adlari_metni(eksik) -> str:
+    """Eksik kimlik kümesi -> "A, B (DJ set), ... ve N tane daha".
+
+    Ad çözümü PATLARSA tanı adımı DÜŞMEZ: kimlikler ham yazılır (metin
+    fakirleşir, bildirim yine gider).
+    """
+    try:
+        harita = _kimlik_ad_haritasi()
+    except Exception:
+        harita = {}
+    adlar = sorted({harita[k] for k in eksik if k in harita}, key=str.casefold)
+    ham = sorted(k for k in eksik if k not in harita)
+    hepsi = adlar + ham
+    metin = ", ".join(hepsi[:EKSIK_AD_TAVANI])
+    if len(hepsi) > EKSIK_AD_TAVANI:
+        metin += " ve %d tane daha" % (len(hepsi) - EKSIK_AD_TAVANI)
+    return metin
+
+
 def git_senkron(log=print) -> dict:
     """Bio linki sayfası CANLI'da geride mi kaldı? (sessiz push arızası)
 
@@ -925,10 +997,11 @@ def git_senkron(log=print) -> dict:
 
     geride_sn = simdi - ilk
     s.update({"durum": "geride", "geride_sn": int(geride_sn)})
+    eksik_adlar = _eksik_adlari_metni(eksik)
     log("  UYARI: git senkron — canlı bio sayfası %s geride: %d içerik canlıda "
-        "YOK (canlı %d, olması gereken %d), dal '%s'."
+        "YOK (canlı %d, olması gereken %d), dal '%s'. Eksik: %s."
         % (_geri_kalma_metni(geride_sn), len(eksik), len(canli_ids),
-           len(yerel_ids), dal or "?"))
+           len(yerel_ids), dal or "?", eksik_adlar))
 
     if geride_sn < GERI_KALMA_ESIGI_SN:
         # Eşik altı: log'da görünür, telefon çalmaz. `push_path()` bir sonraki
@@ -954,10 +1027,11 @@ def git_senkron(log=print) -> dict:
     mesaj = ("Bio linki sayfası (famousmusicstudio.com/latest.html) %s GERİDE: "
              "%d yayındaki içerik canlı sayfada HİÇ görünmüyor "
              "(canlıda %d giriş, olması gereken %d).\n"
+             "Canlıda görünmeyenler: %s.\n"
              "Instagram ve TikTok'tan çıkan TEK tıklanabilir yol bu sayfa.\n"
              "%s\n%s"
              % (_geri_kalma_metni(geride_sn), len(eksik), len(canli_ids),
-                len(yerel_ids), sebep, duzeltme))
+                len(yerel_ids), eksik_adlar, sebep, duzeltme))
     s["bildirildi"] = _bildir("Bio linki sayfası bayat", mesaj,
                               "git_senkron_bildirim_gun")
     return s

@@ -62,7 +62,13 @@ audio.wav → generate_cover.py (eksikse cover/art üretir)
 - `upload/ai_beyani_onar.py` — geçmişte SİLİNMİŞ `containsSyntheticMedia` beyanını geri
   yazan ELLE kampanya; zamanlayıcıda BİLEREK yok, varsayılanı kuru koşu
 - `upload/ek_platform_backfill.py` (Telegram/Bluesky) + `upload/facebook_backfill.py` —
-  geri doldurma; ikisi de golden-hour VE günlük tavan olmak üzere İKİ kapıdan geçiyor
+  geri doldurma; ikisi de golden-hour VE günlük tavan olmak üzere İKİ kapıdan geçiyor.
+  **2026-09-13'ten beri Telegram/Bluesky'nin TEK yolu `ek_platform_backfill`** — ana hat
+  (`auto_process._EK_PLATFORMLAR`) yalnız Facebook'u gönderiyor (native zamanlaması var).
+  Aday sırası: public anı son 7 gün içinde olan YENİ şarkılar önce (kendi içinde EN YENİ
+  önce), sonra eskiler (eskiden yeniye);
+  public anı gelecekte (private + `publishAt`) ya da `youtube_privacy_gercek` public
+  olmayan proje aday DEĞİL (`_public_ani`)
 - `upload/youtube_analytics.py` — izlenme SÜRESİ ölçümü. AYRI bir `analytics_token.json`
   kullanıyor: `yt-analytics.readonly` iznini mevcut `upload/token.json`'a eklemek en kolay
   yol olurdu ama `Credentials.from_authorized_user_file` kayıtlı izinlerle istenenleri
@@ -198,9 +204,16 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
     golden-hour içinde, pencere başına ve koşu başına EN FAZLA BİR proje olarak uygular
     (sıra `istendi_at`; öndeki beklerse arkadaki öne GEÇMEZ), bekletilen ya da `uyumluluk`
     HATA veren projeye dokunmaz, `guvenli_status_govdesi` ile `containsSyntheticMedia`'yı
-    korur, gerçek public anını UTC `…Z` biçiminde `*_publish_at`'e yazar — **tempo sayacı
-    (`auto_process._son_yeni_yayin_ani`) bu anı YENİ YAYIN sayar**, yani sıradaki yeni şarkı
-    o andan itibaren 52 saat bekler. Hata olursa plan KALIR ve 3 saat yeniden denenmez.
+    korur, gerçek public anını UTC `…Z` biçiminde `*_publish_at`'e yazar — **ama YALNIZ
+    gizliliği o koşuda GERÇEKTEN değişen videoya** (ölçüt API'den okunan ÖNCEKİ gizlilik,
+    state değil; 2026-09-13). Zaten public olan videoya damga yazılmaz: eskiden yazılıyordu
+    ve Shorts-only `Küllerimden Geç` planı 52 saatlik tabanı sahte bir "yeni yayın"la
+    yeniden başlatıp `Sabah Senin`'i 28 saat geri itiyordu. **Gerçek unlisted → public UZUN
+    format geçişi tempo sayacında (`auto_process._son_yeni_yayin_ani`) YENİ YAYIN sayılmaya
+    DEVAM eder** (sıradaki yeni şarkı o andan itibaren 52 saat bekler);
+    `youtube_shorts_publish_at` tempoya sayılmaz. Planda `tempo_sayilir: False` (varsayılan
+    True) verilirse uzun formatın anı tabanın OKUMADIĞI `youtube_public_ani_tempo_disi`'ne
+    yazılır. Hata olursa plan KALIR ve 3 saat yeniden denenmez.
 - **Kapak İKİ ayrı oranda üretiliyor: `cover.png` (16:9) + `cover_vertical.png` (9:16)**:
   eskiden tek kare (1600x1600) kapak vardı, YouTube'un 16:9 oynatıcısında sağ/sol
   kenarlarda çirkin koyu şeritler (pillarbox) oluşuyordu (kullanıcı geri bildirimi).
@@ -402,10 +415,19 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   yarım kalmış bir işin tamamlanmasıdır — kanalın yükleme desenini etkilemez. Kontrol, bu
   koşuda işlenecek dilimin TAMAMINA bakıyor:
   `any("youtube_video_id" not in _load_state(p) for p in pending[:count])` — dilim
-  `main()`'deki `batch = pending[:count]` ile aynı olmak ZORUNDA; `count > 1` olduğunda ilk
+  `main()`'deki `batch = ...[:count]` ile aynı olmak ZORUNDA; `count > 1` olduğunda ilk
   sıradaki bir geri doldurma, arkasındaki yeni şarkıya muafiyet kazandırmasın diye
   (2026-09-11). Log'a hangi kuralın beklettiği ("yeni yayın tabanı" / "günlük pencere
   bölüşümü") yazılıyor.
+  **Kuyruk ayırıcısı (2026-09-13):** `main()` `_bekletilenleri_ayir`'dan hemen sonra
+  `_yalniz_drain_bekleyenleri_ayir` çağırıyor — dört ana anahtardan YALNIZ
+  `instagram_media_id` eksik, `instagram_creation_id` var ve konteyner bayat DEĞİL
+  (`instagram_upload._konteyner_bayat`) olan proje `process_project` için SEÇİLMEZ; o
+  yayını `_drain_golden_hour_queue` (`ready` ile) yapıyor. Ayırıcı yokken böyle bir proje
+  kuyruk başında her koşu boşuna seçilip arkadaki yeni şarkıyı tıkıyordu (Son Kez 28,
+  Sessiz Mektup 34, Yeraltı 11 koşu). `_auto_pace_count` ve `batch` AYNI listeyi
+  (`secilebilir`) görür; günlük pencere paydası DEĞİŞMEDİ, TÜM pending
+  (`pencere_paydasi`). Koruma (ast sözleşmesi dahil): `tests/test_kuyruk_basi_drain.py`.
 - **Platform başına FARKLI golden-hour stratejisi (`config.GOLDEN_HOURS`,
   `config.next_golden_publish_time`, TR yerel 12:00-14:00/18:00-22:00)** — otomatik
   kademeleme render/upload anını günün her saatine denk getirebildiği için (eskiden
@@ -448,7 +470,11 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
     `video_state=SCHEDULED` + `scheduled_publish_time`, uzun formatta
     `published=false` + `scheduled_publish_time`), bu yüzden orada da kendi
     kuyruğumuza gerek yok ve `--no-schedule` orada da geçerli. **Telegram/Bluesky**'da
-    zamanlama yok — script o an çalıştığında gönderiliyorlar.
+    zamanlama yok — bu yüzden 2026-09-13'ten beri ana hatta DEĞİLLER (ana hatta
+    golden-hour/gizlilik/tavan kapısı yoktu; pencere dışında işlenen yeni şarkı YouTube
+    private + `publishAt` iken linkiyle düşüyordu, Bluesky 12 Eylül'de tavan 1 iken 2
+    gönderi yaptı). Yalnız `upload/ek_platform_backfill.py` gönderiyor: golden-hour +
+    günlük tavan + politika kapısı + public-anı kapısı, yeni public şarkılar önde.
 - **Instagram konteynerinde 23 SAATLİK YAŞ KAPISI, ve o kapı `_konteyner_yayindan_yeni()`
   ile Graph API çağrısının da ÖNÜNDE** (`instagram_upload.KONTEYNER_OMRU_SN`,
   `_konteyner_bayat()`, 2026-09-12): `Gece Sürüşü`/`Kalbim Oynuyor` state'lerinde 7 GÜNLÜK
@@ -922,7 +948,9 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   altyazılıysa/sözler dosyası yoksa hariç) en az bir `captions.list` API
   isteği demek, bu da tek bir `auto_process.py` koşusunda günlük 10.000
   birimlik kotanın büyük kısmını tüketip ASIL video yüklemelerini (her biri
-  ~1600 birim) engelleyebiliyordu (gerçekleşti — bir koşuda ~13 proje
+  ~1600 birim — o günkü belge varsayımı; resmî maliyet 2026-06-01'den beri ayrı kovada
+  çağrı başına 1 birim, bkz. `denetim_bulgulari_2026-09-12.md` "Kota — ölçülmüş
+  sayılar") engelleyebiliyordu (gerçekleşti — bir koşuda ~13 proje
   kontrol edilirken kota bitti, "quotaExceeded" hataları hem altyazı hem
   sonraki Instagram/video işlemlerinde art arda geldi). Düzeltme:
   `_drain_golden_hour_queue` artık TEK bir koşuda EN FAZLA BİR projede
@@ -1127,6 +1155,27 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   ilk uygun koşusunda çıkar — pilde duran görevler bu depoda gerçek bir vakaydı);
   gönderilemezse hafta damgası ATILMAZ, yoksa temel çizgi kayar ve bir sonraki haftanın
   "değişim" sayısı sessizce yanlış olurdu.
+  **Haftanın TEK izlenme mesajı bu özettir (2026-09-12, kullanıcı isteği):** en üstte
+  İZLENME bölümü — bu haftanın artışı, önceki haftanın artışı, fark ve yüzde, en çok
+  artan 5 şarkı, izlenme süresi. `izlenme_raporu()` artık AYRI "Haftalık izlenme süresi"
+  bildirimi ATMIYOR (yalnız Analytics ölçümünü kaydediyor; izin yoksa "İzlenme ölçümü
+  kapalı" alarmı sürüyor). "Önceki hafta" için ikinci anlık görüntü YOK: her rapor kendi
+  artışını `haftalik_ozet_olcum.artis` olarak bırakıyor; şarkı bazında fark
+  `haftalik_ozet_olcum.projeler`den. Eski biçimli görüntüden (yalnız `izlenme`) geçişte
+  ilk rapor farkı "(liste dışı dahil)" diye etiketliyor, kıyas uydurmuyor.
+- **Günlük izlenme — `weekly_report.gunluk_izlenme_raporu()`** (2026-09-12): Telegram
+  DM'e GÜNDE BİR "tüm şarkılar adlarıyla" mesaj. `auto_process.main()` `finally`
+  bloğundan, `_refresh_stats(None)`dan SONRA (`ast` muhafızı sırayı kilitliyor); YENİ
+  görev YOK, SIFIR YouTube isteği. 09:00 sonrası, RAPORLANMAMIŞ ve en fazla 26 saatlik
+  bir ölçüm gören ilk koşu. **Fark `*_prev`ten DEĞİL, son RAPORLANAN anlık görüntüden**
+  (`gunluk_izlenme_anlik`): tazeleme 20 saatte bir, ölçüm saati her gün ~4 saat kayıyor
+  ve bir güne İKİ ölçüm düşebiliyor — `*_prev` aradaki artışı kaybederdi. Aralık gerçek
+  saatle yazılıyor ("son 21 saat"). 21:00'e kadar yeni ölçüm yoksa tazeleme arızalıdır →
+  "VERİ BAYAT" mesajı (gün damgası yanar, anlık görüntü İLERLEMEZ). `kopya_notu` taşıyan
+  ve hiçbir videosu açık olmayan projeler ayrı "LİSTE DIŞI / KOPYA" bölümünde, toplama
+  GİRMEZ; gerçek gizlilik (`*_privacy_gercek`) istenenin önüne geçer. Gün damgası ve
+  anlık görüntü YALNIZ başarılı gönderimde. Elle: `python weekly_report.py --gunluk`
+  (göndermez, yazmaz). Testler: `tests/test_gunluk_izlenme.py`.
 
 ## TARİHLİ RANDEVU — 2026-10-09: ölçüm penceresi
 

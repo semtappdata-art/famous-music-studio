@@ -61,8 +61,12 @@ Elle geçen toplam süre: **~1,5–2,5 saat/hafta.** Boş günler bilerek boş.
 - **`SAĞLIK` uyarısında nereye bakılır:** `auto_process.log`'un son 30 satırı, sonra
   `gorev_izleri/*.log`. Uyarı adı hangi adımın düştüğünü söylüyor.
 - **Kota yoğun işler bu güne, 10:15'e.** Kota TR 10:00'da (kışın 11:00) sıfırlanıyor; tek
-  yayın ~4.150 birim (%42), AI beyanı kampanyası 2.142 (%21,4). **Cuma asla** (DJ koşusu
-  +3.454…5.104). Rapor "bugün yayın var" diyorsa **Çarşamba 10:15**.
+  yayın ortak 10.000'lik havuzdan ~950 birim (%9,5) + 2 `videos.insert` çağrısı (ayrı kova,
+  günde 100 çağrı), AI beyanı kampanyası 2.142 (%21,4). **Cuma asla** (DJ koşusu
+  +254…304 birim + 2-3 yükleme çağrısı). Rapor "bugün yayın var" diyorsa **Çarşamba 10:15**.
+  (Resmî maliyet: `videos.insert` 2026-06-01'den beri kendi kovasında, çağrı başına 1 birim.
+  Eski "~4.150 / +3.454…5.104" hesabı yüklemeyi ~1.600 birim sayıyordu; 2026-09-12'de
+  düzeltildi. Yeni maliyetle Cuma kuralı kota için zorunlu değil, ihtiyaten duruyor.)
 
 ### Salı — üretim vardiyası
 

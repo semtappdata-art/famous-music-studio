@@ -60,6 +60,15 @@ gönderisi demekti ve 14 eksik şarkı ~1,2 günde boşalıyordu. Tam olarak bu
 modülün engellemek için yazıldığı şey ("spam'e döner, toplu üretim sinyali
 verir"). facebook_backfill bu tuzağı docstring'inde anlatıp `bugun_yuklenen()`
 ile çözmüştü; burada yorum kopyalanmış ama koruma UYGULANMAMIŞTI.
+
+TEK YOL + YENİ ŞARKI ÖNCE (2026-09-13): ana hat (`auto_process._ek_platformlari_isle`)
+Telegram/Bluesky'ı artık GÖNDERMİYOR — orada golden-hour, gizlilik ve tavan
+kapısı yoktu, pencere dışında işlenen yeni şarkı YouTube private + `publishAt`
+iken linkiyle düşüyordu. Bedeli: yeni şarkı bu kuyruğa girdi ve eskiden yeniye
+sıralansaydı 16+ günlük eksik kuyruğunun ARKASINDA kalırdı. Bu yüzden `adaylar()`
+public anı son `YENI_PUBLIC_PENCERESI_SN` içinde olanları ÖNE alıyor ve
+`_public_ani()` public olmamış (zamanlanmış / gerçekte gizli) projeyi aday
+listesinden çıkarıyor.
 """
 
 import argparse
@@ -203,6 +212,87 @@ def _durum(klasor: str) -> dict:
         return {}
 
 
+# Geri doldurmada "YENİ şarkı" sayılan pencere: public anı bu kadar yakınsa
+# aday listesinin ÖNÜNE geçer (2026-09-13). 7 gün = haftada 3 şarkılık tempoda
+# en fazla ~3 şarkı; günlük tavan 1 olduğu için hepsi birkaç günde erir ve eski
+# eksik kuyruğu tamamen durmaz.
+YENI_PUBLIC_PENCERESI_SN = 7 * 24 * 3600
+
+# `auto_process.TEMPO_DISI_PUBLIC_ANI_ALANI`'nın aynası (auto_process'i import
+# etmek süpürgeye ağır bir bağımlılık olurdu); eşitlik testle kilitli.
+TEMPO_DISI_PUBLIC_ANI_ALANI = "youtube_public_ani_tempo_disi"
+
+
+def _utc_ts(deger):
+    """`"2026-09-05T06:30:00Z"` (youtube_upload._compute_publish_at) -> epoch."""
+    if not isinstance(deger, str) or not deger:
+        return None
+    from datetime import datetime
+    try:
+        an = datetime.fromisoformat(deger.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return an.timestamp() if an.tzinfo is not None else None
+
+
+def _yerel_ts(deger):
+    """`"2026-09-12T06:48:56"` (yerel saat damgası) -> epoch; bozuksa None."""
+    if not isinstance(deger, str):
+        return None
+    try:
+        return time.mktime(time.strptime(deger, "%Y-%m-%dT%H:%M:%S"))
+    except (ValueError, OverflowError):
+        return None
+
+
+def _public_ani(st: dict, simdi: float = None):
+    """Uzun formatın GERÇEK public anı (epoch) — ya da bugün public DEĞİLSE None.
+
+    TÜRETME: max(`youtube_uploaded_at`, `youtube_publish_at`,
+    `youtube_public_ani_tempo_disi`). Gerekçe: zamanlamasız yüklenen video
+    yüklendiği an public olur (`youtube_publish_at` None); zamanlanmış video
+    `publishAt` anında; önceden yayınlanmış bir videoyu sonradan public'e alan
+    görünürlük planı o anı `youtube_publish_at`'e (ya da `tempo_sayilir: False`
+    ise tempo dışı alana) yazar. Hepsi "public'e geçiş" anı olduğu için EN GEÇ
+    olanı gerçek andır. Damga yoksa/okunamazsa 0.0 (= eski; aday kalır, önü
+    almaz) — `auto_process._son_yeni_yayin_ani` ile aynı hoşgörü.
+
+    None (aday DEĞİL) dönen durumlar:
+      * publish anı GELECEKTE -> YouTube'da private + `publishAt` bekliyor;
+        linki paylaşmak izleyiciyi "video yok" sayfasına götürür;
+      * `youtube_privacy_gercek` (youtube_stats'ın API ölçümü) public DEĞİL —
+        state "public" dese de YouTube'da gizli (Bu Gece Kazandık vakası).
+        TEK İSTİSNA bayat zamanlama ölçümü: ölçüm `private` ve publishAt
+        ÖLÇÜMDEN SONRA ve şimdiden önce -> ölçüm yayından önce alınmış, video
+        o arada public oldu (saglik_kontrol'ün gizlilik kayması adımıyla aynı
+        kural). Ölçüm damgası yoksa istisna UYGULANMAZ: "bilmiyorum" gönderme
+        gerekçesi değil.
+    `youtube_privacy in (unlisted, private)` kapısı `eksik_projeler`de AYRICA
+    duruyor (elle ayarın aynası; iki bağımsız kapı bilinçli).
+    """
+    simdi = time.time() if simdi is None else simdi
+    anlar = []
+    yukleme = _yerel_ts(st.get("youtube_uploaded_at"))
+    if yukleme is not None:
+        anlar.append(yukleme)
+    for anahtar in ("youtube_publish_at", TEMPO_DISI_PUBLIC_ANI_ALANI):
+        t = _utc_ts(st.get(anahtar))
+        if t is None:
+            continue
+        if t > simdi:
+            return None                   # publishAt bekliyor
+        anlar.append(t)
+    gercek = st.get("youtube_privacy_gercek")
+    if gercek and gercek != "public":
+        olcum = _yerel_ts(st.get("youtube_privacy_gercek_at"))
+        yayin = _utc_ts(st.get("youtube_publish_at"))
+        bayat_zamanlama_olcumu = (gercek == "private" and yayin is not None
+                                  and olcum is not None and olcum < yayin <= simdi)
+        if not bayat_zamanlama_olcumu:
+            return None
+    return max(anlar) if anlar else 0.0
+
+
 def eksik_projeler(durum_anahtari: str, gerekli_video: str,
                    maks_bayt: int = None, kokler=None) -> list:
     """YouTube'da yayında ama bu platforma hiç gitmemiş projeler, ESKİDEN YENİYE.
@@ -234,6 +324,8 @@ def eksik_projeler(durum_anahtari: str, gerekli_video: str,
             continue
         if st.get("youtube_privacy") in ("unlisted", "private"):
             continue                      # liste dışı/kopya
+        if _public_ani(st) is None:
+            continue                      # publishAt bekliyor / gerçekte gizli
         if st.get("telif_araliklari"):
             continue                      # telif eşleşmesi — yeniden yayınlama
         video = os.path.join(klasor, gerekli_video)
@@ -271,19 +363,35 @@ def boyutu_asanlar(durum_anahtari: str, gerekli_video: str, maks_bayt: int,
 
 
 def adaylar(platform: tuple) -> list:
-    """Platformun TÜM varyantlarındaki adaylar, ESKİDEN YENİYE — (proje, varyant).
+    """Platformun TÜM varyantlarındaki adaylar — (proje, varyant).
+
+    SIRA (2026-09-13): önce public anı son `YENI_PUBLIC_PENCERESI_SN` içinde
+    olan YENİ şarkılar — kendi içinde EN YENİ public anı ÖNCE — sonra geri
+    kalanlar eskisi gibi `youtube_uploaded_at` ile eskiden yeniye.
+    NEDEN EN YENİ ÖNCE: kuru simülasyonda (13 Eyl) kronolojik sırayla bugün
+    public olan `Sabah Senin`, geçen hafta çıkmış üç şarkının arkasında kaldı;
+    günlük tavan 1 ile TG/BS'ye ancak 3 gün sonra gidecekti.
+    NEDEN: Telegram/Bluesky'ın ana hat yolu kapandı; bu süpürge artık yeni
+    şarkının da TEK yolu. Eskiden yeniye tek kronolojide yeni şarkı, günlük
+    tavan 1'le haftalar süren eksik kuyruğunun arkasında kalırdı.
 
     Varyantlar kök başına farklı dosya/anahtar kullanabildiği için (Telegram'da
-    dikey sürüm) listeler ayrı ayrı üretilip BURADA tek kronolojide birleşiyor:
+    dikey sürüm) listeler ayrı ayrı üretilip BURADA tek sırada birleşiyor:
     sıra kökten değil, yayın tarihinden gelmeli.
     """
+    simdi = time.time()
     birlesik = []
     for v in _varyantlar(platform):
         for proje in eksik_projeler(v["anahtar"], v["gerekli_video"],
                                     v["maks_bayt"], v["kokler"]):
-            birlesik.append((_durum(proje).get("youtube_uploaded_at") or "",
-                             proje, v))
-    birlesik.sort(key=lambda x: (x[0], x[1]))
+            st = _durum(proje)
+            an = _public_ani(st, simdi) or 0.0
+            if an and simdi - an <= YENI_PUBLIC_PENCERESI_SN:
+                anahtar = (0, -an, "", proje)        # en yeni public anı önce
+            else:
+                anahtar = (1, 0.0, st.get("youtube_uploaded_at") or "", proje)
+            birlesik.append((anahtar, proje, v))
+    birlesik.sort(key=lambda x: x[0])
     return [(proje, v) for _, proje, v in birlesik]
 
 

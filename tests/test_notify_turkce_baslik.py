@@ -219,7 +219,12 @@ def test_repo_basliklari_bulunabiliyor():
     boş kümede dolanıp SESSİZCE geçerdi — tam da bu deponun tipik arızası."""
     basliklar = _repo_bildirim_basliklari()
     assert len(basliklar) >= 10, basliklar
-    for beklenen in BUGUN_KAYBOLAN_BASLIKLAR:
+    # "Haftalık izlenme süresi" başlığı 2026-09-12'de DEPODAN KALKTI: kullanıcı
+    # haftada TEK izlenme raporu istedi, süre "Haftalık özet"e katıldı (bkz.
+    # weekly_report.izlenme_raporu). Başlık latin-1 çapası olarak aşağıdaki
+    # testlerde duruyor; tarayıcının çalıştığının kanıtı olarak depoda HÂLÂ
+    # bulunan başlıklara bakılıyor.
+    for beklenen in ("DJ set yayında", "Günlük izlenme", "İzlenme ölçümü kapalı"):
         assert beklenen in basliklar, (beklenen, sorted(basliklar))
 
 
