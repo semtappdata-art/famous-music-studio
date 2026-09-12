@@ -16,8 +16,15 @@ sözcüğü, nakarat çapayla kapanmıyor, ve bir dil hatası — "Kira da benim
 sözcüğüydü ve çapa olarak zayıftı; 19 başlığın 18'i beden/zaman/mekân/nesne sözcüğü.
 Ayrıntılı teşhis ve yeni kurallar: bkz. `suno_prompt_hazirlik.md`.
 
-**`Sabah Senin`in sesi henüz Suno'dan indirilmedi** — klasör ve `meta.json` hazır, sözler
-`sabah_senin_sozler.md`'de. İndirme yapılınca bu satır güncellenmeli.
+**`Sabah Senin`in sesi 2026-09-12'de indirildi** — `projects/Sabah Senin/audio.wav`,
+4:32, Suno v6. İki varyant üretildi, ikisi de operatöre Telegram DM'inden gönderildi;
+seçim ÖLÇÜMLE yapıldı (dinleme değil — bu bir vekil ölçüt, öyle okunmalı): seçilen
+varyantta merkez/yan enerji oranı 4-11 aralığında (diğerinde 1,5-3,6), yani vokal
+enstrümanların önünde; kapanışta son akor 1,8 sn tam seviyede tutup 2 sn'de
+sönüyor (diğeri baştan kademeli fade) — stil etiketindeki `strong final hit ending,
+no abrupt cutoff` vaadi. İki varyant da 0,16 sn'de sese giriyor: `opens cold on the
+vocal with no instrumental intro` kuralı tuttu, katalogda ilk kez `[Intro]`suz bir
+şarkı var. İndirme kotası: bu üretim 2 kilit açtı (27 -> 25), 19 Eylül'de yenilenir.
 
 **Sıradaki (Sabah Senin'den SONRA):** kadın vokal üst üste ikiye çıkmasın; erkek ya da
 düet tarafına dönülebilir. Tempo tarafında 100-110 aralığı hiç kullanılmadı.
@@ -59,7 +66,7 @@ YANSITMIYOR.
 | Küllerimden Geç *(yeni kayıt değil)* | arabesk | (kayıt yok) | (kayıt yok — "Yeniden Doğacağım"ın sesi yeniden markalandı) |
 | Kader Ortakları | hiphop (Pop-Hip-Hop, arabesk-vokal etkili) | 90 | **düet: erkek-erkek** — Male 1: warm smooth melancholic tenor, Male 2: raspy gritty passionate baritone |
 | Bu Gece Kazandık | pop (dance-arabesk-pop) | 118 | **düet: erkek-erkek** — Male 1: tender warm melismatic tenor (vibrato), Male 2: bright energetic nasal-edged voice |
-| Sabah Senin *(ses HENÜZ indirilmedi)* | rock | 78 | smoky husky low-register female vocals — düet DEĞİL |
+| Sabah Senin | rock | 78 | smoky husky low-register female vocals — düet DEĞİL |
 
 **Sütun işaretleri:** `(yok)` = stil etiketi VAR ama içinde BPM yazmıyor.
 `(kayıt yok)` = şarkının hiç arşivlenmiş stil etiketi yok (ilk üç şarkı +
