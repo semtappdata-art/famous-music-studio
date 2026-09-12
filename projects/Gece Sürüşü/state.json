@@ -16,15 +16,15 @@
   "youtube_views": 93,
   "youtube_likes": 5,
   "youtube_comments": 0,
-  "youtube_stats_checked_at": "2026-09-11T16:12:21",
-  "youtube_shorts_views": 154,
+  "youtube_stats_checked_at": "2026-09-12T13:05:26",
+  "youtube_shorts_views": 156,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-10T19:15:38",
-  "youtube_views_prev": 92,
+  "youtube_stats_prev_at": "2026-09-11T16:12:21",
+  "youtube_views_prev": 93,
   "youtube_likes_prev": 5,
   "youtube_comments_prev": 0,
-  "youtube_shorts_views_prev": 157,
+  "youtube_shorts_views_prev": 154,
   "youtube_shorts_likes_prev": 2,
   "youtube_shorts_comments_prev": 0,
   "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
@@ -35,5 +35,7 @@
     "PLKFBTOXunWQ0",
     "PLIfBoPfEuEWQ"
   ],
-  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ"
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
+  "facebook_reels_id": "2104634526790087",
+  "facebook_uploaded_at": "2026-09-12T13:05:38"
 }

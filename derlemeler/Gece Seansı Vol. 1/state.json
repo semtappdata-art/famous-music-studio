@@ -6,10 +6,10 @@
   "youtube_playlist_id": "PLT8bf_HiLcm8",
   "dj_tarama_bekliyor": false,
   "dj_tarama_yuklendi_at": "2026-09-11T15:15:29",
-  "youtube_views": 0,
-  "youtube_likes": 0,
+  "youtube_views": 15,
+  "youtube_likes": 1,
   "youtube_comments": 0,
-  "youtube_stats_checked_at": "2026-09-11T16:12:21",
+  "youtube_stats_checked_at": "2026-09-12T13:05:26",
   "dj_tarama_temiz": true,
   "dj_tarama_deneme": 0,
   "dj_kalan_bekliyor": false,
@@ -40,5 +40,12 @@
     "PLT8bf_HiLcm8",
     "PLIfBoPfEuEWQ"
   ],
-  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ"
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
+  "youtube_views_prev": 0,
+  "youtube_likes_prev": 0,
+  "youtube_comments_prev": 0,
+  "youtube_shorts_views": 80,
+  "youtube_shorts_likes": 0,
+  "youtube_shorts_comments": 0,
+  "youtube_stats_prev_at": "2026-09-11T16:12:21"
 }
