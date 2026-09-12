@@ -1,0 +1,1877 @@
+{
+  "alindi": "2026-09-11T15:25:19",
+  "not": "TEMEL CIZGI. Kanalin TUM kucuk resimleri (kapaklari) 2026-09-11'de degistirildi (baslik puntosu 2x, logo kontrasti artirildi) ve yeni thumbnail'lar ayni gun yayindaki videolara gonderildi. Bu dosyadaki tum sayilar DEGISIKLIKTEN ONCEKI donemi kapsiyor (28 ve 7 gunluk pencereler 2026-09-11'de bitiyor). Karsilastirma icin en erken 2026-10-09'da (28 gun sonra) ayni sorgulari tekrar calistir.",
+  "kucuk_resim_degisikligi_tarihi": "2026-09-11",
+  "gosterim_ctr_durumu": {
+    "cekilebildi_mi": false,
+    "denenen_metrikler": {
+      "impressions": "Unknown identifier (impressions) given in field parameters.metrics.\". Details: \"[{'message': 'Unknown identifi",
+      "impressionClickThroughRate": "Unknown identifier (impressionClickThroughRate) given in field parameters.metrics.\". Details: \"[{'message': 'U",
+      "videoImpressions": "Unknown identifier (videoImpressions) given in field parameters.metrics.\". Details: \"[{'message': 'Unknown ide",
+      "thumbnailImpressions": "Unknown identifier (thumbnailImpressions) given in field parameters.metrics.\". Details: \"[{'message': 'Unknown"
+    },
+    "aciklama": "YouTube Analytics API v2 'impressions' ve 'impressionClickThroughRate' metriklerini TANIMIYOR -> HTTP 400 'Unknown identifier'. Bu bir izin/scope sorunu DEGIL (ayni token ile views/estimatedMinutesWatched/subscribersGained sorunsuz geliyor); metrik API'nin sozlugunde hic yok. Tiklanma orani ancak YouTube Studio arayuzunden (Erisim/Reach sekmesi) ELLE okunabiliyor.",
+    "ne_yapmali": "Tiklanma orani API'den ALINAMIYOR. Tek kaynagi YouTube Studio. Studio gecmis tarih araliklarini saklıyor -> 'Analizler > Gelisim/Erisim' ekraninda tarih araligini 2026-08-14..2026-09-10 secip 'Gosterimler' ve 'Gosterimlerin tiklanma orani' sutunlariyla CSV disa aktar. SONRA ayni ekranda 2026-09-12..2026-10-09 araligini secip karsilastir. VIDEO OMRU BOYUNCA (lifetime) degerini KULLANMA - yeni kucuk resim eski donemi de kirletir; MUTLAKA tarih araligi secerek bak.",
+    "reporting_api": {
+      "durum": "KAPALI — Google Cloud projesinde (1026223060773) YouTube Reporting API etkin değil (HTTP 403 SERVICE_DISABLED).",
+      "onemli": "YouTube Reporting API (Analytics API'den AYRI bir servis) thumbnail gösterimini ve tıklanma oranını GERÇEKTEN veriyor: channel_reach_basic_a1 / channel_reach_combined_a1 raporlarındaki video_thumbnail_impressions ve video_thumbnail_impressions_ctr metrikleri.",
+      "zaman_kritik": "Bir reporting job oluşturulduğunda YouTube job'un oluşturulduğu andan GERİYE 30 GÜNLÜK veriyi de üretiyor. Bugün (2026-09-11) açılırsa ~2026-08-12'den itibaren, yani küçük resim değişikliği ÖNCESİNİN tamamı gelir. Her gecikme günü temel çizgiden bir gün siler; 2026-10-11'den sonra açılırsa değişiklik öncesi dönem GERİ GELMEZ.",
+      "kaynak": "https://developers.google.com/youtube/reporting/v1/reports/channel_reports",
+      "kaynak2": "https://developers.google.com/youtube/reporting/v1/reports  (30 günlük geriye doldurma)",
+      "adimlar": [
+        "1. https://console.developers.google.com/apis/api/youtubereporting.googleapis.com/overview?project=1026223060773 -> ETKINLESTIR",
+        "2. Mevcut upload/analytics_token.json (yt-analytics.readonly) yetiyor, YENIDEN YETKILENDIRME GEREKMIYOR.",
+        "3. jobs().create(body={'reportTypeId':'channel_reach_basic_a1','name':'reach'}) -> ertesi gun jobs().reports().list() ile CSV in."
+      ],
+      "yedek_plan": "Reporting API bugün açılamazsa: YouTube Studio > Analizler > Gelişim(Reach) sekmesinde tarih aralığını 2026-08-14..2026-09-10 seçip 'Gösterimler' + 'Gösterimlerin tıklanma oranı' sütunlarıyla CSV dışa aktar ve bu klasöre kaydet."
+    }
+  },
+  "kanal_28gun": {
+    "views": 4286,
+    "estimatedMinutesWatched": 3608,
+    "averageViewDuration": 88,
+    "averageViewPercentage": 23.13,
+    "subscribersGained": 29,
+    "subscribersLost": 1,
+    "likes": 100,
+    "comments": 12,
+    "shares": 31
+  },
+  "kanal_7gun": {
+    "views": 3801,
+    "estimatedMinutesWatched": 3017,
+    "averageViewDuration": 83,
+    "averageViewPercentage": 21.55,
+    "subscribersGained": 18,
+    "subscribersLost": 1,
+    "likes": 85,
+    "comments": 11,
+    "shares": 19
+  },
+  "trafik_kaynaklari_28gun": {
+    "insightTrafficSourceType": [
+      {
+        "insightTrafficSourceType": "SHORTS",
+        "views": 1494,
+        "estimatedMinutesWatched": 52
+      },
+      {
+        "insightTrafficSourceType": "RELATED_VIDEO",
+        "views": 1104,
+        "estimatedMinutesWatched": 759
+      },
+      {
+        "insightTrafficSourceType": "YT_CHANNEL",
+        "views": 707,
+        "estimatedMinutesWatched": 689
+      },
+      {
+        "insightTrafficSourceType": "SUBSCRIBER",
+        "views": 325,
+        "estimatedMinutesWatched": 490
+      },
+      {
+        "insightTrafficSourceType": "PLAYLIST",
+        "views": 212,
+        "estimatedMinutesWatched": 725
+      },
+      {
+        "insightTrafficSourceType": "NO_LINK_OTHER",
+        "views": 139,
+        "estimatedMinutesWatched": 383
+      },
+      {
+        "insightTrafficSourceType": "YT_SEARCH",
+        "views": 114,
+        "estimatedMinutesWatched": 44
+      },
+      {
+        "insightTrafficSourceType": "YT_OTHER_PAGE",
+        "views": 106,
+        "estimatedMinutesWatched": 381
+      },
+      {
+        "insightTrafficSourceType": "EXT_URL",
+        "views": 29,
+        "estimatedMinutesWatched": 31
+      },
+      {
+        "insightTrafficSourceType": "NOTIFICATION",
+        "views": 29,
+        "estimatedMinutesWatched": 7
+      },
+      {
+        "insightTrafficSourceType": "END_SCREEN",
+        "views": 10,
+        "estimatedMinutesWatched": 40
+      }
+    ],
+    "deviceType": [
+      {
+        "deviceType": "MOBILE",
+        "views": 2940,
+        "estimatedMinutesWatched": 1047
+      },
+      {
+        "deviceType": "TV",
+        "views": 733,
+        "estimatedMinutesWatched": 2257
+      },
+      {
+        "deviceType": "DESKTOP",
+        "views": 435,
+        "estimatedMinutesWatched": 226
+      },
+      {
+        "deviceType": "TABLET",
+        "views": 157,
+        "estimatedMinutesWatched": 74
+      }
+    ],
+    "subscribedStatus": [
+      {
+        "subscribedStatus": "UNSUBSCRIBED",
+        "views": 4082,
+        "estimatedMinutesWatched": 3192
+      },
+      {
+        "subscribedStatus": "SUBSCRIBED",
+        "views": 187,
+        "estimatedMinutesWatched": 415
+      }
+    ]
+  },
+  "video_meta": {
+    "8ixjisC6Ato": {
+      "kok": "projects",
+      "proje": "Beni Bırakma",
+      "tip": "uzun",
+      "yuklendi": "2026-08-31T06:46:27",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 119,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "sSzfncVuTQM": {
+      "kok": "projects",
+      "proje": "Beni Bırakma",
+      "tip": "shorts",
+      "yuklendi": "2026-09-04T00:00:00",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 51,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "1-xofMJPVgY": {
+      "kok": "projects",
+      "proje": "Beton Krallığı",
+      "tip": "uzun",
+      "yuklendi": "2026-09-03T17:05:11",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 54,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "B3zfb8gnmwY": {
+      "kok": "projects",
+      "proje": "Beton Krallığı",
+      "tip": "shorts",
+      "yuklendi": "2026-09-03T17:05:15",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 6,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "yUA9LXMlD9k": {
+      "kok": "projects",
+      "proje": "Bir Bahar Daha",
+      "tip": "uzun",
+      "yuklendi": "2026-09-03T17:15:15",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 36,
+      "playlist": "PLKsOiTu3OtV8"
+    },
+    "zAW3m7n68cs": {
+      "kok": "projects",
+      "proje": "Bir Bahar Daha",
+      "tip": "shorts",
+      "yuklendi": "2026-09-03T17:15:20",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 90,
+      "playlist": "PLKsOiTu3OtV8"
+    },
+    "LWGZGtw6UCY": {
+      "kok": "projects",
+      "proje": "Bu Gece Kazandık",
+      "tip": "uzun",
+      "yuklendi": "2026-09-08T21:19:34",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 3,
+      "playlist": "PLKsOiTu3OtV8"
+    },
+    "2OHEA5Fp3-E": {
+      "kok": "projects",
+      "proje": "Bu Gece Kazandık",
+      "tip": "shorts",
+      "yuklendi": "2026-09-08T21:19:42",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 8,
+      "playlist": "PLKsOiTu3OtV8"
+    },
+    "7gyLv84KxTk": {
+      "kok": "projects",
+      "proje": "Gece Sürüşü",
+      "tip": "uzun",
+      "yuklendi": "2026-09-01T03:46:03",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 92,
+      "playlist": "PLKsOiTu3OtV8"
+    },
+    "Sj9S9cNy5H0": {
+      "kok": "projects",
+      "proje": "Gece Sürüşü",
+      "tip": "shorts",
+      "yuklendi": "2026-09-06T00:00:00",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 157,
+      "playlist": "PLKsOiTu3OtV8"
+    },
+    "htVtV-JIIjw": {
+      "kok": "projects",
+      "proje": "Kader Ortakları",
+      "tip": "uzun",
+      "yuklendi": "2026-09-08T20:26:32",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 66,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "Ga_pBs0ufDo": {
+      "kok": "projects",
+      "proje": "Kader Ortakları",
+      "tip": "shorts",
+      "yuklendi": "2026-09-08T20:26:41",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 171,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "SUd_Ss-kKgU": {
+      "kok": "projects",
+      "proje": "Kalbim Oynuyor",
+      "tip": "uzun",
+      "yuklendi": "2026-09-01T21:49:10",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 50,
+      "playlist": "PLKsOiTu3OtV8"
+    },
+    "EyOQJX8ds-I": {
+      "kok": "projects",
+      "proje": "Kalbim Oynuyor",
+      "tip": "shorts",
+      "yuklendi": "2026-09-03T15:00:43",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 12,
+      "playlist": "PLKsOiTu3OtV8"
+    },
+    "NMFMXdUPBT8": {
+      "kok": "projects",
+      "proje": "Kumdan Denize",
+      "tip": "uzun",
+      "yuklendi": "2026-09-05T03:26:23",
+      "publishAt": "2026-09-05T06:30:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 31,
+      "playlist": "PLBgc_mrlH_1Q"
+    },
+    "Oa09WRIKXkU": {
+      "kok": "projects",
+      "proje": "Kumdan Denize",
+      "tip": "shorts",
+      "yuklendi": "2026-09-05T03:26:32",
+      "publishAt": "2026-09-05T06:30:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 5,
+      "playlist": "PLBgc_mrlH_1Q"
+    },
+    "-CQ7MmUygTQ": {
+      "kok": "projects",
+      "proje": "Küllerimden Geç",
+      "tip": "uzun",
+      "yuklendi": "2026-09-07T13:42:00",
+      "publishAt": null,
+      "gorunurluk": "unlisted",
+      "state_izlenme": 156,
+      "playlist": "PLcJHfZF85FI0"
+    },
+    "jN78mJrZd3c": {
+      "kok": "projects",
+      "proje": "Küllerimden Geç",
+      "tip": "shorts",
+      "yuklendi": "2026-09-07T13:42:08",
+      "publishAt": null,
+      "gorunurluk": "unlisted",
+      "state_izlenme": 111,
+      "playlist": "PLcJHfZF85FI0"
+    },
+    "FIkTi_SEI9w": {
+      "kok": "projects",
+      "proje": "Kırık Zincir",
+      "tip": "uzun",
+      "yuklendi": "2026-09-07T18:04:45",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 23,
+      "playlist": "PLWPREmvYqOsI"
+    },
+    "xjtZfsZyBlI": {
+      "kok": "projects",
+      "proje": "Kırık Zincir",
+      "tip": "shorts",
+      "yuklendi": "2026-09-07T18:04:55",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 76,
+      "playlist": "PLWPREmvYqOsI"
+    },
+    "vcZHfvpOrpc": {
+      "kok": "projects",
+      "proje": "Sabaha Kadar",
+      "tip": "uzun",
+      "yuklendi": "2026-09-02T15:29:18",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 73,
+      "playlist": "PLBgc_mrlH_1Q"
+    },
+    "yybM_bChj-Y": {
+      "kok": "projects",
+      "proje": "Sabaha Kadar",
+      "tip": "shorts",
+      "yuklendi": "2026-09-03T17:00:53",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 4,
+      "playlist": "PLBgc_mrlH_1Q"
+    },
+    "Y8tlsFFP6kg": {
+      "kok": "projects",
+      "proje": "Sessiz Mektup",
+      "tip": "uzun",
+      "yuklendi": "2026-09-05T03:18:49",
+      "publishAt": "2026-09-05T04:30:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 180,
+      "playlist": "PLTEPBcEDj1ds"
+    },
+    "0FzSnQiMgNc": {
+      "kok": "projects",
+      "proje": "Sessiz Mektup",
+      "tip": "shorts",
+      "yuklendi": "2026-09-05T03:18:58",
+      "publishAt": "2026-09-05T04:30:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 85,
+      "playlist": "PLTEPBcEDj1ds"
+    },
+    "9qgIU8vcYZY": {
+      "kok": "projects",
+      "proje": "Sofraya Gelmedin",
+      "tip": "uzun",
+      "yuklendi": "2026-09-05T03:23:59",
+      "publishAt": "2026-09-05T06:00:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 99,
+      "playlist": "PLcJHfZF85FI0"
+    },
+    "kjyoBsQG1V0": {
+      "kok": "projects",
+      "proje": "Sofraya Gelmedin",
+      "tip": "shorts",
+      "yuklendi": "2026-09-05T03:24:08",
+      "publishAt": "2026-09-05T06:00:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 7,
+      "playlist": "PLcJHfZF85FI0"
+    },
+    "kyE-TvW0WQ4": {
+      "kok": "projects",
+      "proje": "Sokaklar Beni Tanır",
+      "tip": "uzun",
+      "yuklendi": "2026-09-06T20:04:39",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 113,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "-gDTUPmywFo": {
+      "kok": "projects",
+      "proje": "Sokaklar Beni Tanır",
+      "tip": "shorts",
+      "yuklendi": "2026-09-06T20:04:44",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 250,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "sTXz-7V1fzc": {
+      "kok": "projects",
+      "proje": "Son Kez",
+      "tip": "uzun",
+      "yuklendi": "2026-09-05T02:12:27",
+      "publishAt": "2026-09-05T09:00:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 307,
+      "playlist": "PLTEPBcEDj1ds"
+    },
+    "-xAlHLaddF4": {
+      "kok": "projects",
+      "proje": "Son Kez",
+      "tip": "shorts",
+      "yuklendi": "2026-09-05T02:12:37",
+      "publishAt": "2026-09-05T09:00:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 18,
+      "playlist": "PLTEPBcEDj1ds"
+    },
+    "kZML9g4GdBs": {
+      "kok": "projects",
+      "proje": "Yeniden Doğacağım",
+      "tip": "uzun",
+      "yuklendi": "2026-09-01T14:46:26",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 143,
+      "playlist": "PLcJHfZF85FI0"
+    },
+    "Y6eK2nIBXqA": {
+      "kok": "projects",
+      "proje": "Yeniden Doğacağım",
+      "tip": "shorts",
+      "yuklendi": "2026-09-04T00:00:00",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 50,
+      "playlist": "PLcJHfZF85FI0"
+    },
+    "X3xRBwjUaEQ": {
+      "kok": "projects",
+      "proje": "Yeraltı",
+      "tip": "uzun",
+      "yuklendi": "2026-09-05T03:20:38",
+      "publishAt": "2026-09-05T05:00:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 229,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "Xh8R98rBYQw": {
+      "kok": "projects",
+      "proje": "Yeraltı",
+      "tip": "shorts",
+      "yuklendi": "2026-09-05T03:20:50",
+      "publishAt": "2026-09-05T05:00:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 61,
+      "playlist": "PLamU8IEtNO2k"
+    },
+    "0ePR5BUUFoQ": {
+      "kok": "projects",
+      "proje": "Yürek Yarası",
+      "tip": "uzun",
+      "yuklendi": "2026-09-05T03:22:20",
+      "publishAt": "2026-09-05T05:30:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 225,
+      "playlist": "PLcJHfZF85FI0"
+    },
+    "6GheAQ39BGw": {
+      "kok": "projects",
+      "proje": "Yürek Yarası",
+      "tip": "shorts",
+      "yuklendi": "2026-09-05T03:22:29",
+      "publishAt": "2026-09-05T05:30:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 112,
+      "playlist": "PLcJHfZF85FI0"
+    },
+    "ph_qlIpHx_A": {
+      "kok": "dj_sets",
+      "proje": "City Pulse Set",
+      "tip": "uzun",
+      "yuklendi": "2026-09-04T06:43:36",
+      "publishAt": "2026-09-04T09:00:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 115,
+      "playlist": "PLV3ve3aiAwU4"
+    },
+    "kg2wTsci_i4": {
+      "kok": "dj_sets",
+      "proje": "City Pulse Set",
+      "tip": "shorts",
+      "yuklendi": "2026-09-04T06:43:43",
+      "publishAt": "2026-09-04T09:00:00Z",
+      "gorunurluk": "public",
+      "state_izlenme": 8,
+      "playlist": "PLV3ve3aiAwU4"
+    },
+    "wo2xZBU6VjU": {
+      "kok": "dj_sets",
+      "proje": "Just Relax",
+      "tip": "uzun",
+      "yuklendi": "2026-09-07T16:18:34",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 80,
+      "playlist": "PLV3ve3aiAwU4"
+    },
+    "257Hke4MSMg": {
+      "kok": "dj_sets",
+      "proje": "Just Relax",
+      "tip": "shorts",
+      "yuklendi": "2026-09-07T16:18:57",
+      "publishAt": null,
+      "gorunurluk": "public",
+      "state_izlenme": 88,
+      "playlist": "PLV3ve3aiAwU4"
+    },
+    "O2VGj5SUz30": {
+      "kok": "derlemeler",
+      "proje": "Gece Seansı Vol. 1",
+      "tip": "uzun",
+      "yuklendi": "2026-09-11T15:15:28",
+      "publishAt": null,
+      "gorunurluk": "private",
+      "state_izlenme": null,
+      "playlist": "PLamU8IEtNO2k"
+    }
+  },
+  "pencere_28gun": {
+    "baslangic": "2026-08-14",
+    "bitis": "2026-09-11",
+    "gun": 28,
+    "video": {
+      "2OHEA5Fp3-E": {
+        "views": 1,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 14,
+        "averageViewPercentage": 31.15,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      },
+      "EyOQJX8ds-I": {
+        "views": 12,
+        "estimatedMinutesWatched": 7,
+        "averageViewDuration": 71,
+        "averageViewPercentage": 154.5,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "kZML9g4GdBs": {
+        "views": 133,
+        "estimatedMinutesWatched": 161,
+        "averageViewDuration": 86,
+        "averageViewPercentage": 39.13,
+        "subscribersGained": 1,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 8
+      },
+      "jN78mJrZd3c": {
+        "views": 106,
+        "estimatedMinutesWatched": 2,
+        "averageViewDuration": 12,
+        "averageViewPercentage": 26.6,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "1-xofMJPVgY": {
+        "views": 52,
+        "estimatedMinutesWatched": 55,
+        "averageViewDuration": 70,
+        "averageViewPercentage": 50.29,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "kg2wTsci_i4": {
+        "views": 8,
+        "estimatedMinutesWatched": 2,
+        "averageViewDuration": 29,
+        "averageViewPercentage": 64.48,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "sTXz-7V1fzc": {
+        "views": 298,
+        "estimatedMinutesWatched": 269,
+        "averageViewDuration": 59,
+        "averageViewPercentage": 27.339999999999996,
+        "subscribersGained": 1,
+        "subscribersLost": 0,
+        "likes": 3,
+        "comments": 1,
+        "shares": 3
+      },
+      "vcZHfvpOrpc": {
+        "views": 70,
+        "estimatedMinutesWatched": 24,
+        "averageViewDuration": 38,
+        "averageViewPercentage": 19.43,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "NMFMXdUPBT8": {
+        "views": 25,
+        "estimatedMinutesWatched": 25,
+        "averageViewDuration": 65,
+        "averageViewPercentage": 28.67,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 1,
+        "shares": 0
+      },
+      "sSzfncVuTQM": {
+        "views": 51,
+        "estimatedMinutesWatched": 5,
+        "averageViewDuration": 52,
+        "averageViewPercentage": 114.84999999999998,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "0ePR5BUUFoQ": {
+        "views": 219,
+        "estimatedMinutesWatched": 173,
+        "averageViewDuration": 57,
+        "averageViewPercentage": 29.42,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "-xAlHLaddF4": {
+        "views": 13,
+        "estimatedMinutesWatched": 1,
+        "averageViewDuration": 12,
+        "averageViewPercentage": 26.1,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "ph_qlIpHx_A": {
+        "views": 104,
+        "estimatedMinutesWatched": 898,
+        "averageViewDuration": 605,
+        "averageViewPercentage": 12.710000000000003,
+        "subscribersGained": 1,
+        "subscribersLost": 0,
+        "likes": 5,
+        "comments": 1,
+        "shares": 1
+      },
+      "257Hke4MSMg": {
+        "views": 85,
+        "estimatedMinutesWatched": 4,
+        "averageViewDuration": 15,
+        "averageViewPercentage": 33.69,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "Oa09WRIKXkU": {
+        "views": 5,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 6,
+        "averageViewPercentage": 13.15,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "-CQ7MmUygTQ": {
+        "views": 105,
+        "estimatedMinutesWatched": 145,
+        "averageViewDuration": 86,
+        "averageViewPercentage": 39.22,
+        "subscribersGained": 6,
+        "subscribersLost": 0,
+        "likes": 17,
+        "comments": 4,
+        "shares": 7
+      },
+      "FIkTi_SEI9w": {
+        "views": 19,
+        "estimatedMinutesWatched": 13,
+        "averageViewDuration": 45,
+        "averageViewPercentage": 20.98,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "8ixjisC6Ato": {
+        "views": 119,
+        "estimatedMinutesWatched": 111,
+        "averageViewDuration": 62,
+        "averageViewPercentage": 29.600000000000005,
+        "subscribersGained": 1,
+        "subscribersLost": 0,
+        "likes": 8,
+        "comments": 0,
+        "shares": 2
+      },
+      "wo2xZBU6VjU": {
+        "views": 39,
+        "estimatedMinutesWatched": 479,
+        "averageViewDuration": 798,
+        "averageViewPercentage": 32.39,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 4,
+        "comments": 0,
+        "shares": 2
+      },
+      "kjyoBsQG1V0": {
+        "views": 7,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 16,
+        "averageViewPercentage": 35.08,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "9qgIU8vcYZY": {
+        "views": 98,
+        "estimatedMinutesWatched": 27,
+        "averageViewDuration": 29,
+        "averageViewPercentage": 25.56,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "X3xRBwjUaEQ": {
+        "views": 215,
+        "estimatedMinutesWatched": 119,
+        "averageViewDuration": 34,
+        "averageViewPercentage": 22.4,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 1,
+        "shares": 0
+      },
+      "Sj9S9cNy5H0": {
+        "views": 158,
+        "estimatedMinutesWatched": 7,
+        "averageViewDuration": 33,
+        "averageViewPercentage": 73,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "7gyLv84KxTk": {
+        "views": 89,
+        "estimatedMinutesWatched": 91,
+        "averageViewDuration": 66,
+        "averageViewPercentage": 27.500000000000004,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 5,
+        "comments": 0,
+        "shares": 2
+      },
+      "zAW3m7n68cs": {
+        "views": 93,
+        "estimatedMinutesWatched": 6,
+        "averageViewDuration": 16,
+        "averageViewPercentage": 36.15,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 3,
+        "comments": 0,
+        "shares": 0
+      },
+      "-gDTUPmywFo": {
+        "views": 250,
+        "estimatedMinutesWatched": 15,
+        "averageViewDuration": 33,
+        "averageViewPercentage": 72.56,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "SUd_Ss-kKgU": {
+        "views": 50,
+        "estimatedMinutesWatched": 37,
+        "averageViewDuration": 49,
+        "averageViewPercentage": 23.39,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 1,
+        "shares": 0
+      },
+      "htVtV-JIIjw": {
+        "views": 4,
+        "estimatedMinutesWatched": 5,
+        "averageViewDuration": 114,
+        "averageViewPercentage": 67.39,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      },
+      "0FzSnQiMgNc": {
+        "views": 88,
+        "estimatedMinutesWatched": 3,
+        "averageViewDuration": 19,
+        "averageViewPercentage": 43.47,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "6GheAQ39BGw": {
+        "views": 114,
+        "estimatedMinutesWatched": 4,
+        "averageViewDuration": 12,
+        "averageViewPercentage": 26.88,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "LWGZGtw6UCY": {
+        "views": 3,
+        "estimatedMinutesWatched": 5,
+        "averageViewDuration": 106,
+        "averageViewPercentage": 55.99000000000001,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      },
+      "B3zfb8gnmwY": {
+        "views": 6,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 9,
+        "averageViewPercentage": 20.93,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "Y8tlsFFP6kg": {
+        "views": 178,
+        "estimatedMinutesWatched": 137,
+        "averageViewDuration": 48,
+        "averageViewPercentage": 24.1,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 3,
+        "comments": 0,
+        "shares": 3
+      },
+      "Xh8R98rBYQw": {
+        "views": 61,
+        "estimatedMinutesWatched": 2,
+        "averageViewDuration": 12,
+        "averageViewPercentage": 28.21,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "kyE-TvW0WQ4": {
+        "views": 107,
+        "estimatedMinutesWatched": 103,
+        "averageViewDuration": 66,
+        "averageViewPercentage": 45.59,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 1
+      },
+      "Y6eK2nIBXqA": {
+        "views": 52,
+        "estimatedMinutesWatched": 4,
+        "averageViewDuration": 31,
+        "averageViewPercentage": 68.2,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "yybM_bChj-Y": {
+        "views": 4,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 5,
+        "averageViewPercentage": 11.95,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "yUA9LXMlD9k": {
+        "views": 36,
+        "estimatedMinutesWatched": 21,
+        "averageViewDuration": 35,
+        "averageViewPercentage": 25.239999999999995,
+        "subscribersGained": 1,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 1,
+        "shares": 0
+      },
+      "Ga_pBs0ufDo": {
+        "views": 175,
+        "estimatedMinutesWatched": 7,
+        "averageViewDuration": 22,
+        "averageViewPercentage": 48.67,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "xjtZfsZyBlI": {
+        "views": 74,
+        "estimatedMinutesWatched": 1,
+        "averageViewDuration": 5,
+        "averageViewPercentage": 11.84,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      }
+    }
+  },
+  "pencere_7gun": {
+    "baslangic": "2026-09-04",
+    "bitis": "2026-09-11",
+    "gun": 7,
+    "video": {
+      "2OHEA5Fp3-E": {
+        "views": 1,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 14,
+        "averageViewPercentage": 31.15,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      },
+      "kZML9g4GdBs": {
+        "views": 77,
+        "estimatedMinutesWatched": 44,
+        "averageViewDuration": 44,
+        "averageViewPercentage": 20.29,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 1
+      },
+      "EyOQJX8ds-I": {
+        "views": 12,
+        "estimatedMinutesWatched": 7,
+        "averageViewDuration": 71,
+        "averageViewPercentage": 154.5,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "jN78mJrZd3c": {
+        "views": 106,
+        "estimatedMinutesWatched": 2,
+        "averageViewDuration": 12,
+        "averageViewPercentage": 26.6,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "kg2wTsci_i4": {
+        "views": 5,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 17,
+        "averageViewPercentage": 38.49,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "1-xofMJPVgY": {
+        "views": 49,
+        "estimatedMinutesWatched": 51,
+        "averageViewDuration": 70,
+        "averageViewPercentage": 50.43,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "sTXz-7V1fzc": {
+        "views": 298,
+        "estimatedMinutesWatched": 269,
+        "averageViewDuration": 59,
+        "averageViewPercentage": 27.339999999999996,
+        "subscribersGained": 1,
+        "subscribersLost": 0,
+        "likes": 3,
+        "comments": 1,
+        "shares": 3
+      },
+      "vcZHfvpOrpc": {
+        "views": 55,
+        "estimatedMinutesWatched": 12,
+        "averageViewDuration": 23,
+        "averageViewPercentage": 12.16,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "NMFMXdUPBT8": {
+        "views": 25,
+        "estimatedMinutesWatched": 25,
+        "averageViewDuration": 65,
+        "averageViewPercentage": 28.67,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 1,
+        "shares": 0
+      },
+      "sSzfncVuTQM": {
+        "views": 49,
+        "estimatedMinutesWatched": 5,
+        "averageViewDuration": 69,
+        "averageViewPercentage": 150.2,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "0ePR5BUUFoQ": {
+        "views": 219,
+        "estimatedMinutesWatched": 173,
+        "averageViewDuration": 57,
+        "averageViewPercentage": 29.42,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "-xAlHLaddF4": {
+        "views": 13,
+        "estimatedMinutesWatched": 1,
+        "averageViewDuration": 12,
+        "averageViewPercentage": 26.1,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "ph_qlIpHx_A": {
+        "views": 95,
+        "estimatedMinutesWatched": 748,
+        "averageViewDuration": 560,
+        "averageViewPercentage": 11.77,
+        "subscribersGained": 1,
+        "subscribersLost": 0,
+        "likes": 5,
+        "comments": 1,
+        "shares": 1
+      },
+      "Oa09WRIKXkU": {
+        "views": 5,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 6,
+        "averageViewPercentage": 13.15,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "257Hke4MSMg": {
+        "views": 85,
+        "estimatedMinutesWatched": 4,
+        "averageViewDuration": 15,
+        "averageViewPercentage": 33.69,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "-CQ7MmUygTQ": {
+        "views": 105,
+        "estimatedMinutesWatched": 145,
+        "averageViewDuration": 86,
+        "averageViewPercentage": 39.22,
+        "subscribersGained": 6,
+        "subscribersLost": 0,
+        "likes": 17,
+        "comments": 4,
+        "shares": 7
+      },
+      "FIkTi_SEI9w": {
+        "views": 19,
+        "estimatedMinutesWatched": 13,
+        "averageViewDuration": 45,
+        "averageViewPercentage": 20.98,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "8ixjisC6Ato": {
+        "views": 42,
+        "estimatedMinutesWatched": 15,
+        "averageViewDuration": 22,
+        "averageViewPercentage": 10.6,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "wo2xZBU6VjU": {
+        "views": 39,
+        "estimatedMinutesWatched": 479,
+        "averageViewDuration": 798,
+        "averageViewPercentage": 32.39,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 4,
+        "comments": 0,
+        "shares": 2
+      },
+      "kjyoBsQG1V0": {
+        "views": 7,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 16,
+        "averageViewPercentage": 35.08,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "9qgIU8vcYZY": {
+        "views": 98,
+        "estimatedMinutesWatched": 27,
+        "averageViewDuration": 29,
+        "averageViewPercentage": 25.56,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "X3xRBwjUaEQ": {
+        "views": 215,
+        "estimatedMinutesWatched": 119,
+        "averageViewDuration": 34,
+        "averageViewPercentage": 22.4,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 1,
+        "shares": 0
+      },
+      "Sj9S9cNy5H0": {
+        "views": 158,
+        "estimatedMinutesWatched": 7,
+        "averageViewDuration": 33,
+        "averageViewPercentage": 73,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "7gyLv84KxTk": {
+        "views": 37,
+        "estimatedMinutesWatched": 16,
+        "averageViewDuration": 27,
+        "averageViewPercentage": 11.56,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "zAW3m7n68cs": {
+        "views": 83,
+        "estimatedMinutesWatched": 3,
+        "averageViewDuration": 13,
+        "averageViewPercentage": 29.01,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 3,
+        "comments": 0,
+        "shares": 0
+      },
+      "-gDTUPmywFo": {
+        "views": 250,
+        "estimatedMinutesWatched": 15,
+        "averageViewDuration": 33,
+        "averageViewPercentage": 72.56,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "SUd_Ss-kKgU": {
+        "views": 37,
+        "estimatedMinutesWatched": 13,
+        "averageViewDuration": 24,
+        "averageViewPercentage": 11.62,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 1,
+        "shares": 0
+      },
+      "htVtV-JIIjw": {
+        "views": 4,
+        "estimatedMinutesWatched": 5,
+        "averageViewDuration": 114,
+        "averageViewPercentage": 67.39,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      },
+      "6GheAQ39BGw": {
+        "views": 114,
+        "estimatedMinutesWatched": 4,
+        "averageViewDuration": 12,
+        "averageViewPercentage": 26.88,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "0FzSnQiMgNc": {
+        "views": 88,
+        "estimatedMinutesWatched": 3,
+        "averageViewDuration": 19,
+        "averageViewPercentage": 43.47,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "LWGZGtw6UCY": {
+        "views": 3,
+        "estimatedMinutesWatched": 5,
+        "averageViewDuration": 106,
+        "averageViewPercentage": 55.99000000000001,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      },
+      "B3zfb8gnmwY": {
+        "views": 5,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 9,
+        "averageViewPercentage": 20.93,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "Y8tlsFFP6kg": {
+        "views": 178,
+        "estimatedMinutesWatched": 137,
+        "averageViewDuration": 48,
+        "averageViewPercentage": 24.1,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 3,
+        "comments": 0,
+        "shares": 3
+      },
+      "Xh8R98rBYQw": {
+        "views": 61,
+        "estimatedMinutesWatched": 2,
+        "averageViewDuration": 12,
+        "averageViewPercentage": 28.21,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 0
+      },
+      "kyE-TvW0WQ4": {
+        "views": 107,
+        "estimatedMinutesWatched": 103,
+        "averageViewDuration": 66,
+        "averageViewPercentage": 45.59,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 0,
+        "shares": 1
+      },
+      "Y6eK2nIBXqA": {
+        "views": 46,
+        "estimatedMinutesWatched": 1,
+        "averageViewDuration": 6,
+        "averageViewPercentage": 15.120000000000001,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "yybM_bChj-Y": {
+        "views": 2,
+        "estimatedMinutesWatched": 0,
+        "averageViewDuration": 4,
+        "averageViewPercentage": 10.37,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "yUA9LXMlD9k": {
+        "views": 26,
+        "estimatedMinutesWatched": 11,
+        "averageViewDuration": 26,
+        "averageViewPercentage": 18.63,
+        "subscribersGained": 1,
+        "subscribersLost": 0,
+        "likes": 2,
+        "comments": 1,
+        "shares": 0
+      },
+      "Ga_pBs0ufDo": {
+        "views": 175,
+        "estimatedMinutesWatched": 7,
+        "averageViewDuration": 22,
+        "averageViewPercentage": 48.67,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 1,
+        "comments": 0,
+        "shares": 0
+      },
+      "xjtZfsZyBlI": {
+        "views": 74,
+        "estimatedMinutesWatched": 1,
+        "averageViewDuration": 5,
+        "averageViewPercentage": 11.84,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      }
+    }
+  },
+  "icerik_tipi_28gun": [
+    {
+      "creatorContentType": "videoOnDemand",
+      "views": 2518,
+      "estimatedMinutesWatched": 3462,
+      "averageViewDuration": 94,
+      "averageViewPercentage": 22.59,
+      "subscribersGained": 11,
+      "likes": 69,
+      "shares": 31,
+      "comments": 12
+    },
+    {
+      "creatorContentType": "shorts",
+      "views": 1768,
+      "estimatedMinutesWatched": 145,
+      "averageViewDuration": 33,
+      "averageViewPercentage": 73.61,
+      "subscribersGained": 0,
+      "likes": 31,
+      "shares": 0,
+      "comments": 0
+    },
+    {
+      "creatorContentType": "creatorContentTypeUnspecified",
+      "views": 0,
+      "estimatedMinutesWatched": 0,
+      "averageViewDuration": 0,
+      "averageViewPercentage": 0,
+      "subscribersGained": 18,
+      "likes": 0,
+      "shares": 0,
+      "comments": 0
+    }
+  ],
+  "icerik_tipi_7gun": [
+    {
+      "creatorContentType": "videoOnDemand",
+      "views": 2246,
+      "estimatedMinutesWatched": 2932,
+      "averageViewDuration": 89,
+      "averageViewPercentage": 21.3,
+      "subscribersGained": 9,
+      "likes": 56,
+      "shares": 19,
+      "comments": 11
+    },
+    {
+      "creatorContentType": "shorts",
+      "views": 1555,
+      "estimatedMinutesWatched": 85,
+      "averageViewDuration": 20,
+      "averageViewPercentage": 45.49,
+      "subscribersGained": 0,
+      "likes": 29,
+      "shares": 0,
+      "comments": 0
+    },
+    {
+      "creatorContentType": "creatorContentTypeUnspecified",
+      "views": 0,
+      "estimatedMinutesWatched": 0,
+      "averageViewDuration": 0,
+      "averageViewPercentage": 0,
+      "subscribersGained": 9,
+      "likes": 0,
+      "shares": 0,
+      "comments": 0
+    }
+  ],
+  "gunluk_kanal_28gun": [
+    {
+      "day": "2026-08-29",
+      "views": 3,
+      "estimatedMinutesWatched": 4,
+      "subscribersGained": 0,
+      "likes": 0
+    },
+    {
+      "day": "2026-08-30",
+      "views": 4,
+      "estimatedMinutesWatched": 1,
+      "subscribersGained": 0,
+      "likes": 0
+    },
+    {
+      "day": "2026-08-31",
+      "views": 23,
+      "estimatedMinutesWatched": 39,
+      "subscribersGained": 0,
+      "likes": 2
+    },
+    {
+      "day": "2026-09-01",
+      "views": 104,
+      "estimatedMinutesWatched": 144,
+      "subscribersGained": 8,
+      "likes": 10
+    },
+    {
+      "day": "2026-09-02",
+      "views": 68,
+      "estimatedMinutesWatched": 116,
+      "subscribersGained": 2,
+      "likes": 1
+    },
+    {
+      "day": "2026-09-03",
+      "views": 283,
+      "estimatedMinutesWatched": 284,
+      "subscribersGained": 1,
+      "likes": 2
+    },
+    {
+      "day": "2026-09-04",
+      "views": 565,
+      "estimatedMinutesWatched": 461,
+      "subscribersGained": 3,
+      "likes": 10
+    },
+    {
+      "day": "2026-09-05",
+      "views": 998,
+      "estimatedMinutesWatched": 559,
+      "subscribersGained": 0,
+      "likes": 3
+    },
+    {
+      "day": "2026-09-06",
+      "views": 1215,
+      "estimatedMinutesWatched": 946,
+      "subscribersGained": 1,
+      "likes": 22
+    },
+    {
+      "day": "2026-09-07",
+      "views": 663,
+      "estimatedMinutesWatched": 559,
+      "subscribersGained": 7,
+      "likes": 31
+    },
+    {
+      "day": "2026-09-08",
+      "views": 360,
+      "estimatedMinutesWatched": 490,
+      "subscribersGained": 7,
+      "likes": 19
+    }
+  ],
+  "ulke_28gun": [
+    {
+      "country": "AZ",
+      "views": 46,
+      "estimatedMinutesWatched": 22,
+      "averageViewDuration": 28,
+      "averageViewPercentage": 16,
+      "subscribersGained": 0,
+      "likes": 0,
+      "shares": 0,
+      "comments": 0
+    },
+    {
+      "country": "IQ",
+      "views": 10,
+      "estimatedMinutesWatched": 4,
+      "averageViewDuration": 25,
+      "averageViewPercentage": 14.71,
+      "subscribersGained": 0,
+      "likes": 0,
+      "shares": 0,
+      "comments": 0
+    },
+    {
+      "country": "TR",
+      "views": 3315,
+      "estimatedMinutesWatched": 2868,
+      "averageViewDuration": 93,
+      "averageViewPercentage": 23.62,
+      "subscribersGained": 0,
+      "likes": 61,
+      "shares": 0,
+      "comments": 0
+    },
+    {
+      "country": "UZ",
+      "views": 74,
+      "estimatedMinutesWatched": 37,
+      "averageViewDuration": 32,
+      "averageViewPercentage": 17.37,
+      "subscribersGained": 0,
+      "likes": 0,
+      "shares": 0,
+      "comments": 0
+    }
+  ],
+  "arama_terimleri_28gun": {
+    "hata": "Internal error encountered.\". Details: \"[{'domain': 'video_reporting.ApiaryErrorDomain', 'reason': 'FIELD_UNKNOWN_VALUE', 'location': 'max-results', 'locationType': 'parameter'}]\">"
+  },
+  "kart_ve_playlist_28gun": {
+    "cardImpressions": 0,
+    "cardClicks": 0,
+    "annotationImpressions": 0,
+    "annotationClicks": 0,
+    "videosAddedToPlaylists": 5,
+    "playlistStarts": 75,
+    "viewsPerPlaylistStart": 1.4266666666666667,
+    "averageTimeInPlaylist": 493
+  },
+  "kitle_tutma_28gun": {
+    "sTXz-7V1fzc": {
+      "proje": "Son Kez",
+      "egri": {
+        "0.01": 0.985,
+        "0.02": 0.843,
+        "0.03": 0.708,
+        "0.04": 0.648,
+        "0.05": 0.562,
+        "0.06": 0.536,
+        "0.07": 0.528,
+        "0.08": 0.502,
+        "0.09": 0.483,
+        "0.1": 0.464
+      },
+      "onluk": {
+        "0.1": 0.464,
+        "0.2": 0.397,
+        "0.3": 0.33,
+        "0.4": 0.266,
+        "0.5": 0.232,
+        "0.6": 0.217,
+        "0.7": 0.176,
+        "0.8": 0.176,
+        "0.9": 0.154,
+        "1": 0.131
+      }
+    },
+    "0ePR5BUUFoQ": {
+      "proje": "Yürek Yarası",
+      "egri": {
+        "0.01": 1.006,
+        "0.02": 0.911,
+        "0.03": 0.821,
+        "0.04": 0.743,
+        "0.05": 0.715,
+        "0.06": 0.67,
+        "0.07": 0.659,
+        "0.08": 0.598,
+        "0.09": 0.587,
+        "0.1": 0.542
+      },
+      "onluk": {
+        "0.1": 0.542,
+        "0.2": 0.385,
+        "0.3": 0.33,
+        "0.4": 0.263,
+        "0.5": 0.218,
+        "0.6": 0.196,
+        "0.7": 0.184,
+        "0.8": 0.196,
+        "0.9": 0.19,
+        "1": 0.168
+      }
+    },
+    "X3xRBwjUaEQ": {
+      "proje": "Yeraltı",
+      "egri": {
+        "0.01": 0.966,
+        "0.02": 0.816,
+        "0.03": 0.67,
+        "0.04": 0.612,
+        "0.05": 0.524,
+        "0.06": 0.471,
+        "0.07": 0.417,
+        "0.08": 0.398,
+        "0.09": 0.456,
+        "0.1": 0.422
+      },
+      "onluk": {
+        "0.1": 0.422,
+        "0.2": 0.277,
+        "0.3": 0.243,
+        "0.4": 0.214,
+        "0.5": 0.184,
+        "0.6": 0.175,
+        "0.7": 0.146,
+        "0.8": 0.141,
+        "0.9": 0.131,
+        "1": 0.092
+      }
+    },
+    "Y8tlsFFP6kg": {
+      "proje": "Sessiz Mektup",
+      "egri": {
+        "0.01": 0.976,
+        "0.02": 0.831,
+        "0.03": 0.729,
+        "0.04": 0.639,
+        "0.05": 0.542,
+        "0.06": 0.512,
+        "0.07": 0.53,
+        "0.08": 0.494,
+        "0.09": 0.47,
+        "0.1": 0.428
+      },
+      "onluk": {
+        "0.1": 0.428,
+        "0.2": 0.289,
+        "0.3": 0.247,
+        "0.4": 0.223,
+        "0.5": 0.193,
+        "0.6": 0.181,
+        "0.7": 0.163,
+        "0.8": 0.175,
+        "0.9": 0.175,
+        "1": 0.145
+      }
+    },
+    "kZML9g4GdBs": {
+      "proje": "Yeniden Doğacağım",
+      "egri": {
+        "0.01": 1,
+        "0.02": 0.839,
+        "0.03": 0.679,
+        "0.04": 0.643,
+        "0.05": 0.616,
+        "0.06": 0.589,
+        "0.07": 0.554,
+        "0.08": 0.527,
+        "0.09": 0.518,
+        "0.1": 0.518
+      },
+      "onluk": {
+        "0.1": 0.518,
+        "0.2": 0.411,
+        "0.3": 0.402,
+        "0.4": 0.402,
+        "0.5": 0.375,
+        "0.6": 0.366,
+        "0.7": 0.357,
+        "0.8": 0.312,
+        "0.9": 0.295,
+        "1": 0.268
+      }
+    },
+    "8ixjisC6Ato": {
+      "proje": "Beni Bırakma",
+      "egri": {
+        "0.01": 0.944,
+        "0.02": 0.748,
+        "0.03": 0.635,
+        "0.04": 0.579,
+        "0.05": 0.523,
+        "0.06": 0.467,
+        "0.07": 0.467,
+        "0.08": 0.43,
+        "0.09": 0.402,
+        "0.1": 0.383
+      },
+      "onluk": {
+        "0.1": 0.383,
+        "0.2": 0.365,
+        "0.3": 0.355,
+        "0.4": 0.28,
+        "0.5": 0.252,
+        "0.6": 0.243,
+        "0.7": 0.224,
+        "0.8": 0.224,
+        "0.9": 0.224,
+        "1": 0.215
+      }
+    },
+    "kyE-TvW0WQ4": {
+      "proje": "Sokaklar Beni Tanır",
+      "egri": {
+        "0.01": 1.032,
+        "0.02": 0.871,
+        "0.03": 0.763,
+        "0.04": 0.677,
+        "0.05": 0.656,
+        "0.06": 0.634,
+        "0.07": 0.591,
+        "0.08": 0.581,
+        "0.09": 0.613,
+        "0.1": 0.634
+      },
+      "onluk": {
+        "0.1": 0.634,
+        "0.2": 0.591,
+        "0.3": 0.527,
+        "0.4": 0.473,
+        "0.5": 0.441,
+        "0.6": 0.409,
+        "0.7": 0.409,
+        "0.8": 0.387,
+        "0.9": 0.355,
+        "1": 0.247
+      }
+    },
+    "-CQ7MmUygTQ": {
+      "proje": "Küllerimden Geç",
+      "egri": {
+        "0.01": 1.04,
+        "0.02": 0.96,
+        "0.03": 0.891,
+        "0.04": 0.871,
+        "0.05": 0.822,
+        "0.06": 0.772,
+        "0.07": 0.762,
+        "0.08": 0.703,
+        "0.09": 0.683,
+        "0.1": 0.683
+      },
+      "onluk": {
+        "0.1": 0.683,
+        "0.2": 0.505,
+        "0.3": 0.465,
+        "0.4": 0.406,
+        "0.5": 0.327,
+        "0.6": 0.307,
+        "0.7": 0.277,
+        "0.8": 0.257,
+        "0.9": 0.257,
+        "1": 0.208
+      }
+    }
+  },
+  "veri_gecikmesi_notu": "YouTube Analytics gunluk verisi 2-3 gun gecikmeli isliyor. Bu cekimde en son dolu gun 2026-09-08 -> yani bu temel cizgi kucuk resim degisikliginden (2026-09-11) ONCEKI donemi TEMIZ sekilde kapsiyor, karisma yok."
+}
