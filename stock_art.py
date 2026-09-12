@@ -25,7 +25,12 @@ BOZULMAZ: API anahtarı yoksa, ağ yoksa, sonuç yoksa ya da indirme başarısı
 None döner — generate_cover.py sessizce eski prosedürel bokeh üretimine düşer.
 Otomasyon HİÇBİR durumda bu yüzden durmaz.
 
-LİSANS: Pexels License — ücretsiz, ticari kullanıma açık, atıf zorunlu değil
+LİSANS: Pexels License — ücretsiz, ticari kullanıma açık, atıf zorunlu değil.
+Pixabay Content License — ücretsiz ve ticari kullanıma açık, ama Pixabay
+dokümantasyonu API kullanımında görselin kaynağının kullanıcıya gösterilmesini
+RİCA ediyor ("we kindly request"). Zorunlu değil; kapakta atıf yeri olmadığı
+için şimdilik uygulanmıyor, video açıklamasına eklenebilir.
+Pixabay hız sınırı: 60 saniyede 100 istek (saatlik koşu için fazlasıyla yeterli)
 (bu kanal para kazanabilir bir YouTube kanalı olduğu için önemli). Kaynak:
 https://www.pexels.com/license/
 """
@@ -38,6 +43,9 @@ import os
 import re
 
 import requests
+
+import config
+import uyumluluk
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "stock_art_config.json")
@@ -99,6 +107,66 @@ LYRIC_IMAGERY = {
     "winter": ["kış", "kis "],
 }
 
+# Sözlerden gelen imge -> onunla DOĞRUDAN ÇELİŞEN art_mood kelimeleri.
+#
+# NEDEN VAR (2026-09-11, kapak denetimi): sorgu = temanın `art_mood`'u +
+# sözlerden gelen 2 imge. Bu iki kaynak birbiriyle ÇELİŞEBİLİYOR ve Pexels
+# çelişkiyi keyfî çözüyor. Ölçülmüş üç vaka, üçü de `pop` teması
+# ("bright vibrant") + sözlerden gelen "night":
+#   Gece Sürüşü     -> "bright vibrant night empty road" -> GÜNDÜZ şehir panoraması
+#   Bu Gece Kazandık-> "bright vibrant night empty road" -> karanlık sisli boş yol
+#   Kalbim Oynuyor  -> "bright vibrant night empty street" -> karanlık sisli sokak
+# Yani aynı çelişkili sorgu bir seferinde gündüz, bir seferinde gece getiriyor;
+# hangisi geleceği öngörülemiyor. Kataloğun 18 şarkısından TAM BU ÜÇÜ çelişki
+# üretiyor ve gözle doğrulanan uyumsuzlukların da tamamı bu üçü.
+#
+# KURAL: çelişkide SÖZ terimi kazanır, çelişen MOOD KELİMESİ düşer.
+# Gerekçe: söz terimi şarkının KENDİ somut kanıtıdır (sözlerde geçen mekân/
+# zaman), `art_mood` ise tarzın jenerik varsayılanı. Bir şarkının sözleri
+# "gece" diyorsa fotoğraf gece olmalı; temanın işi zaten rengi/enerjiyi
+# taşımak (accent renkleri + kalan mood kelimeleri), günün saatini dayatmak
+# değil. Tersi kural (tema kazansın) sözlük çıkarımını anlamsızlaştırırdı —
+# o zaman doğrudan tema sorgusunu kullanmak gerekirdi.
+#
+# Atmosfer çapası TAMAMEN kaybolmuyor: yalnızca çelişen KELİME düşüyor
+# ("bright vibrant" + night -> "vibrant night"), çünkü çapanın tümünü atmak
+# docstring'te anlatılan eski sorunu (gündüz/neşeli/alakasız kare) geri getirir.
+# Eksen bilerek DAR: sadece IŞIK/GÜNÜN SAATİ. Yanlış görselleri üreten eksen
+# ölçülen buydu; "melancholy" + "blossom" gibi duygu-nesne gerilimleri
+# fotoğrafta gerçek bir çelişki üretmiyor (hüzünlü bir bahar karesi olabilir).
+MOOD_CELISKILERI = {
+    "night": {"bright", "golden", "hour", "sunny", "daylight"},
+    "darkness": {"bright", "golden", "hour", "sunny", "daylight"},
+    "moonlight": {"bright", "golden", "hour", "sunny", "daylight"},
+    "stars": {"bright", "golden", "hour", "sunny", "daylight"},
+    "tunnel": {"bright", "golden", "hour", "sunny", "daylight"},
+    "fog": {"bright", "sunny", "daylight"},
+    "smoke": {"bright", "sunny", "daylight"},
+    "winter": {"warm"},
+    "snow": {"warm"},
+    # Ters yön: tema "gece" diyor ama sözler günün AYDINLIK bir anını
+    # adlandırıyor. Aynı kural, aynı gerekçe — söz terimi kazanır.
+    "sunrise": {"night", "nightclub", "midnight"},
+    "sunset": {"night", "nightclub", "midnight"},
+    "blossom": {"night", "nightclub", "midnight"},
+}
+
+
+def _mood_celiskisini_coz(mood: str, terms: list[str]) -> str:
+    """`art_mood`'tan, söz terimleriyle ÇELİŞEN kelimeleri çıkarır.
+
+    Sıra korunur; hiçbir çelişki yoksa mood aynen döner (eski davranış)."""
+    if not mood:
+        return ""
+    yasak = set()
+    for term in terms:
+        for kelime in term.lower().split():
+            yasak |= MOOD_CELISKILERI.get(kelime, set())
+    if not yasak:
+        return mood
+    return " ".join(w for w in mood.split() if w.lower() not in yasak)
+
+
 # Otomatik üretilen HER sorgunun sonuna eklenir (elle yazılmış meta.json
 # "art_query"e EKLENMEZ — orada kullanıcı ne istediğini biliyor).
 #
@@ -129,6 +197,9 @@ _TR_SLUG_MAP = str.maketrans({
 })
 
 API_URL = "https://api.pexels.com/v1/search"
+PIXABAY_API_URL = "https://pixabay.com/api/"
+# Pixabay yönelim değerleri: all | horizontal | vertical ("square" yok).
+PIXABAY_ORIENTATION = "all"
 # Kart KARE (bkz. generate_cover.CANVAS_SIZE 1600x1600) ve backdrop de aynı
 # görselden türüyor — "square" yönelim, scale+crop'ta en az içerik kaybı demek.
 ORIENTATION = "square"
@@ -138,16 +209,41 @@ PER_PAGE = 15
 REQUEST_TIMEOUT = 20
 
 
-def _load_api_key() -> str | None:
-    """stock_art_config.json'dan Pexels anahtarını okur. Dosya gitignored —
-    üretim makinesinde var, fresh checkout'ta olmayabilir; yoksa None."""
+def _load_api_key(alan: str = "pexels_api_key") -> str | None:
+    """stock_art_config.json'dan bir sağlayıcının anahtarını okur. Dosya
+    gitignored — üretim makinesinde var, fresh checkout'ta olmayabilir; yoksa
+    None. Alan adı parametreli: ikinci kaynak (Pixabay) aynı dosyayı kullanıyor."""
     if not os.path.isfile(CONFIG_PATH):
         return None
     try:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            return json.load(f).get("pexels_api_key") or None
+            return json.load(f).get(alan) or None
     except (OSError, ValueError):
         return None
+
+
+def _secim_indeksi(title: str, n: int) -> int:
+    """Başlıktan türeyen sabit indeks — aynı şarkı hep aynı fotoğrafı alır."""
+    seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
+    return seed % n
+
+
+def _indir(src: str, out_path: str) -> bool:
+    """Görseli indirip out_path'e yazar. Aksilikte yarım dosya BIRAKMAZ —
+    bir sonraki koşu onu 'art var' sanıp prosedürel üretimi atlardı."""
+    try:
+        img = requests.get(src, timeout=REQUEST_TIMEOUT)
+        img.raise_for_status()
+        with open(out_path, "wb") as f:
+            f.write(img.content)
+    except (requests.RequestException, OSError):
+        if os.path.isfile(out_path):
+            try:
+                os.remove(out_path)
+            except OSError:
+                pass
+        return False
+    return True
 
 
 def _slugify(text: str) -> str:
@@ -157,12 +253,50 @@ def _slugify(text: str) -> str:
     return slug.strip("_")
 
 
+# Ön-ek eşleşmesinin UZUNLUK KORUMASI (2026-09-11, altyazı denetimi).
+#
+# NEDEN VAR: çıplak `stem.startswith(slug) or slug.startswith(stem)` kuralının
+# hiçbir uzunluk/benzerlik koruması yoktu ve BAŞKA BİR ŞARKIYI sessizce
+# eşliyordu — beşi de ölçüldü:
+#   "Neon" -> neon_kalp (0,615)          "Son" -> son_kez (0,600)
+#   "Bu Gece" -> bu_gece_kazandik (0,609) "Sokaklar" -> sokaklar_beni_tanir (0,593)
+#   "Yeraltı Kralı" -> yeralti            (ters yön: slug.startswith(stem))
+# Altyazı hattı bunu KENDİ İÇİNDE kapatmıştı (`youtube_captions._sozler_dosyasi`
+# ikinci kez süzüyor), ama GÖRSEL araması savunmasızdı: `query_from_lyrics`
+# başka bir şarkının imgelerinden Pexels sorgusu üretir, kapak konudan
+# tamamen kopar ve hiçbir yerde iz kalmaz. Bugün tetiklenmemiş olmasının tek
+# sebebi şans: `neon_kalp_sozler.md` katalogda SAHİPSİZ duruyor (karşılığı
+# olan proje yok), yani tuzağın yemi diskte hazır — eksik olan yalnızca
+# "Neon" adlı bir şarkı.
+#
+# EŞİK NEDEN 0,8:
+#  1. Ön-ek kuralının TEK meşru işi klasör/dosya adı arasındaki BİRKAÇ HARFLİK
+#     farkı yutmak (docstring'deki "Kalbim Oynuyo" vakası: 13/14 = 0,929).
+#     Fazladan bir KELİME ise her zaman en az 4 karakter ("_" + 3 harflik kök),
+#     yani tipik 10-16 karakterlik bir slug'da oran 0,75'in ALTINA düşer.
+#     0,8 tam olarak bu iki sınıfın arasında duruyor.
+#  2. Daha sağlam olan ikinci gerekçe — aşağıdaki difflib dalıyla TUTARLILIK:
+#     saf ön-ek çiftlerinde difflib oranı tam olarak 2r/(1+r)'dir (r =
+#     kısa/uzun). r = 0,8 -> 0,889, yani difflib eşiğinin (0,85) ÜSTÜNDE:
+#     ön-ek dalı artık difflib'in kabul ETMEYECEĞİ hiçbir şeyi kabul edemez.
+#     Bu sayı aşağı çekilemez: eşik 0,739'un altına inseydi koruma İŞE
+#     YARAMAZDI, çünkü ön-ek dalı reddettiğini difflib dalı zaten geçirirdi.
+# ÖLÇÜLDÜ (katalogdaki 18 projenin tamamı): 17'si BİREBİR ad ile eşleşiyor,
+# 18.'si "Beton Krallığı" -> `beton_krallik` ve o ön-ek DEĞİL difflib dalından
+# geçiyor (0,889; ünsüz yumuşaması). Yani bu koruma doğru eşleşmelerin
+# HİÇBİRİNE dokunmuyor — ön-ek dalı bugün kataloğa tek bir doğru eşleşme bile
+# kazandırmıyor, sadece risk taşıyordu.
+ONEK_UZUNLUK_ORANI = 0.8
+
+
 def find_lyrics_file(title: str) -> str | None:
     """Şarkı başlığından `<slug>_sozler.md` dosyasını bulur.
 
     Önce birebir ad denenir; bulunamazsa ön-ek eşleşmesine düşülür — proje
     klasörü ile sözler dosyası adı her zaman birebir tutmuyor (ör. "Kalbim
     Oynuyo" klasörü ile `kalbim_oynuyor_sozler.md`, klasör adında harf eksik).
+    Ön-ek dalı ONEK_UZUNLUK_ORANI ile korunuyor (bkz. o sabitin yanındaki not):
+    korumasız hâli "Neon" başlığını `neon_kalp_sozler.md` ile eşliyordu.
     Hiçbiri tutmazsa None; çağıran taraf tema varsayılanına düşer."""
     slug = _slugify(title)
     if not slug:
@@ -175,9 +309,15 @@ def find_lyrics_file(title: str) -> str | None:
     candidates = sorted(glob.glob(os.path.join(BASE_DIR, "*_sozler.md")))
     by_stem = {os.path.basename(p)[: -len("_sozler.md")]: p for p in candidates}
 
-    for stem, path in sorted(by_stem.items()):
-        if stem.startswith(slug) or slug.startswith(stem):
-            return path
+    # Eskiden alfabetik sıradaki İLK ön-ek adayı dönüyordu; iki aday varsa
+    # hangisinin geldiği tamamen dosya adına bağlıydı. Artık EN YAKIN olan
+    # seçiliyor (eşitlikte sıra deterministik olsun diye `sorted`).
+    onek = [(min(len(slug), len(stem)) / max(len(slug), len(stem)), path)
+            for stem, path in sorted(by_stem.items())
+            if stem.startswith(slug) or slug.startswith(stem)]
+    onek = [(oran, path) for oran, path in onek if oran >= ONEK_UZUNLUK_ORANI]
+    if onek:
+        return max(onek, key=lambda t: t[0])[1]
 
     # Türkçe ünsüz yumuşaması ön-ek eşleşmesini bozuyor: "Beton Krallığı" ->
     # "beton_kralligi" ama dosya "beton_krallik" (k -> ğ). Harf tablosu yazmak
@@ -228,6 +368,9 @@ def query_from_lyrics(title: str, theme: dict | None = None) -> str | None:
         return None
 
     mood = ((theme or {}).get("art_mood") or "").strip()
+    # Çelişen mood kelimelerini DÜŞÜR (bkz. MOOD_CELISKILERI): "bright vibrant"
+    # + "night" -> "vibrant"; aksi hâlde Pexels çelişkiyi keyfî çözüyordu.
+    mood = _mood_celiskisini_coz(mood, terms)
 
     # Tema modu ile sözlerden gelen terimler örtüşebiliyor (elektronik modu
     # "neon night", sözlerden de "neon"+"night" çıkıyor -> "neon night neon
@@ -263,13 +406,210 @@ def build_query(meta: dict, theme: dict, title: str = "") -> str | None:
     return f"{theme_query} {STYLE_SUFFIX}" if theme_query else None
 
 
-def fetch_art(title: str, query: str, out_path: str) -> bool:
-    """query için Pexels'ten deterministik bir fotoğraf indirip out_path'e yazar.
-    Başarılıysa True, herhangi bir aksilikte (anahtar/ağ/sonuç yok) False —
-    çağıran taraf False'ta prosedürel üretime düşer."""
+# --- Alaka eşiği ------------------------------------------------------------
+#
+# NEDEN VAR (2026-09-11, kapak denetimi): eskiden listeden SADECE
+# `index = hash(başlık) % len(sonuclar)` ile bir kare seçiliyordu ve seçilen
+# fotoğrafın sorguyla GERÇEKTEN ilgili olup olmadığına HİÇ bakılmıyordu.
+# Pexels dokümantasyonu /v1/search için ne bir sıralama garantisi ne de bir
+# `sort` parametresi TANIMLIYOR (doğrulandı, 2026-09-11:
+# https://www.pexels.com/api/documentation/ — `sort` yalnızca /collections'ta
+# var) — yani "ilk sonuçlar daha alakalıdır" bir VARSAYIM, koda dayanak olamaz.
+#
+# BU YÜZDEN "% min(5, n)" gibi bir DARALTMA yapılmadı; iki sebeple:
+#   1. Yukarıdaki varsayım doğrulanamadı — ilk 5 daha alakalı olmayabilir.
+#   2. Daraltma, düzeltmeye çalıştığımız KOPYA sorununu BÜYÜTÜYOR. Ölçüldü:
+#      kataloğun 18 şarkısı içinde AYNI sorguyu üreten iki çift var; n=15'te
+#      indeks çakışması YOK, n=5'te ise 'Küllerimden Geç'/'Yeniden Doğacağım'
+#      çifti ikisi de indeks 1'e düşüyor — depoda gerçekten duran birebir
+#      kopya (md5 dbf1fd44…) TAM OLARAK bu çakışmanın ürünü.
+#
+# Onun yerine havuz GENİŞ bırakılıp gerçek bir ALAKA ÖLÇÜSÜ getirildi: Pexels
+# her fotoğrafla birlikte `alt` (fotoğrafın metin tarifi) alanını döndürüyor
+# (aynı dokümantasyon), Pixabay ise `tags`. Sorgunun SAHNE kelimeleri bu
+# tarifte geçmiyorsa o kare eleniyor. Hiçbiri geçmiyorsa (alt boş dönebilir)
+# eleme TAMAMEN devre dışı kalır — bu yol otomasyonu asla durdurmamalı.
+STYLE_SUFFIX_WORDS = frozenset(STYLE_SUFFIX.lower().split())
+
+
+def _atmosfer_kelimeleri() -> frozenset:
+    """Alaka puanlamasına KATILMAYAN kelimeler: stil eki + tüm temaların
+    `art_mood` kelimeleri.
+
+    NEDEN config'ten türetiliyor, elle yazılmıyor: `art_mood` değiştiğinde bu
+    liste kendiliğinden güncellensin. Elle yazılmış bir kopya, bu depodaki
+    klasik "unutulacak liste" tuzağı olurdu (bkz. CLAUDE.md).
+
+    NEDEN dışarıda bırakılıyorlar: Pexels'in `alt` metni neredeyse her zaman
+    NESNE/MEKÂN tarif eder ("an empty road at night"), ruh hâli değil —
+    "melancholy"/"gritty"/"cinematic" gibi kelimeleri puanlamaya katmak her
+    kareyi sıfır puana düşürür ve eşik anlamsızlaşır."""
+    kelimeler = set(STYLE_SUFFIX_WORDS)
+    for tema in (getattr(config, "THEMES", None) or {}).values():
+        kelimeler.update(((tema or {}).get("art_mood") or "").lower().split())
+    return frozenset(kelimeler)
+
+
+def _sahne_kelimeleri(query: str) -> list[str]:
+    """Sorgudan, alt metninde aranacak SOMUT kelimeleri süzer (sıra korunur)."""
+    disari = _atmosfer_kelimeleri()
+    gorulen = set()
+    sonuc = []
+    for kelime in re.findall(r"[a-z0-9]+", (query or "").lower()):
+        if len(kelime) < 3 or kelime in disari or kelime in gorulen:
+            continue
+        gorulen.add(kelime)
+        sonuc.append(kelime)
+    return sonuc
+
+
+def _alaka_puani(tarif: str, sahne: list[str]) -> int:
+    """Fotoğrafın tarifinde (Pexels `alt` / Pixabay `tags`) kaç sahne kelimesi
+    geçiyor. Alt metin boşsa 0 — çağıran taraf bunu "bilinmiyor" sayar."""
+    metin = (tarif or "").lower()
+    return sum(1 for k in sahne if k in metin)
+
+
+def _alakali_adaylar(adaylar: list[dict], query: str) -> list[dict]:
+    """Alaka eşiğini geçen kareler; hiçbiri geçemezse LİSTENİN TAMAMI.
+
+    Tam listeye düşmek bilinçli: `alt` boş gelebilir, sorgu tamamen atmosfer
+    kelimelerinden oluşabilir (elle yazılmış bir `art_query`) ya da Pexels
+    tarifleri sorgudan başka kelimelerle yazmış olabilir. Bu yolda eski
+    davranış aynen korunur — eleme bir İYİLEŞTİRME, bir KAPI değil."""
+    sahne = _sahne_kelimeleri(query)
+    if not sahne:
+        return adaylar
+    gecen = [a for a in adaylar if _alaka_puani(a.get("tarif"), sahne) > 0]
+    return gecen or adaylar
+
+
+def _sirali_adaylar(title: str, query: str, adaylar: list[dict]) -> list[dict]:
+    """Alaka eşiğini geçen kareleri, deterministik indeksten başlayıp SARARAK
+    sıralar.
+
+    Başlangıç noktası eskisiyle aynı mantık (`_secim_indeksi`) — yani aynı
+    şarkı aynı sonuç listesinde hep aynı kareyi İLK sırada görür. Sarma, kopya
+    korumasının (bkz. fetch_art) "bir sonrakini dene" adımına sabit ve
+    deterministik bir sıra verir."""
+    gecen = _alakali_adaylar(adaylar, query)
+    if not gecen:
+        return []
+    bas = _secim_indeksi(title, len(gecen))
+    return [gecen[(bas + i) % len(gecen)] for i in range(len(gecen))]
+
+
+# --- Katalog genelinde kopya koruması ---------------------------------------
+#
+# NEDEN VAR: `_secim_indeksi` yalnızca BAŞLIK bazında deterministik. `art_query`
+# yazılmamış, aynı temadaki iki şarkı BİREBİR aynı sorguyu üretebiliyor ve
+# sonuç havuzu küçükse iki farklı hash aynı indekse düşüyor — depoda gerçekten
+# oldu: 'Küllerimden Geç' ile 'Yeniden Doğacağım'ın art.jpg'si byte-birebir
+# AYNI (md5 dbf1fd44…), çünkü o sorgu 5 sonuç döndürüyor ve 11 % 5 == 1 % 5.
+#
+# Desen `uyumluluk.py`'nin ses md5 kontrolünden alındı (aynı dosya, "Aynı ses
+# başka projede var mı" bölümü): önce BOYUT ön filtresi, boyut tutarsa md5.
+# Kaynak olarak `state.json` DEĞİL DİSK taranıyor — `uyumluluk.py` de öyle
+# yapıyor: state.json bir İDDİA, diskteki dosya KANIT (bkz. CLAUDE.md'deki
+# `youtube_playlist_id` dersi: yerel bir iddiayı kapı olarak kullanmak bir
+# videoyu kalıcı olarak listesiz bırakmıştı).
+# Kok listesi KOPYALANMIYOR: kanonik tanim uyumluluk.py'de. Dorduncu bir
+# kok acilirsa tek yerde degisiyor (tests/test_kok_listesi_muhafizi.py
+# elle yazilmis kopyalari zaten kiriyor).
+ART_KOK_ADLARI = uyumluluk.KOK_ADLARI
+# Mutlak yol ZORUNLU: göreli bırakılırsa yanlış cwd'de os.path.isdir False
+# döner ve tarama SESSİZCE boş sonuç üretir — yani koruma kendiliğinden açılır
+# (uyumluluk.KOKLER'de aynı hata gerçekten yaşandı).
+ART_KOKLER = tuple(os.path.join(BASE_DIR, k) for k in ART_KOK_ADLARI)
+ART_ADLARI = ("art.jpg", "art.jpeg", "art.png", "art.webp")
+# Kopya çıkarsa en fazla bu kadar aday denenir. Sınır ŞART: her deneme bir
+# İNDİRME demek; sınırsız döngü, tüm havuzu kopya olan bir sorguda 15 gereksiz
+# indirme yapardı.
+MAKS_ADAY_DENEME = 4
+
+
+def _art_yolu(proje: str) -> str | None:
+    for ad in ART_ADLARI:
+        yol = os.path.join(proje, ad)
+        if os.path.isfile(yol):
+            return yol
+    return None
+
+
+def _md5(yol: str) -> str:
+    h = hashlib.md5()
+    with open(yol, "rb") as f:
+        for parca in iter(lambda: f.read(1 << 20), b""):
+            h.update(parca)
+    return h.hexdigest()
+
+
+def _taranacak_kokler(proje_dizini: str) -> list[str]:
+    """Bilinen üç kök + (farklıysa) bu projenin KENDİ kökü.
+
+    İkincisi hem geçici/taşınmış bir çalışma klasöründe doğru çalışmayı hem de
+    testlerin üretim kataloğuna hiç dokunmadan kendi klasörlerini kurabilmesini
+    sağlıyor."""
+    kokler = list(ART_KOKLER)
+    ust = os.path.dirname(os.path.abspath(proje_dizini))
+    if ust and all(os.path.abspath(ust) != os.path.abspath(k) for k in kokler):
+        kokler.append(ust)
+    return kokler
+
+
+def _katalogda_ayni_art_var(yol: str, proje_dizini: str) -> bool:
+    """İndirilen görselin birebir aynısı BAŞKA bir projede duruyor mu.
+
+    Herhangi bir okuma hatasında False — bu bir KAPI değil, bir iyileştirme;
+    okunamayan bir dosya yüzünden kapak üretimini durdurmak yanlış olurdu."""
+    try:
+        boyut = os.path.getsize(yol)
+    except OSError:
+        return False
+
+    adaylar = []
+    for kok in _taranacak_kokler(proje_dizini):
+        if not os.path.isdir(kok):
+            continue
+        try:
+            icerik = os.listdir(kok)
+        except OSError:
+            continue
+        for ad in icerik:
+            bp = os.path.join(kok, ad)
+            if os.path.abspath(bp) == os.path.abspath(proje_dizini):
+                continue
+            baska = _art_yolu(bp)
+            if not baska:
+                continue
+            try:
+                if os.path.getsize(baska) != boyut:
+                    continue      # boyut farklıysa md5 hesaplama (ön filtre)
+            except OSError:
+                continue
+            adaylar.append(baska)
+
+    if not adaylar:
+        return False
+    try:
+        benim = _md5(yol)
+    except OSError:
+        return False
+    for baska in adaylar:
+        try:
+            if _md5(baska) == benim:
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _pexels_adaylari(query: str) -> list[dict]:
+    """Birinci kaynak. Her aday: {"src": indirme adresi, "tarif": alt metni}.
+    Herhangi bir aksilikte (anahtar/ağ/sonuç yok) BOŞ liste."""
     api_key = _load_api_key()
     if not api_key:
-        return False
+        return []
 
     try:
         resp = requests.get(
@@ -281,36 +621,112 @@ def fetch_art(title: str, query: str, out_path: str) -> bool:
         resp.raise_for_status()
         photos = resp.json().get("photos") or []
     except (requests.RequestException, ValueError):
-        return False
+        return []
 
-    if not photos:
-        return False
+    adaylar = []
+    for photo in photos:
+        # "original" BİLEREK kullanılmıyor: Pexels'te 5000px+/28MB dosyalar
+        # dönüyor, oysa bu görselin gideceği en büyük yer 1600x1600 art.jpg ve
+        # videoda kart min(w,h)*0.45 ≈ 486px olarak çiziliyor (backdrop ise
+        # zaten ağır blur'lu). large2x fazlasıyla yeterli, disk/render maliyeti
+        # 10-20 kat düşük.
+        src_variants = (photo or {}).get("src") or {}
+        src = (src_variants.get("large2x") or src_variants.get("large")
+               or src_variants.get("original"))
+        if src:
+            adaylar.append({"src": src, "tarif": (photo or {}).get("alt") or ""})
+    return adaylar
 
-    # Başlıktan türeyen sabit indeks — aynı şarkı hep aynı fotoğrafı alır.
-    seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
-    photo = photos[seed % len(photos)]
 
-    # "original" BİLEREK kullanılmıyor: Pexels'te 5000px+/28MB dosyalar dönüyor,
-    # oysa bu görselin gideceği en büyük yer 1600x1600 art.jpg ve videoda kart
-    # min(w,h)*0.45 ≈ 486px olarak çiziliyor (backdrop ise zaten ağır blur'lu).
-    # large2x (~1880px) fazlasıyla yeterli, disk/render maliyeti 10-20 kat düşük.
-    src_variants = photo.get("src") or {}
-    src = src_variants.get("large2x") or src_variants.get("large") or src_variants.get("original")
-    if not src:
-        return False
+def _pixabay_adaylari(query: str) -> list[dict]:
+    """İkinci kaynak — Pexels sonuç vermediğinde denenir.
+
+    Anahtar yoksa SESSİZCE boş liste: bu yol isteğe bağlı, kurulmamış bir
+    makinede davranış eskisiyle birebir aynı kalır (doğrudan prosedürel bokeh).
+
+    Pixabay'de "square" yönelimi YOK (yalnızca all/horizontal/vertical), bu
+    yüzden "all" isteniyor ve kırpma generate_cover'a bırakılıyor. Pexels'te
+    square istenmesinin sebebi kırpma kaybını azaltmaktı; burada o garanti
+    edilemiyor — yine de bokeh'e düşmekten iyi.
+
+    Alaka ölçüsü olarak `tags` kullanılıyor (Pixabay'in `alt` karşılığı yok;
+    `tags` virgülle ayrılmış anahtar kelimeler)."""
+    api_key = _load_api_key("pixabay_api_key")
+    if not api_key:
+        return []
 
     try:
-        img = requests.get(src, timeout=REQUEST_TIMEOUT)
-        img.raise_for_status()
-        with open(out_path, "wb") as f:
-            f.write(img.content)
-    except (requests.RequestException, OSError):
-        # Yarım kalmış dosya bırakma — bir sonraki koşu bunu "art var" sanmasın.
-        if os.path.isfile(out_path):
-            try:
-                os.remove(out_path)
-            except OSError:
-                pass
-        return False
+        resp = requests.get(
+            PIXABAY_API_URL,
+            params={
+                "key": api_key,
+                "q": query,
+                "image_type": "photo",
+                "orientation": PIXABAY_ORIENTATION,
+                "per_page": PER_PAGE,
+                "safesearch": "true",
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        hits = resp.json().get("hits") or []
+    except (requests.RequestException, ValueError):
+        return []
 
-    return True
+    adaylar = []
+    for hit in hits:
+        # largeImageURL ~1280px; kart 1600x1600'e ölçekleniyor ama videoda
+        # min(w,h)*0.45 ≈ 486px çiziliyor, backdrop zaten ağır blur'lu.
+        src = (hit or {}).get("largeImageURL") or (hit or {}).get("webformatURL")
+        if src:
+            adaylar.append({"src": src, "tarif": (hit or {}).get("tags") or ""})
+    return adaylar
+
+
+def fetch_art(title: str, query: str, out_path: str) -> bool:
+    """query için deterministik bir fotoğraf indirip out_path'e yazar.
+
+    Önce Pexels, sonuç yoksa Pixabay. İkisi de veremezse False — çağıran taraf
+    False'ta prosedürel bokeh üretimine düşer.
+
+    İkinci kaynak 2026-09-10'da eklendi: tek kaynakta arama boş dönünce kapak
+    doğrudan bokeh'e düşüyordu ve bu, gerçek fotoğraf isteğinin karşılanmadığı
+    tek yerdi. Sıra sabit (önce Pexels): mevcut kapakların yeniden üretiminde
+    aynı görsel çıksın, arşiv değişmesin.
+
+    İKİ SÜZGEÇ (2026-09-11): (1) alaka eşiği — sorgunun sahne kelimeleri
+    fotoğrafın tarifinde geçmiyorsa aday elenir; (2) kopya koruması —
+    indirilen kare kataloğun başka bir projesinde BİREBİR duruyorsa bir
+    sonraki aday denenir. İkisi de bir KAPI değil: eşiği hiçbir aday geçemezse
+    liste olduğu gibi kullanılır, tüm adaylar kopya çıkarsa en sondaki indirme
+    silinir ve False dönülür (yani prosedürel bokeh) — otomasyon HİÇBİR
+    durumda bu yüzden durmaz.
+
+    GERİYE DÖNÜK ETKİSİ YOK: `generate_cover.generate()` bir `art.*` dosyası
+    VARSA `fetch_art`'a hiç gelmiyor (`existing_art` dalı) ve `art_path`'e
+    yazan satır `if not has_art:` ile korunuyor. Yani mevcut kapaklar yeniden
+    üretilmiyor; buradaki değişiklik yalnızca YENİ projeleri etkiler.
+    """
+    proje_dizini = os.path.dirname(os.path.abspath(out_path))
+    indirildi = False
+    for adaylari_getir in (_pexels_adaylari, _pixabay_adaylari):
+        adaylar = adaylari_getir(query)
+        if not adaylar:
+            continue
+        for aday in _sirali_adaylar(title, query, adaylar)[:MAKS_ADAY_DENEME]:
+            if not _indir(aday["src"], out_path):
+                continue
+            indirildi = True
+            if _katalogda_ayni_art_var(out_path, proje_dizini):
+                continue          # katalogda zaten var — bir sonraki adayı dene
+            return True
+
+    # Buraya gelindiyse ya hiç aday indirilemedi ya da indirilenlerin HEPSİ
+    # kopyaydı. İkinci durumda diskte kopya bir dosya kalırdı ve çağıran taraf
+    # False dönüşüne rağmen onu "art var" sanabilirdi — temizle.
+    if indirildi and os.path.isfile(out_path):
+        try:
+            os.remove(out_path)
+        except OSError:
+            pass
+    return False
