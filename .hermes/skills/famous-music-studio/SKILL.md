@@ -105,6 +105,8 @@ python -m pytest -q -p no:cacheprovider --basetemp="<scratchpad>/pytest_tmp"
 - `auto_process.py` zaten `git pull --ff-only` yapıyor; `main` dışında bir daldaysan dokunmaz.
 - Instagram'da yayınlanmış medya API'den SİLİNEMEZ; TikTok yalnızca taslak/gelen kutusuna
   yüklenir, kullanıcı uygulamadan elle yayınlar. Bunları "otomatikleştirmeye" çalışma.
+  Kullanıcı "yayınladım <şarkı adı>" derse işaretleme `tiktok-yayin-onayi` becerisinin
+  işi (tek komut: `upload/tiktok_yayin_onayi.py`); state.json'u elle düzenleme.
 - Caption'a YouTube linki KOYMA (yorum olarak gidiyor); "#AIMusic" gibi AI-vurgulu hashtag
   KULLANMA; kapağa müzik türü YAZMA. Bunlar bilinçli kullanıcı kararları (`CLAUDE.md`).
 - Görev Zamanlayıcı görevlerini Hermes cron ile ÇİFTLEME: saatlik `auto_process.py` ve

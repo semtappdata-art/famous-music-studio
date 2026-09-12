@@ -368,8 +368,13 @@ def build_plan(project_dir: str) -> dict:
 # --------------------------------------------------------------------------
 
 def isaretle_yayinlandi(project_dir: str, zaman: str = None,
-                        dry_run: bool = False) -> tuple:
+                        dry_run: bool = False, kaynak: str = None) -> tuple:
     """`tiktok_published_at` yazar. `(yazildi, mesaj)` döner.
+
+    `kaynak` verilirse `tiktok_published_kaynak` alanına AYNI atomik yazımda
+    konur (ör. "Telegram onayı (kullanıcı), <damga>" — `tiktok_yayin_onayi.py`).
+    NEDEN aynı yazımda: iki ayrı yazım arasında süreç ölürse "damga var, kimin
+    söylediği yok" diye yarım bir kayıt kalırdı.
 
     `tiktok_dogrulandi`'yı BİLEREK YAZMAZ — modül docstring'indeki gerekçe:
     yayınlamak, gönderiyi gözle doğrulamak değildir.
@@ -395,6 +400,8 @@ def isaretle_yayinlandi(project_dir: str, zaman: str = None,
     if dry_run:
         return False, "[kuru] '%s' -> tiktok_published_at = %s (YAZILMADI)" % (ad, damga)
     durum["tiktok_published_at"] = damga
+    if kaynak:
+        durum["tiktok_published_kaynak"] = kaynak
     state_io.durum_yaz(project_dir, durum)
     return True, "'%s' yayınlandı olarak işaretlendi: %s" % (ad, damga)
 

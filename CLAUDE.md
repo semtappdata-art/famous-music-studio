@@ -654,6 +654,16 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   ispaten sabit `SELF_ONLY` üretiyordu). Üç soru: çağıran KULLANICININ KENDİSİ;
   zamanlayıcı görevi YOK (olgunun tek kaynağı insan); çalışmadığı `--yayinlandi-hepsi
   --dry-run` listesi 20'de takılı kaldığında görülür. Koruma: `tests/test_tiktok_yayin_isaretleme.py`.
+  (d) **Telegram onayı (2026-09-13)**: CLI komutu unutuluyordu. Hatırlatma
+  (`notify_pending_publish`) artık "yayınladım <ad>" yanıt kalıbını ve kısa kodu
+  (`tiktok_upload.yayin_kodu`, publish_id'den) veriyor; yanıtı DEPO OKUMAZ — bot Hermes
+  gateway'iyle paylaşılıyor, `getUpdates`/webhook Hermes'in mesajlarını çalar. Hermes
+  `.hermes/skills/tiktok-yayin-onayi` becerisiyle YALNIZ `upload/tiktok_yayin_onayi.py
+  '<ad>'` çalıştırır: birebir/normalize eşleşme (alt dize YOK), belirsizde ve
+  `hazir=False`'ta işaretlemez, `isaretle_yayinlandi(kaynak=...)` ile
+  `tiktok_published_kaynak` yazar. Gateway cwd'si depo değil ve depo `trusted_project_dirs`'te
+  değilse beceri görünmez (kullanıcı adımı). Koruma: `tests/test_tiktok_yayin_onayi.py`,
+  `tests/test_hermes_tiktok_onay_skill.py`.
 - **`watch_projects.py` (opsiyonel klasör izleyici) saatlik tetikleyiciyi DEĞİŞTİRMEZ,
   tamamlar**: kullanıcı isteğiyle eklendi — Suno'dan yeni indirilen (herhangi bir adla)
   ses dosyasını yakalayıp `audio.wav`'a çevirir ve `auto_process.py`'yi hemen tetikler,
