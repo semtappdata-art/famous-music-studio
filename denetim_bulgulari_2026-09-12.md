@@ -653,6 +653,30 @@ sebebi doğrulanamadı — tek gözlem, garanti değil.
   çağrısının argümanları ters çevrilmişti) ve **dosya bugün düzeltildi**; o desen hiçbir
   çalışan kodda yok ve başka hiçbir üretilmiş metni bozmamış (49 dosya tarandı).
 
+- **B-30.** **`query_from_lyrics()` sözler dosyasının TAMAMINI okuyor**, "## Temiz Sözler"
+  bölümünü değil — yani başlıktaki açıklama notları, `## Stil Etiketi` bloğundaki İNGİLİZCE
+  etiket ve analiz tabloları da anahtar kelime sayımına giriyor. Bugün ölçüldü: 19 şarkının
+  **2'sinde** sonuç değişiyor (`Kader Ortakları` night → city skyline, `Kırık Zincir`
+  railway terimini kaybediyor), 17'sinde fark yok. Zarar sessiz: yanlış terim hiçbir istisna
+  atmaz, hiçbir log satırı bırakmaz — sadece kapak şarkının konusundan kopar.
+  **Bugün DÜZELTİLMEDİ, çünkü ölçüm kapatmayı haklı çıkarmıyor:** iki şarkı da yayında ve
+  kapakları yerinde; düzeltme ancak yeniden render edilirlerse etkir. Ama oran ZAMANLA
+  KÖTÜLEŞİR: sözler dosyaları belgelendikçe şiirin payı düşüyor — `Son Kez` %24, `Kader
+  Ortakları` %24, bugün yazılan `Sabah Senin` **%8**. Düzeltme tek satır ve hazır bir
+  fonksiyonu var (`caption_align.extract_clean_lyrics()`); karar: yeni bir şarkıda fark
+  üretirse o an kapatılsın.
+- **B-31.** **Sıklık kuralı başlığın çapasını ezebiliyor.** `keywords_from_lyrics()` en sık
+  geçen 2 imgeyi alır (`MAX_LYRIC_TERMS`); gerekçe "şarkının merkezindeki imge en çok
+  tekrar eder" ve genelde doğru. `Sabah Senin`de tersine döndü: temiz sözlerde gece 4,
+  karanlık 4, ışık 3 → sorgu **"dark dramatic moody night darkness"**, yani adı "Sabah
+  Senin" olan ve nakaratı sabahı devreden bir şarkıya GECE kapağı. Sözlükte `sunrise`
+  var ama anahtarları `şafak/safak/gün doğ/seher` — sözlerde 9 kez geçen **"sabah" hiç
+  eşleşmiyor**. Ölçüldü: `sunrise`a "sabah"+"ağar" eklenirse katalogda **3 şarkı** değişir
+  (`Sabah Senin`, `Kader Ortakları`, `Son Kez` — son ikisi yayında), ve tuzak gerçek:
+  "sabaha kadar" bir GECE deyimidir, `Sabaha Kadar` adlı elektronik şarkıda 16 kez geçiyor.
+  **Sözlük DEĞİŞTİRİLMEDİ.** Bu şarkı için tasarımın kendi çıkış kapısı kullanıldı:
+  `meta.json`'a `art_query` yazıldı (öncelik 1, 19 şarkının zaten 4'ünde var).
+
 ### Ölçülemeyenler (varsayım olarak kayıtlı)
 
 Google Cloud kota **paneli** görülemedi (tavan 10.000 varsayıldı; yükseltme verilmişse tablo

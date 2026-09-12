@@ -1,10 +1,11 @@
 {
   "title": "Sabah Senin",
   "theme": "rock",
+  "art_query": "empty city street at dawn first light cinematic",
   "custom_hooks": [
     "Sabahı sana sakladım 🌅",
     "Gece benden, sabah senin 🌙",
-    "Üstünü örttüm, uykun derin olsun 🎸"
+    "Üstünü örterim, gece bende kalsın 🎸"
   ],
   "custom_questions": [
     "Senin sabahını kim saklıyor? 💬",
