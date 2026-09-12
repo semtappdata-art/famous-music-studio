@@ -155,6 +155,20 @@ def _run_yasak(*a, **k):
     raise AssertionError("subprocess.run çağrıldı — tetikleme yine ENGELLİYOR")
 
 
+# `CREATE_BREAKAWAY_FROM_JOB` / `DETACHED_PROCESS` yalnızca Windows'un
+# `subprocess` modülünde TANIMLI; Linux'ta testin kendisi bu sabitlere
+# eriştiği anda AttributeError verir. Aşağıdaki üç test Windows job nesnesi
+# davranışını sınıyor (Görev Zamanlayıcı'nın süre limiti), POSIX karşılığı
+# yok. Ürün kodu POSIX'te bu dala GİRMEZ (`sys.platform == "win32"` kapısı);
+# POSIX dalı `test_win32_disinda_windows_bayraklari_KULLANILMIYOR` ile her
+# platformda sınanıyor.
+_YALNIZ_WINDOWS = pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="Windows job nesnesi bayrakları (CREATE_BREAKAWAY_FROM_JOB) "
+           "yalnızca win32 subprocess modülünde var")
+
+
+@_YALNIZ_WINDOWS
 def test_tetikleme_engellemez_ve_job_dan_kopar(monkeypatch):
     """En kritik davranış: `subprocess.run` YOK (beklemiyoruz) ve Windows'ta
     `CREATE_BREAKAWAY_FROM_JOB` VAR (yoksa Görev Zamanlayıcı'nın job'u koşuyu
@@ -180,6 +194,7 @@ def test_tetikleme_engellemez_ve_job_dan_kopar(monkeypatch):
     assert "stderr" not in kwargs and "stdout" not in kwargs
 
 
+@_YALNIZ_WINDOWS
 def test_breakaway_reddedilirse_sessiz_kalinmiyor_ve_yedek_yol_var(monkeypatch):
     """`CREATE_BREAKAWAY_FROM_JOB`, job `JOB_OBJECT_LIMIT_BREAKAWAY_OK`
     vermiyorsa CreateProcess'i ERROR_ACCESS_DENIED ile düşürür. O durumda:
@@ -203,6 +218,7 @@ def test_breakaway_reddedilirse_sessiz_kalinmiyor_ve_yedek_yol_var(monkeypatch):
     assert any("kopma reddedildi" in s for s in satirlar)
 
 
+@_YALNIZ_WINDOWS
 def test_her_iki_deneme_de_basarisizsa_False_ve_log(monkeypatch):
     """Sessizce `True` dönen bir tetikleyici, olmayan tetikleyiciden kötüdür."""
     monkeypatch.setattr(sys, "platform", "win32")
@@ -284,7 +300,10 @@ def test_ayni_taramada_ayni_betik_IKI_KEZ_tetiklenmiyor(monkeypatch):
     ikinci projeye sıra geldiğinde `_is_running()` kilidi TAZE görüyordu.
     Kopmuş süreçte kilit henüz oluşmamış olabilir (TOCTOU) — yani aynı
     taramada iki yeni parça varsa AYNI betik iki kez başlardı."""
-    monkeypatch.setattr(sys, "platform", "win32")
+    # Platform BİLEREK taklit EDİLMİYOR (2026-09-12): koşu-içi hafıza
+    # (`_TETIKLENENLER`) iki dalda da aynı; eskiden `sys.platform="win32"`
+    # zorlanıyordu ve Linux CI'da olmayan Windows bayraklarına çarpıp düşüyordu.
+    # Böylece Windows'ta win32 dalı, CI'da POSIX dalı sınanıyor.
     monkeypatch.setattr(subprocess, "run", _run_yasak)
     kayit = []
     monkeypatch.setattr(subprocess, "Popen", _SahtePopen(kayit))
@@ -302,8 +321,9 @@ def test_ayni_taramada_ayni_betik_IKI_KEZ_tetiklenmiyor(monkeypatch):
 
 
 def test_iki_yeni_parca_tek_taramada_tek_surec_baslatir(tmp_path, monkeypatch):
-    """Yukarıdakinin `_scan_dir` üzerinden uçtan uca hâli."""
-    monkeypatch.setattr(sys, "platform", "win32")
+    """Yukarıdakinin `_scan_dir` üzerinden uçtan uca hâli.
+
+    Platform taklit edilmiyor — gerekçe bir üstteki testte."""
     monkeypatch.setattr(subprocess, "run", _run_yasak)
     monkeypatch.setattr(wp, "STABILITY_WAIT_SECONDS", 0)
     monkeypatch.setattr(wp, "TRIGGER_LOCKS", {"auto_process.py": str(tmp_path / "yok.lock")})

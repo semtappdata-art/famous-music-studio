@@ -427,7 +427,16 @@ def test_tiktok_cp1254_alt_surecte_toplu_kuru_ve_emoji_caption_cokmuyor(katalog)
     assert "UnicodeEncodeError" not in err
     out = p.stdout.decode("utf-8", "replace")
     assert "hazir=False" in out and "Telifli Set" in out
-    assert "HİÇBİR ŞEY yazılmadı" in out
+    # PLATFORMA ÖZGÜ SATIR (2026-09-12, Linux CI'da düştü): bu dipnot yalnızca
+    # `_toplu_isaretle` soru döngüsüne GİRDİĞİNDE basılıyor. Windows'ta
+    # `stdin=DEVNULL` (NUL) bir karakter aygıtı ve `isatty()` True dönüyor —
+    # modül docstring'indeki "WINDOWS NOTU" tam bu — döngü EOF ile iptal olup
+    # dipnotu basıyor. POSIX'te /dev/null için `isatty()` False, kuru mod
+    # listeyi basıp ERKEN dönüyor; dipnot yok ama yazım da yok (state.json
+    # değişmezliği yukarıdaki kuru mod testinde md5 ile ayrıca doğrulanıyor).
+    # Testin asıl konusu olan cp1254 çökmemesi iki platformda da sınanıyor.
+    if sys.platform == "win32":
+        assert "HİÇBİR ŞEY yazılmadı" in out
 
     # --project: caption'ın (emoji taşıyan) TAMAMI basılabilmeli.
     import tiktok_publish_plan as TPP
