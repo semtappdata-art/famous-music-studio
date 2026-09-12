@@ -56,5 +56,7 @@
   },
   "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mvdrp7ntz226",
   "bluesky_post_cid": "bafyreihr2timmnynlmrlmirgp2faerrzmkkqesqiramzlht72viv46ulte",
-  "bluesky_uploaded_at": "2026-09-12T22:07:42"
+  "bluesky_uploaded_at": "2026-09-12T22:07:42",
+  "tiktok_publish_status": "SEND_TO_USER_INBOX",
+  "tiktok_status_checked_at": "2026-09-13T02:23:10"
 }
