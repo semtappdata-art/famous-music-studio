@@ -122,7 +122,23 @@ Salı vardiyasında sırayla. Şablon: **`vardiya_sozler.md`** ("Vardiya", rock,
 
 **B. Dosyalar — Suno'ya GİTMEDEN ÖNCE (15 dk)**
 
-3. **Sözler dosyasını yaz: repo KÖKÜNDE `<slug>_sozler.md`** — `projects/` altında DEĞİL.
+> **İskeleyi TEK KOMUTLA kur — 3., 4. ve 5. adımı birlikte yapar:**
+> ```
+> python yeni_parca.py "Vardiya" --tema rock            # yazar
+> python yeni_parca.py "Vardiya" --tema rock --dry-run  # sadece ne yapacağını gösterir
+> ```
+> Komut: `projects/<Ad>/` açar, `meta.json`'ı (`title` + `theme`) yazar, repo
+> köküne `<slug>_sozler.md` **şablonunu** koyar (üç zorunlu bölüm + "Temiz Sözler"
+> başlığı zaten içinde) ve stil etiketi **taslağını** üretir (dil/mood
+> `config.THEMES`'ten, vokal `ses_ve_tarz_takibi.md`'nin SON DURUM satırından,
+> kapanış tanımı Outro kuralından). Slug'ı `stock_art._slugify` üretiyor — elle
+> türetme. **Tema `config.THEMES`'te yoksa DURUR**, sessizce `hiphop`'a düşmez;
+> aynı adda proje ya da sözler dosyası varsa da DURUR, üzerine yazmaz.
+> **Uydurmadığı tek şey sözlerin kendisi** — aşağıdaki 3. adım yer tutucuları
+> doldurmaktır. Komut sonunda Suno adımlarını ve tuzakları da basıyor.
+
+3. **Sözler dosyasını yaz** (komutun bıraktığı şablonu DOLDUR): repo **KÖKÜNDE**
+   `<slug>_sozler.md` — `projects/` altında DEĞİL.
    "Vardiya" → `vardiya_sozler.md`. Üç bölüm zorunlu: `## Stil Etiketi` (BPM **etikete
    yazılacak**, sonda kapanış tanımı — yumuşak temalarda `gentle fade-out ending`, sert
    temalarda `strong final hit ending, no abrupt cutoff`) · `## Sözler` (etiketli) ·
@@ -131,10 +147,13 @@ Salı vardiyasında sırayla. Şablon: **`vardiya_sozler.md`** ("Vardiya", rock,
    Outro: **iki TAM cümle, `...` yok.**
    Dosya yoksa YouTube altyazı hizalaması sessizce atlanır ve kapak şarkıya özel imgeden
    değil temanın varsayılanından seçilir.
-4. **Proje klasörünü aç: `projects/<Şarkı Adı>/`.** ⚠ **İNDİRMEDEN ÖNCE.**
-   `watch_projects.py` yalnızca **zaten var olan** klasörleri tarıyor, kendisi klasör
-   açmıyor — klasör yoksa indirilen dosya hiç fark edilmez.
-5. **`meta.json` yaz — iki alan zorunlu:** `{"title": "Şarkı Adı", "theme": "rock"}`
+4. **Proje klasörü: `projects/<Şarkı Adı>/`** — `yeni_parca.py` açtı, sadece doğrula.
+   ⚠ **İNDİRMEDEN ÖNCE** var olmalı: `watch_projects.py` yalnızca **zaten var olan**
+   klasörleri tarıyor, kendisi klasör açmıyor — klasör yoksa indirilen dosya hiç
+   fark edilmez. (Boş klasör canlı hattı TETİKLEMEZ: tetikleyen şey SES dosyası.)
+5. **`meta.json`** — `yeni_parca.py` yazdı: `{"title": "Şarkı Adı", "theme": "rock"}`.
+   Sözler bittikten SONRA elle eklenebilecek tek şey `custom_hooks`/`custom_questions`
+   (sözlerden türetilir; yoksa caption genel havuzdan seçilir, bozulmaz).
    ⚠ `theme` yoksa varsayılan **`hiphop`** olur: kapak, kart rengi, caption dili, Pexels
    sorgusu hepsi yanlış tarzdan gelir, hata vermeden. `title` yoksa **klasör adı** YouTube
    başlığı olur. Yazım hatası render'ı durdurur — bu doğru davranış.
