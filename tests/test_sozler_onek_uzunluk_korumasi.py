@@ -62,7 +62,12 @@ def test_katalogdaki_her_proje_dogru_sozler_dosyasini_buluyor():
         assert stem == beklenen, "%s: %s -> %s (beklenen %s)" % (
             ad, slug, stem, beklenen)
         sayi += 1
-    assert sayi == 18, "katalog değişmiş: %d proje" % sayi
+    # SABİT SAYI DEĞİL, TABAN (2026-09-12) — kardeşi
+    # tests/test_altyazi_sozler_eslesmesi.py'deki aynı satırla birlikte
+    # düzeltildi. `== 18` yazıyordu; katalog 19'a çıkınca kırıldı, oysa yeni
+    # şarkı eklemek arıza değil normal işleyiş. Bu assert'in gerçek işi
+    # "döngü hiç çalışmadı / keşif bozuldu" halini yakalamak.
+    assert sayi >= 18, "katalog küçülmüş ya da keşif bozulmuş: %d proje" % sayi
 
 
 def test_beton_kralligi_difflib_esiginin_ustunde_kaliyor():
