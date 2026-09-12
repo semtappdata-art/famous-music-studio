@@ -107,6 +107,22 @@ UPLOAD_TIMESTAMP_KEYS = (
     "youtube_uploaded_at", "youtube_shorts_uploaded_at",
     "tiktok_uploaded_at", "instagram_uploaded_at",
 )
+# 52 saatlik YENİ YAYIN tabanı SADECE bu damgadan ölçülür — yukarıdaki geniş
+# listeden DEĞİL. NEDEN (2026-09-12'de ölçüldü): muafiyet yarım uygulanmıştı.
+# `_auto_pace_count` geri doldurma projesinin KENDİSİNİ tabandan muaf tutuyordu,
+# ama tabanın ÖLÇÜLDÜĞÜ saat hâlâ `instagram_uploaded_at` dahil her damgayı
+# sayıyordu. `instagram_upload._publish_container` o damgayı hem yeni yayında
+# HEM `try_publish_pending()` ile yapılan geri doldurma tamamlamasında yazıyor —
+# yani her geri doldurma, sıradaki YENİ şarkının 52 saatlik sayacını sıfırdan
+# başlatıyordu. CLAUDE.md'nin sözü ("geri doldurma kanalın yükleme desenini
+# ETKİLEMEZ") ancak bu ayrımla tutuyor.
+# Ölçülen bedeli: son gerçek yeni yayın 2026-09-08 21:19 iken taban 2026-09-12
+# 13:05'teki bir Instagram geri doldurmasından sayılıyordu; hedef haftada 3-4
+# şarkıyken gerçekleşen 1 şarkı/haftaya doğru gidiyordu.
+# NEDEN `youtube_uploaded_at`: yeni bir şarkı HER ZAMAN önce YouTube'a çıkıyor
+# (diğer platformlar ondan türüyor), yani "kanal en son ne zaman YENİ bir şey
+# yayınladı" sorusunun tek doğal çapası bu.
+YENI_YAYIN_TIMESTAMP_KEYS = ("youtube_uploaded_at",)
 
 
 # Kilit BİZDE mi? Sadece kendi kilidimizin mtime'ını tazelemek için (bkz. log()).
@@ -355,14 +371,20 @@ def _is_fully_done(project_dir: str) -> bool:
     )
 
 
-def _last_upload_time(project_dirs: list) -> float | None:
-    """Tüm projelerin state.json'larına bakıp en son yükleme zaman damgasını
-    (hangi platform olursa olsun) bulur — otomatik zamanlamanın referans
-    noktası: 'en son ne zaman bir şey paylaştık'. Hiç yükleme yoksa None."""
+def _last_upload_time(project_dirs: list, keys: tuple = UPLOAD_TIMESTAMP_KEYS):
+    """Projelerin state.json'larındaki en son yükleme zaman damgasını bulur.
+
+    `keys` HANGİ SORUYU sorduğunu belirler ve iki farklı soru var:
+      - varsayılan `UPLOAD_TIMESTAMP_KEYS` -> "en son ne zaman bir şey
+        PAYLAŞTIK" (günlük pencere bölüşümü bunu sorar; geri doldurma da
+        paylaşımdır, sayılmalı)
+      - `YENI_YAYIN_TIMESTAMP_KEYS` -> "en son ne zaman YENİ bir şarkı
+        yayınladık" (52 saatlik taban bunu sorar; geri doldurma sayılmamalı)
+    Hiç damga yoksa None."""
     latest = None
     for project_dir in project_dirs:
         state = _load_state(project_dir)
-        for key in UPLOAD_TIMESTAMP_KEYS:
+        for key in keys:
             ts = state.get(key)
             if not ts:
                 continue
@@ -411,15 +433,37 @@ def _auto_pace_count(pending: list, ready: list, count: int = 1) -> int:
     # yayın varsa taban uygulanır (any), sırası önemli değil.
     batch = pending[:count] or pending[:1]   # count<=0 gelirse bile en az bir projeye bak
     yeni_yayin = any("youtube_video_id" not in _load_state(p) for p in batch)
-    taban = MIN_YAYIN_ARALIGI_SN if yeni_yayin else 0
-    required_gap = max(taban, DAILY_WINDOW_SECONDS / len(pending))
+
+    # İKİ AYRI SAAT — aynı `last` ile ölçmek muafiyeti sessizce deliyordu
+    # (bkz. YENI_YAYIN_TIMESTAMP_KEYS'in yanındaki not).
+    #   pencere: "en son ne zaman bir şey paylaştık" -> TÜM damgalar
+    #   taban  : "en son ne zaman YENİ şarkı çıktı"  -> yalnız youtube_uploaded_at
+    simdi = time.time()
     last = _last_upload_time(ready)
     if last is None:
         return count  # hiç yükleme yapılmamış, hemen başla
-    elapsed = time.time() - last
-    if elapsed >= required_gap:
+
+    pencere_gap = DAILY_WINDOW_SECONDS / len(pending)
+    pencere_kalan = pencere_gap - (simdi - last)
+
+    taban_kalan = 0.0
+    if yeni_yayin:
+        son_yeni = _last_upload_time(ready, YENI_YAYIN_TIMESTAMP_KEYS)
+        if son_yeni is not None:
+            taban_kalan = MIN_YAYIN_ARALIGI_SN - (simdi - son_yeni)
+
+    if pencere_kalan <= 0 and taban_kalan <= 0:
         return count
-    remaining_h = (required_gap - elapsed) / 3600
+
+    # Hangi kural daha uzun bekletiyorsa logda O görünsün.
+    if taban_kalan >= pencere_kalan:
+        remaining_h = taban_kalan / 3600
+        required_gap = float(MIN_YAYIN_ARALIGI_SN)
+        yeni_yayin = True
+    else:
+        remaining_h = pencere_kalan / 3600
+        required_gap = pencere_gap
+        yeni_yayin = False
     # Beklemenin hangi kuraldan geldiğini logda ayırt et: sonraki oturum
     # "neden 2 gündür hiçbir şey çıkmıyor" diye sorduğunda cevap logda olsun.
     sebep = "yeni yayın tabanı" if yeni_yayin else "günlük pencere bölüşümü"

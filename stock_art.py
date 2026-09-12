@@ -494,18 +494,43 @@ def _alakali_adaylar(adaylar: list[dict], query: str) -> list[dict]:
 
 
 def _sirali_adaylar(title: str, query: str, adaylar: list[dict]) -> list[dict]:
-    """Alaka eşiğini geçen kareleri, deterministik indeksten başlayıp SARARAK
-    sıralar.
+    """Kareleri ÖNCE alaka puanına, eşitlikte deterministik indekse göre sıralar.
 
-    Başlangıç noktası eskisiyle aynı mantık (`_secim_indeksi`) — yani aynı
-    şarkı aynı sonuç listesinde hep aynı kareyi İLK sırada görür. Sarma, kopya
-    korumasının (bkz. fetch_art) "bir sonrakini dene" adımına sabit ve
-    deterministik bir sıra verir."""
+    Sarma yine var ama artık puan KADEMESİ İÇİNDE: aynı şarkı aynı sonuç
+    listesinde hep aynı kareyi ilk sırada görür (arşiv tutarlılığı korunur) ve
+    kopya koruması (bkz. fetch_art) yine tam bir liste üzerinde yürüyor.
+
+    NEDEN DEĞİŞTİ (2026-09-12'de ölçüldü): eşik İKİLİDİR (`_alaka_puani > 0`),
+    yani sadece "city" eşleşen bir kare, "empty + street + dawn" eşleşen kareyle
+    AYNI kademede sayılıyordu; sıra ise tamamen hash'ten geliyordu. Sonuç:
+    19 başlığın 12'si puan-1 bir kareye düşüyordu. `Sabah Senin` ölçüldüğünde
+    10 aday içinde başlangıç indeksi 9'a düşüyor ve ilk denenen kare
+    "architecture, buildings, city" (puan 1) oluyordu — sorgu
+    "empty city street at dawn first light" olmasına rağmen.
+
+    Arıza sessizdi: istisna yok, log yok, sadece kapak şarkının konusundan
+    kopuyor. Eşiğin kendisi BİLEREK kapı değil (bkz. `_alakali_adaylar`
+    docstring'i) — bu yüzden düzeltme de eleme değil SIRALAMA."""
     gecen = _alakali_adaylar(adaylar, query)
     if not gecen:
         return []
-    bas = _secim_indeksi(title, len(gecen))
-    return [gecen[(bas + i) % len(gecen)] for i in range(len(gecen))]
+    sahne = _sahne_kelimeleri(query)
+    if not sahne:
+        # Sorgu tamamen atmosfer kelimelerinden oluşuyor: puan ayrımı YOK,
+        # eski davranış aynen korunur.
+        bas = _secim_indeksi(title, len(gecen))
+        return [gecen[(bas + i) % len(gecen)] for i in range(len(gecen))]
+
+    kademeler: dict[int, list[dict]] = {}
+    for a in gecen:
+        kademeler.setdefault(_alaka_puani(a.get("tarif"), sahne), []).append(a)
+
+    sirali: list[dict] = []
+    for puan in sorted(kademeler, reverse=True):
+        grup = kademeler[puan]
+        bas = _secim_indeksi(title, len(grup))
+        sirali.extend(grup[(bas + i) % len(grup)] for i in range(len(grup)))
+    return sirali
 
 
 # --- Katalog genelinde kopya koruması ---------------------------------------
