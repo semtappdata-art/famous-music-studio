@@ -47,6 +47,12 @@ dj_sets/*/art.png
 dj_sets/*/cover.jpg
 dj_sets/*/cover.jpeg
 dj_sets/*/cover.png
+# cover_vertical.png (9:16 Shorts/Reels varyantı) AYNI görüntünün dikey
+# kırpımıdır — aynı kişi, aynı hassasiyet. Yukarıdaki cover.* kuralları dosya
+# ADINA baktığı için bu ad desene uymuyordu ve AÇIKTA kalmıştı (dj_sets/_arda/
+# ile aynı sınıftan üçüncü vaka). Bir daha ayrışmasın diye kasıtlı olarak
+# cover.* kurallarının YANINDA duruyor: ikisi birlikte okunmalı.
+dj_sets/*/cover_vertical.png
 # dj_sets/_arda/: yukaridaki art/cover kurallari dosya ADINA bakiyor; ayni
 # klasordeki cover.jpg ignore edilirken `arda_02_arac_onden.jpg`,
 # `kirpik/arda_05_kirp.jpg` gibi 13 kare desene uymadigi icin ACIKTA kaliyordu.
