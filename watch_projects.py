@@ -38,6 +38,7 @@ for _stream in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass
 
+from gizli_maskele import maskele, maskele_istisna
 from log_rotate import trim_log
 import notify
 
@@ -46,7 +47,24 @@ PROJECTS_DIR = os.path.join(BASE_DIR, "projects")
 DJ_SETS_DIR = os.path.join(BASE_DIR, "dj_sets")
 LOG_PATH = os.path.join(BASE_DIR, "watch_projects.log")
 AUTO_PROCESS_LOG_PATH = os.path.join(BASE_DIR, "auto_process.log")
+DJ_FAMOUS_LOG_PATH = os.path.join(BASE_DIR, "dj_famous_process.log")
 HEARTBEAT_MARKER_PATH = os.path.join(BASE_DIR, ".watchdog_alerted")
+
+# Tetiklenen script'lerin kilit dosyaları — bkz. _trigger_script().
+TRIGGER_LOCKS = {
+    "auto_process.py": os.path.join(BASE_DIR, ".auto_process.lock"),
+    "dj_famous_process.py": os.path.join(BASE_DIR, ".dj_famous_process.lock"),
+}
+
+# Bir kilit dosyası bu süreden daha yeniyse "koşu gerçekten sürüyor" sayılır.
+# Kasıtlı olarak KISA: burada amaç bayat kilidi tespit etmek değil (onu
+# script'in kendisi yapıyor), sadece "az önce başlattığım koşu hâlâ ayakta"
+# durumunu ucuza anlamak. Kilit mtime'ı koşu boyunca tazelenmediği için uzun
+# bir render'da bu değer aşılabilir; o durumda tetikleme yine yapılır ve
+# script'in KENDİ kilidi ikinci koşuyu erken çıkışa yönlendirir — yani bu
+# kontrol bir güvenlik mekanizması DEĞİL, gereksiz süreç başlatmayı azaltan
+# bir ön eleme.
+TRIGGER_LOCK_FRESH_SECONDS = 15 * 60
 
 STABILITY_WAIT_SECONDS = 3  # indirme hâlâ sürüyor olabilir, boyut bu süre içinde değişmemeli
 
@@ -78,7 +96,15 @@ ART_NAMES = {"art.jpg", "art.jpeg", "art.png"}
 
 
 def log(msg: str) -> None:
-    line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
+    """Log satırı yazar — yazmadan ÖNCE kimlik bilgisi maskeler.
+
+    NEDEN BURADA (çağrı noktalarında değil): tek nokta, unutulamaz. Bir ağ
+    hatasının mesajı tam istek URL'sini (dolayısıyla sorgu dizesindeki
+    access_token'ı) içerebiliyor — 2026-09-04'te dj_famous_process.log'a
+    gerçek bir Instagram token'ı böyle düştü. Maskelemeyi tek tek
+    `log(f"... HATA: {e}")` çağrılarına bırakmak, yarın eklenecek YENİ bir
+    çağrının yine sızdırması demekti."""
+    line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {maskele(msg)}"
     print(line, flush=True)
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(line + "\n")
@@ -164,11 +190,51 @@ def _is_stable(path: str) -> bool:
     return size_before == size_after
 
 
-def _trigger_script(script_name: str) -> None:
+def _is_running(script_name: str) -> bool:
+    """Tetiklenecek script'in kilidi TAZE mi (koşu muhtemelen sürüyor).
+
+    Kullanım yeri: `_scan_dir()` — kilit tazeyse yeniden adlandırma da
+    tetikleme de ERTELENİYOR (bkz. oradaki not).
+
+    NEDEN: bu script DAKİKADA BİR çalışıyor (Görev Zamanlayıcı) ve
+    auto_process.py ayrıca SAATLİK kendi tetikleyicisiyle koşuyor. Hedef
+    script'in kilit alması atomik DEĞİL (`if os.path.isfile(LOCK)` ile
+    `open(LOCK, "w")` arasında iki süreç geçebilir — TOCTOU); yani iki
+    tetiklemeyi gerçekten aynı saniyeye denk getirmek aynı projeyi iki kez
+    yüklemekle sonuçlanabilir. Kilidi ÖNCEDEN görüp süreci hiç başlatmamak,
+    o yarışa girme olasılığını büyük ölçüde düşürüyor.
+
+    Bu bir GARANTİ değil (asıl düzeltme hedef script'te `os.O_CREAT|O_EXCL`
+    ile atomik kilit almak — o dosyalar başka bir ajanda). Burada yapılan,
+    tetikleme tarafından kapatılabilen kısım."""
+    lock_path = TRIGGER_LOCKS.get(script_name)
+    if not lock_path or not os.path.isfile(lock_path):
+        return False
     try:
-        subprocess.run([sys.executable, os.path.join(BASE_DIR, script_name)], cwd=BASE_DIR)
+        age = time.time() - os.path.getmtime(lock_path)
+    except OSError:
+        return False
+    return age < TRIGGER_LOCK_FRESH_SECONDS
+
+
+def _trigger_script(script_name: str) -> None:
+    # SARMALAYICIDAN GECIYOR (2026-09-12). Eskiden hedef betik DOGRUDAN
+    # cagriliyordu ve bu, Gorev Zamanlayici'nin kapattigi deligi izleyici
+    # tarafinda ACIK birakiyordu: `sys.executable` burada `pythonw.exe`
+    # (gorevler pencere acmasin diye oyle kuruldu), yani stdout/stderr YOK.
+    # Tetiklenen `auto_process.py` kendi log'unu ACMADAN olurse (import
+    # hatasi, sozdizimi hatasi) geriye TEK BAYT iz kalmiyordu — sarmalayicinin
+    # var olma sebebinin ta kendisi. Suno'dan yeni dosya dustugu an calisan
+    # yol bu oldugu icin, sessiz olum tam da en cok is yapilan anda olurdu.
+    try:
+        subprocess.run(
+            [sys.executable,
+             os.path.join(BASE_DIR, "gorev_sarmalayici.py"),
+             script_name],
+            cwd=BASE_DIR,
+        )
     except Exception as e:
-        log(f"  {script_name} tetiklenemedi: {e}")
+        log(f"  {script_name} tetiklenemedi: {maskele_istisna(e)}")
 
 
 def _scan_dir(base_dir: str, trigger_script: str) -> None:
@@ -192,6 +258,16 @@ def _scan_dir(base_dir: str, trigger_script: str) -> None:
             continue
         if not _is_stable(stray):
             continue  # muhtemelen indirme sürüyor, bir sonraki turda tekrar bakılacak
+        if _is_running(trigger_script):
+            # Hedef script şu an koşuyor: ne yeniden adlandır ne tetikle.
+            # NEDEN ADLANDIRMA DA ERTELENİYOR: dosyayı audio.* yapıp tetiklemeyi
+            # atlasaydık, bir sonraki turda `_has_audio()` True dönüp bu proje
+            # bir daha HİÇ tetiklenmezdi (sadece saatlik görevle, yani bu
+            # script'in var olma sebebi olan gecikme geri gelirdi). Ertelemek,
+            # `_is_stable()` başarısızlığıyla aynı desende doğal bir yeniden
+            # deneme sağlıyor. Sessiz: dakikada bir çalıştığı için log'a
+            # yazmak uzun bir render boyunca onlarca gereksiz satır demek.
+            continue
         ext = os.path.splitext(stray)[1].lower()
         target = os.path.join(project_dir, AUDIO_EXT_TO_NAME[ext])
         os.rename(stray, target)
@@ -245,6 +321,30 @@ def main() -> None:
         log(f"HATA (heartbeat kontrolü): {e}")
 
     trim_log(LOG_PATH)
+
+    # dj_famous_process.log'u da BURADAN buduyoruz.
+    # NEDEN: `dj_famous_process.py` kendi log'unu hiç döndürmüyordu — sızan
+    # Instagram token'ı (2026-09-04) 7 günlük sınırı çoktan geçmiş olmasına
+    # rağmen hâlâ dosyadaydı. `trim_log()` artık tuttuğu satırları da
+    # maskelediği için (bkz. log_rotate.py) bu çağrı hem eski sızıntıyı
+    # temizliyor hem de o dosyanın süresiz büyümesini durduruyor.
+    # İKİ YAZICI VAR, BİLEREK (yorumun eski hâli "dj_famous_process budamıyor"
+    # diyordu; 2026-09-11'de budama oraya da EKLENDİ — `dj_famous_process.py`
+    # kilidi aldıktan hemen sonra kendi `trim_log(LOG_PATH)` çağrısını yapıyor.
+    # O bayat yorumu okuyan biri aynı gün ikinci bir çağrıyı gereksiz sandı.)
+    # İkisi ÇAKIŞMIYOR, çünkü ikisi de aynı kapıdan geçiyor:
+    #   * dj tarafı budamayı KİLİDİN İÇİNDE yapıyor — o an başka bir
+    #     dj_famous_process koşusu olamaz;
+    #   * buradaki çağrı `_is_running` ile koşu sürerken hiç dokunmuyor.
+    # `trim_log` dosyayı tümden okuyup yeniden YAZIYOR, yani aynı anda append
+    # edilen bir satır kaybolabilirdi; iki kapı da tam bunu engelliyor.
+    # İKİSİ DE KALMALI: dj tarafındaki çağrı sızıntının YAZILDIĞI koşuyu
+    # (buradaki `_is_running` kapısının kapalı olduğu an) kapsıyor, buradaki
+    # çağrı ise dj hattı haftalarca hiç koşmasa bile dosyanın büyümesini ve
+    # eski satırların yeniden maskelenmesini dakikada bir garantiliyor.
+    if not _is_running("dj_famous_process.py"):
+        trim_log(DJ_FAMOUS_LOG_PATH)
+
     try:
         _scan_dir(PROJECTS_DIR, "auto_process.py")
     except Exception as e:
