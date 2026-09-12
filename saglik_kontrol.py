@@ -1209,6 +1209,432 @@ def yayin_durgunlugu(log=print) -> dict:
     return s
 
 
+# --- Üretim kuyruğu boş (sekizinci adım, 2026-09-12) -----------------------
+#
+# ÖLÇÜLEN OLGU: "AKACAK İŞ KALDI MI" — yedinci adımın (yayin_durgunlugu)
+# TAMAMLAYICISI, kopyası DEĞİL. O adım "iş var ama akmıyor" der; bu adım
+# "akacak iş kalmadı" der.
+#
+# BOŞLUK (bugün ölçüldü): yedinci adımın en önemli YANLIŞ-ALARM koruması
+# ("bekleyen proje yoksa sessiz kal") aynı zamanda bir KÖR NOKTA üretiyor.
+# Katalog tamamen bitip yeni malzeme gelmediğinde:
+#   - `yayin_durgunlugu` susar  -> tam o muafiyetin içine düşer,
+#   - `kacan_kosu` susar        -> koşular yapılıyor, damga tazeleniyor,
+#   - `git_senkron` susar       -> yayın olmayınca yerel/canlı fark büyümez,
+#   - kalan dört adım ilgisiz   -> hepsi ÖN KOŞULLARA bakıyor.
+# Yani kanal malzeme bitince SESSİZCE durur ve sistemin tamamı "her şey yolunda"
+# der; kullanıcı ancak aklına gelirse fark eder. Bu, deponun en sık arıza
+# sınıfının (sessiz duruş) ÜRETİM tarafındaki karşılığı — ve tek farkla daha
+# sinsisi: burada kırık bir kod bile yok, sadece boş bir kuyruk var.
+#
+# KARŞILIKLI DIŞLAMA (tasarım ŞARTI, tesadüf değil): iki nöbetçi ASLA aynı anda
+# çalamaz. `_kuyruk_taramasi()` "bekleyen proje" listesini `_yayin_taramasi()`
+# fonksiyonundan AYNEN alıyor — ikinci bir "bekleyen" tanımı YAZILMADI. Yedinci
+# adım o liste DOLUYKEN, bu adım BOŞKEN alarm veriyor. Dışlama böylece
+# eşiklerden değil MANTIKTAN geliyor ve iki tanım sessizce ayrışamaz (eşikler
+# değişse bile geçerli kalır). Kilit: tests/test_uretim_kuyrugu_bos.py
+# (davranış matrisi + `ast` ile kaynak muhafızı).
+#
+# ÜÇ SORU (CLAUDE.md):
+#   1. Kim çağıracak? — `saglik_kontrol.kontrol_et()`, `yayin_durgunlugu`nun
+#      hemen ardından ve `kacan_kosu`dan ÖNCE (o adım damgayı EN SONDA
+#      tazeliyor).
+#   2. Hangi görevden? — saatlik `FamousMusicStudio-AutoProcess`;
+#      `auto_process.main()`in `finally` bloğu zaten `_saglik_kontrol()`
+#      çağırıyor. YENİ görev/çağrı noktası EKLENMEDİ, `auto_process.py`ye
+#      DOKUNULMADI.
+#   3. Çalışmadığını nasıl anlarız? — alarm dalı log'a en az iki satır yazıyor
+#      (uyarı + üretim önerisi) ve dokuz senaryo testle kilitli; `kontrol_et`e
+#      bağlı olduğu `ast` muhafızıyla doğrulanıyor.
+
+# "KUYRUK BOŞ" ÖLÇÜTÜ — İKİ listenin de boş olması gerekiyor:
+#   (1) BEKLEYEN PROJE: sesi olan ama dört ana anahtarı dolmamış proje.
+#       `_yayin_taramasi()`den AYNEN alınıyor (bkz. karşılıklı dışlama notu).
+#   (2) İSİMLENDİRİLMEMİŞ HAM SES: klasörde duran ama `audio.*` adına HENÜZ
+#       çevrilmemiş ses dosyası.
+# (2) NEDEN ŞART: böyle bir klasörde `audio.*` YOKTUR, yani `_yayin_taramasi()`
+# onu SES_DOSYALARI şartından eler ve "bekleyen" SAYMAZ. Kullanıcı Suno'dan
+# indirmeyi yeni yapmışsa (ya da dakikalık Watcher ölmüşse dosya orada kalır)
+# kuyruk gerçekte DOLUYKEN bu nöbetçi "boş" der ve "üret" diye yanlış alarm
+# verirdi — üstelik yapılacak iş tam da o dosyanın kendisiyken.
+#
+# KLASÖRDE ZATEN `audio.*` VARSA İKİNCİ SES HAM SAYILMAZ — ölçütün en kritik
+# detayı ve `watch_projects._scan_root`un GERÇEK davranışına bağlı: orada
+# `if _has_audio(project_dir): continue` var, yani sesi olan bir klasördeki
+# ikinci ses dosyası ASLA yeniden adlandırılmaz ve hattı TETİKLEMEZ. Diskte
+# bugün somut örnek duruyor: `dj_sets/City Pulse Set/audio_telifsiz.wav`
+# (telif itirazından sonra hazırlanan telifsiz sürüm, yanında `audio.wav`
+# var). Bu şart olmasaydı o TEK dosya kuyruğu SONSUZA KADAR "dolu" gösterir
+# ve sekizinci adım hiç ateşlenmezdi: yazıldığı gün ölen bir koruma.
+#
+# KABUL EDİLEN BOŞLUK (bilerek, gizlenmiyor): "isimlendirilmemiş ham ses VAR
+# ama günlerdir işlenmemiş" durumunda İKİ nöbetçi de susar — bu adım kuyruğu
+# dolu sayar, yedinci adım ise o klasörü (sesi `audio.*` olmadığı için)
+# "bekleyen" saymaz. Yeni bir alarm EKLENMEDİ çünkü o dosyayı dakikalık
+# `watch_projects` bir dakika içinde yeniden adlandırıp hattı tetikliyor;
+# tetiklemiyorsa arıza Watcher'ın kendisindedir ve onun İKİ ayrı emniyet ağı
+# zaten var (`watch_projects._check_heartbeat` + bu modüldeki `kacan_kosu`).
+# Aynı olayı üçüncü kez alarma çevirmek bildirim yorgunluğundan başka bir şey
+# üretmezdi.
+#
+# Uzantılar SES_DOSYALARI'ndan TÜRETİLİYOR — elle ikinci bir liste YOK.
+# `watch_projects.AUDIO_EXT_TO_NAME` ile aynı küme olduğu testle kilitli
+# (o modül import EDİLMİYOR: dakikalık izleyicinin modül düzeyi kurulumunu
+# bir TANI adımına taşımak, `auto_process` import etmeme gerekçesinin aynısı).
+HAM_SES_UZANTILARI = tuple(sorted(os.path.splitext(a)[1].lower()
+                                  for a in SES_DOSYALARI))
+
+# Mesajın PLAN kaynakları. Tarz seçimi KODA GÖMÜLÜ DEĞİL: ikisi de diskten
+# okunuyor, okunamazsa adım genel bir mesajla yetiniyor ve bunu AÇIKÇA yazıyor.
+TAKIP_DOSYASI_ADI = "ses_ve_tarz_takibi.md"
+IS_AKISI_DOSYASI_ADI = "haftalik_is_akisi.md"
+
+# EŞİK — 104 saat = 2 x yayın tabanı. TÜRETİLMİŞ, elle yazılmış sayı DEĞİL
+# (aynı desen: YAYIN_DURGUNLUK_ESIGI_SN = 1.5 x taban).
+#   - `auto_process.MIN_YAYIN_ARALIGI_SN` 52 SAAT: son yayından sonraki BİRİNCİ
+#     yayın slotu +52 saatte geliyor. Kuyruk o an boşsa bu HENÜZ arıza değil —
+#     kullanıcı aynı gün üretebilir, haftalık çevrimde üretim vardiyası ayrı
+#     bir güne konmuş ve Suno kotası zaten gerçek tavan. Kuyruk boşalır
+#     boşalmaz uyarmak GÜRÜLTÜ olurdu.
+#   - İKİNCİ slot da (+104 saat) boş kuyrukla geldiğinde durum değişiyor:
+#     artık "ara verildi" değil, üretim DURDU. Ölçüt tam olarak şu cümle:
+#     "son yayından sonra iki yayın slotu geldi, ortada üretilecek bir şey yok".
+#   - Yedinci adımın eşiğinin (78 sa) ÜSTÜNDE, bilerek: "boru hattı takıldı"
+#     acil bir arızadır, "besleyecek malzeme yok" değildir. İki nöbetçinin
+#     sırası böylece okunur kalıyor ve bu adım her zaman daha SESSİZ olanı.
+#   - TAVAN tarafı: 104 < 168 (bir hafta). `haftalik_is_akisi.md` üretimi
+#     HAFTADA BİR güne bağlıyor; alarm bir sonraki üretim vardiyası gelmeden
+#     düşüyor, yani uyarı hâlâ AYNI çevrim içinde işe yarıyor.
+URETIM_KUYRUGU_ESIGI_SN = int(2 * YAYIN_TABANI_SN)      # 104 saat
+
+# `ses_ve_tarz_takibi.md`nin başındaki "SON DURUM" paragrafı — yönergenin yeri.
+#
+# NEDEN PARAGRAF, NEDEN TEK BİR KALIP DEĞİL: ilk sürüm `"Sıradaki şarkı:"`
+# cümlesini arıyordu ve AYNI GÜN bayatladı — belge paralel olarak
+# güncellenince cümle `"sıradaki üretim SEÇİLDİ ve tabloya girdi: ..."`
+# oldu ve kalıp sessizce hiçbir şey bulamadı. Tam da bu deponun arıza sınıfı:
+# çalışmayan koruma hata vermiyor, sadece susuyor. "SON DURUM" başlığı ise
+# belgenin SÖZLEŞMESİ (`ses_takip_denetimi` uyarı metni de operatöre o satırı
+# düzelttiriyor), yani asıl çapa o. Paragrafın içinde "sıradaki" geçen cümle
+# varsa o seçiliyor, yoksa paragrafın kendisi kırpılarak kullanılıyor.
+_SON_DURUM_RE = re.compile(r"\*\*SON DURUM(.+?)(?:\n[ \t]*\n|\Z)", re.S)
+_CUMLE_AYIRACI = re.compile(r"(?<=\.)\s+")
+
+# `haftalik_is_akisi.md` içindeki üretim bölümünün başlığı — metin KODA
+# YAZILMIYOR, belgeden çekiliyor (belge paralel olarak değişebilir).
+_URETIM_BASLIK_RE = re.compile(r"^#{2,4} .*üretim.*$", re.M | re.I)
+
+
+def _cp1254_guvenli(metin: str) -> str:
+    """Diskten okunan metni cp1254'e sığdırır (sığmayan karakter DÜŞER).
+
+    ÇALIŞMA ANINDA ŞART, çünkü bu adımın mesajı KODA GÖMÜLÜ DEĞİL: elle yazılan
+    iki markdown belgesinden türetiliyor ve o belgeler süs karakteri dolu
+    (bugün diskte GERÇEKTEN var: `haftalik_is_akisi.md` içinde sağ ok U+2192 ve
+    uyarı işareti U+26A0; `ses_ve_tarz_takibi.md` içinde yine sağ ok). Konsol bu
+    makinede cp1254 ve tek bir yaklaşık işareti (U+2248) gerçek bir çökme
+    üretti (`buyume_kontrol_listesi.md`, 2026-09-12). Yalnız kaynaktaki
+    sabitleri testle kilitlemek YETMEZ — belgeler yarın değişir, süzgecin
+    kodda yaşaması gerekir.
+
+    Boşluklar da sadeleştiriliyor: düşen bir karakter ("A ok B") geriye çift
+    boşluk bırakır ve telefon bildiriminde çirkin durur.
+    """
+    parcalar = []
+    for ch in metin or "":
+        try:
+            ch.encode("cp1254")
+        except UnicodeEncodeError:
+            continue
+        parcalar.append(ch)
+    return re.sub(r"\s+", " ", "".join(parcalar)).strip()
+
+
+def _isimlendirilmemis_sesler() -> list:
+    """`audio.*` adına HENÜZ çevrilmemiş ham ses dosyaları ("klasör/dosya").
+
+    Kök listesi ELLE SAYILMIYOR — `uyumluluk.proje_klasorleri()` (aynı gerekçe
+    `_yayin_taramasi`'nin docstring'inde). Sesi OLAN klasörler atlanıyor; niçin,
+    yukarıdaki "City Pulse Set" notunda.
+    """
+    import uyumluluk
+
+    bulunan = []
+    for yol in uyumluluk.proje_klasorleri():
+        if any(os.path.isfile(os.path.join(yol, a)) for a in SES_DOSYALARI):
+            continue
+        try:
+            adlar = sorted(os.listdir(yol))
+        except OSError:
+            continue
+        for ad in adlar:
+            if os.path.splitext(ad)[1].lower() in HAM_SES_UZANTILARI:
+                bulunan.append("%s/%s" % (os.path.basename(yol), ad))
+    return bulunan
+
+
+def _kuyruk_taramasi() -> dict:
+    """`_yayin_taramasi()` + isimlendirilmemiş ham sesler.
+
+    "Bekleyen proje" burada YENİDEN TANIMLANMIYOR, `_yayin_taramasi()`den
+    aynen geliyor: yedinci adımla karşılıklı dışlamanın tek dayanağı bu.
+    Bekleyen varsa ham ses taramasına HİÇ girilmiyor — bu adım zaten susacak,
+    ikinci bir disk gezintisine gerek yok.
+    """
+    t = _yayin_taramasi()
+    if t["bekleyen"]:
+        return dict(t, ham_ses=[])
+    return dict(t, ham_ses=_isimlendirilmemis_sesler())
+
+
+def _belge_oku(ad: str):
+    """Repo kökündeki bir markdown belgesi. Okunamazsa None — ÇÖKMEZ."""
+    try:
+        with open(os.path.join(REPO, ad), "r", encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def _ana_katalog_koku():
+    """Tarz önerisi için ANA katalog kökü (`projects`), kanonik listeden.
+
+    DJ setleri (`dj_sets/`) ve derlemeler (`derlemeler/`) KAPSAM DIŞI: ikisi de
+    ayrı üretim hatları (`dj_famous_process.py`, `derleme.py`) ve `dj` teması
+    Suno'da üretilecek bir "tarz" değil. Kapsamı `ses_ve_tarz_takibi.md` de
+    aynı şekilde tanımlıyor ("tablo ana katalog içindir").
+    """
+    import uyumluluk
+
+    for k in uyumluluk.KOKLER:
+        if os.path.basename(k) == "projects":
+            return k
+    return None
+
+
+def _kirp(metin: str, tavan: int) -> str:
+    """Telefon bildirimi için kırpar; kelimeyi ortasından bölmez."""
+    if len(metin) <= tavan:
+        return metin
+    kesik = metin[:tavan].rsplit(" ", 1)[0].rstrip(" ,;:-")
+    return (kesik or metin[:tavan]) + "..."
+
+
+def _siradaki_uretim_notu():
+    """`ses_ve_tarz_takibi.md`'nin "SON DURUM" yönergesi. Yoksa None.
+
+    Metin KODA YAZILMIYOR (tarz seçimi belgenin işi, bu modülün değil) ve
+    biçimine de sıkı sıkıya bağlanmıyor — gerekçesi `_SON_DURUM_RE`'nin
+    yanında. Markdown süsü (`**`, backtick) ve cp1254 dışı karakterler
+    ayıklanıyor: paragraf bugün diskte sağ ok (U+2192) taşıyor.
+    """
+    metin = _belge_oku(TAKIP_DOSYASI_ADI)
+    if not metin:
+        return None
+    eslesme = _SON_DURUM_RE.search(metin)
+    if not eslesme:
+        return None
+    paragraf = _cp1254_guvenli(
+        eslesme.group(1).replace("*", " ").replace("`", ""))
+    if not paragraf:
+        return None
+    cumleler = [c.strip() for c in _CUMLE_AYIRACI.split(paragraf) if c.strip()]
+    # Türkçe büyük/küçük "ı/I" farkını atlamak için ortak parça aranıyor.
+    secilen = next((c for c in cumleler if "radaki" in c), None) or paragraf
+    return _kirp(secilen, 200)
+
+
+def _en_uzun_bosta_tarz():
+    """En uzun süredir yayın çıkmamış TARZ — `meta.json` dağılımından TÜRETİLİR.
+
+    Tarz adı KODA YAZILMIYOR: diskte hangi tema varsa o. Sıralama, temanın EN
+    YENİ yayın damgasına göre; hiç damgası olmayan tema en başa gelir ("hiç
+    yayınlanmamış" en uzun boşluktur). Dönüş: {"tema", "son_ts", "adet"} ya da
+    hiçbir tema okunamazsa None.
+    """
+    import uyumluluk
+
+    kok = _ana_katalog_koku()
+    if not kok:
+        return None
+
+    tarzlar = {}
+    for yol in uyumluluk.proje_klasorleri(kok):
+        if not any(os.path.isfile(os.path.join(yol, a)) for a in SES_DOSYALARI):
+            continue
+        try:
+            with open(os.path.join(yol, "meta.json"), "r", encoding="utf-8") as f:
+                meta = json.load(f)
+        except (OSError, ValueError):
+            continue
+        tema = meta.get("theme") if isinstance(meta, dict) else None
+        if not isinstance(tema, str):
+            continue
+        tema = _cp1254_guvenli(tema)[:32]
+        if not tema:
+            continue
+
+        son = None
+        for anahtar, deger in _proje_state(yol).items():
+            if not anahtar.endswith(YAYIN_DAMGA_SONEKI):
+                continue
+            ts = _damga_ts(deger)
+            if ts is not None and (son is None or ts > son):
+                son = ts
+
+        kayit = tarzlar.setdefault(tema, {"tema": tema, "son_ts": None, "adet": 0})
+        kayit["adet"] += 1
+        if son is not None and (kayit["son_ts"] is None or son > kayit["son_ts"]):
+            kayit["son_ts"] = son
+
+    if not tarzlar:
+        return None
+    return sorted(tarzlar.values(),
+                  key=lambda k: (k["son_ts"] is not None, k["son_ts"] or 0))[0]
+
+
+def _uretim_onerisi() -> list:
+    """"Ne üretmeliyim" sorusunun cevabı — ÜÇ kaynak, hepsi diskten.
+
+    Bu uyarının tek başına bir işe yaraması için "üretim durdu" demesi YETMEZ;
+    kullanıcının o an atacağı adımı da söylemesi gerekir. Kaynakların HİÇBİRİ
+    okunamazsa liste boş kalmıyor: genel bir mesaj basılıyor ve öneri
+    ÇIKARILAMADIĞI açıkça yazılıyor (sessizce eksik bir mesaj göndermek, bu
+    modülün yakalamaya çalıştığı desenin küçük bir kopyası olurdu).
+
+    Her kaynak AYRI AYRI korunuyor: biri patlarsa diğerleri yine de mesaja
+    giriyor.
+    """
+    satirlar = []
+
+    try:
+        not_ = _siradaki_uretim_notu()
+    except Exception:
+        not_ = None
+    if not_:
+        satirlar.append("Sıradaki üretim (%s): %s" % (TAKIP_DOSYASI_ADI, not_))
+
+    try:
+        tarz = _en_uzun_bosta_tarz()
+    except Exception:
+        tarz = None
+    if tarz and tarz["son_ts"]:
+        satirlar.append("En uzun boşta tarz: %s (katalogda %d şarkı, son yayını %s)."
+                        % (tarz["tema"], tarz["adet"],
+                           time.strftime("%d.%m.%Y", time.localtime(tarz["son_ts"]))))
+    elif tarz:
+        satirlar.append("En uzun boşta tarz: %s (katalogda %d şarkı, hiç yayın "
+                        "damgası yok)." % (tarz["tema"], tarz["adet"]))
+
+    if not satirlar:
+        satirlar.append("Tarz önerisi ÇIKARILAMADI: %s okunamadı ve meta.json "
+                        "dağılımından da tema türetilemedi — plana ELLE bak."
+                        % TAKIP_DOSYASI_ADI)
+
+    try:
+        akis = _belge_oku(IS_AKISI_DOSYASI_ADI)
+    except Exception:
+        akis = None
+    if akis:
+        baslik = _URETIM_BASLIK_RE.search(akis)
+        if baslik:
+            satirlar.append("Haftalık akış: %s, '%s' bölümü."
+                            % (IS_AKISI_DOSYASI_ADI,
+                               _cp1254_guvenli(baslik.group(0).lstrip("# "))[:80]))
+        else:
+            satirlar.append("Haftalık akış: %s." % IS_AKISI_DOSYASI_ADI)
+
+    return satirlar
+
+
+def uretim_kuyrugu_bos(log=print) -> dict:
+    """Üretim kuyruğu boşaldı mı? (kanal malzeme bitince sessizce durur)
+
+    Gerekçenin tamamı yukarıdaki sabitlerin yanında: ölçütün iki bacağı, ham
+    ses şartının `watch_projects` davranışına neden bağlandığı, eşiğin neden
+    52 saatlik yayın tabanının 2 katı olduğu ve yedinci adımla karşılıklı
+    dışlamanın nereden geldiği.
+
+    YANLIŞ ALARM KAPILARI (dördü de sessiz):
+      - kuyrukta iş VAR (bekleyen proje ya da ham ses) -> bu adımın konusu
+        değil, o `yayin_durgunlugu`nun işi,
+      - hiç yayın damgası yok (taze checkout) -> karşılaştırmanın bir tarafı
+        eksik, `yayin_durgunlugu`/`git_senkron` ile aynı gerekçe,
+      - damga GELECEKTE (sistem saati geri alınmış) -> ölçüm anlamsız,
+      - sessizlik eşiğin altında -> normal bekleme.
+
+    BİLDİRİM YORGUNLUĞU: `_bildir(..., "uretim_kuyrugu_bildirim_gun")` —
+    mevcut günde-bir mekanizmasının AYNISI; damga yalnızca gönderim
+    BAŞARILIYSA atılıyor.
+    """
+    try:
+        t = _kuyruk_taramasi()
+    except Exception as e:
+        # Taramanın KENDİSİ patlarsa sessiz kalma — bu modülün tüm gerekçesi bu.
+        log("  Üretim kuyruğu taraması çalıştırılamadı: %s" % str(e)[:150])
+        return {"durum": "calistirilamadi", "hata": str(e)[:120]}
+
+    s = {"durum": "tamam", "bekleyen": len(t["bekleyen"]), "proje": t["proje"],
+         "ham_ses": len(t["ham_ses"])}
+
+    if t["bekleyen"] or t["ham_ses"]:
+        # Kuyrukta iş var: akmıyorsa onu yedinci adım söyler. Log'a bile satır
+        # yok — iki nöbetçi aynı olayı iki kez anlatmaz.
+        s["durum"] = "kuyrukta_is_var"
+        return s
+
+    son = t["son_ts"]
+    if son is None:
+        s.update({"durum": "atlandi", "sebep": "yayin damgasi yok"})
+        return s
+
+    sessizlik = time.time() - son
+    s["sessizlik_sn"] = int(sessizlik)
+    s["son_yayin"] = t["son_kaynak"]
+
+    if sessizlik < 0:
+        s.update({"durum": "atlandi", "sebep": "damga gelecekte"})
+        log("  Üretim kuyruğu: en yeni damga gelecekte (sistem saati "
+            "değişmiş), ölçüm atlandı.")
+        return s
+
+    if sessizlik < URETIM_KUYRUGU_ESIGI_SN:
+        return s
+
+    s["durum"] = "bos"
+    oneri = _uretim_onerisi()
+    s["oneri"] = oneri
+    sure = _geri_kalma_metni(sessizlik)
+    son_metni = time.strftime("%d.%m %H:%M", time.localtime(son))
+    # Proje adı diskten geliyor; ok/süs karakteri barındırma ihtimaline karşı
+    # süzülüyor (bkz. _cp1254_guvenli). Kaynaktaki sabitlerde zaten "->" bile
+    # yok, ama diskten gelen HİÇBİR metin doğrudan basılmıyor.
+    kaynak = _cp1254_guvenli(t["son_kaynak"] or "?")
+
+    log("  UYARI: üretim kuyruğu BOŞ — %d projenin hepsi yayında ve "
+        "isimlendirilmemiş ham ses yok; son yayın %s (%s, %s önce). Boru hattı "
+        "sağlam, besleyecek malzeme kalmadı."
+        % (t["proje"], son_metni, kaynak, sure))
+    for satir in oneri:
+        log("    " + satir)
+
+    mesaj = ("Üretim kuyruğu BOŞ: yayınlanmayı bekleyen proje YOK, "
+             "isimlendirilmemiş ham ses de YOK (katalogda %d proje, hepsi "
+             "yayında).\n"
+             "Son yayın: %s, %s önce. Yayın tabanı 52 saat, bu uyarının eşiği "
+             "%d saat — yani üst üste İKİ yayın penceresi boş geçti. Boru hattı "
+             "sağlam; besleyecek malzeme kalmadı.\n"
+             "%s\n"
+             "Akış: Suno'da üret, dosyayı projects/<Şarkı Adı>/ klasörüne "
+             "indir — watch_projects dakikada bir bakıp adını audio.wav yapar "
+             "ve hattı kendisi tetikler."
+             % (t["proje"], kaynak, sure, URETIM_KUYRUGU_ESIGI_SN // 3600,
+                "\n".join(oneri)))
+    s["bildirildi"] = _bildir("Üretim kuyruğu boş", mesaj,
+                              "uretim_kuyrugu_bildirim_gun")
+    return s
+
+
 def kontrol_et(log=print) -> dict:
     return {
         "instagram_token": instagram_token_suresi(log),
@@ -1241,6 +1667,15 @@ def kontrol_et(log=print) -> dict:
         # (beklenmedik bir sekilde patlarsa) bu adimin da atlanmasi istenen
         # davranis — "kosunun sonuna ulasildi" iddiasi en sonda dogsun.
         "yayin_durgunlugu": yayin_durgunlugu(log),
+        # SEKIZINCI ADIM (2026-09-12) — yedincinin TAMAMLAYICISI. Yedinci adim
+        # "is var ama akmiyor" der ve bunu yapabilmek icin "bekleyen proje
+        # varsa" muafiyetine mecbur (katalog bitmisse sessizlik normaldir).
+        # Tam o muafiyetin ICI kor nokta idi: kuyruk bosaldiginda yedi adimin
+        # SEKIZI DE susuyor ve kanal sessizce duruyordu. Bu adim yalnizca
+        # kuyruk BOSKEN konusur; ikisi ayni "bekleyen" listesini
+        # (_yayin_taramasi) okudugu icin ayni anda alarm vermeleri MANTIKEN
+        # imkansiz. SIRA: yedincinin hemen ardinda, kacan_kosu'dan ONCE.
+        "uretim_kuyrugu": uretim_kuyrugu_bos(log),
         # EN SONDA, bilerek: bu adim damgayi TAZELIYOR ("saatlik hattin sonuna
         # en son ne zaman ulasildi"). Yukaridaki adimlardan biri beklenmedik
         # bir sekilde patlarsa damga da atilmaz ve bir SONRAKI kosu bunu
