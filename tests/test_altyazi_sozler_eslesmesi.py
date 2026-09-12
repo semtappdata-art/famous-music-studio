@@ -199,7 +199,13 @@ def test_katalogdaki_her_proje_kendi_sozler_dosyasini_buluyor():
         assert stem == slug or oran >= youtube_captions.SLUG_BENZERLIK_ESIGI, (
             "%s -> %s (%.3f)" % (baslik, stem, oran))
         bulunan += 1
-    assert bulunan == 18, "katalog değişmiş: %d proje" % bulunan
+    # SABİT SAYI DEĞİL, TABAN (2026-09-12). Eskiden `== 18` yazıyordu ve
+    # katalog 19'a çıkınca test kırıldı — oysa yeni bir şarkı eklemek ARIZA
+    # DEĞİL, bu deponun normal işleyişi. CLAUDE.md'nin "buraya sabit test
+    # sayısı yazma, dakikalar içinde yanlışa düşer" kuralının aynısı.
+    # Bu satırın gerçek işi "döngü hiç çalışmadı" halini yakalamak: sıfır ya
+    # da bir avuç proje görülüyorsa keşif bozulmuştur. Üst sınır YOK.
+    assert bulunan >= 18, "katalog küçülmüş ya da keşif bozulmuş: %d proje" % bulunan
 
 
 @pytest.mark.parametrize("baslik, gevsek_dosya", [
