@@ -457,8 +457,8 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
     üzerinden ücretsiz telefon push bildirimi) eklendi — `tiktok_upload.py`nin
     `notify_pending_publish()`'i golden-hour'a girildiğinde bir kereliğine
     hatırlatma gönderiyor (`state.json`'da `tiktok_notified` ile tekrar
-    göndermiyor, TikTok API'sinden kullanıcının gerçekten yayınlayıp
-    yayınlamadığını öğrenmenin bir yolu yok). **`notify_config.json` (gitignored,
+    göndermiyor; yayın olgusu Telegram onayı ve API doğrulamasıyla işaretleniyor —
+    bkz. TikTok maddesi (d) ve (e)). **`notify_config.json` (gitignored,
     `{"ntfy_topic": "..."}`) BUGÜNE KADAR HİÇ YOKTU** — yani `notify.py` yazıldığından
     beri TEK BİR push bildirimi gitmedi; 2026-09-11'de kuruldu. Dosya yoksa otomasyon
     hâlâ bozulmuyor ama artık SESSİZ de değil: `notify.send()` kanal yoksa
@@ -664,6 +664,25 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   `tiktok_published_kaynak` yazar. Gateway cwd'si depo değil ve depo `trusted_project_dirs`'te
   değilse beceri görünmez (kullanıcı adımı). Koruma: `tests/test_tiktok_yayin_onayi.py`,
   `tests/test_hermes_tiktok_onay_skill.py`.
+  (e) **API doğrulaması (2026-09-13, ikinci katman)**: `upload/tiktok_yayin_dogrulama.py`
+  `POST /v2/post/publish/status/fetch/`'i SALT OKUNUR çağırır (resmî scope "video.upload/video.publish",
+  30 istek/dk/token). Aday: `tiktok_publish_id` VAR + `tiktok_published_at` YOK; en uzun süredir
+  sorgulanmayan önce, koşu başına 10, istekler arası 2,5 sn. Eşleşme publish_id ile, başlıkla DEĞİL.
+  Her yanıtta `tiktok_publish_status` + `tiktok_status_checked_at`. **İşaret YALNIZ
+  `PUBLISH_COMPLETE` + dolu `publicaly_available_post_id`** (yazım API'deki gibi) **VE `build_plan`
+  `hazir=True`**: `isaretle_yayinlandi(kaynak=...)` + `tiktok_post_ids`; damga = TESPİT ANI (API
+  zaman vermez, kaynak "yaklaşık, tespit anı" der). Post id yoksa ("Sadece ben"/moderasyon) yalnız
+  durum; `hazir=False` ise durum + `tiktok_status_isaret_engeli`. Projeye özgü hata → 24 sa soğuma
+  (`tiktok_status_sonraki_deneme`); `invalid_publish_id` 3, diğerleri 7 ardışık hatada, `FAILED`'da
+  hemen `tiktok_status_denenmez`. Token/izin/429/süren taşıma hatası koşuyu durdurur, damga atılmaz.
+  Yeni işaretler için koşu başına TEK `notify.send` ("TikTok'ta yayında doğrulandı (API): <adlar>").
+  ÜÇ SORU: `auto_process.main()` `finally` → `_tiktok_yayin_dogrulama()`; günde bir
+  (`saglik_durum.json` → `tiktok_yayin_dogrulama_gun`, yalnız tamamlanan koşuda); her koşuda özet
+  log satırı, token sorununda `uyar_bir_kez`. `_is_fully_done`'a EKLENMEDİ.
+  **ÖLÇÜLDÜ (2026-09-13, tek gerçek okuma)**: kullanıcının yayınladığı `Gece Sürüşü` →
+  `PUBLISH_COMPLETE`, `publicaly_available_post_id` alanı yanıtta HİÇ YOK (12 günlük publish_id
+  hâlâ sorgulanabiliyor). Yani bu hesapta otomatik işaret pratikte hiç tetiklenmeyebilir; durum
+  yine yazılır, Telegram onayı birincil yol olarak kalır. Koruma: `tests/test_tiktok_yayin_dogrulama.py`.
 - **`watch_projects.py` (opsiyonel klasör izleyici) saatlik tetikleyiciyi DEĞİŞTİRMEZ,
   tamamlar**: kullanıcı isteğiyle eklendi — Suno'dan yeni indirilen (herhangi bir adla)
   ses dosyasını yakalayıp `audio.wav`'a çevirir ve `auto_process.py`'yi hemen tetikler,
