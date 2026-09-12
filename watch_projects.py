@@ -41,6 +41,7 @@ for _stream in (sys.stdout, sys.stderr):
 from gizli_maskele import maskele, maskele_istisna
 from log_rotate import trim_log
 import notify
+from uyumluluk import proje_klasorleri
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECTS_DIR = os.path.join(BASE_DIR, "projects")
@@ -65,6 +66,12 @@ TRIGGER_LOCKS = {
 # kontrol bir güvenlik mekanizması DEĞİL, gereksiz süreç başlatmayı azaltan
 # bir ön eleme.
 TRIGGER_LOCK_FRESH_SECONDS = 15 * 60
+
+# Bu KOŞUDA tetiklenen betikler — `_trigger_script()` aynı betiği ikinci kez
+# başlatmasın diye (gerekçe orada, "AYNI TARAMADA İKİNCİ KEZ TETİKLEME").
+# `main()` başında sıfırlanıyor: üretimde süreç tek tarama yapıp çıkıyor, ama
+# testler `main()`'i aynı süreçte defalarca çağırıyor.
+_TETIKLENENLER: set = set()
 
 STABILITY_WAIT_SECONDS = 3  # indirme hâlâ sürüyor olabilir, boyut bu süre içinde değişmemeli
 
@@ -91,8 +98,49 @@ AUDIO_EXT_TO_NAME = {".wav": "audio.wav", ".mp3": "audio.mp3", ".m4a": "audio.m4
 AUDIO_NAMES = set(AUDIO_EXT_TO_NAME.values())
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+
+# Boru hattının KENDİ ürettiği görsellerin ROL adları — "sahipsiz" SAYILMAYACAK
+# olanlar. LİSTE DEĞİL DESEN, bilerek (2026-09-12):
+#
+# Burada bugüne kadar sabit bir ad listesi vardı (`{"cover.jpg", "cover.jpeg",
+# "cover.png"}`) ve `cover_vertical.png` o listede YOKTU. Oysa kapak İKİ ayrı
+# oranda üretiliyor (generate_cover.py: `cover.png` 16:9 + `cover_vertical.png`
+# 9:16; gerekçesi CLAUDE.md'de yazılı), yani HER projede boru hattının kendi
+# ürettiği bir dosya "sahipsiz görsel" sayılıyordu. Bedeli ölçüldü: 21 projede
+# 21 dosya, her biri için `_is_stable()` 3 saniye uyuyor. İzleyicinin Görev
+# Zamanlayıcı'daki süre limiti 5 DAKİKA; bu tek satırlık eksik, hiçbir iş
+# yapmadan o bütçenin dörtte birinden fazlasını yakıyordu
+# (`gorev_izleri/watch_projects.log`: `süre=84.2sn`, HER koşuda).
+#
+# NEDEN DESEN: sabit ad listesi yarın `cover_square.png` / `art_blur.png`
+# eklendiğinde AYNI ŞEKİLDE bayatlar — ve bayatladığında HATA VERMEZ, sessizce
+# yavaşlar. Desen, boru hattının kendi adlandırma sözleşmesine bağlanıyor:
+# `<rol>[_<varyant>].<uzantı>`.
+#
+# NEDEN BU KADAR DAR — fazla geniş bir desen GERÇEK sahipsiz görselleri gizler,
+# yani bu script'in var olma sebebini yok eder: eşleşme "adın içinde geçiyor"
+# değil, "adın İLK parçası (ilk `_`e kadar, uzantısız) TAM OLARAK bir rol adı".
+#   sahipsiz DEĞİL : cover.png, cover.jpeg, cover_vertical.png, art.jpg,
+#                    art_kare.png            (boru hattının ürettikleri)
+#   HÂLÂ sahipsiz  : kapak_tasarimi.png, pixlr_export_1234.png,
+#                    sahne_art_final.jpg, kart_art_gorseli.png, coverim.png
+# Yani kullanıcının indirdiği bir dosyanın adında "cover"/"art" GEÇSE bile
+# yakalanmaya devam ediyor; yalnızca dosyanın ROLÜ olarak BAŞLIYORSA eleniyor.
+PIPELINE_IMAGE_ROLES = {"cover", "art"}
+
+# Aşağıdaki İKİ liste HÂLÂ AÇIK AD LİSTESİ, bilerek: bunlar "sahipsiz mi"
+# sorusunu değil, `_place_stray_images()`'ın "hedef zaten dolu mu / hangi ada
+# yazacağım" sorusunu cevaplıyor. Orada SOMUT dosya adı gerekiyor (dosya
+# oluşturuluyor), desen işe yaramaz.
 COVER_NAMES = {"cover.jpg", "cover.jpeg", "cover.png"}
 ART_NAMES = {"art.jpg", "art.jpeg", "art.png"}
+
+
+def _is_pipeline_image(name: str) -> bool:
+    """Bu görsel boru hattının KENDİ ürettiği bir dosya mı — bkz.
+    PIPELINE_IMAGE_ROLES'deki gerekçe (desen, liste değil)."""
+    stem = os.path.splitext(name)[0].lower()
+    return stem.split("_", 1)[0] in PIPELINE_IMAGE_ROLES
 
 
 def log(msg: str) -> None:
@@ -141,7 +189,7 @@ def _find_stray_images(project_dir: str) -> list[str]:
         if name.startswith("_"):
             continue  # render'ın ürettiği iç dosyalar (_backdrop_pan_*.png, _bg_base_tmp.png, vb.) — kullanıcının bıraktığı bir tasarım dosyası değil
         ext = os.path.splitext(name)[1].lower()
-        if ext in IMAGE_EXTS and name not in COVER_NAMES and name not in ART_NAMES:
+        if ext in IMAGE_EXTS and not _is_pipeline_image(name):
             strays.append(os.path.join(project_dir, name))
     return strays
 
@@ -217,24 +265,116 @@ def _is_running(script_name: str) -> bool:
     return age < TRIGGER_LOCK_FRESH_SECONDS
 
 
-def _trigger_script(script_name: str) -> None:
-    # SARMALAYICIDAN GECIYOR (2026-09-12). Eskiden hedef betik DOGRUDAN
-    # cagriliyordu ve bu, Gorev Zamanlayici'nin kapattigi deligi izleyici
-    # tarafinda ACIK birakiyordu: `sys.executable` burada `pythonw.exe`
-    # (gorevler pencere acmasin diye oyle kuruldu), yani stdout/stderr YOK.
-    # Tetiklenen `auto_process.py` kendi log'unu ACMADAN olurse (import
-    # hatasi, sozdizimi hatasi) geriye TEK BAYT iz kalmiyordu — sarmalayicinin
-    # var olma sebebinin ta kendisi. Suno'dan yeni dosya dustugu an calisan
-    # yol bu oldugu icin, sessiz olum tam da en cok is yapilan anda olurdu.
+def _trigger_script(script_name: str) -> bool:
+    """Hedef betigi KOPARARAK baslatir ve HEMEN doner. True = surec baslatildi.
+
+    SARMALAYICIDAN GECIYOR (2026-09-12). Eskiden hedef betik DOGRUDAN
+    cagriliyordu ve bu, Gorev Zamanlayici'nin kapattigi deligi izleyici
+    tarafinda ACIK birakiyordu: `sys.executable` burada `pythonw.exe`
+    (gorevler pencere acmasin diye oyle kuruldu), yani stdout/stderr YOK.
+    Tetiklenen `auto_process.py` kendi log'unu ACMADAN olurse (import
+    hatasi, sozdizimi hatasi) geriye TEK BAYT iz kalmiyordu — sarmalayicinin
+    var olma sebebinin ta kendisi. Suno'dan yeni dosya dustugu an calisan
+    yol bu oldugu icin, sessiz olum tam da en cok is yapilan anda olurdu.
+
+    NEDEN ARTIK ENGELLEMIYOR (2026-09-12, ikinci duzeltme — canli olcum):
+    burada `subprocess.run(...)` vardi, yani izleyici tetikledigi kosunun
+    BITMESINI bekliyordu. Izleyici gorevinin `ExecutionTimeLimit`'i bugun
+    2 saatten 5 DAKIKAya cekildi ("tarama saniyeler surer" varsayimiyla), ama
+    tek bir sarkinin render'i tek basina 2 dk 26 sn olctu ve tam boru hatti
+    bundan uzun. Sonuc: watcher yeni bir parca gorup tetikledigi anda kosu
+    5. dakikada `TerminateProcess` ile OLDURULUYORDU. Uc bedeli vardi ve
+    ucu de gercek:
+      * `.auto_process.lock` ortada kalir (`finally` hic calismaz) ->
+        SAATLIK gorev de `LOCK_STALE_SECONDS` (4 saat) boyunca durur;
+      * `MAX_PARALLEL_RENDERS=2` ve ffmpeg `-y` ile DOGRUDAN nihai dosyaya
+        yazdigi icin iki mp4 "yarim ama VAR" kalir; `auto_process._is_rendered()`
+        yalnizca `os.path.isfile` baktigindan True doner -> sonraki kosu
+        render'i ATLAR ve BOZUK videoyu yukler (log'da sadece "Zaten render
+        edilmis" yazar). Bu ikinci bedel BU dosyadan KAPATILAMIYOR
+        (`_is_rendered` `auto_process.py` + `dj_famous_process.py`'de) — ama
+        tetikleyicisi buydu ve o kapatildi;
+      * sarmalayici izinde `BASLADI` var, eslesen `BITTI` yok.
+    Cozum: kosuyu izleyicinin omrunden AYIR. Tetiklenen betik zaten kendi
+    log'unu, kendi kilidini ve kendi iz dosyasini tutuyor — izlenmesine gerek
+    yok, ve donus kodu ZATEN kullanilmiyordu (`_scan_dir` eskiden de
+    yoksayiyordu, `subprocess.run` hata koduna bakmiyordu). Artik "surec
+    BASLATILABILDI mi" bilgisi donuyor; "kosu BASARILI mi" bilgisi bu
+    fonksiyonun cevaplayabilecegi bir soru DEGIL (ve olmamali).
+
+    NEDEN SADECE `Popen` YETMEZ (Windows): Gorev Zamanlayici gorevi bir JOB
+    OBJECT icinde calistiriyor; job oldurulunce cocuk surecler de olur — yani
+    duz bir `Popen` kopmayi SAGLAMAZ, sadece beklemeyi kaldirirdi ve kosu 5.
+    dakikada yine olurdu. `CREATE_BREAKAWAY_FROM_JOB` cocugu job'dan
+    cikariyor, `DETACHED_PROCESS` ise konsol baglantisini kesiyor (ayni
+    zamanda script elle `python.exe` ile calistirildiginda pencere acmiyor).
+    Bayraklar `sys.platform == "win32"` disinda KULLANILMIYOR (POSIX'te
+    karsiligi `start_new_session=True`).
+
+    YEDEK YOL — `CREATE_BREAKAWAY_FROM_JOB`, job `JOB_OBJECT_LIMIT_BREAKAWAY_OK`
+    vermiyorsa CreateProcess'i ERROR_ACCESS_DENIED ile DUSURUR (Python'da
+    `OSError`/`PermissionError`). O durumda SESSIZ KALINMIYOR (CLAUDE.md:
+    sessizce basarisiz olan bir koruma, olmayan korumadan kotudur): log'a
+    tek satir dusuyor ve breakaway'siz ikinci bir deneme yapiliyor — job
+    icinde ama yine de ENGELLEMEYEN bir kosu. O da olmazsa `False` donuyor
+    ve neden log'a yaziliyor. Beklemeye (`subprocess.run`) GERI DUSULMUYOR:
+    engelleme, kacinilmaya calisilan arizanin ta kendisi.
+
+    STD AKISLARI BILEREK YONLENDIRILMIYOR (ne DEVNULL ne PIPE): uretimde
+    ebeveyn `pythonw.exe` oldugu icin handle'lar zaten NULL ve sarmalayici
+    TAM OLARAK `sys.stderr is None` kosuluna bakip kendi iz dosyasina
+    yonlendiriyor. `stderr=DEVNULL` vermek o kosulu bozar ve cokme
+    traceback'lerini sessizce yutardi.
+    """
+    if script_name in _TETIKLENENLER:
+        # AYNI TARAMADA IKINCI KEZ TETIKLEME (2026-09-12). Engelleyen surumde
+        # bu imkansizdi: `subprocess.run` donene kadar dongu ilerlemiyordu, ve
+        # ikinci proje sirasi geldiginde `_is_running()` kilidi TAZE goruyordu.
+        # Kopmus tetiklemede o koruma YETMIYOR — yeni surec kilidini henuz
+        # OLUSTURMAMIS olabilir (yarissa TOCTOU), yani ayni taramada iki yeni
+        # parca varsa AYNI betik iki kez baslardi. Kosu-ici hafiza bunu kokten
+        # kesiyor; kalan projeler bir sonraki dakikada zaten yeniden taraniyor
+        # (`_is_running` kapisi sayesinde kosu bitene kadar erteleniyor).
+        log(f"  {script_name} bu taramada zaten tetiklendi, ikinci tetikleme atlandi.")
+        return False
+
+    cmd = [sys.executable,
+           os.path.join(BASE_DIR, "gorev_sarmalayici.py"),
+           script_name]
+
+    if sys.platform == "win32":
+        kopuk = (subprocess.CREATE_BREAKAWAY_FROM_JOB
+                 | subprocess.DETACHED_PROCESS
+                 | subprocess.CREATE_NEW_PROCESS_GROUP)
+        try:
+            subprocess.Popen(cmd, cwd=BASE_DIR, creationflags=kopuk)
+            _TETIKLENENLER.add(script_name)
+            return True
+        except OSError as e:
+            # Job `JOB_OBJECT_LIMIT_BREAKAWAY_OK` vermiyor (ERROR_ACCESS_DENIED)
+            # ya da baska bir CreateProcess hatasi. Sessiz kalinmiyor.
+            log(f"  {script_name}: job'dan kopma reddedildi ({maskele_istisna(e)});"
+                " job ICINDE, engellemeyen kosuya dusuluyor — bu kosu izleyicinin"
+                " sure limitinde sonlandirilabilir.")
+        try:
+            subprocess.Popen(
+                cmd, cwd=BASE_DIR,
+                creationflags=(subprocess.DETACHED_PROCESS
+                               | subprocess.CREATE_NEW_PROCESS_GROUP),
+            )
+            _TETIKLENENLER.add(script_name)
+            return True
+        except Exception as e:
+            log(f"  {script_name} tetiklenemedi: {maskele_istisna(e)}")
+            return False
+
     try:
-        subprocess.run(
-            [sys.executable,
-             os.path.join(BASE_DIR, "gorev_sarmalayici.py"),
-             script_name],
-            cwd=BASE_DIR,
-        )
+        subprocess.Popen(cmd, cwd=BASE_DIR, start_new_session=True)
+        _TETIKLENENLER.add(script_name)
+        return True
     except Exception as e:
         log(f"  {script_name} tetiklenemedi: {maskele_istisna(e)}")
+        return False
 
 
 def _scan_dir(base_dir: str, trigger_script: str) -> None:
@@ -244,10 +384,22 @@ def _scan_dir(base_dir: str, trigger_script: str) -> None:
     (auto_process.py ya da dj_famous_process.py) tetikler."""
     if not os.path.isdir(base_dir):
         return
-    for name in sorted(os.listdir(base_dir)):
-        project_dir = os.path.join(base_dir, name)
-        if not os.path.isdir(project_dir):
-            continue
+    # KANONİK KLASÖR FİLTRESİ (`uyumluluk.proje_klasorleri`, 2026-09-12).
+    # Eskiden burada düz bir `sorted(os.listdir(base_dir))` vardı ve `.`/`_`
+    # ön ekli klasörler PROJE SANILIYORDU. Bu bir varsayım değil, GERÇEKLEŞMİŞ
+    # bir arıza: `dj_sets/_arda` (DJ Famous'un ham portre fotoğrafları —
+    # audio/meta/state YOK, proje DEĞİL) her taramada taranıyordu ve
+    # 2026-09-11 09:14'te izleyici oradaki `arda_01_ic_mekan.jpg`'yi
+    # `dj_sets/_arda/cover.jpg` yapıp yeniden adlandırdı (log'da duruyor).
+    # Kalan 8 fotoğraf da her koşuda "sahipsiz" sayılıp 8 × 3 sn uyku
+    # harcatıyordu. `_` bu depoda "YOK SAY" demek ve kural zaten dört yerde
+    # uygulanıyor (dj_clips._set_klasorleri, latest_release._collect,
+    # uyumluluk.proje_klasorleri, bu dosyadaki DOSYA adı filtresi) — beşincisi
+    # burasıydı ve eksikti. Kural KOPYALANMIYOR, kanonik fonksiyon ÇAĞRILIYOR:
+    # yarın altıncı bir ön ek eklenirse tek yerde eklenmeli
+    # (bkz. tests/test_proje_klasorleri_filtre.py).
+    for project_dir in proje_klasorleri(base_dir):
+        name = os.path.basename(project_dir)
 
         _place_stray_images(project_dir)
 
@@ -315,6 +467,7 @@ def _check_heartbeat() -> None:
 
 
 def main() -> None:
+    _TETIKLENENLER.clear()
     try:
         _check_heartbeat()
     except Exception as e:
