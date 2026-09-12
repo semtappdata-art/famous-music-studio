@@ -44,8 +44,15 @@ def get_stats(project_dir: str) -> dict:
     state["youtube_views"] = int(stats.get("viewCount", 0))
     state["youtube_likes"] = int(stats.get("likeCount", 0))
     state["youtube_comments"] = int(stats.get("commentCount", 0))
-    state["youtube_privacy"] = status.get("privacyStatus", state.get("youtube_privacy"))
-    state["youtube_stats_checked_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    # GERCEK gizlilik AYRI alana (bkz. GIZLILIK_ALANI_SONEKI). Eskiden burasi
+    # `state["youtube_privacy"]`in ustune yaziyordu: o alan ISTENEN gizlilik ve
+    # latest_release / ek_platform_backfill / facebook_backfill / derleme
+    # sozlesmesi — ustune yazmak o modullerin davranisini SESSIZCE degistirir.
+    simdi = time.strftime("%Y-%m-%dT%H:%M:%S")
+    if status.get("privacyStatus"):
+        state["youtube" + GIZLILIK_ALANI_SONEKI] = status["privacyStatus"]
+        state[GIZLILIK_OLCUM_DAMGASI] = simdi
+    state["youtube_stats_checked_at"] = simdi
 
     # ATOMIK yazim (state_io) — eskiden ham `open(state_path, "w")` idi.
     # `open` dosyayi once SIFIRLIYOR: yarida kesilen bir yazim diskte yarim
@@ -59,6 +66,31 @@ def get_stats(project_dir: str) -> dict:
 
 
 BATCH_SINIRI = 50          # videos.list tek istekte en fazla 50 id kabul ediyor
+
+# GIZLILIK KAYMASI (2026-09-12). `youtube_upload` state'e ISTENEN gizliliği
+# (`youtube_privacy`) yazıyor, YouTube'da GERCEKLESENI değil. Bu Gece Kazandık'ın
+# iki videosu public yüklenip sonradan (kayıtsız, büyük ihtimalle Studio'dan)
+# unlisted'a çekildi; state 4 gün "public" dedi ve kimse görmedi, çünkü bu
+# okuma yalnız `part=statistics` çekiyordu.
+#
+# Gerçek değer AYRI alana yazılıyor: `<onek>_privacy_gercek` + proje başına tek
+# ölçüm damgası. `<onek>_privacy` alanına ASLA yazılmıyor — dört modülün
+# (latest_release, ek_platform_backfill, facebook_backfill, derleme) sözleşmesi;
+# değişirse o modüllerin davranışı sessizce değişir. Kaymayı SÖYLEYEN taraf
+# `saglik_kontrol.youtube_gizlilik_kaymasi` (her koşuda log, günde bir bildirim);
+# burası yalnız ölçer, karar vermez.
+# Muhafız: tests/test_youtube_gizlilik_kaymasi.py
+GIZLILIK_ALANI_SONEKI = "_privacy_gercek"
+GIZLILIK_OLCUM_DAMGASI = "youtube_privacy_gercek_at"
+
+# KOTA: `status` parçası EK MALİYETSİZ. YouTube Data API v3 `videos.list`
+# "A call to this method has a quota cost of 1 unit." — maliyet ÇAĞRI başına,
+# istenen parça sayısına bağlı değil (kota tablosunda da `videos.list = 1`).
+#   https://developers.google.com/youtube/v3/docs/videos/list  (Quota impact)
+#   https://developers.google.com/youtube/v3/determine_quota_cost
+# Yani `statistics,status` = hâlâ 50 id başına 1 istek = 1 birim. Kataloğun
+# tamamı (bugün 42 video) tek istek. (2026-09-12'de iki sayfadan doğrulandı.)
+VIDEOS_LIST_PARCALARI = "statistics,status"
 TAZELEME_ARALIGI_SN = 20 * 60 * 60   # gunde bir; saatlik kosuda tekrar tekrar cekmesin
 
 
@@ -143,16 +175,20 @@ def get_stats_batch(base: str | None = None, force: bool = False) -> dict:
 
     youtube = get_authenticated_service()
     olcum = {}
+    gizlilik = {}          # video_id -> YouTube'da GERCEKLESEN privacyStatus
     idler = [h[2] for h in hedefler]
     istek = 0
     for i in range(0, len(idler), BATCH_SINIRI):
         dilim = idler[i:i + BATCH_SINIRI]
-        yanit = youtube.videos().list(part="statistics",
+        yanit = youtube.videos().list(part=VIDEOS_LIST_PARCALARI,
                                       id=",".join(dilim),
                                       maxResults=BATCH_SINIRI).execute()
         istek += 1
         for x in yanit.get("items", []):
             olcum[x["id"]] = x.get("statistics", {})
+            gercek = (x.get("status") or {}).get("privacyStatus")
+            if gercek:
+                gizlilik[x["id"]] = gercek
 
     simdi = time.strftime("%Y-%m-%dT%H:%M:%S")
     yazilan = {}
@@ -168,6 +204,10 @@ def get_stats_batch(base: str | None = None, force: bool = False) -> dict:
             if yeni_ad in st:
                 st["%s_prev" % yeni_ad] = st[yeni_ad]
             st[yeni_ad] = int(s.get(anahtar, 0) or 0)
+        # Gercek gizlilik AYRI alana; `<onek>_privacy` (istenen) DOKUNULMAZ.
+        if vid in gizlilik:
+            st[onek + GIZLILIK_ALANI_SONEKI] = gizlilik[vid]
+            st[GIZLILIK_OLCUM_DAMGASI] = simdi
         yazilan[yol] = st
 
     # Zaman damgasi PROJE BASINA bir kez guncelleniyor, hedef basina degil:
@@ -202,7 +242,8 @@ def main():
     print(f"  görüntülenme: {state['youtube_views']}")
     print(f"  beğeni: {state['youtube_likes']}")
     print(f"  yorum: {state['youtube_comments']}")
-    print(f"  görünürlük: {state['youtube_privacy']}")
+    print(f"  görünürlük (state/istenen): {state.get('youtube_privacy')}")
+    print(f"  görünürlük (YouTube/gerçek): {state.get('youtube' + GIZLILIK_ALANI_SONEKI)}")
 
 
 if __name__ == "__main__":

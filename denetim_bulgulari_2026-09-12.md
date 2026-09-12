@@ -249,7 +249,7 @@ ilerleme her videodan sonra diske yazılır).
 > de ölçülmüştü) — beyanın yerinde olduğu API'den kanıtlanamaz, kesin kanıt ancak Studio
 > ekranında. Geri okunan 3 videoda `privacyStatus` değişmemiş, `selfDeclaredMadeForKids: false`.
 
-**E-6 · [AÇIK — taslaklar YALNIZ mobil uygulamada · ÖNCE 29 yayınlı gönderi incelenmeli] TikTok taslaklarını elle yayınla · ~40 dk.**
+**E-6 · [AÇIK — envanter çıktı, kopyalar gizlendi · taslaklar ve AI etiketi yalnız mobil] TikTok taslaklarını elle yayınla · ~40 dk.**
 **21 taslak** `DRAFT_INBOX`
 (18 `projects/` + 2 `dj_sets/` + 1 `derlemeler/`); `tiktok_published_at` olan: **0**. İkisi
 yayınlanmayacak — `City Pulse Set` (telif eşleşmesi) ve `Küllerimden Geç` (kopya, unlisted)
@@ -284,6 +284,29 @@ kalmalı.**
 > Geç", md5 aynı) TikTok'ta birkaç kez herkese açık — kanalın en büyük riski olarak kayıtlı
 > "tekrarlayıcı içerik" deseni. 19 taslağı yayınlamadan ÖNCE bu 29 gönderi tek tek
 > çıkarılıp kopyalar ele alınmalı.
+> **Envanter ve kopya temizliği (2026-09-12, tarayıcı ajanı):** tam liste
+> `tiktok_envanteri_2026-09-12.md`'de. Studio "29" diyor ama listede **30** ayrı gönderi var;
+> başlangıçta 21 "Herkes" / 9 "Sadece ben". Ses adı hepsinde "orijinal ses", şarkı adı yalnız
+> 7 başlıkta yazıyor.
+> - **Kopyalar SİLİNMEDEN gizlendi:** "Yeniden Doğacağım / Küllerimden Geç" grubunda (aynı
+>   ses) herkese açık 5 gönderi vardı → **1'e indi**. Açık kalan en çok izlenen (616, 6 Eyl
+>   18:00, `7682100132795518228`); "Sadece ben" yapılanlar `7683419315344887061` (Küllerimden
+>   Geç, 151), `7682845410657930517` (153), `7682806805373717781` (142),
+>   `7682738927769357588` (182). Her biri sayfa yenilenerek listede doğrulandı. Şimdi
+>   17 "Herkes" / 13 "Sadece ben".
+> - **State'e yazılan:** `tiktok_publish_plan.isaretle_yayinlandi` ile `tiktok_published_at`
+>   → Yeniden Doğacağım, Beni Bırakma, Gece Sürüşü. Dikkat: bu üç gönderi 28-30 sn'lik,
+>   boru hattının 45 sn'lik taslakları DEĞİL — damga "taslak yayınlandı" değil "bu şarkı
+>   TikTok'ta herkese açık" anlamında. Yararı: ikiz kapısı artık Küllerimden Geç taslağını
+>   engelleyebilir.
+> - **⚠ Şarkısı bilinmeyen 14 herkese açık gönderi** (başlık yalnız "#FamousMusicStudio";
+>   liste #1, #2, #10, #12-14, #16-20, #22-24). Dikkat çeken **toplu yayın deseni**: 5 Eyl
+>   03:29-03:34 arasında 6, 4 Eyl 07:41-08:37 arasında 6 gönderi. Aralarında kopya olabilir;
+>   kesin eşleşme için videoların tek tek izlenmesi gerekiyor. Dokunulmadı.
+> - **⚠ AI ETİKETİ HİÇBİR GÖNDERİDE YOK:** 30 gönderinin 30'unda sayfa verisi
+>   `IsAigc=false`, herkese açık sayfalarda da AI ibaresi yok. Web düzenleme ekranında bu
+>   seçenek YOK (E-6'nın ilk turu). Kanalın kayıtlı en büyük riski düşünülünce ayrıca ele
+>   alınmalı — yalnız mobil uygulamadan eklenebiliyor olabilir; ölçülmedi.
 
 **E-7 · [KAPANDI 2026-09-12 — Studio: hak talebi yok (bir çelişkiyle)] Studio'da üç telif satırını
 kontrol et · ~5 dk · tek ekran.** YouTube Data API
@@ -366,8 +389,7 @@ alınabilir). **API'den yapılamaz** (B-1).
 > yalnız Sil / Düzenle / Beğenmeyi gizle / Yorumu kapat. Sil'e basılmadı.
 > **KULLANICININ ATACAĞI TAM ADIM:** Instagram uygulaması → `Dc-5CR9j2XO` → … → Arşivle.
 
-**E-10 · [AÇIK — hedef klasör kullanıcı kararı · ama belgedeki KOMUT bu turda
-DÜZELTİLDİ] Yedekleme kur · ~5 dk (P1) + haftalık (P2).** Diskte **5,9 GB** ignore edilmiş,
+**E-10 · [KAPANDI 2026-09-12 — sırlar HARİÇ içerik yedeği] Yedekleme kur · ~5 dk (P1) + haftalık (P2).** Diskte **5,9 GB** ignore edilmiş,
 yani version control dışında içerik var; bu bir dizüstü, disk kaybında GitHub'dan gelmez.
 **~11 MB hiçbir koşulda geri gelmez:** `dj_sets/_arda/` (kaybı onay konuşmasını yeniden
 açmak demek), iki `dj_sets/*/art.jpg` (AI ile işlenmiş sahne; yeniden üretim FARKLI kare
@@ -426,6 +448,26 @@ paylaşıma kapalı olmalı. ⚠ `/MIR` hedefi aynalar, hedef SADECE bu yedeğe 
 > `Files : *.*` ve ~433 dosya / ~111 MB gördüğünü doğrula → `/L`'yi sil → tekrar
 > çalıştır → `$env:OneDrive\fms-yedek-kritik` klasörünün paylaşıma KAPALI olduğunu
 > teyit et (içinde token dosyaları var).
+> **Kapatıldı (2026-09-12, ajan + ana oturum):** sırları İÇEREN hâli otomatik izin
+> denetiminde "veri sızdırma" gerekçesiyle reddedilmişti (token dosyaları bir bulut senkron
+> klasörüne gidiyordu). Kullanıcıya önerilen yol uygulandı: **sırlar hariç içerik yedeği**.
+> Hedef `C:/Users/ACER/OneDrive/fms-yedek-kritik` (önceden yoktu). `/MIR` yerine `/E`
+> kullanıldı — hedefte hiçbir koşulda silme olmasın diye. Kaynak bugün 448 dosya / 118 MB
+> (belgedeki 435 / 111 MB'tan büyümüş).
+> - **Hariç tutulan gerçek sırlar:** `notify_config.json` ve `upload/` altındaki tüm
+>   `*_token.json` / `*_client_secrets.json` (+ `.example`'lar). Desen adı taşıyan kod ve
+>   test dosyaları da dışarıda kaldı; bunlar zaten git'te/GitHub'da.
+> - **Hata ve düzeltmesi:** ilk turdaki `sk-` deseni fazla genişti — görsel/video
+>   baytlarında ve Türkçe metinde ("aşk-") eşleşti ve **18 masum dosyayı** dışarıda bıraktı;
+>   aralarında telafisi olmayan `dj_sets/_arda/arda_03_arac_yan.jpg` ve
+>   `projects/Kader Ortakları/art.jpg` vardı. Desen gerçek anahtar biçimlerine daraltıldı
+>   (`sk-[A-Za-z0-9]{32,}`, bot token, `EAA…{50,}`, `ya29.…`, JSON anahtar adları), 18
+>   dosyanın 18'i temiz çıktı ve eklendi.
+> - **Son durum:** hedefte **414 dosya / 117.718.555 bayt**; kopyalanan sette sır deseni
+>   taraması **0**; hariç tutulan her sır dosyasının hedefte OLMADIĞI tek tek doğrulandı.
+> - **Sınır:** hedefin paylaşıma kapalı olduğu diskten doğrulanamaz; OneDrive'da
+>   `fms-yedek-kritik` klasörünün paylaşılmadığını kullanıcı bir kez kontrol etmeli. Sırlar
+>   bu yedekte YOK — token'ları kaybedersen yeniden yetkilendirme gerekir.
 
 **E-11 · [AÇIK — sayı 4 TUTMADI (profilde 24, state'te 19)] Instagram'da 4 eski kapaklı gönderiyi kaldır/arşivle ·
 ~5 dk · canlı doğrulama.**
@@ -578,6 +620,23 @@ kuyruğuna hiç girmemişler — kendiliğinden toparlanmaları beklenemez.
 > seçili (E-5'in Studio'daki ilk görünür kanıtı). Unlisted olmasının telif/politika sebebi
 > GÖRÜNMÜYOR; açıklayan bir not da yok. Karar kullanıcıda: public yapılsın mı, yoksa
 > Instagram'a çıkması durdurulsun mu.
+> **Kök neden (2026-09-12, ajan):** video 2026-09-08 21:15'te bir Claude oturumundaki alt
+> ajandan **public** yüklendi (golden-hour içinde olduğu için `publishAt` yok). Sonradan
+> **kayıtsız** şekilde unlisted'a çekildi: log, git, takip dosyaları, oturum dökümleri ve
+> Hermes veritabanlarında hiçbir `set_privacy`/`videos.update` izi yok. YouTube'un
+> `publishAt` denemesini `invalidPublishAt` ile REDDETMESİ videonun bir ara gerçekten
+> yayında olduğunu kanıtlıyor (bu alan yalnız hiç yayınlanmamış videoda kabul ediliyor).
+> En olası açıklama **Studio'dan elle** yapılmış bir değişiklik — yani büyük ihtimalle
+> kullanıcının kendi kararı. Bu yüzden video **public YAPILMADI**; karar kullanıcıya soruldu.
+> - **State neden "public" diyordu:** `upload/youtube_upload.py` state'e GERÇEKLEŞEN değil
+>   İSTENEN gizliliği yazıyor; saatlik istatistik okuması `status` çekmediği için kayma 4 gün
+>   görünmedi. 42 videonun tamamı okundu (1 birim): başka kayma YOK (Küllerimden Geç bilerek).
+> - **Tempo bağlantısı kuruldu (kod + test):** yeni yayın anı artık yükleme anı ile public
+>   olma anının (`youtube_publish_at`) GEÇ olanı; gelecekteki public anı sıradaki yeni şarkıyı
+>   o andan itibaren 52 saat bekletiyor (`tests/test_yayin_tempo_public_ani.py`, önce 3 kırmızı).
+> - **Kayma dedektörü:** saatlik istatistik isteğine `status` ekleniyor (ek kota yok) ve
+>   istenen ile gerçek gizlilik ayrışınca log + günde bir bildirim — ayrı turda.
+> - **Açık karar:** Instagram yarın bu şarkıyı YouTube unlisted'ken yayınlayacak.
 
 **E-17 · [AÇIK — insan işi, devredilemez] İlk 20-30 gerçek takipçiyi elle bul ·
 birkaç saat.** Depodan doğrulanamaz ama

@@ -1643,6 +1643,124 @@ def uretim_kuyrugu_bos(log=print) -> dict:
     return s
 
 
+# --- YouTube gizlilik kayması (dokuzuncu adım, 2026-09-12) -----------------
+#
+# ÖLÇÜLEN OLGU: state'in İSTEDİĞİ gizlilik (`youtube_privacy`,
+# `youtube_shorts_privacy`) ile YouTube'da GERÇEKLEŞEN (`*_privacy_gercek`)
+# ayrışıyor mu?
+#
+# ARIZA (bugün ölçüldü): `Bu Gece Kazandık`ın iki videosu 8 Eylül'de public
+# yüklendi, sonra kayıtsız şekilde unlisted'a çekildi. State 4 gün "public"
+# dedi; state'e güvenen otomasyon unlisted bir şarkıyı Instagram'a, bio
+# sayfasına ve Facebook/Telegram/Bluesky geri doldurmalarına sokuyordu.
+#
+# ÜÇ SORU (CLAUDE.md):
+#   1. Kim ölçüyor? — `upload/youtube_stats.get_stats_batch` (auto_process'in
+#      `_refresh_stats`'ı, günde bir): aynı `videos.list` isteğine `status`
+#      parçası eklendi (hâlâ 1 kota birimi), gerçek değer ayrı alana yazılıyor.
+#   2. Kim söylüyor? — bu adım; `kontrol_et()` HER saatlik koşuda çağırıyor.
+#      Ağa ÇIKMAZ, yalnız state OKUR. `auto_process.py`ye DOKUNULMADI.
+#   3. Çalışmadığını nasıl anlarız? — tests/test_youtube_gizlilik_kaymasi.py
+#      (status parçası, ayrı alan, istisnalar, günde bir bildirim, kontrol_et
+#      bağlantısı).
+#
+# KARAR VERMEYEN KAPI: hiçbir platformu durdurmaz, hiçbir gizliliği değiştirmez,
+# `youtube_privacy`'yi DÜZELTMEZ. O alan dört modülün sözleşmesi; kaymanın
+# hangi tarafta düzeltileceği (Studio'da geri public mi, state'te unlisted mi)
+# insan kararı.
+#
+# BİLİNÇLİ İSTİSNALAR (sessiz):
+#   - `kopya_notu` taşıyan proje (Küllerimden Geç): bilerek unlisted,
+#   - istenen == gerçek,
+#   - zamanlanmış yayın beklemesi: gerçek `private` iken `*_publish_at` ya
+#     şimdiden ya da ÖLÇÜM anından sonraysa (ölçüm günde bir; yayın anından
+#     önce alınmış bir 'private' ölçümü bayat ama yanlış değil),
+#   - hiç ölçüm yok (henüz status okunmamış eski state).
+GIZLILIK_ONEKLERI = (("youtube", "uzun"), ("youtube_shorts", "Shorts"))
+GIZLILIK_GERCEK_SONEKI = "_privacy_gercek"           # youtube_stats ile AYNI
+GIZLILIK_OLCUM_DAMGASI = "youtube_privacy_gercek_at"  # youtube_stats ile AYNI
+
+
+def _utc_ts(deger):
+    """`"2026-09-05T06:30:00Z"` (youtube_upload._compute_publish_at) -> epoch."""
+    if not isinstance(deger, str):
+        return None
+    try:
+        import calendar
+        return calendar.timegm(time.strptime(deger, "%Y-%m-%dT%H:%M:%SZ"))
+    except (ValueError, OverflowError):
+        return None
+
+
+def _gizlilik_kaymalari() -> list:
+    """Katalogdaki kaymaları döndürür: [{proje, video_id, tur, istenen, gercek}].
+
+    `youtube_stats` IMPORT EDİLMİYOR (modül düzeyinde google kimlik zincirini
+    çekiyor; bir tanı adımının böyle yan etkisi olamaz — `_yayin_taramasi`
+    notuyla aynı gerekçe). Alan adları yukarıdaki sabitlerde; eşitlikleri
+    testle kilitli.
+    """
+    import uyumluluk
+
+    simdi = time.time()
+    kaymalar = []
+    for yol in uyumluluk.proje_klasorleri():
+        st = _proje_state(yol)
+        if not st or st.get("kopya_notu"):
+            continue
+        olcum_ts = _damga_ts(st.get(GIZLILIK_OLCUM_DAMGASI))
+        for onek, tur in GIZLILIK_ONEKLERI:
+            istenen = st.get(onek + "_privacy")
+            gercek = st.get(onek + GIZLILIK_GERCEK_SONEKI)
+            vid = st.get(onek + "_video_id")
+            if not (istenen and gercek and vid) or istenen == gercek:
+                continue
+            if gercek == "private":
+                yayin_ts = _utc_ts(st.get(onek + "_publish_at"))
+                if yayin_ts is not None and (
+                        yayin_ts > simdi
+                        or (olcum_ts is not None and yayin_ts > olcum_ts)):
+                    continue          # zamanlanmış yayın beklemesi, kayma değil
+            kaymalar.append({"proje": os.path.basename(yol), "video_id": vid,
+                             "tur": tur, "istenen": istenen, "gercek": gercek})
+    return kaymalar
+
+
+def youtube_gizlilik_kaymasi(log=print) -> dict:
+    """İstenen ile gerçek YouTube gizliliği ayrıştıysa SESLİ yapar.
+
+    Her koşuda kayma başına bir UYARI satırı `log()`'a; telefona günde en
+    fazla bir bildirim (`_bildir(..., "youtube_gizlilik_bildirim_gun")`,
+    damga yalnız gönderim BAŞARILIYSA). State'e YAZMAZ, hiçbir şeyi durdurmaz.
+    """
+    try:
+        kaymalar = _gizlilik_kaymalari()
+    except Exception as e:
+        log("  YouTube gizlilik kayması taraması çalıştırılamadı: %s" % str(e)[:150])
+        return {"durum": "calistirilamadi", "hata": str(e)[:120]}
+
+    s = {"durum": "tamam", "kaymalar": kaymalar, "bildirildi": False}
+    if not kaymalar:
+        return s
+
+    s["durum"] = "kayma"
+    satirlar = []
+    for k in kaymalar:
+        satir = "%s / %s (%s): state: %s, gerçek: %s" % (
+            k["proje"], k["video_id"], k["tur"], k["istenen"], k["gercek"])
+        satirlar.append(satir)
+        log("  UYARI YouTube gizlilik kayması: %s" % satir)
+
+    mesaj = ("YouTube'daki gizlilik state.json'dakinden farklı. State'e güvenen "
+             "modüller (bio sayfası, Instagram, geri doldurmalar) bu videoyu "
+             "yanlış yayın durumuyla işliyor olabilir. Otomasyon hiçbir şeyi "
+             "değiştirmedi; Studio'dan ya da state'ten elle karar ver.\n"
+             + "\n".join(satirlar))
+    s["bildirildi"] = _bildir("YouTube gizlilik kayması", mesaj,
+                              "youtube_gizlilik_bildirim_gun")
+    return s
+
+
 def kontrol_et(log=print) -> dict:
     return {
         "instagram_token": instagram_token_suresi(log),
@@ -1684,6 +1802,11 @@ def kontrol_et(log=print) -> dict:
         # (_yayin_taramasi) okudugu icin ayni anda alarm vermeleri MANTIKEN
         # imkansiz. SIRA: yedincinin hemen ardinda, kacan_kosu'dan ONCE.
         "uretim_kuyrugu": uretim_kuyrugu_bos(log),
+        # DOKUZUNCU ADIM (2026-09-12). Onceki sekiz adimin hicbiri YouTube'da
+        # GERCEKLESEN gizliligi sormuyor; state "public" derken video unlisted'a
+        # cekilmisti ve 4 gun gorunmedi. Ag yok, yalniz state okur (olcumu
+        # youtube_stats.get_stats_batch yapiyor). SIRA: kacan_kosu'dan ONCE.
+        "youtube_gizlilik": youtube_gizlilik_kaymasi(log),
         # EN SONDA, bilerek: bu adim damgayi TAZELIYOR ("saatlik hattin sonuna
         # en son ne zaman ulasildi"). Yukaridaki adimlardan biri beklenmedik
         # bir sekilde patlarsa damga da atilmaz ve bir SONRAKI kosu bunu
