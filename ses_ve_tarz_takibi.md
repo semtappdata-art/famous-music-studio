@@ -102,8 +102,9 @@ Küllerimden Geç; bkz. CLAUDE.md "Açık/bilinen boşluklar").
 - **Beton Krallığı** tabloda hiç yoktu. Vokali `karakter_roster.md`'deki ASI
   karakterinin sabit kimliği olduğu için dönüşüm kuralına girdi sayılmaz, ama
   tempo/tema kümelenmesinde sayılır (kataloğun en hızlısı: 138 BPM).
-- **Küllerimden Geç** yeni bir kayıt değil (`Yeniden Doğacağım` ile aynı ses),
-  YouTube'da bilerek `unlisted`. Vokal çeşitliliği sayımına DAHİL EDİLMEMELİ.
+- **Küllerimden Geç** yeni bir kayıt değil (`Yeniden Doğacağım` ile aynı ses). 2026-09-12
+  gece kullanıcı kararıyla YAYINDAKİ (asıl) kayıt bu; `Yeniden Doğacağım` (kapağı eksik) bilerek
+  `unlisted`. İkisi TEK kayıt — vokal çeşitliliği sayımına bu satır DAHİL EDİLMEMELİ.
 
 - **Yükseliş** PR #50 sonrası `main`'e ayrı bir oturumda eklendi (sözler + stil etiketi
   + `projects/Yükseliş/` kapak/meta); `audio.wav` henüz YOK, yani üretilmedi. O oturum

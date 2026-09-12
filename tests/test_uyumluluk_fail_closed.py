@@ -474,17 +474,23 @@ def test_muhafiz_kapi_except_dali_return_ile_bitiyor(dosya):
     kapı kararı değil raporlama, `return` etmesi YANLIŞ olurdu (bkz.
     test_rapor_yaz_patlarsa_temiz_yayin_DURMUYOR)."""
     bloklar = _kapi_try_bloklari(dosya)
-    assert len(bloklar) == 1, (
-        "%s: `uyumluluk.kontrol()` saran try sayısı %d — muhafız hangisine "
-        "bakacağını bilemez" % (dosya, len(bloklar)))
-    handlerlar = bloklar[0].handlers
-    assert handlerlar, "%s: kapı try'ının except dalı yok" % dosya
-    for h in handlerlar:
-        son = h.body[-1]
-        assert isinstance(son, (ast.Return, ast.Raise)), (
-            "%s: uyumluluk kapısının `except` dalı `return`/`raise` ile "
-            "BİTMİYOR (son ifade: %s) — kapı FAIL-OPEN'a döndürülmüş"
-            % (dosya, type(son).__name__))
+    # 2026-09-12: auto_process.py'de İKİNCİ bir kapı try'ı var
+    # (`_youtube_gorunurluk_planlarini_uygula` — videoyu public'e almak da bir
+    # yayın). Eskiden burada `len == 1` vardı ("muhafız hangisine bakacağını
+    # bilemez"); doğru cevap birini seçmek değil HEPSİNE bakmak: her kapı
+    # try'ının except dalı return/raise ile bitmeli. Hiç blok yoksa kapı
+    # SİLİNMİŞ demektir — o da HATA.
+    assert bloklar, "%s: `uyumluluk.kontrol()` saran try YOK" % dosya
+    for blok in bloklar:
+        handlerlar = blok.handlers
+        assert handlerlar, ("%s: kapı try'ının except dalı yok (satır %d)"
+                            % (dosya, blok.lineno))
+        for h in handlerlar:
+            son = h.body[-1]
+            assert isinstance(son, (ast.Return, ast.Raise)), (
+                "%s: uyumluluk kapısının `except` dalı `return`/`raise` ile "
+                "BİTMİYOR (satır %d, son ifade: %s) — kapı FAIL-OPEN'a "
+                "döndürülmüş" % (dosya, h.lineno, type(son).__name__))
 
 
 def test_muhafiz_validate_except_dali_errors_a_yaziyor():

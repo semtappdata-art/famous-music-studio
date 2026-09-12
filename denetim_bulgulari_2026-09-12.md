@@ -249,7 +249,7 @@ ilerleme her videodan sonra diske yazılır).
 > de ölçülmüştü) — beyanın yerinde olduğu API'den kanıtlanamaz, kesin kanıt ancak Studio
 > ekranında. Geri okunan 3 videoda `privacyStatus` değişmemiş, `selfDeclaredMadeForKids: false`.
 
-**E-6 · [AÇIK — envanter çıktı, kopyalar gizlendi · taslaklar ve AI etiketi yalnız mobil] TikTok taslaklarını elle yayınla · ~40 dk.**
+**E-6 · [AÇIK — sabahki gizleme YANLIŞ gönderilere uygulandı · düzeltme KULLANICIDA (TikTok Studio)] TikTok taslaklarını elle yayınla · ~40 dk.**
 **21 taslak** `DRAFT_INBOX`
 (18 `projects/` + 2 `dj_sets/` + 1 `derlemeler/`); `tiktok_published_at` olan: **0**. İkisi
 yayınlanmayacak — `City Pulse Set` (telif eşleşmesi) ve `Küllerimden Geç` (kopya, unlisted)
@@ -307,6 +307,27 @@ kalmalı.**
 >   `IsAigc=false`, herkese açık sayfalarda da AI ibaresi yok. Web düzenleme ekranında bu
 >   seçenek YOK (E-6'nın ilk turu). Kanalın kayıtlı en büyük riski düşünülünce ayrıca ele
 >   alınmalı — yalnız mobil uygulamadan eklenebiliyor olabilir; ölçülmedi.
+> **⚠ DÜZELTME (2026-09-12 gece) — yukarıdaki "kopyalar gizlendi" notu YANLIŞ:** gizleme
+> gönderi BAŞLIKLARINA bakılarak yapıldı ve TikTok'ta başlıklar İÇERİKLE UYUŞMUYOR. Kart
+> görseli, kayan yazı ve taslak yükleme saatiyle içerik doğrulandığında:
+> - "Yeniden Doğacağım kopyası" sanılıp gizlenen `7682845410657930517` aslında **Kırık Zincir**,
+>   `7682806805373717781` aslında **Just Relax** — bu iki şarkının TikTok'ta şu an HİÇ açık
+>   gönderisi yok (yanlış gizlemenin bedeli).
+> - Açık bırakılan `7682100132795518228` (616 izl., başlık "Yeniden Doğacağım") içerik olarak
+>   **Beni Bırakma**; "Beni Bırakma" başlıklı `7682099043274624276` (583 izl.) içerik olarak
+>   **kapağı eksik Yeniden Doğacağım**. Yani state'e yazılan `tiktok_published_at` değerleri
+>   iki proje arasında YER DEĞİŞTİRMİŞ (düzeltme ayrı commit'te).
+> - Kullanıcının son kararı (asıl = yeni görselli Küllerimden Geç, kapağı eksik Yeniden
+>   Doğacağım gizlensin) içeriğe göre uygulanmak istendi; **tarayıcıdan yazma Claude Code izin
+>   sistemince engellendi** ("harici sisteme yazma") ve aşılmadı. TikTok'ta HİÇBİR şey değişmedi.
+> **KULLANICININ ATACAĞI TAM ADIM (TikTok Studio, önce gizle sonra aç):**
+> 1) `7682099043274624276` → Sadece ben · 2) `7683419315344887061` (Küllerimden Geç, başlığı
+> doğru) → Herkes · 3) `7682845410657930517` (Kırık Zincir) → Herkes · 4)
+> `7682806805373717781` (Just Relax) → Herkes · 5) `7682100132795518228` açık kalsın, başlığındaki
+> "Yeniden Doğacağım" → "Beni Bırakma". Başlığı yanlış `7682738927769357588` (182 izl.,
+> Küllerimden Geç içeriği) Sadece ben kalsın.
+> **Ders:** TikTok'ta başlık bir İDDİA, içerik KANIT — bu depodaki `youtube_playlist_id` /
+> state-gizlilik dersleriyle aynı sınıf. Görünürlük kararları içerik doğrulanmadan verilmemeli.
 
 **E-7 · [KAPANDI 2026-09-12 — Studio: hak talebi yok (bir çelişkiyle)] Studio'da üç telif satırını
 kontrol et · ~5 dk · tek ekran.** YouTube Data API
@@ -367,7 +388,7 @@ kapısı**; bakmadan `true` yazmak karantinayı elle açmaktır. Kuru doğrulama
 > `dj_famous_process.py`'nin `finally`'sinden) bu kesidi OTOMATİK yükleyecek —
 > K-5'in “ilk yayın elle izlenerek” şartı burada geçerli.
 
-**E-9 · [AÇIK — web'de Arşivle YOK, yalnız mobil · kimlik kesinleşti] Instagram'daki kopya Reels'i
+**E-9 · [AÇIK — arşiv listesi TERSİNE çevrildi (kullanıcı kararı) · yalnız mobil] Instagram'daki kopya Reels'i
 ARŞİVLE (silme) · ~5 dk.** Aynı ses (md5 birebir)
 Instagram'da iki kez canlı: `18087131705485174` (07 Eylül, kopya) ve `18112778338817977`
 (05 Eylül, asıl). YouTube tarafı 11 Eylül'de temizlendi, Instagram temizlenmedi — **bugün
@@ -388,6 +409,16 @@ alınabilir). **API'den yapılamaz** (B-1).
 > Kalacak olan `Dc5vAXxgGIf` (05 Eyl). **instagram.com'da "…" menüsünde Arşivle YOK** —
 > yalnız Sil / Düzenle / Beğenmeyi gizle / Yorumu kapat. Sil'e basılmadı.
 > **KULLANICININ ATACAĞI TAM ADIM:** Instagram uygulaması → `Dc-5CR9j2XO` → … → Arşivle.
+> **⚠ KARAR DEĞİŞTİ (2026-09-12 gece, kullanıcı):** asıl kayıt artık **yeni görselli
+> Küllerimden Geç**; Yeniden Doğacağım kapağı eksik olduğu için kullanıcı tarafından
+> gizlenmişti. Yukarıdaki "Dc-5CR9j2XO'yu arşivle, Dc5vAXxgGIf kalsın" talimatı bu yüzden TERS.
+> Kapaklarla doğrulandı: `Dc-5CR9j2XO` (7 Eyl) kapağı depodaki Küllerimden Geç kapağıyla aynı
+> (yağmurlu cam) → **KALACAK**. `Dc5vAXxgGIf` (5 Eyl, açıklama Yeniden Doğacağım, kapakta
+> "Küllerimden Geç" yazıyor ama fotoğraf başka), `Dcv6i1PjYUy` ve `Dcv5AiRgSsc` (1 Eyl, eski
+> altın alevli tasarım) → **ARŞİVLENECEK**.
+> **KULLANICININ ATACAĞI TAM ADIM:** Instagram uygulaması → `Dc5vAXxgGIf`, `Dcv6i1PjYUy`,
+> `Dcv5AiRgSsc` → … → Arşivle (SİLME değil). Izgaranın kalan 12 gönderisi taranamadı; bu
+> gruptan başka gönderi varsa aynı kurala göre ele alınmalı.
 
 **E-10 · [KAPANDI 2026-09-12 — sırlar HARİÇ içerik yedeği] Yedekleme kur · ~5 dk (P1) + haftalık (P2).** Diskte **5,9 GB** ignore edilmiş,
 yani version control dışında içerik var; bu bir dizüstü, disk kaybında GitHub'dan gelmez.
@@ -585,7 +616,7 @@ yüklenmedikleri görülmüyor. `marka/facebook_metinleri.txt` bugün düzeltild
 > ekran görüntüsüyle doğrulandı (ilk iki deneme sonuçsuz kaldı, kapak koymadı; üçüncüsü
 > tuttu). **Bluesky:** banner ZATEN yüklüymüş ("Her hafta yeni şarkı") — tekrar yüklenmedi.
 
-**E-16 · [AÇIK — Instagram'a YÜKLEME gerektiriyor · sayı 3 → 2] İki projenin
+**E-16 · [KISMEN — Bu Gece Kazandık: yayın BEKLETMEDE, yeni formatta yeniden render bekliyor · Kader Ortakları otomasyonda] İki projenin
 Instagram dağıtımı yarım kalmış.** Bu turda üç kökün TÜM `state.json`'ları yeniden
 tarandı — `youtube_video_id` dolu ama `instagram_media_id` YOK olan **iki** proje
 kaldı: `Bu Gece Kazandık`, `Kader Ortakları`.
@@ -637,6 +668,24 @@ kuyruğuna hiç girmemişler — kendiliğinden toparlanmaları beklenemez.
 > - **Kayma dedektörü:** saatlik istatistik isteğine `status` ekleniyor (ek kota yok) ve
 >   istenen ile gerçek gizlilik ayrışınca log + günde bir bildirim — ayrı turda.
 > - **Açık karar:** Instagram yarın bu şarkıyı YouTube unlisted'ken yayınlayacak.
+> **SON KARAR (2026-09-12 gece, kullanıcı):** `Bu Gece Kazandık`'ı kullanıcı GİZLEMEDİ (kimin
+> gizlediği bulunamadı), ama kapak ve video görselleri "eski, güzel değil, anlamsız" → eski
+> videolar public'e ALINMAYACAK; yeni formatta yeniden render + YENİ YouTube yüklemesi yapılacak.
+> Render bu oturumda BİLEREK YAPILMADI (kullanıcı: "makinada işlem kalmasın").
+> - **`yayin_beklet` kuruldu ve gerçek kapıyla doğrulandı:** yükleme HATA, render UYARI, TikTok
+>   planı `hazir=False`; geri doldurma süpürgeleri testte engelledi; drain bu projede Instagram
+>   konteyner yayınını ve TikTok bildirimini atlıyor. `_bekletilenleri_ayir` sayesinde arkadaki
+>   `Sabah Senin` TIKANMIYOR. Eski iki video unlisted kalıyor (hâlâ public playlist'lerde).
+> - **Yeniden render tarifi (sonraki oturum):** `.gitignore`'a `projects/*/_eski_*/` ekle (şu an
+>   arşiv klasörü git'e GİRER — ölçüldü); eski `art.jpg`, `cover*.png`, `_backdrop_pan_*.png`,
+>   `output/*.mp4` dosyalarını SİLMEDEN `_eski_2026-09-12/` altına taşı (izleyici `_` önekini
+>   atlıyor; `_find_existing_art`, render ve `uyumluluk` alt klasöre inmiyor — koddan doğrulandı);
+>   state'teki TÜM `youtube_*`/`youtube_shorts_*`/`tiktok_*` alanlarını tek iç içe sözlüğe taşı
+>   (`arsiv_eski_yukleme_2026_09_08`; `youtube_shorts_video_id` ANAHTARI silinmeli — `null`
+>   yetmez, yükleme kodu anahtarın VARLIĞINA bakıyor); `meta.json`'a anlamlı `art_query` (gece
+>   meydanı, trampet, dans, ışıklar, coşkulu kutlama — eski görsel sisli karanlık bir yaya
+>   geçidiydi); `generate_cover` + render, görselleri gözle kontrol; `yayin_beklet`'i kaldır.
+>   Eski TikTok taslağı `v_inbox_file~v2.7683230545509107720` yayınlanmamalı.
 
 **E-17 · [AÇIK — insan işi, devredilemez] İlk 20-30 gerçek takipçiyi elle bul ·
 birkaç saat.** Depodan doğrulanamaz ama

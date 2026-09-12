@@ -151,8 +151,9 @@ python upload/tiktok_upload.py --pending-covers      # hepsinin kapak listesi
 > Bugünkü kuru tarama (21 klasör) **iki ENGEL** buluyor:
 > - `dj_sets/City Pulse Set` → telif eşleşmesi kayıtlı (Bring Me To Life —
 >   Tiesto, FORS). **Bu taslağı YAYINLAMA** (bkz. F2).
-> - `projects/Küllerimden Geç` → `Yeniden Doğacağım` ile aynı md5 ve YouTube'da
->   public olan taraf O. Aşağıdaki kutunun kararının ta kendisi, artık kodda.
+> - `projects/Küllerimden Geç` → `Yeniden Doğacağım` ile aynı md5. ⚠ 2026-09-12 gece: asıl
+>   artık Küllerimden Geç; iki taslak da TikTok'ta zaten yayında olan gönderiler yüzünden
+>   `hazir=False` — aşağıdaki kutunun başındaki güncellemeye bak.
 >
 > Yani "hepsini yayınla" demeden önce her taslak için bu komutu çalıştırmak
 > yeterli — hangisinin yayınlanmayacağını kendisi söylüyor.
@@ -187,6 +188,16 @@ kayıt gelen kutusunda kalır, hiç yayınlanmaz. 2026-09-11 18:15 itibarıyla
 > TikTok API'sinden bir taslağın gerçekten yayınlanıp yayınlanmadığını
 > öğrenmenin yolu YOK — bu 20 sayısı "yüklendi" kaydıdır, bir kısmını zaten
 > yayınlamış olabilirsin. Tek kesin kontrol TikTok uygulamasının kendisi.
+
+> **⚠ KARAR DEĞİŞTİ (2026-09-12 gece, kullanıcı) — BU KUTUNUN ALTINDAKİ ESKİ METİN TERS.**
+> Asıl kayıt artık **`Küllerimden Geç`** (yeni görselli); `Yeniden Doğacağım` kapağı eksik
+> olduğu için gizlendi (bkz. E7 ve CLAUDE.md "ASIL kayıt" maddesi). **İki taslak da
+> YAYINLANMAMALI:** TikTok'ta bu sesin gönderileri ZATEN yayında — `Küllerimden Geç`
+> `7683419315344887061` (şu an Sadece ben) ve içeriği `Yeniden Doğacağım` olan ama
+> "Beni Bırakma" başlıklı `7682099043274624276`. İki proje de state'te `tiktok_published_at`
+> taşıdığı için `hazir=False`. Doğru adım taslak yayını değil, MEVCUT gönderilerin
+> görünürlüğü: sıra `tiktok_envanteri_2026-09-12.md` ve `denetim_bulgulari_2026-09-12.md`
+> E-6'da. **TikTok'ta başlık içeriği göstermiyor** — başlığa göre karar verme.
 
 > **DİKKAT — 20'nin ikisi AYNI ses. "Hepsini yayınla" talimatını KÖRÜ KÖRÜNE
 > uygulama.** `Küllerimden Geç` ile `Yeniden Doğacağım` aynı kaydın iki ismi
@@ -297,7 +308,15 @@ kimliklerden farklı → yeni gönderiler canlı, eskiler duruyor.
 
 ---
 
-### A7. Instagram'da AYNI SESİN ÜÇ canlı Reels'i var — ikisini sil
+### A7. Instagram'da AYNI SESİN canlı Reels'leri — ARŞİVLE (kalacak: `Küllerimden Geç`)
+
+> **⚠ KARAR DEĞİŞTİ (2026-09-12 gece, kullanıcı) — AŞAĞIDAKİ ESKİ TABLO TERS.** Kapaklarla
+> doğrulandı (tarayıcı ajanı): **KALACAK** `Dc-5CR9j2XO` (`18087131705485174`, 7 Eyl,
+> Küllerimden Geç, kapağı depodakiyle aynı). **ARŞİVLENECEK** (SİLME değil — ⋯ → Arşivle):
+> `Dc5vAXxgGIf` (`18112778338817977`, 5 Eyl, Yeniden Doğacağım), `Dcv6i1PjYUy`
+> (`18134444965723339`, 1 Eyl, eski tasarım), `Dcv5AiRgSsc` (1 Eyl, eski tasarımın kopyası).
+> Profilin ikinci yarısı (12 gönderi) taranamadı; bu gruptan başka gönderi varsa aynı kural.
+> Web'de Arşivle YOK, yalnız mobil uygulama.
 
 **Ne yapılacak** Instagram **mobil uygulaması** → `@famous_music_studio` →
 Reels. Bu sesin (`audio.wav` md5 `21093024291b9898e490b8eb021b5e8c`) üç
@@ -707,7 +726,14 @@ powershell -ExecutionPolicy Bypass -File setup_task_scheduler.ps1 -DjFamousDayOf
 > etkileyen değişiklikler `git pull` ile YAYILMAZ — o durumda bu script'in
 > elle yeniden çalıştırılması şart.
 
-### E7. `Küllerimden Geç` YouTube'da BİLEREK `unlisted` — public YAPMA
+### E7. ASIL `Küllerimden Geç`, `Yeniden Doğacağım` BİLEREK `unlisted` (2026-09-12 gece TERSİNE ÇEVRİLDİ)
+
+> **⚠ KARAR DEĞİŞTİ — AŞAĞIDAKİ ESKİ GEREKÇE TERS YÖNE yazılmıştı** ("Küllerimden Geç'i public
+> YAPMA"). Kullanıcı `Yeniden Doğacağım`'ı kapak eksikliği yüzünden gizledi, yeni görselli
+> `Küllerimden Geç`'i açtı; 2026-09-11'deki gizleme içeriğe bakılmadan md5 + tarihle
+> yapılmıştı. Güncel durum, kimlikler, `uyumluluk` muafiyetinin yeni üç şartı ve iki ders:
+> CLAUDE.md "ASIL kayıt `Küllerimden Geç`" maddesi. Aşağıdaki md5/boyut kanıtı hâlâ doğru
+> (aynı ses); yanlış olan yalnız "hangisi kalır" kararı.
 `Yeniden Doğacağım` (`kZML9g4GdBs`, 1 Eylül, `public`) ile **AYNI kayıt**:
 `audio.wav` md5'leri (`21093024291b9898e490b8eb021b5e8c`) ve dosya boyutları
 (42.108.076 bayt) birebir eşit. `Küllerimden Geç` (`-CQ7MmUygTQ` uzun format +

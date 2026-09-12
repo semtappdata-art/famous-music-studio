@@ -1670,7 +1670,10 @@ def uretim_kuyrugu_bos(log=print) -> dict:
 # insan kararı.
 #
 # BİLİNÇLİ İSTİSNALAR (sessiz):
-#   - `kopya_notu` taşıyan proje (Küllerimden Geç): bilerek unlisted,
+#   - `kopya_notu` taşıyan proje (2026-09-12'den beri `Yeniden Doğacağım` —
+#     kapağı eksik sürüm; asıl kayıt `Küllerimden Geç`): bilerek unlisted,
+#   - görünürlük planı hedefi == gerçek (`youtube_gorunurluk_plani`, planlı
+#     geçiş; bkz. auto_process._youtube_gorunurluk_planlarini_uygula),
 #   - istenen == gerçek,
 #   - zamanlanmış yayın beklemesi: gerçek `private` iken `*_publish_at` ya
 #     şimdiden ya da ÖLÇÜM anından sonraysa (ölçüm günde bir; yayın anından
@@ -1714,6 +1717,12 @@ def _gizlilik_kaymalari() -> list:
             gercek = st.get(onek + GIZLILIK_GERCEK_SONEKI)
             vid = st.get(onek + "_video_id")
             if not (istenen and gercek and vid) or istenen == gercek:
+                continue
+            plan = st.get("youtube_gorunurluk_plani")
+            if isinstance(plan, dict) and plan.get("hedef") == gercek:
+                # Planlı geçiş: YouTube zaten hedefte, state bir golden-hour
+                # penceresinde `auto_process._youtube_gorunurluk_planlarini_uygula`
+                # ile düzelecek. Hedeften FARKLI bir gerçek değer kayma KALIR.
                 continue
             if gercek == "private":
                 yayin_ts = _utc_ts(st.get(onek + "_publish_at"))

@@ -141,6 +141,16 @@ YENI_YAYIN_TIMESTAMP_KEYS = ("youtube_uploaded_at",)
 # sorusu, değişmedi.
 YENI_YAYIN_PUBLIC_ANI_KEYS = ("youtube_publish_at",)
 
+# YouTube GÖRÜNÜRLÜK PLANI (2026-09-12) — bkz. `_youtube_gorunurluk_planlarini_uygula`.
+GORUNURLUK_PLANI_ALANI = "youtube_gorunurluk_plani"
+# Pencere başına tek proje kuralının okuduğu damga (TR yerel, tz'li ISO).
+GORUNURLUK_UYGULANDI_ALANI = "youtube_gorunurluk_uygulandi_at"
+# Hata sonrası aynı projeye yeni `videos.update` harcamadan önce beklenen süre.
+# Saatlik koşuda 1 saat = her koşuda deneme olurdu (kalıcı bir hata her koşu
+# 50+ birim yakardı); 3 saat öğlen penceresine (12-14) bir, akşam penceresine
+# (18-22) en fazla iki deneme bırakıyor.
+GORUNURLUK_TEKRAR_BEKLEME_SN = 3 * 3600
+
 
 # Kilit BİZDE mi? Sadece kendi kilidimizin mtime'ını tazelemek için (bkz. log()).
 # Kaybeden süreç de log() çağırıyor; bayrak olmasaydı RAKİBİN kilidini tazeler,
@@ -671,6 +681,226 @@ def _check_youtube_captions(project_dir: str, state: dict) -> bool:
         return True
 
 
+def _yayin_bekletiliyor(state: dict) -> bool:
+    """state'te dolu bir `uyumluluk.BEKLETME_ALANI` var mı (kural uyumluluk'ta)."""
+    import uyumluluk
+    return bool((state or {}).get(uyumluluk.BEKLETME_ALANI))
+
+
+def _bekletme_sebebi(state: dict) -> str:
+    import uyumluluk
+    b = (state or {}).get(uyumluluk.BEKLETME_ALANI)
+    sebep = b.get("sebep") if isinstance(b, dict) else b
+    return str(sebep or "sebep yazılmamış")[:160]
+
+
+def _bekletilenleri_ayir(project_dirs: list) -> tuple:
+    """(kalan, bekletilen) — sıra korunur.
+
+    Okunamayan state BEKLETME SAYILMAZ, `kalan`da kalır: bu ayırıcı kapının
+    YERİNE geçmez. Öyle bir projeyi `process_project`e bırakır; orada
+    `uyumluluk` (bozuk state.json = HATA) yayını zaten durdurur.
+    Koruma: tests/test_yayin_bekletme.py."""
+    kalan, bekletilen = [], []
+    for p in project_dirs:
+        try:
+            bekle = _yayin_bekletiliyor(_load_state(p))
+        except (OSError, ValueError):
+            bekle = False
+        (bekletilen if bekle else kalan).append(p)
+    return kalan, bekletilen
+
+
+def _tr_simdi():
+    """Şimdi (TR yerel, tz'li). Testler bunu değiştirir."""
+    from datetime import datetime
+    return datetime.now(config.TR_TZ)
+
+
+def _golden_pencere_anahtari(an):
+    """`an` bir golden-hour penceresindeyse pencerenin kimliği ("2026-09-13@12"),
+    değilse None. Sınırlar `config.GOLDEN_HOURS` ([başlangıç, bitiş))."""
+    an = an.astimezone(config.TR_TZ)
+    for bas, bit in config.GOLDEN_HOURS:
+        if bas <= an.hour < bit:
+            return "%s@%02d" % (an.strftime("%Y-%m-%d"), bas)
+    return None
+
+
+def _youtube_servisi():
+    from youtube_auth import get_authenticated_service
+    return get_authenticated_service()
+
+
+def _gorunurlugu_youtubeda_uygula(youtube, video_idler: list, hedef: str) -> None:
+    """Videoları `hedef` gizliliğine alır ve GERİ OKUYARAK doğrular; olmazsa raise.
+
+    Gövde `set_privacy.guvenli_status_govdesi` ile kuruluyor: `videos.update`
+    kısmi güncelleme YAPMAZ, `part`ta olup gövdede olmayan alanları SİLER —
+    zorunlu AI beyanı (`containsSyntheticMedia`) dahil, ve o alan okumada geri
+    GELMEDİĞİ için round-trip onu korumaz (bkz. set_privacy.py docstring'i).
+    Zaten hedefte olan videoya update HARCANMIYOR (50 birim).
+    """
+    from set_privacy import guvenli_status_govdesi
+
+    def _oku():
+        yanit = youtube.videos().list(part="status", id=",".join(video_idler)).execute()
+        return {it.get("id"): (it.get("status") or {})
+                for it in (yanit.get("items") or [])}
+
+    mevcut = _oku()
+    eksik = [v for v in video_idler if v not in mevcut]
+    if eksik:
+        # Okuma yoksa YAZMIYORUZ: mevcut status olmadan kurulan her gövde,
+        # korumaya çalıştığımız alanları silen gövdenin ta kendisi olurdu.
+        raise RuntimeError("status okunamadı: %s — gizlilik DEĞİŞTİRİLMEDİ"
+                           % ", ".join(eksik))
+    for vid in video_idler:
+        if mevcut[vid].get("privacyStatus") == hedef:
+            continue
+        govde = guvenli_status_govdesi(mevcut[vid], hedef)
+        youtube.videos().update(part="status",
+                                body={"id": vid, "status": govde}).execute()
+    sonra = _oku()
+    yanlis = ["%s=%s" % (v, (sonra.get(v) or {}).get("privacyStatus"))
+              for v in video_idler
+              if (sonra.get(v) or {}).get("privacyStatus") != hedef]
+    if yanlis:
+        raise RuntimeError("geri okuma hedefi (%s) doğrulamadı: %s"
+                           % (hedef, ", ".join(yanlis)))
+
+
+def _youtube_gorunurluk_planlarini_uygula(project_dirs: list) -> None:
+    """state'teki `youtube_gorunurluk_plani`nı golden-hour içinde uygular.
+
+    NEDEN VAR (2026-09-12): önceden yayınlanmış bir videoyu "şu saatte public
+    olsun" diye YouTube'a zamanlatmak MÜMKÜN DEĞİL — `status.publishAt` yalnız
+    hiç yayınlanmamış videoda kabul ediliyor (`invalidPublishAt`, ölçüldü).
+    İlk kullanım: `Küllerimden Geç` (asıl kayıt) Shorts'unun public'e dönmesi.
+
+    Plan: `{"hedef": "public", "sebep": ..., "istendi_at": ...}`.
+
+    KURALLAR:
+      * yalnız `config.GOLDEN_HOURS` içinde; dışarıda SESSİZ çıkar (koşuların
+        üçte ikisi pencere dışı, her birinde satır basmak gürültü olurdu);
+      * pencere başına EN FAZLA BİR proje — o pencerede bir plan zaten
+        uygulandıysa (`GORUNURLUK_UYGULANDI_ALANI`) bekler ve log'a yazar; iki
+        şarkı aynı anda yayına dönmesin. Koşu başına da tek deneme;
+      * sıra `istendi_at` (sonra klasör adı); ilk plan bekliyorsa (bekletme,
+        soğuma, uyumluluk) arkasındaki ÖNE GEÇMEZ;
+      * `uyumluluk.BEKLETME_ALANI` doluysa uygulanmaz; hedef public ise
+        `uyumluluk.kontrol(..., "yukleme")` HATASIZ olmalı (aynı sesin ikinci
+        kopyasını public'e çıkarmak da bir yayındır) — fail-closed;
+      * hata: plan SİLİNMEZ, `son_hata_at`/`son_hata` yazılır; aynı projeye
+        `GORUNURLUK_TEKRAR_BEKLEME_SN` dolmadan yeni `videos.update` harcanmaz.
+    BAŞARI: `<önek>_privacy` = hedef; hedef public ise `<önek>_publish_at` =
+    GERÇEK public anı (UTC "...Z" — `_son_yeni_yayin_ani` bunu 52 saatlik tempo
+    tabanına sayıyor); plan silinir, uygulama damgası yazılır; state `state_io`
+    ile atomik yazılır. Koruma: tests/test_youtube_gorunurluk_plani.py.
+    """
+    from datetime import datetime, timezone
+
+    planlilar = []
+    for p in project_dirs:
+        try:
+            plan = _load_state(p).get(GORUNURLUK_PLANI_ALANI)
+        except (OSError, ValueError):
+            continue
+        if isinstance(plan, dict) and plan.get("hedef"):
+            planlilar.append((str(plan.get("istendi_at") or ""),
+                              os.path.basename(os.path.normpath(p)), p))
+    if not planlilar:
+        return
+    simdi = _tr_simdi()
+    pencere = _golden_pencere_anahtari(simdi)
+    if pencere is None:
+        return
+    planlilar.sort()
+    _, ad, proje = planlilar[0]
+
+    for p in project_dirs:
+        try:
+            damga = _load_state(p).get(GORUNURLUK_UYGULANDI_ALANI)
+            if damga and _golden_pencere_anahtari(
+                    datetime.fromisoformat(damga)) == pencere:
+                log(f"  YouTube görünürlük planı: bu pencerede "
+                    f"'{os.path.basename(os.path.normpath(p))}' zaten uygulandı — "
+                    f"'{ad}' bir sonraki pencereyi bekliyor")
+                return
+        except (OSError, ValueError, TypeError):
+            continue
+
+    import state_io
+    import uyumluluk
+
+    state = uyumluluk._durum(proje)      # YAZMADAN önce kesin okuma (bozuksa raise)
+    plan = state.get(GORUNURLUK_PLANI_ALANI) or {}
+    hedef = plan.get("hedef")
+    if hedef not in ("public", "unlisted", "private"):
+        log(f"  YouTube görünürlük planı: '{ad}' geçersiz hedef ({hedef!r}) — uygulanmadı")
+        return
+    if _yayin_bekletiliyor(state):
+        log(f"  YouTube görünürlük planı: '{ad}' yayın bekletiliyor "
+            f"({_bekletme_sebebi(state)}) — plan uygulanmadı")
+        return
+    son_hata_at = plan.get("son_hata_at")
+    if son_hata_at:
+        try:
+            gecen = (simdi - datetime.fromisoformat(son_hata_at)).total_seconds()
+        except (ValueError, TypeError):
+            gecen = None
+        if gecen is not None and gecen < GORUNURLUK_TEKRAR_BEKLEME_SN:
+            log(f"  YouTube görünürlük planı: '{ad}' son denemesi hata verdi, "
+                f"soğuma sürüyor ({int(gecen // 60)} dk önce)")
+            return
+    if hedef == "public":
+        # FAIL-CLOSED: `except` dalı `return` ile BİTİYOR — tests/
+        # test_uyumluluk_fail_closed.py muhafızı auto_process.py'deki HER kapı
+        # try'ında bunu arıyor.
+        try:
+            u_hatalar, _ = uyumluluk.kontrol(proje, "yukleme")
+        except Exception as e:  # noqa: BLE001
+            log(f"  YouTube görünürlük planı: '{ad}' public YAPILMADI — uyumluluk "
+                f"kapısı ÇÖKTÜ ({type(e).__name__}: {str(e)[:150]})")
+            return
+        if u_hatalar:
+            log(f"  YouTube görünürlük planı: '{ad}' public YAPILMADI — uyumluluk "
+                f"HATASI: {str(u_hatalar[0])[:200]}")
+            return
+    onekler = [o for o in ("youtube", "youtube_shorts") if state.get(o + "_video_id")]
+    if not onekler:
+        log(f"  YouTube görünürlük planı: '{ad}' state'inde video kimliği yok — uygulanmadı")
+        return
+
+    try:
+        _gorunurlugu_youtubeda_uygula(
+            _youtube_servisi(), [state[o + "_video_id"] for o in onekler], hedef)
+    except Exception as e:  # noqa: BLE001
+        taze = uyumluluk._durum(proje)
+        taze_plan = taze.get(GORUNURLUK_PLANI_ALANI)
+        if isinstance(taze_plan, dict):
+            taze_plan["son_hata_at"] = simdi.isoformat(timespec="seconds")
+            taze_plan["son_hata"] = ("%s: %s" % (type(e).__name__, e))[:300]
+            state_io.durum_yaz(proje, taze)
+        log(f"  YouTube görünürlük planı HATA: '{ad}' -> {hedef}: "
+            f"{type(e).__name__}: {str(e)[:200]} — plan duruyor, "
+            f"{GORUNURLUK_TEKRAR_BEKLEME_SN // 3600} saat sonra yeniden denenecek")
+        return
+
+    an_utc = simdi.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    taze = uyumluluk._durum(proje)
+    for o in onekler:
+        taze[o + "_privacy"] = hedef
+        if hedef == "public":
+            taze[o + "_publish_at"] = an_utc
+    taze.pop(GORUNURLUK_PLANI_ALANI, None)
+    taze[GORUNURLUK_UYGULANDI_ALANI] = simdi.isoformat(timespec="seconds")
+    state_io.durum_yaz(proje, taze)
+    idler = ", ".join(str(taze.get(o + "_video_id")) for o in onekler)
+    log(f"  YouTube görünürlük planı UYGULANDI: '{ad}' -> {hedef} ({idler}), "
+        f"public anı {an_utc}")
+
+
 def _drain_golden_hour_queue(project_dirs: list) -> None:
     """auto-pace batch seçimine GİRMEYEN projeler için bile, ZATEN başlatılmış
     (Instagram konteyneri oluşturulmuş / TikTok'a yüklenmiş) ama golden-hour'u
@@ -704,13 +934,36 @@ def _drain_golden_hour_queue(project_dirs: list) -> None:
         # (instagram_upload._konteyner_yayindan_yeni), damga eksikse temkinli
         # davranıp yayınlamıyor. Yani çift yayın koruması KIRILMADI, sadece
         # doğru katmana taşındı.
-        if "instagram_creation_id" in state:
-            _check_instagram_pending(project_dir)
-        if state.get("tiktok_publish_id") and not state.get("tiktok_notified"):
-            _check_tiktok_notification(project_dir, state)
+        if _yayin_bekletiliyor(state):
+            # BEKLETME (uyumluluk.BEKLETME_ALANI): aşağıdaki iki dal `uyumluluk`
+            # kapısından GEÇMİYOR — biri mevcut bir Instagram konteynerini
+            # YAYINLIYOR, diğeri TikTok taslağı için "şimdi yayınla" bildirimi
+            # gönderiyor. Bekletilen projede ikisi de atlanır; altyazı senkronu
+            # (yayın değil) devam eder.
+            if ("instagram_creation_id" in state
+                    or (state.get("tiktok_publish_id")
+                        and not state.get("tiktok_notified"))):
+                log(f"  {os.path.basename(os.path.normpath(project_dir))}: yayın "
+                    f"bekletiliyor ({_bekletme_sebebi(state)}) — bekleyen "
+                    f"Instagram yayını / TikTok bildirimi atlandı")
+        else:
+            if "instagram_creation_id" in state:
+                _check_instagram_pending(project_dir)
+            if state.get("tiktok_publish_id") and not state.get("tiktok_notified"):
+                _check_tiktok_notification(project_dir, state)
         if not captions_checked_this_run:
             if _check_youtube_captions(project_dir, state):
                 captions_checked_this_run = True
+
+    # YouTube GÖRÜNÜRLÜK PLANI (2026-09-12). Neden burada: plan zaten yayınlanmış
+    # (`_is_fully_done`'dan geçmiş) projelerde duruyor ve `ready` ile gezen TEK yer
+    # bu fonksiyon. Pencere/soğuma/kota kuralları fonksiyonun içinde. İstisna
+    # buradan TAŞMAZ: drain'in geri kalanı bir planın arızası yüzünden durmamalı.
+    try:
+        _youtube_gorunurluk_planlarini_uygula(project_dirs)
+    except Exception as e:
+        log(f"  YouTube görünürlük planı HATA (beklenmedik): "
+            f"{type(e).__name__}: {str(e)[:200]}")
 
 
 def process_project(project_dir: str, privacy: str, schedule: bool = True) -> None:
@@ -1342,6 +1595,15 @@ def main():
         # görünebilir; `ready` kullanmak bu projeyi de kapsar (drain zaten
         # ucuz/idempotent — bekleyeni yoksa hiçbir şey yapmaz).
         pending = [p for p in ready if not _is_fully_done(p)]
+        # BEKLETİLEN projeler sıra DIŞI (uyumluluk.BEKLETME_ALANI). Ayrılmasalardı
+        # `batch = pending[:count]` her koşuda aynı projeyi seçer, process_project
+        # uyumluluk kapısında `return` eder ve arkadaki proje KALICI tıkanırdı.
+        # `_auto_pace_count`'tan ÖNCE: kademeleme de bekletilenleri saymamalı.
+        pending, bekletilen = _bekletilenleri_ayir(pending)
+        for p in bekletilen:
+            log(f"Yayın bekletiliyor, sıraya alınmadı: "
+                f"{os.path.basename(os.path.normpath(p))} "
+                f"({_bekletme_sebebi(_load_state(p))})")
         if not pending:
             _drain_golden_hour_queue(ready)
             log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
