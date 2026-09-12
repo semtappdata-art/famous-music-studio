@@ -11,7 +11,7 @@ from git_sync import auto_pull
 
 
 def _run(args, cwd):
-    subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True)
+    subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
 def _init_repo_pair(tmp_path):
@@ -60,7 +60,7 @@ def test_fast_forward_pulls_code_and_preserves_dirty_state_file(tmp_path):
     assert (local / "code.py").read_text(encoding="utf-8") == "kod v2\n"
     assert (local / "state.json").read_text(encoding="utf-8") == '{"x": 2}\n'
     status = subprocess.run(
-        ["git", "status", "--porcelain"], cwd=local, capture_output=True, text=True, check=True
+        ["git", "status", "--porcelain"], cwd=local, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
     )
     assert "state.json" in status.stdout
     assert any("otomatik güncellendi" in m for m in logs)
