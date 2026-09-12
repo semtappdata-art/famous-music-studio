@@ -155,6 +155,14 @@ def bugun_yuklenen():
 # kapsam bir PROCESS, yani bir zamanlayıcı koşusu.
 _UYARILANLAR = set()
 
+# Kosu ICI kapi onbellegi — kardes modul `ek_platform_backfill.py` ile AYNI
+# desen (2026-09-12'de oradaki vardi, burada YOKTU; asimetri kazaydi).
+# `uyumluluk.kontrol()` md5 hesaplayabiliyor; ayni klasor ayni kosuda bir
+# daha sorulursa disk yerine bu sozluk cevap verir. `backfill()` basinda
+# TEMIZLENIYOR — her kosu diskin O ANKI halini gormeli, bayat bir "temiz"
+# karari tasimak kapiyi ACARDI.
+_KAPI_ONBELLEGI: dict = {}
+
 
 def _stderr(mesaj):
     """Yedek kanal: notify yoksa satır yine de görünür bir yere düşsün."""
@@ -193,6 +201,8 @@ def politika_kapisi(klasor, log=_stderr):
     diğerlerini bloklamamalı); UYARI'lar yalnızca log'a yazılır.
     """
     yol = os.path.abspath(klasor)
+    if yol in _KAPI_ONBELLEGI:
+        return _KAPI_ONBELLEGI[yol]
     ad = os.path.basename(os.path.normpath(klasor))
     try:
         hatalar, uyarilar = uyumluluk.kontrol(klasor, "yukleme")
@@ -208,11 +218,13 @@ def politika_kapisi(klasor, log=_stderr):
         _kapi_uyar("fb_backfill_uyumluluk_hata:%s" % yol,
                    "  %s: UYUMLULUK HATASI — Facebook geri doldurma ATLANDI: %s"
                    % (ad, engel), log)
+    _KAPI_ONBELLEGI[yol] = engel
     return engel
 
 
 def backfill(limit=1, dry_run=False, ignore_golden=False, log=_stderr):
     """En fazla `limit` projeyi Facebook'a yükler. Sonuç sözlüğü döner."""
+    _KAPI_ONBELLEGI.clear()               # bu kosunun kendi kararlari (yukari bkz.)
     if not config.EK_PLATFORMLAR.get("facebook"):
         return {"durum": "kapalı", "sebep": "config.EK_PLATFORMLAR['facebook'] False"}
 

@@ -8,10 +8,11 @@ başına bir kez üretilip önbelleğe alınıyor.
 
 Referanstan bilinçli FARKLAR:
 
-  * Köşe ayraçları ve kenar sütunları burada SABİT çiziliyor, ama ekolayzer
-    ÇİZİLMİYOR — onu render zaten setin GERÇEK sesinden üretiyor
-    (bkz. ffmpeg_utils._build_filter_complex). Referanstaki dalga formu
-    dekoratif; bizimki sesin kendisi.
+  * Köşe ayraçları ve kenar sütunları burada SABİT çiziliyor; ekolayzer HİÇ
+    ÇİZİLMİYOR — ne burada, ne render'da. `ffmpeg_utils.py`'de `showwaves` /
+    `showfreqs` YOK (2026-09-12'de doğrulandı). Eski hâli "onu render zaten
+    setin GERÇEK sesinden üretiyor" diyordu; bu bir GARANTİ ifadesiydi ve
+    karşılığı yoktu. Gerçekten istenirse bu bir İŞ, bitmiş bir özellik değil.
 
   * Referansta sayılar uydurma ("12.58.4", "89.58.1"). Buradaki etiketler de
     dekoratif ama ANLAMLI olanları (başlık, süre) render tarafında gerçek

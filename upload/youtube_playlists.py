@@ -763,7 +763,9 @@ def durum(base_list=uyumluluk.KOKLER) -> None:
         # Sütuna KÖK ADI basılıyor, kökün KENDİSİ değil: KOKLER mutlak yol
         # tutuyor, doğrudan basılsaydı 11 karakterlik sütuna TAM Windows yolu
         # (C: ... /ilk-projem/projects) yazılıp rapor okunamaz hâle gelirdi —
-        # youtube_analytics._video_haritasi bugün tam bu tuzağa düşmüştü.
+        # youtube_analytics._video_idler bugün tam bu tuzağa düşmüştü.
+        # (Ad ONEMLI: `_video_haritasi` o modülde YOK — `olcum_temel_cizgi.py`
+        # ve `youtube_comments.py` içinde var; emsali arayan yanlış yere gider.)
         kok_adi = os.path.basename(os.path.normpath(kok))
         # `_proje_klasorleri` mutlak yolla sorunsuz çalışıyor ve BURADA
         # uyumluluk.proje_klasorleri()'ne tercih ediliyor: rapor her projenin

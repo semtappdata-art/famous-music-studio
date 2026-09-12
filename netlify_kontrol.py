@@ -15,6 +15,11 @@ import io
 import json
 import os
 import sys
+import time
+
+# C-13: tek gecici hatanin SAHTE telefon bildirimi uretmesini engelleyen dar
+# tavan (bkz. main()._get). Testler bunu 0'a cekiyor.
+_TEKRAR_BEKLEME_SN = 2.0
 
 GIZLI = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                      "upload", "netlify_client_secrets.json")
@@ -76,11 +81,45 @@ def main() -> int:
     import requests
     basliklar = {"Authorization": f"Bearer {token}"}
 
+    def _get(url):
+        """GET + TEK yeniden deneme. Yanit yerine ISTISNA donebilir.
+
+        NEDEN (2026-09-12 denetimi, C-13): bu fonksiyonun donusu
+        `saglik_kontrol.netlify_araci()` uzerinden `_bildir()`e, oradan da
+        TELEFONA gidiyor. Tekrar yokken tek bir ag hickirigi ya da tek bir
+        502 "Netlify/Instagram hatti arizali" diye SAHTE bir bildirim
+        uretiyordu. Ariza degil, gurultu sorunu — ama sahte alarm gercek
+        alarmin guvenilirligini yiyor.
+
+        SADECE BURADA GUVENLI: iki cagri da GET, yani idempotent. Ayni desen
+        bir YAYIN cagrisina (Instagram media_publish, Telegram sendVideo,
+        Bluesky createRecord, Facebook /videos, YouTube videos.insert)
+        KOPYALANMAMALI — orada tekrar, ayni gonderiyi iki kez yayinlama
+        riskidir (CLAUDE.md / B-22).
+
+        Tavan dar ve bilincli: 1 tekrar, 2 sn. 4xx tekrarlanmaz (kimlik /
+        izin / kota — tekrar yalnizca hiz sinirini yakar). Kalici bir ariza
+        ikinci denemede de duser ve bildirim YINE gider.
+        """
+        son = None
+        for deneme in (0, 1):
+            if deneme:
+                time.sleep(_TEKRAR_BEKLEME_SN)
+            try:
+                yanit = requests.get(url, headers=basliklar, timeout=15)
+            except requests.RequestException as hata:
+                son = hata
+                continue
+            if yanit.status_code >= 500:
+                son = yanit
+                continue
+            return yanit
+        return son
+
     # 1) Token gecerli mi
-    try:
-        r = requests.get("https://api.netlify.com/api/v1/user",
-                         headers=basliklar, timeout=15)
-    except requests.RequestException as e:
+    r = _get("https://api.netlify.com/api/v1/user")
+    if isinstance(r, Exception):
+        e = r
         print("\nHATA: Netlify'a ulaşılamadı ->", type(e).__name__)
         return 2
 
@@ -93,8 +132,11 @@ def main() -> int:
     print("token   : GEÇERLİ ✓  (hesap: %s)" % (r.json().get("email") or "?"))
 
     # 2) site_id bu hesapta var mi
-    r2 = requests.get(f"https://api.netlify.com/api/v1/sites/{site_id}",
-                      headers=basliklar, timeout=15)
+    r2 = _get(f"https://api.netlify.com/api/v1/sites/{site_id}")
+    if isinstance(r2, Exception):
+        print()
+        print("HATA: Netlify'a ulasilamadi ->", type(r2).__name__)
+        return 2
     if r2.status_code == 404:
         print("site_id : BULUNAMADI (404) — site silinmiş ya da başka hesapta.")
         return 1

@@ -14,8 +14,12 @@ Videolar: ortada yuvarlak köşeli, Spotify "Now Playing" tarzı bir albüm kart
 şarkının kendi `art.jpg`'si) + kartın altında kayan künye yazısı + sabit marka satırı +
 ilerleme çubuğu + kartın kendi görselinden türetilmiş, yavaşça kayan ve renk değiştiren
 (pan + hue akışı) bir arka plan içerir. `art.jpg` yoksa (veya `meta.json`'da eksikse)
-`generate_cover.py` otomatik olarak tema rengine uygun, deterministik bir görsel üretir —
-elle görsel hazırlamak zorunlu değil, sadece ses dosyası yeterli. Tamamen otomatik, elle
+`generate_cover.py` otomatik olarak bir görsel üretir — elle görsel hazırlamak zorunlu
+değil, sadece ses dosyası yeterli. SIRA: **önce `stock_art.py` ile Pexels'ten şarkının
+tarzına/sözlerine uygun GERÇEK bir fotoğraf** indiriliyor; tema rengine uygun deterministik
+bokeh dokusu yalnızca anahtar/ağ/sonuç yoksa düşülen YEDEK yol. Yani bu adımın bir DIŞ API
+bağımlılığı (`stock_art_config.json`, gitignored) ve 3. taraf lisansı (Pexels License)
+var. Tamamen otomatik, elle
 video düzenleme gerekmez.
 
 ## Kurulum
@@ -296,7 +300,7 @@ Kimlik doğrulama (her platform için bir kerelik, ilgili script'in kendisiyle):
    dosya sınırı 50 MB — gönderimden önce ölçülüyor.
 
    **DJ setleri ve derlemeler İSTİSNA:** 41-81 dakikalık `output/youtube_16x9.mp4`
-   130-540 MB, yani 50 MB sınırının kat kat üstünde. `ek_platform_backfill.KOK_SAPMALARI`
+   130-540 MB, yani 50 MB sınırının kat kat üstünde. `ek_platform_backfill.TELEGRAM_DJ_SAPMASI`
    bu iki kökü `kind="dikey"` ile gönderiyor ve damgayı `telegram_shorts_message_id`'ye
    yazıyor — `telegram_uploaded_at` boş kalır, "Telegram'a hiç gitmemiş" sanma.
 6. **Bluesky** — OAuth çemberi yok, handle + "app password" yetiyor:

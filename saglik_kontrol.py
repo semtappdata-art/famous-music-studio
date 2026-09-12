@@ -39,6 +39,13 @@ NEDEN VAR: Depoda bu arızaları yakalamak için yazılmış İKİ koruma vardı
 Yani "sessiz duruşu yakalamak için yazılmış ama kendisi çalışmayan koruma" —
 bugün bulunan desenin en saf hali. Bu modül hepsini saatlik hatta bağlıyor.
 
+ADIM SAYISI BURADA SAYILMIYOR — tek kanonik liste `kontrol_et()`'in döndürdüğü
+sözlüktür (2026-09-12 itibarıyla SEKİZ adım). Yukarıdaki numaralı madde listesi
+bir TARİHÇE, bir envanter değil: adımların NEDEN var olduğunu anlatıyor ve
+bilerek eksik. Bu ayrım yazıldı çünkü metnin içinde "üç adım" / "dört adım"
+diye donup kalmış sayılar vardı ve yeni adım ekleyen kişi bağlantıyı doğru
+saydığını sanıyordu.
+
 Bildirimler GÜNDE BİR: saatlik koşuda her seferinde telefon çalması uyarıyı
 değersizleştirir (aynı gerekçe facebook veri erişimi uyarısında da var).
 """
@@ -660,7 +667,8 @@ def kacan_kosu(log=print) -> dict:
     21:12 ile 12 Eylül 06:46 arasında 9,5 saatlik bir boşluk var. Dokuz saatlik
     tetik (22:12, 23:12, 00:12 ... 06:12) kaçtı ve log'a TEK BİR SATIR bile
     düşmedi — kaçan koşunun tanımı bu: geriye hiçbir iz BIRAKMAZ. Bu modüldeki
-    diğer dört adımın hiçbiri onu göremez, çünkü hepsi "koşu gerçekleşti"
+    DİĞER adımların (bugün yedi tane, kanonik liste: `kontrol_et()`) hiçbiri onu
+    göremez, çünkü hepsi "koşu gerçekleşti"
     varsayımının ÜSTÜNE kurulu; koşunun kendisi olmadığında hiçbiri çalışmaz.
     Sebep de biliniyor: üç görev de `DisallowStartIfOnBatteries` /
     `StopIfGoingOnBatteries` ile kurulu (bkz. gorev_tanimlari), makine fişten
@@ -1639,11 +1647,11 @@ def kontrol_et(log=print) -> dict:
     return {
         "instagram_token": instagram_token_suresi(log),
         "netlify": netlify_araci(log),
-        # Üçü arasında "Python'ın dışına" bakan TEK adım: düzeltilmiş kodun
-        # üretimde gerçekten DEVREDE olduğunu doğrulayan tek yer
+        # Bu SEKİZ adım arasında "Python'ın dışına" bakan TEK adım: düzeltilmiş
+        # kodun üretimde gerçekten DEVREDE olduğunu doğrulayan tek yer
         # (bkz. gorev_tanimlari docstring'i, madde B).
         "gorev_tanimlari": gorev_tanimlari(log),
-        # Diger uc adimdan farkli olarak bu, bir BORU HATTI arizasini degil
+        # Diger adimlardan farkli olarak bu, bir BORU HATTI arizasini degil
         # bir BELGE eskimesini yakaliyor — ama ayni sinifta: kirikken de
         # "calisiyor" gorunuyor ve bedeli 2026-09-12'de odendi (bkz.
         # ses_takip_denetimi.py). Siddet UYARI; yayini durdurmaz.
@@ -1670,8 +1678,8 @@ def kontrol_et(log=print) -> dict:
         # SEKIZINCI ADIM (2026-09-12) — yedincinin TAMAMLAYICISI. Yedinci adim
         # "is var ama akmiyor" der ve bunu yapabilmek icin "bekleyen proje
         # varsa" muafiyetine mecbur (katalog bitmisse sessizlik normaldir).
-        # Tam o muafiyetin ICI kor nokta idi: kuyruk bosaldiginda yedi adimin
-        # SEKIZI DE susuyor ve kanal sessizce duruyordu. Bu adim yalnizca
+        # Tam o muafiyetin ICI kor nokta idi: kuyruk bosaldiginda onceki YEDI
+        # adimin YEDISI DE susuyor ve kanal sessizce duruyordu. Bu adim yalnizca
         # kuyruk BOSKEN konusur; ikisi ayni "bekleyen" listesini
         # (_yayin_taramasi) okudugu icin ayni anda alarm vermeleri MANTIKEN
         # imkansiz. SIRA: yedincinin hemen ardinda, kacan_kosu'dan ONCE.

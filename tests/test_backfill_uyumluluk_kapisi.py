@@ -87,6 +87,7 @@ def _kur(tmp_path, monkeypatch):
     monkeypatch.setattr(E, "_UYARILANLAR", set())
     monkeypatch.setattr(F, "_UYARILANLAR", set())
     E._KAPI_ONBELLEGI.clear()
+    F._KAPI_ONBELLEGI.clear()
     return base
 
 
@@ -331,6 +332,66 @@ def test_kapi_cagrisi_kaynakta_var_supurgelerde():
             any(isinstance(a, ast.Constant) and a.value == "yukleme"
                 for a in c.args)
             for c in cagrilar), yol
+
+
+# --- kapı önbelleği: iki kardeş modül AYNI davranmalı (C-1) --------------
+
+@pytest.mark.parametrize("modul", [E, F], ids=["ek_platform", "facebook"])
+def test_kapi_onbellegi_ayni_projeyi_kosu_icinde_tekrar_sormuyor(
+        tmp_path, monkeypatch, modul):
+    """`uyumluluk.kontrol()` aynı klasör için koşu İÇİNDE bir kez çağrılır.
+
+    NEDEN ÖNEMLİ: kapı md5 hesaplayabiliyor (kopya çiftinde ~0,17 sn) ve iki
+    süpürge de saatlik koşuyor. `ek_platform_backfill`'de bu önbellek VARDI,
+    `facebook_backfill`'de YOKTU — asimetri kazaydı (2026-09-12 denetimi, C-1).
+    Test parametrik: hangi modülde eksilirse orada kırılır.
+
+    ÇALIŞMADIĞINI NASIL ANLARIZ: sayaç 1'den büyük çıkar.
+    """
+    base = _kur(tmp_path, monkeypatch)
+    _log_yakala(monkeypatch)
+    sayac = {"n": 0}
+
+    def sayan(proje, asama="render"):
+        sayac["n"] += 1
+        return ([], [])
+    monkeypatch.setattr(uyumluluk, "kontrol", sayan)
+
+    klasor = _proje(base, "Temiz", {"youtube_video_id": "v1",
+                                    "youtube_uploaded_at": "2026-09-01"})
+    modul._KAPI_ONBELLEGI.clear()
+    assert modul.politika_kapisi(klasor, log=lambda *a: None) == ""
+    assert modul.politika_kapisi(klasor, log=lambda *a: None) == ""
+    assert sayac["n"] == 1, "kapı aynı koşuda iki kez çağrıldı (önbellek yok)"
+
+
+@pytest.mark.parametrize("modul", [E, F], ids=["ek_platform", "facebook"])
+def test_kapi_onbellegi_her_backfill_kosusunda_temizleniyor(
+        tmp_path, monkeypatch, modul):
+    """Bayat bir "temiz" kararı taşımak kapıyı AÇARDI.
+
+    Önbellek PROCESS ömürlü olsaydı, koşu-1'de temiz görülen bir proje disk
+    değişse bile (ör. `telif_eser` alanı sonradan yazıldı) koşu-2'de yeniden
+    sınanmazdı. `backfill()` başındaki `.clear()` tam bunu engelliyor.
+
+    ÇALIŞMADIĞINI NASIL ANLARIZ: ikinci koşuda proje hâlâ gönderiliyor.
+    """
+    base = _kur(tmp_path, monkeypatch)
+    _log_yakala(monkeypatch)
+    durum = {"engelli": False}
+
+    def degisken(proje, asama="render"):
+        return ((["telif eşleşmesi kayıtlı"], []) if durum["engelli"]
+                else ([], []))
+    monkeypatch.setattr(uyumluluk, "kontrol", degisken)
+    _proje(base, "Temiz", {"youtube_video_id": "v1",
+                           "youtube_uploaded_at": "2026-09-01"})
+
+    s1 = modul.backfill(dry_run=True)
+    assert s1["islenen"], s1
+    durum["engelli"] = True                # disk bu arada değişti
+    s2 = modul.backfill(dry_run=True)
+    assert s2["islenen"] == [], "bayat 'temiz' kararı ikinci koşuya taşındı"
 
 
 if __name__ == "__main__":

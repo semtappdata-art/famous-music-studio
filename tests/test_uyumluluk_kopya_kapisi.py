@@ -159,6 +159,53 @@ def test_karsi_taraf_bozuk_state_json_ise_hata(kok):
         "okunamayan bir state.json kopyayı meşrulaştıramaz")
 
 
+def test_bozuk_state_json_md5_IKIZINI_de_dusuruyor(kok):
+    """Tek bir yarım yazım, MEŞRU tarafı da yayından düşürür (C-2).
+
+    Ölçülmüş ama testle kaplı OLMAYAN yan etki (2026-09-12 denetimi): depodaki
+    tek belgelenmiş kopya çifti (`Küllerimden Geç` / `Yeniden Doğacağım`) bugün
+    UYARI seviyesinde duruyor — çünkü karşı taraf okunabiliyor ve "yayından
+    çekilmiş" görünüyor. Karşı tarafın `state.json`'ı bozulursa
+    `cekilmis_taraf = None` **ve** `oteki_yayinda = True` olur, md5 muafiyetinin
+    iki şartı da düşer ve kalan tek dal HATA'dır.
+
+    Davranış BİLİNÇLİ ve DOĞRU ("bilmiyorum" != "çözülmüş"); test onu
+    DEĞİŞTİRMİYOR, mesafeyi ÖLÇÜYOR: meşru taraf ile durmuş bir kanal arasında
+    tek bir yarım JSON yazımı var.
+
+    ÇALIŞMADIĞINI NASIL ANLARIZ: (3) numaralı iddia düşer — yani bozuk bir
+    komşu sessizce "zararsız" sayılmaya başlanmıştır.
+    """
+    a = _proje(kok, "Kullerimden Gec",
+               durum={"youtube_video_id": "-CQ7", "youtube_privacy": "unlisted",
+                      "kopya_notu": "liste dışına alındı"})
+    b = _proje(kok, "Yeniden Dogacagim",
+               durum={"youtube_video_id": "kZML", "youtube_privacy": "public"},
+               meta={"kopya_notu": "'Küllerimden Geç' ile aynı ses"})
+    # Aynı ses md5'ini TAŞIMAYAN, ilgisiz üçüncü proje.
+    ucuncu = _proje(kok, "Ilgisiz", durum={}, ses=b"bambaska-ses")
+
+    # (1) TEMEL ÇİZGİ: çift bugün UYARI seviyesinde, meşru taraf akıyor.
+    h0, u0 = uyumluluk.kontrol(b, "yukleme")
+    assert _md5_bulgusu(h0) == [], h0
+    assert _md5_bulgusu(u0), "bulgu tamamen kaybolmamalı"
+
+    # (2) Tek bir YARIM YAZIM: A'nın state.json'ı diskte yarıda kesildi.
+    (kok / "Kullerimden Gec" / "state.json").write_text('{"a":',
+                                                        encoding="utf-8")
+
+    # (3) İKİZ de düştü: meşru, yayındaki taraf artık HATA alıyor.
+    h1, _ = uyumluluk.kontrol(b, "yukleme")
+    assert _md5_bulgusu(h1), (
+        "bozuk komşu md5 ikizini de durdurmalı — 'bilmiyorum' muafiyet değil")
+    assert any("BİREBİR AYNI (md5)" in h for h in h1), h1
+
+    # (4) YAN KAZANÇ: kanal DURMUYOR — ilgisiz proje etkilenmiyor (B-20).
+    h2, _ = uyumluluk.kontrol(ucuncu, "yukleme")
+    assert _md5_bulgusu(h2) == [], (
+        "bozuk bir state.json yalnızca kendisini ve md5 ikizini durdurmalı")
+
+
 # --- 3b. Kapı yayına GİRECEK tarafta kapanır ------------------------------
 
 def test_yayindaki_mesru_kayit_yeni_bir_kopya_yuzunden_DURMAZ(kok):
