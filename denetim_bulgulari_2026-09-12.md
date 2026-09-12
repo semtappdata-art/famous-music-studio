@@ -470,9 +470,19 @@ sebebi doğrulanamadı — tek gözlem, garanti değil.
   beğeni farkı 6,3 kat. **Tek bir videonun %25 daha çok izlenmesi hiçbir şey anlatmıyor.**
 - **B-26.** **DJ setleri tezi DOĞRULANDI** (gerçek Analytics verisiyle): 2 set 28 günde
   **1.377 dk** izlenme süresi üretti, 18 şarkı 1.521 dk. Video başına 688 vs 84 dk =
-  **8,2 kat**; izlenme başına 9,63 vs 0,84 dk = **11,5 kat**. 4.000 saat için ~176 set ya da
-  ~2.069 şarkı → **Suno kotası başına set üretmek ~12 kat verimli.** Yan kanıt: TV
-  izlenmenin %17'si ama izlenme süresinin **%62,6'sı**.
+  **8,2 kat**; izlenme başına 9,63 vs 0,84 dk = **11,5 kat**. Yan kanıt: TV izlenmenin
+  %17'si ama izlenme süresinin **%62,6'sı**.
+
+  **DÜZELTME (2026-09-12, aynı gün):** bu maddenin ilk hâli "Suno kotası başına set
+  üretmek ~12 kat verimli" diyordu — **YANLIŞ BÖLME.** 8,2 kat *video* başına. Kota
+  başına bölünce avantaj KAYBOLUYOR: bir set `dj_sets/Night Drive/SUNO.md`'ye göre
+  **12-16 indirme** tüketiyor, yani indirme başına 43-57 dk; tekil şarkı 84,5 dk
+  (1.521 / 18). Yani **kota başına şarkı DAHA verimli**, set değil.
+
+  Karar yine de set lehine ayakta kalıyor ama gerekçesi farklı: belirleyici değişken
+  kota değil **video sayısı** — az sayıda uzun video, "toplu üretilmiş AI içerik"
+  sinyalini düşürüyor (bkz. ozgunluk_riski bulguları). Sonuç kural: set yapılacaksa
+  **12 parça, 16 değil** (45-60 dk).
 - **B-27.** `watch_projects.py`'ye md5 kontrolü **eklemeye gerek yok** — kopya, diske
   düştüğü anda değil render/yükleme anında durdurulmalı; render kapısı zaten yayına giden
   tek boğaz ve HATA seviyesinde.
