@@ -335,3 +335,17 @@ register: `Termosta kalan son yudum da senin` (`df = 0`, yüksüz nesne) →
 - Tema tutarlılığı: gece, neon ışıklar, yalnız yürüyüş, şehir — marka evreninin (Famous Music Studio) genel ruh hali
 - Her yeni şarkı için bu dosyayı referans al, stil etiketini şarkının kendi temasına göre uyarla
 - `theme` seçenekleri (meta.json): `pop`, `rock`, `elektronik`, `akustik`, `hiphop`, `arabesk` (`config.THEMES`'teki 6 slot)
+
+## Alternatif seçimi — İNDİRMEDEN
+
+Suno iki alternatif üretir. **İkisini de indirme.** İndirme kotası yalnızca
+"Unlock & Download" tıkında düşer; çalmak bedavadır, yani karşılaştırma tarayıcıda
+yapılabilir. Yöntem, doğrulaması ve betik: `suno_ab_secimi.md` + `suno_ab_olcum.js`.
+
+2026-09-12'de bu bilinmediği için `Sabah Senin`in iki varyantı da indirildi ve
+kota 27'den 25'e düştü; ikinci indirme tamamen boşa gitti. DJ setlerinde bu hata
+kotayı tek seferde bitirir (bir set 12-16 indirme).
+
+Ölçüm yalnızca stil etiketinin YAPISAL vaatlerini sınar (soğuk açılış, vokal
+baskınlığı, kapanış vuruşu, ani kesme). Vokal tonunu, entonasyonu ve parçanın
+güzel olup olmadığını ÖLÇMEZ — onun için dinlemek şart.
