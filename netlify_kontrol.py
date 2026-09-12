@@ -16,16 +16,45 @@ import json
 import os
 import sys
 
-# Windows konsolu Türkçe kod sayfasında (cp1254) ✓/✗ gibi karakterleri
-# basamayıp çöküyordu — çıktı akışı UTF-8'e sabitleniyor.
-if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-
 GIZLI = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                      "upload", "netlify_client_secrets.json")
 
 
+def _cikti_utf8() -> None:
+    """Çıktı akışını UTF-8'e çeker — SADECE `main()` içinden, import anında DEĞİL.
+
+    NEDEN (2026-09-12, üçüncü duman koşusu): bu modül eskiden MODÜL DÜZEYİNDE
+    `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, ...)` yapıyordu. Amaç
+    doğruydu (cp1254 konsolunda ✓/✗ çökmesin) ama yeri yanlıştı:
+
+    * `import netlify_kontrol` yapan HERKESİN stdout'u yerinden ediliyordu —
+      `saglik_kontrol.netlify_araci()` bunu SAATLİK hattın içinde import ediyor.
+    * pytest altında ölümcül: pytest stdout'u kendi yakalama dosyasıyla değiştirir;
+      yeni sarmalayıcı o dosyanın `buffer`ını PAYLAŞIR, eski `TextIOWrapper`
+      referanssız kalıp GC edilince ortak tamponu KAPATIR ve sonraki HER test
+      `ValueError: I/O operation on closed file` ile düşer (bir koşuda 32 ERROR).
+    * Üretimde SESSİZDİ: Görev Zamanlayıcı `pythonw.exe` kullanıyor, orada
+      `sys.stdout` None ve `hasattr(None, "buffer")` False — dal hiç girilmiyordu.
+      Konsoldan elle `python auto_process.py` çalıştıran biri ise stdout'unun
+      değiştiğini görürdü.
+
+    Doğru desen `upload/tiktok_publish_plan._cikti_utf8()`: `reconfigure()`
+    yeni bir sarmalayıcı YARATMAZ, mevcut akışı yerinde yeniden yapılandırır
+    (kapanacak eski nesne yok) ve yalnızca CLI girişinde çağrılır. `sys.stdout`
+    None ise (pythonw) ya da `reconfigure` yoksa (çok eski Python / özel akış)
+    sessizce geçilir — bu yardımcı sağlık kontrolünü ASLA durdurmamalı.
+    """
+    for akis in (sys.stdout, sys.stderr):
+        try:
+            akis.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:                                    # noqa: BLE001
+            pass
+
+
 def main() -> int:
+    # İLK SATIR: aşağıdaki her mesaj Türkçe ve ✓ içeriyor; cp1254'e
+    # yönlendirilmiş (boru/dosya) bir stdout ilk print'te çökerdi.
+    _cikti_utf8()
     if not os.path.isfile(GIZLI):
         print("HATA: dosya yok ->", GIZLI)
         return 2
