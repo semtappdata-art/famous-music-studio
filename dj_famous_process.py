@@ -169,8 +169,29 @@ def _has_any(project_dir: str, names: list) -> bool:
 
 
 def _is_rendered(project_dir: str) -> bool:
+    """Render çıktıları hazır mı — dosya VAR mı değil, dosya BÜTÜN mü.
+
+    NEDEN `os.path.isfile` YETMİYOR (2026-09-12): ffmpeg `-y` ile doğrudan
+    nihai dosyaya yazdığı sürece yarıda kesilen bir render (süreç öldürülür,
+    elektrik gider, pil biter, `ExecutionTimeLimit` dolar,
+    `MAX_PARALLEL_RENDERS=2` ile ikinci render çakılır) diskte "yarım ama VAR"
+    bir .mp4 bırakıyordu. `isfile` buna True diyor, bir sonraki koşu render'ı
+    ATLIYOR ve BOZUK videoyu altı platforma yüklüyor — log'da yalnızca "Zaten
+    render edilmiş" yazdığı için arıza SESSİZ. Tetikleyicilerden biri
+    (izleyicinin 5 dakikada süreci öldürmesi) `watch_projects.py`'de
+    kapatıldı, ama SEBEP orada değil BURADAYDI.
+
+    Ölçüt `render_module.video_butun_mu()`'da (0 bayt kapısı + ffprobe süre
+    doğrulaması + ffprobe yoksa zarif düşüş); gerekçesi, maliyet ölçümü ve
+    "neden önbellek YOK" o docstring'de. Fonksiyon `render.py`'de duruyor
+    çünkü `dj_famous_process.py` de aynı ölçütü kullanıyor ve iki dosyaya
+    kopyalanan mantık bu deponun belgelenmiş hata sınıfı.
+
+    `all()` kısa devre yapıyor: ilk bozuk çıktıda ikinci ffprobe hiç koşmuyor.
+    """
     output_dir = os.path.join(project_dir, "output")
-    return all(os.path.isfile(os.path.join(output_dir, n)) for n in RENDER_OUTPUTS)
+    return all(render_module.video_butun_mu(os.path.join(output_dir, n), log)
+               for n in RENDER_OUTPUTS)
 
 
 def _kaydet_durum(project_dir: str, guncelleme: dict) -> None:

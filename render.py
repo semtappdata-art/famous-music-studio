@@ -22,6 +22,95 @@ COVER_VERTICAL_NAMES = ["cover_vertical.jpg", "cover_vertical.jpeg", "cover_vert
 ART_NAMES = ["art.jpg", "art.jpeg", "art.png"]
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
 
+# Render çıktısı ÖNCE bu sonekle yazılıyor, ffmpeg 0 ile döndükten SONRA
+# os.replace ile nihai adına taşınıyor (bkz. render_one). state_io.py'deki
+# atomik yazım deseninin aynısı, aynı gerekçeyle: ffmpeg `-y` ile DOĞRUDAN
+# nihai dosyaya yazdığı sürece yarıda kesilen bir render diskte "yarım ama VAR"
+# bir .mp4 bırakır.
+PARCALI_SONEK = ".partial.mp4"
+
+# ffprobe'un ÇALIŞTIRILAMADIĞI bir koşuda uyarı koşu başına BİR kez yazılsın diye
+# (bkz. video_butun_mu). Sessizce sertleşmek de sessizce gevşemek de kötü —
+# CLAUDE.md, "BAĞLANTI seviyesindeki sessiz arıza".
+_FFPROBE_YOK_UYARILDI = False
+
+
+def video_butun_mu(path: str, log=print) -> bool:
+    """Bir render çıktısının VAR olduğunu değil, BÜTÜN olduğunu söyler.
+
+    NEDEN VAR (2026-09-12): `auto_process._is_rendered()` ve
+    `dj_famous_process._is_rendered()` hazırlığı YALNIZCA `os.path.isfile` ile
+    ölçüyordu. ffmpeg `-y` ile doğrudan nihai dosyaya yazdığı için yarıda
+    kesilen bir render (süreç öldürülür, elektrik gider, pil biter,
+    `ExecutionTimeLimit` dolar, `MAX_PARALLEL_RENDERS=2` ile ikinci render
+    çakılır) diskte 0 baytlık ya da yarım bir .mp4 bırakıyor; `isfile` buna
+    True diyor, sonraki koşu render'ı ATLIYOR ve BOZUK videoyu altı platforma
+    yüklüyor. Log'da yalnızca "Zaten render edilmiş" yazdığı için arıza SESSİZ.
+
+    İKİ AYRI DÜZELTME VAR ve BİRBİRİNİN YERİNE GEÇMİYOR — ikisi de bilerek:
+      * `render_one` artık geçici ada yazıp `os.replace` ediyor (aşağı bak):
+        BUNDAN SONRAKİ render'larda yarım dosya nihai adla HİÇ var olmuyor.
+        Kökten çözüm, ama yalnızca ileriye dönük.
+      * bu fonksiyon: DİSKTE ŞU AN duran (eski, atomik-öncesi) yarım dosyaları
+        da yakalıyor, ve `os.replace`'in kapsamadığı durumları da — dosya
+        sonradan bozulursa, ya da elle/başka bir araçla yarım kopyalanırsa.
+
+    ÖLÇÜT SIRASI:
+      1. dosya yok             -> False
+      2. 0 bayt                -> False (ffprobe'a hiç girmeden; en sık vaka,
+         süreç muxer'ı açar açmaz ölmüşse dosya boştur)
+      3. ffprobe süre veremedi -> False (yarım mp4'te `moov atom not found`;
+         moov atom'unu ffmpeg dosyanın SONUNA yazdığı için kesik bir dosyada
+         ASLA bulunmaz — %1/%10/%50/%90 kesme oranlarıyla ölçüldü, dördü de
+         rc=1 verdi)
+      4. süre <= 0             -> False
+      5. aksi hâlde            -> True
+
+    ffprobe'un KENDİSİ çalıştırılamıyorsa (kurulu değil / PATH'te yok) ZARİF
+    DÜŞÜŞ: eski `isfile` davranışına dönülüyor ve koşu başına BİR kez log'a
+    satır düşüyor. "Çalıştıramadım" (OSError) ile "çalıştırdım, dosyayı
+    okuyamadı" (RuntimeError) AYRI şeyler: ikincisi bozukluk KANITIdır,
+    birincisi bilgisizliktir — ve bilgisizliği "yeniden render et"e çevirmek
+    ffprobe'suz bir makinede boru hattını sonsuz render'a sokardı.
+
+    ffprobe ÇAĞRISI KOPYALANMADI: `ffmpeg_utils.get_audio_duration()` tam da bu
+    komutu (`-show_entries format=duration`) çalıştırıyor ve video dosyasında da
+    aynen çalışıyor (format süresi, akış türünden bağımsız). Mantık kopyalamak
+    bu deponun belgelenmiş hata sınıfı — o yüzden OKUNDU ve ORTAK KULLANILDI.
+    Bu fonksiyonun BURADA (render.py'de) durmasının sebebi de aynı: hem
+    `auto_process.py` hem `dj_famous_process.py` bu modülü zaten
+    `render_module` olarak import ediyor, yani tek gövde iki çağırana yetiyor.
+
+    MALİYET: `_is_rendered()` proje başına koşuda BİR kez çağrılıyor
+    (`process_project()` içinde, iki dosyada da TEK çağrı yeri), yani en fazla
+    2 ffprobe süreci. Ölçüm: diskteki 48 gerçek çıktıda dosya başına ~0,077 sn
+    -> koşu başına ~0,15 sn. Render'ın kendisi tek şarkıda 2 dk 26 sn.
+    ÖNBELLEK EKLENMEDİ: mtime+boyut anahtarlı bir önbellek ölçülemez bir kazanç
+    için geriye kendi tazeleme hatalarını bırakırdı.
+    """
+    global _FFPROBE_YOK_UYARILDI
+    if not os.path.isfile(path):
+        return False
+    try:
+        if os.path.getsize(path) == 0:
+            return False
+    except OSError:
+        return False
+    try:
+        sure = ffmpeg_utils.get_audio_duration(path)
+    except OSError:
+        # FileNotFoundError DAHİL: ffprobe ÇALIŞTIRILAMADI -> eski davranışa dön.
+        if not _FFPROBE_YOK_UYARILDI:
+            _FFPROBE_YOK_UYARILDI = True
+            log("  UYARI: ffprobe çalıştırılamadı — render çıktılarının BÜTÜNLÜĞÜ "
+                "bu koşuda DOĞRULANAMIYOR, yalnızca dosyanın varlığına bakılıyor "
+                "(yarım bir .mp4 'hazır' sayılabilir).")
+        return True
+    except RuntimeError:
+        # ffprobe ÇALIŞTI ve süre veremedi/geçersiz verdi -> dosya bozuk/yarım.
+        return False
+    return sure > 0
+
 
 def find_cover(project_dir: str) -> str | None:
     for name in COVER_NAMES:
@@ -158,6 +247,17 @@ def render_project(project_dir: str) -> bool:
 
     def render_one(platform_key, width, height):
         output_path = os.path.join(output_dir, f"{platform_key}.mp4")
+        # ATOMİK ÇIKTI (2026-09-12): ffmpeg NİHAİ ada DEĞİL, geçici bir ada
+        # yazıyor; dosya ancak ffmpeg 0 ile döndükten sonra os.replace ile
+        # nihai adına geçiyor. os.replace aynı klasör içinde Windows'ta da
+        # atomik (state_io.durum_yaz ile birebir aynı desen). Böylece yarıda
+        # kesilen bir render'ın ardında `youtube_16x9.mp4` adıyla yarım bir
+        # dosya KALAMIYOR; geride kalan `.youtube_16x9.partial.mp4` ise
+        # RENDER_OUTPUTS'ta olmadığı için hiçbir adımı yanıltmıyor ve bir
+        # sonraki render `-y` ile üstüne yazıyor.
+        # Geçici ad platform anahtarını TAŞIYOR: MAX_PARALLEL_RENDERS=2 ile
+        # aynı anda koşan iki render aynı geçici dosyaya yazmasın diye.
+        tmp_path = os.path.join(output_dir, f".{platform_key}{PARCALI_SONEK}")
         print(f"  -> {platform_key} ({width}x{height}) render ediliyor...")
         use_highlight = platform_key in config.HIGHLIGHT_PLATFORMS
         # Açılış kapağı sadece config.INTRO_KAPAK_PLATFORMLAR'daki platformlarda —
@@ -165,19 +265,31 @@ def render_project(project_dir: str) -> bool:
         # tıklama sürekliliği diye bir şey yok.
         intro_cover = (find_intro_cover(project_dir, width, height)
                        if platform_key in config.INTRO_KAPAK_PLATFORMLAR else None)
-        ffmpeg_utils.render_video(
-            art_path, audio_path, output_path, width, height, title, theme,
-            marquee_override=marquee_override,
-            start_time=highlight_start if use_highlight else None,
-            end_time=highlight_end if use_highlight else None,
-            backdrop_video=None if use_highlight else backdrop_path,
-            hud_path=None if use_highlight else _hud(width, height),
-            # Sahne modu sadece uzun formatta: 45 saniyelik dikey
-            # kesitte kart hâlâ doğru iş - kapak kimliğini o taşıyor.
-            kart_goster=not (config.DJ_SAHNE_MODU and backdrop_path
-                             and not use_highlight),
-            intro_cover=intro_cover,
-        )
+        try:
+            ffmpeg_utils.render_video(
+                art_path, audio_path, tmp_path, width, height, title, theme,
+                marquee_override=marquee_override,
+                start_time=highlight_start if use_highlight else None,
+                end_time=highlight_end if use_highlight else None,
+                backdrop_video=None if use_highlight else backdrop_path,
+                hud_path=None if use_highlight else _hud(width, height),
+                # Sahne modu sadece uzun formatta: 45 saniyelik dikey
+                # kesitte kart hâlâ doğru iş - kapak kimliğini o taşıyor.
+                kart_goster=not (config.DJ_SAHNE_MODU and backdrop_path
+                                 and not use_highlight),
+                intro_cover=intro_cover,
+            )
+        except BaseException:
+            # Hata/iptal durumunda yarım geçici dosyayı bırakma. Süreç
+            # ÖLDÜRÜLÜRSE bu dal hiç çalışmaz — sorun değil, o zaman da
+            # geride kalan dosyanın adı nihai ad DEĞİL (yukarıdaki nota bak).
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+            raise
+        # ffmpeg 0 ile döndü: dosya artık BÜTÜN, nihai adına atomik geçiş.
+        os.replace(tmp_path, output_path)
         return platform_key, output_path
 
     ok = True

@@ -344,18 +344,16 @@ def test_main_her_kosuda_tetikleme_hafizasini_sifirliyor(tmp_path, monkeypatch):
 # C — yarım render "hazır" sayılmamalı  (BU DOSYA SAHİPLİĞİMDE DEĞİL)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(strict=True, reason=(
-    "AÇIK ARIZA, BİLEREK KIRMIZI: `_is_rendered()` `auto_process.py` (:209) ve "
-    "`dj_famous_process.py` (:171) içinde ve bu iki dosya bu vardiyada YAZMA "
-    "İZNİ DIŞINDA. Düzeltme tarifi rapordadır (ffprobe ile süre doğrulaması, "
-    "ffprobe yoksa zarif düşüş). Düzeltme uygulandığında bu test XPASS eder ve "
-    "strict=True sayesinde SESSİZ KALMAZ — o gün yapılacak tek şey bu "
-    "işaretçiyi kaldırmak."))
+# xfail KALDIRILDI (2026-09-12): arıza kapatıldı. `_is_rendered()` artık
+# `render.video_butun_mu()`'yu çağırıyor (0 bayt kapısı + ffprobe süre
+# doğrulaması + ffprobe yoksa zarif düşüş) ve `render.render_one()` çıktıyı
+# geçici ada yazıp `os.replace` ile taşıyor. Test artık GERÇEK bir korumadır;
+# davranışın tamamı `tests/test_render_butunlugu.py`'de.
 def test_is_rendered_yarim_dosyayi_hazir_saymamali(tmp_path):
-    """ffmpeg `-y` ile DOĞRUDAN nihai dosyaya yazıyor; `TerminateProcess` ile
+    """ffmpeg `-y` ile DOĞRUDAN nihai dosyaya yazıyordu; `TerminateProcess` ile
     ölen bir render diskte 0 baytlık ya da yarım bir mp4 bırakıyor.
-    `os.path.isfile` buna True diyor -> sonraki koşu render'ı ATLAR ve BOZUK
-    videoyu yükler. Log'da sadece "Zaten render edilmiş" yazar."""
+    `os.path.isfile` buna True diyordu -> sonraki koşu render'ı ATLAR ve BOZUK
+    videoyu yüklerdi. Log'da sadece "Zaten render edilmiş" yazardı."""
     import auto_process
 
     cikti = tmp_path / "output"
