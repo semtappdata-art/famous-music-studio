@@ -24,7 +24,9 @@ POLİTİKA KAPISI BURADA DA ÇALIŞIR (2026-09-12'de eklendi) — NEDEN:
 yayını ise TASARIM GEREĞİ o hattın DIŞINDA: video boru hattından taslak olarak
 gelen kutusuna yükleniyor, canlıya çıkaran adım ELLE (asistan + higgsfield MCP,
 ya da telefon). Yani kapı, yayına çıkmadan önce kontrol edilmeyen TEK yolu
-kapsamıyordu — ve bekleyen 20 taslak tam orada duruyor. 2026-09-12 kuru
+kapsamıyordu — ve bekleyen 21 taslak tam orada duruyor (18 `projects/`
++ 2 `dj_sets/` + 1 `derlemeler/`; 2026-09-12'de SAYILDI — "20" yazan eski
+hâli bir taslağı sonsuza kadar bekletirdi). 2026-09-12 kuru
 taramasında bunun bedeli ölçüldü, iki kayıt `hazir: True` diyordu:
   * `dj_sets/City Pulse Set` — state.json'ında `telif_eser`
     ("Bring Me To Life - Tiesto, FORS") + 4 `telif_araliklari` kayıtlı;

@@ -208,6 +208,22 @@ def _load_credentials() -> dict:
 # metin: 300 grapheme sınırı
 # --------------------------------------------------------------------------
 
+def _piktografik_mi(code: int) -> bool:
+    """Kod noktası (yaklaşık olarak) Extended_Pictographic mi?
+
+    `regex` paketi eklememek için elle: emoji blokları + eski sembol blokları.
+    YANILMA YÖNÜ BİLİNÇLİ — burada "hayır" demek grapheme'i AYRI saydırır,
+    yani FAZLA sayar; grapheme_len'in güvenli yönü bu.
+    """
+    return (0x1F000 <= code <= 0x1FAFF      # emoji blokları
+            or 0x2600 <= code <= 0x27BF     # Misc Symbols + Dingbats
+            or 0x2B00 <= code <= 0x2BFF     # Misc Symbols and Arrows
+            or 0x2190 <= code <= 0x21FF     # oklar
+            or 0x2300 <= code <= 0x23FF     # Misc Technical (⌚ ⏰ …)
+            or 0x24C2 <= code <= 0x24C2     # Ⓜ
+            or 0x25A0 <= code <= 0x25FF)    # Geometric Shapes
+
+
 def grapheme_len(text: str) -> int:
     """Metnin GRAPHEME (kullanıcının "bir karakter" gördüğü birim) sayısı.
 
@@ -222,14 +238,24 @@ def grapheme_len(text: str) -> int:
     bölgesel gösterge (bayrak) harfleri ikişer ikişer sayılır.
 
     Yaklaşık olması sorun değil — HATA PAYI güvenli yönde: gerçek grapheme
-    sayısından asla AZ saymaz.
+    sayısından AZ saymaz, gerektiğinde FAZLA sayar (fazla sayma en kötü
+    ihtimalle metni erken kırpar; az sayma 300 sınırını AŞAN bir gönderi
+    üretir ve Bluesky isteği REDDEDER).
+
+    ZWJ'DE LOOKAHEAD ŞART (2026-09-12, C-14): eski hâl ZWJ'den SONRAKİ
+    karakteri KOŞULSUZ yutuyordu, yani `"a" + ZWJ + "b"` gerçekte 2 grapheme
+    iken 1 sayılıyordu — tam da docstring'in "asla AZ saymaz" dediği yönde
+    bir hata, ve testi yoktu. UAX#29'a göre ZWJ ancak İKİ TARAFI DA
+    piktografik olduğunda birleştirir (GB11); harflerin arasındaki ZWJ
+    kümeyi birleştirmez. Burada bu, `_piktografik_mi()` ile YAKLAŞIK olarak
+    uygulanıyor: yalnızca bir emoji yutuluyor, harf/rakam yutulmuyor.
     """
     count = 0
     prev_regional = False
     join_next = False
     for ch in text:
         code = ord(ch)
-        # ZWJ: kendisi grapheme değil, bir sonrakini de öncekine bağlar
+        # ZWJ: kendisi grapheme değil, bir SONRAKİ PİKTOGRAFI öncekine bağlar
         if code == 0x200D:
             join_next = True
             prev_regional = False
@@ -237,7 +263,10 @@ def grapheme_len(text: str) -> int:
         if join_next:
             join_next = False
             prev_regional = False
-            continue
+            if _piktografik_mi(code):
+                continue          # 👨‍👩‍👧 / 🏳️‍🌈 — tek grapheme
+            # ZWJ iki harfin arasındaysa BİRLEŞTİRMEZ: bu karakter kendi
+            # grapheme'i, aşağıda normal yoldan sayılıyor.
         # birleştirici işaretler + varyasyon seçicileri + ten rengi modifierları
         if unicodedata.combining(ch) or 0xFE00 <= code <= 0xFE0F or 0x1F3FB <= code <= 0x1F3FF:
             continue

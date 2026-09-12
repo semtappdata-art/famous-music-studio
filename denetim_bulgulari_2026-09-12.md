@@ -239,12 +239,26 @@ aralığında; madde anlamını koruyor.
 
 ## 3. KOD İŞLERİ
 
-**C-1 · `facebook_backfill.politika_kapisi`'ye `_KAPI_ONBELLEGI` ekle (~5 satır).**
+> **GÜNCELLEME — 2026-09-12 akşam (C-1…C-14 tek tek koddan doğrulandı).**
+> Kapanan: **C-1, C-2, C-5, C-11, C-13** + **C-14'ün sahiplik içindeki 13 satırı**.
+> Açık kalan: **C-3, C-4, C-6, C-7, C-8, C-9, C-10** (gerekçeler maddelerin altında).
+> **C-12 yapılmaya değmez** sayıldı (altta).
+> Test sayısı 1226 → 1291. Maddelerin başındaki **[KAPANDI]/[AÇIK]** işareti bu turdan.
+
+**C-1 · [KAPANDI 2026-09-12] `facebook_backfill.politika_kapisi`'ye `_KAPI_ONBELLEGI` ekle (~5 satır).**
 Doğrulandı: `ek_platform_backfill.py`'de var (koşu başına proje başına tek kapı çağrısı,
 koşu sonunda `.clear()`), `facebook_backfill.py`'de **yok**. Bugünkü katalogda etkisi yok;
 maliyet sorunu değil, iki kardeş modül arasında asimetri. `.clear()` de kopyalanmalı.
+> **Kapatıldı:** `_KAPI_ONBELLEGI` + `politika_kapisi` içinde okuma/yazma +
+> `backfill()` başında `.clear()` eklendi; iki kardeş modül artık birebir aynı
+> desende. Koruma: `tests/test_backfill_uyumluluk_kapisi.py`'ye iki PARAMETRİK
+> test (`[ek_platform]` / `[facebook]`) — hangi modülde eksilirse orada kırılır.
+> Kırmızı/yeşil: HEAD'in dosyasıyla `facebook` varyantları FAILED, düzeltmeyle
+> 14/14 passed. Ölçülen kazanç bugün **sıfır** (kapı zaten proje başına bir kez
+> soruluyordu); değeri asimetrinin kapanması ve ikinci çağrının artık ücretsiz
+> olması.
 
-**C-2 · Test: bozuk `state.json` md5 ikizini de düşürüyor (~40 satır).** Bugün ölçülen,
+**C-2 · [KAPANDI 2026-09-12] Test: bozuk `state.json` md5 ikizini de düşürüyor (~40 satır).** Bugün ölçülen,
 testle kaplı olmayan davranış: tek bir bozuk `state.json` **iki** projeyi durduruyor —
 kendisi ve aynı ses md5'ini taşıyan ikizi. Karşı tarafın durumu okunamayınca
 `cekilmis_taraf = None` ve `oteki_yayinda = True` olur, md5 muafiyetinin iki şartı da
@@ -258,9 +272,14 @@ monkeypatch'le bu köke çevir. (1) Temel çizgi `kontrol(B,"yukleme")` → `hat
 `"BİREBİR AYNI (md5)"` içeriyor. (4) Yan kazanç: üçüncü ilgisiz projenin `hatalar`ı BOŞ
 kalıyor → "kanal durmuyor" garantisi de çivilenir. **Doğrulandı: böyle bir test bugün yok**;
 hiçbir test iki projenin state'leri arasındaki bu bağı görmüyor.
+> **Kapatıldı:** `tests/test_uyumluluk_kopya_kapisi.py::test_bozuk_state_json_md5_IKIZINI_de_dusuruyor`
+> — tarifin dördü de (temel çizgi / yarım JSON / ikizin düşmesi / ilgisiz projenin
+> temiz kalması) aynı testte. `uyumluluk.py` DEĞİŞMEDİ (davranış zaten doğruydu).
+> Kırmızı/yeşil: `except DurumBozuk` dalı `b_durum = {}`'e mutasyona uğratılınca
+> test FAILED, geri alınınca 22/22 passed.
 
-**C-3 · AI beyan satırını Instagram/Facebook/Telegram/Bluesky caption'larına ekle (karar
-gerektirir).** Doğrulandı: `social_text.build_ai_disclosure_line()` var ama onu çağıran tek
+**C-3 · [AÇIK — karar bekliyor] AI beyan satırını Instagram/Facebook/Telegram/Bluesky
+caption'larına ekle.** Doğrulandı: `social_text.build_ai_disclosure_line()` var ama onu çağıran tek
 yer `dj_famous_process.py`. Ana kataloğun **17 IG + 5 FB + 2 TG + 5 Bluesky** gönderisinin
 hiçbirinde AI bildirimi yok (YouTube'da koşulsuz ve otomatik, 40/40). Mevcut karar
 `config.py`'de yazılı ("sadece DJ Famous'ta", gerekçe: gerçek bir kişiyi konu alıyor) — ama
@@ -268,8 +287,14 @@ hiçbirinde AI bildirimi yok (YouTube'da koşulsuz ve otomatik, 40/40). Mevcut k
 görsel de kapsamda, ve beyan edilmemiş olması "gizlemeye çalıştı" okumasına açık. Bu, ceza
 tarafında "erişim düşüşü"nden "politika ihlali"ne geçiren fark. İş: `build_caption()`
 çıktısının sonuna `build_ai_disclosure_line(resolve_language(meta))`.
+> **Bırakıldı (2026-09-12):** maddenin kendi başlığı "karar gerektirir" diyor ve
+> mevcut karar `config.py`'de YAZILI ("sadece DJ Famous'ta"). Yazılı bir kararı
+> ajan tek başına tersine çeviremez — üstelik yön geri alınamaz: satır bir kez
+> caption'a girip yayınlandıktan sonra eski gönderilerden kaldırılamaz.
+> Kod tarafı gerçekten tek satır; eksik olan onay. Doğrulandı:
+> `build_ai_disclosure_line()`'ın tek çağıranı hâlâ `dj_famous_process.py:711`.
 
-**C-4 · Uzun format ile Shorts'u aynı saniyede yayınlamayı bırak.** Ölçüm: 15/20 projede
+**C-4 · [AÇIK — K-1'e bağlı] Uzun format ile Shorts'u aynı saniyede yayınlamayı bırak.** Ölçüm: 15/20 projede
 fark **medyan 9 saniye**; `publishAt` değerleri de makine imzası taşıyor (04:30Z, 05:00Z,
 05:30Z… tam 30 dk aralıklar). Bu, bir insan incelemecinin veya sınıflandırıcının göreceği
 **en kolay okunan** sinyal — "aynı kanala 9 sn arayla iki video" tartışmaya açık değil. İş:
@@ -277,8 +302,17 @@ fark **medyan 9 saniye**; `publishAt` değerleri de makine imzası taşıyor (04
 Doğrulandı: bugün `upload_short` uzun formatla **aynı** `_compute_publish_at(privacy,
 schedule)` sonucunu kullanıyor. Yan kazanç: ikinci bir keşfet penceresi. **K-1'de Shorts
 kapatılırsa bu madde düşer.**
+> **Bırakıldı (2026-09-12):** iki sebep birlikte. (1) Maddenin kendi son cümlesi
+> K-1'e bağlıyor ve K-1 hâlâ açık bir KARAR — Shorts kapanırsa bu iş çöpe gider.
+> (2) "Sabit kayma (ör. +6-12 saat)" bir YAYIN STRATEJİSİ seçimi, kod seçimi
+> değil: Shorts'u bir sonraki golden-hour'a atmak kanalın günlük desenini
+> değiştirir. Kod tarafı hazır: `_golden_publish_at(gun_ertele)` (DJ kesidi için
+> yazılmıştı) tam bu işi yapıyor; `upload_short()`'un
+> `_compute_publish_at(privacy, schedule)` çağrısını onunla değiştirmek yeterli.
+> Yeniden doğrulandı: bugün ikisi AYNI çağrıyı kullanıyor
+> (`upload/youtube_upload.py:502` ve `:530`).
 
-**C-5 · Uzun format açıklamasındaki tekrarı kır.** Ölçüm: 18 şarkının YouTube açıklamasının
+**C-5 · [KAPANDI — bugün, commit `a625b00`] Uzun format açıklamasındaki tekrarı kır.** Ölçüm: 18 şarkının YouTube açıklamasının
 **%61'i birebir aynı kelimeler**, satırların **%50'si (4/8) byte-birebir aynı**; keşfet
 hashtag bloğu 18/18'de tamamen ve aynı sırayla. Kısa format caption'da 18/18'de ortak satır
 **sıfır**, çünkü orada `pick_subset` ile seçim yapılıyor — sorun kasıtlı karar değil, iki
@@ -287,48 +321,130 @@ yerine `social_text.pick_subset(title, config.DISCOVERY_HASHTAGS,
 config.DISCOVERY_HASHTAG_COUNT, salt=13)`; ve `follow_line` hardcoded (doğrulandı,
 `upload/youtube_upload.py:161`) → `pick_deterministic(title, config.FOLLOW_LINES, salt=11)`.
 Beklenen: ortak kelime %61 → ~%35-40, ortak satır 4 → 3.
+> **Kapandı** (bu belge yazıldıktan SONRA, aynı gün): `build_snippet()` artık
+> `pick_subset(... DISCOVERY_HASHTAGS ...)` ve
+> `follow_line = pick_deterministic(title, config.FOLLOW_LINES, salt=11)`
+> kullanıyor (TR ve EN dalları ayrı ayrı). Commit mesajının ölçtüğü sonuç:
+> benzerlik 0,79 → 0,46.
 
-**C-6 · Golden-hour penceresi başına "tek yayın" kilidi yok.** Üç hat da aynı pencereleri
+**C-6 · [AÇIK — geniş] Golden-hour penceresi başına "tek yayın" kilidi yok.** Üç hat da aynı pencereleri
 (`GOLDEN_HOURS = [(12,14),(18,22)]`) kullanıyor ve birbirinden habersiz aynı dilime
 yazabiliyor: ana katalog, derleme (aynı hattan), DJ kesit (+3 gün kaydırılmış aynı
 pencereler). Çakışma olasılığı düşük tutulmuş ama **garanti değil**; bir günde 2-3 şey aynı
 18:00-22:00 penceresine düşebilir. Hiçbir test kontrol etmiyor.
+> **Bırakıldı (2026-09-12):** kilidin doğru yeri ÜÇ ayrı giriş noktasının
+> (`auto_process`, `dj_famous_process`, `dj_clips.supur`) ORTAK üstü ve böyle bir
+> yer bugün YOK — yeni bir paylaşılan durum dosyası + üç çağrı noktası + kilidin
+> fail-open/fail-closed kararı demek. En dar tarif: `state_io` ile yazılan tek
+> bir `golden_pencere_kaydi.json`
+> (`{"pencere": "2026-09-12T18", "sahip": "auto_process"}`) ve üç hattın da
+> yayına girmeden ÖNCE sorduğu bir `pencere_bos_mu()`.
+> ⚠ Bu kapının YANLIŞ tarafa düşmesi = yayının sessizce ATLANMASI, yani
+> fail-OPEN olmak zorunda — deponun diğer bütün kapılarının TERSİ bir karar, ve
+> tam da bu yüzden sahibinin onayı olmadan kurulmamalı.
 
-**C-7 · "Ayda en fazla bir derleme" kuralı kodda/testte yok.** Doğrulandı: `derleme.py`'de
+**C-7 · [AÇIK — yer seçimi karar gerektiriyor] "Ayda en fazla bir derleme" kuralı kodda/testte yok.** Doğrulandı: `derleme.py`'de
 sabit/kapı yok, kural yalnızca iki README'de. Derleme 52 saatlik yayın tabanından **muaf**,
 yani ayda bir gün 7 yayınlık bir sıçrama yapıyor (günlük desen 2-3'ten 9-10'a çıkıyor) ve
 bunu engelleyen mekanizma yok.
+> **Bırakıldı (2026-09-12):** kapının yeri belirsiz ve yanlış yer işe yaramıyor.
+> `derleme.uret()` yalnızca KLASÖRÜ üretiyor; YAYINLAYAN
+> `dj_famous_process.py --base derlemeler`. Üretim tarafına kapı koymak sıçramayı
+> engellemez (önceden üretilmiş bir klasör yine yayınlanır) ve
+> `derlemeler/_iptal/En Çok Dinlenenler` örneğinin gösterdiği gibi "üret,
+> beğenme, at" meşru bir akış — orada kapı yalnızca engel olur. Yayın tarafına
+> koymak ise DJ hattıyla PAYLAŞILAN bir modüle dokunmak: oradaki bir hata
+> haftalık DJ setini durdurur. Bugün kuralı fiilen uygulayan şey,
+> `derleme.py`'nin zamanlayıcıda BİLEREK olmaması (elle çalıştırılıyor).
+> Doğrulandı: `derleme.py`'de aylık sabit/kapı yok.
 
-**C-8 · `latest_release.py` DJ kesidini görmüyor · düşük.** `youtube_clip_video_id` bio-link
+**C-8 · [AÇIK — düşük, ürün kararı] `latest_release.py` DJ kesidini görmüyor.** `youtube_clip_video_id` bio-link
 sayfasına girmiyor (doğrulandı). K-5 onaylanırsa farkında olunmalı.
+> **Bırakıldı (2026-09-12):** yeniden doğrulandı — `latest_release._collect()`
+> yalnızca `youtube_video_id` topluyor, `youtube_clip_video_id` dosyada hiç
+> geçmiyor. Ama bu bir ARIZA değil bir SORU: 45 sn'lik türev bir kesit,
+> bio-linkteki "yayındaki TÜM şarkılar" listesinde görünmeli mi? Maddenin kendi
+> ifadesi de "farkında olunmalı" diyor, "eklenmeli" demiyor. K-5 bugün onaylandı
+> (commit `6f6fd5b`), yani soru artık gerçek — ama cevabı sahibinin.
 
-**C-9 · `_is_fully_done()` kapağı ve playlist üyeliğini saymıyor.** Kota tükendiğinde ilk
+**C-9 · [AÇIK — kota planı gerektiriyor] `_is_fully_done()` kapağı ve playlist üyeliğini saymıyor.** Kota tükendiğinde ilk
 kırılan `captions.list`, ama **kalıcı** kırılan `thumbnails.set` ve `playlistItems.insert`;
 ikisi de sayılmadığı için dört ana anahtar dolduğu anda proje `pending`den kalıcı düşer ve
 **kapaksız/listesiz** kalır (2026-09-06'da gerçekten oldu). Telafi yolu hiçbir göreve bağlı
 değil: `upload/youtube_upload.py --thumbnail-only --all` yalnızca CLI'den.
+> **Bırakıldı (2026-09-12) — ama tarif net.** Doğrulandı: `_is_fully_done()` hâlâ
+> DÖRT anahtara bakıyor ve `fix_all_thumbnails()`'ın tek çağıranı argparse.
+> CLAUDE.md'nin kuralı çözümü zaten söylüyor: `_is_fully_done()`'a EKLEME,
+> **(A) `_drain_golden_hour_queue()`'ya bağla** (o fonksiyon `ready` ile geziyor).
+> ÜÇ parça gerekiyor ve üçüncüsü ajan sahipliğinin dışında:
+>   1. `upload_thumbnail()` başarıdan sonra state'e bir damga yazmalı
+>      (`youtube_thumbnail_set_at`) — bugün BÖYLE BİR ALAN YOK, yani süpürgenin
+>      "kimde eksik" diye soracağı ölçüt de yok.
+>   2. Süpürge, damgası olmayan projede `fix_thumbnail()` çağırır ve `captions`
+>      deseniyle **koşu başına EN FAZLA BİR** projeye dokunur.
+>   3. **KOTA KARARI:** `thumbnails.set` 50 birim; saatlik hatta yeni bir API
+>      çağrısı eklemek, E-5'in (2.142 birim) planlandığı bir günde tavanı
+>      değiştirir. Bu bütçe kararı verilmeden bağlamak, kapatılan arızanın
+>      yerine "kota bitti" arızası koymak olur.
+> Playlist yarısı ZATEN kapalı: `sync_project` Shorts'tan SONRA ikinci kez
+> çağrılıyor (idempotent, üyeliği YouTube'dan doğruluyor).
 
-**C-10 · md5 kapısı yalnızca `audio.*`'a bakıyor · düşük.** `art.jpg` ikizi kapıya
+**C-10 · [AÇIK — düşük] md5 kapısı yalnızca `audio.*`'a bakıyor.** `art.jpg` ikizi kapıya
 takılmıyor; bugün tek örneği bilinen çift olduğu için zarar yok, ama iki FARKLI şarkı aynı
 `art.jpg`'yi alsa iki videonun kartı **ve backdrop'ı** birebir aynı olur ve hiçbir kapı
 uyarmaz. Kısmen kapalı: `stock_art.py` indirme anında kopya koruması kazandı, ama bu
 yalnızca Pexels yolunu koruyor; elle kopyalanmış veya eski bir `art.jpg` kapsam dışı.
 Tarif: aynı md5 bloğu `art.*` için, **UYARI seviyesinde**, ~12-15 satır.
+> **Bırakıldı (2026-09-12) — ölçü gereği.** Doğrulandı: `uyumluluk.py` yalnızca
+> `("audio.wav", "audio.mp3", "audio.m4a")` tarıyor. Ama B-11 aynı gün ölçtü:
+> 198 medya dosyasında kopya `art.jpg` **tek çift** ve o çift zaten bilinen ses
+> kopyasının kendisi — yani bugün sıfır vaka. Kapının maliyeti de sıfır değil
+> (`uyumluluk.kontrol()` her render VE her yükleme öncesi çalışıyor; `art.*`
+> dosyaları katalogda ses dosyalarından FAZLA). Vakası olmayan bir kapı eklemek
+> bu deponun belgelenmiş hata sınıfı; asıl açık yol (elle kopyalanan `art.jpg`)
+> ilk gerçek vakada kapatılmalı.
 
-**C-11 · `derleme.py` için ucuz testler.** `uret()` uçtan uca hiç test edilmemiş; ffmpeg
+**C-11 · [KAPANDI 2026-09-12] `derleme.py` için ucuz testler.** `uret()` uçtan uca hiç test edilmemiş; ffmpeg
 concat'ın testi pahalı ama `zaman_damgalari()` ve `_mmss()` saf fonksiyonlar.
+> **Kapatıldı:** `tests/test_derleme_zaman_damgalari.py` (19 test). Asıl korunan
+> sözleşme ÇAPRAZ: `ses_birlestir()` her komşu çiftte `acrossfade=d=GECIS_SN`
+> uyguluyor, `zaman_damgalari()` aynı düşümü yapmak ZORUNDA — iki fonksiyon ayrı
+> ve aralarında hiçbir bağ yok, biri değişirse YouTube bölüm işaretleri sessizce
+> kayar ve bunu ancak izleyici fark eder. `derleme.py` DEĞİŞMEDİ (belge
+> düzeltmesi hariç, bkz. C-14). Kırmızı/yeşil: geçiş düşümü kaldırılınca 3 test
+> FAILED, geri alınınca 19/19 passed.
 
-**C-12 · `gorev_sarmalayici.calistir()` betik yolunu kök altına zorlamıyor · düşük.**
+**C-12 · [YAPILMAYA DEĞMEZ — 2026-09-12] `gorev_sarmalayici.calistir()` betik yolunu
+kök altına zorlamıyor.**
 `betik = argv[1]`; mutlak yol da `..\..\x.py` de kabul edilip `runpy.run_path` ile
 çalıştırılır. **İstismar edilebilir değil** — argv'nin iki kaynağı da sabit ve proje klasörü
 adı komut satırına hiç girmiyor. `os.path.abspath(betik).startswith(KOK + os.sep)` iki
 satır; sadece hijyen.
+> **Yapılmadı, bilerek.** Kod tarafı gerçekten iki satır — ama test tarafı değil:
+> `tests/test_gorev_sarmalayici.py`, `tests/test_sarmalayici_maskeleme.py` ve
+> `tests/test_uretim_log_izolasyonu.py` sarmalayıcıyı **tmp_path'te üretilen
+> sahte betiklerle**, yani KÖK DIŞINDAN çağırıyor — bu bilinçli bir test
+> tasarımı (üretim log'larına ve gerçek betiklere dokunmamak için). Kapı
+> eklenirse ~10 çağrı noktası ve üç dosya `KOK` monkeypatch'iyle yeniden
+> yazılmak zorunda. Maddenin kendi ifadesi "istismar edilebilir değil — argv'nin
+> iki kaynağı da sabit"; yani gerçek risk sıfır, maliyet gerçek. Bu, deponun
+> belgelenmiş "fazla mühendislik" hatasının tam tarifi.
 
-**C-13 · `netlify_kontrol.py` tek ağ hıçkırığında sahte telefon uyarısı üretiyor.** İki
+**C-13 · [KAPANDI 2026-09-12] `netlify_kontrol.py` tek ağ hıçkırığında sahte telefon
+uyarısı üretiyor.** İki
 GET'te de tekrar yok; tek geçici hata → sahte *"Netlify/Instagram hattı arızalı"* bildirimi.
 1 satırlık tekrar susturur. Gürültü sorunu, arıza değil.
+> **Kapatıldı:** `main()` içine `_get(url)` — TEK yeniden deneme (2 sn), yalnızca
+> taşıma istisnası ve 5xx için; **4xx tekrarlanmıyor** (401 = süresi dolmuş
+> token, tekrar sadece hız sınırını yakar). İki GET de bu yoldan geçiyor.
+> SADECE BURADA güvenli, çünkü ikisi de OKUMA: aynı desen bir YAYIN çağrısına
+> kopyalanmamalı (B-22).
+> Kırmızı/yeşil, ölçülmüş: tek `ConnectionError` + sonra başarı senaryosunda
+> HEAD'in dosyası **kod 2** (sahte alarm) veriyordu, yeni dosya **kod 0** veriyor.
+> Koruma: `tests/test_netlify_tekrar.py` (6 test) — kalıcı arızanın HÂLÂ alarm
+> ürettiğini de doğruluyor, yani tekrar bir maskeye dönüşmüyor.
 
-**C-14 · Yalan söyleyen / bayatlamış yorumlar ve belgeler.** En tehlikeli dördü bugün
+**C-14 · [KISMEN KAPANDI 2026-09-12] Yalan söyleyen / bayatlamış yorumlar ve belgeler.** En tehlikeli dördü bugün
 kapatıldı; kalanlar (bugün doğrulandı — hiçbiri fonksiyon seviyesinde bozuk değil, hepsi
 BAĞLANTI/GARANTİ seviyesinde, yani grep'le görünmez):
 
@@ -358,6 +474,50 @@ BAĞLANTI/GARANTİ seviyesinde, yani grep'le görünmez):
 | `CLAUDE.md:494` | `tiktok_publish_plan.py` "hiçbir yerden referans almıyor" → SKILL.md ve büyüme listesi referanslı; modül "ölü" izlenimi veriyor |
 | `CLAUDE.md` Zamanlayıcı bölümü | görevler betikleri doğrudan çalıştırıyor gibi → üçü de `gorev_sarmalayici.py` üzerinden; bir görev çalışmadığında bakılacak **İLK dosya** odur ve adı kalıcı bağlam dosyasında hiç geçmiyor |
 | `log_rotate.py:1` | "auto_process.log ve watch_projects.log için" → `dj_famous_process.log` de kapsamda |
+
+**2026-09-12 akşam — tablodaki 13 satır KAPATILDI** (hepsi koddan yeniden
+doğrulandı, sonra düzeltildi):
+
+`README.md:299` + **bonus** `ek_platform_backfill.py:40` (aynı uydurma sembol adı
+modülün KENDİ docstring'inde de vardı) · `tiktok_publish_plan.py:27` (20 → **21**,
+sayının nereden geldiği de yazıldı) · `suno-video-render/SKILL.md:79` (`THEMES`
+**7**, ve `dj` slotunun DİL akışını tetiklediği not edildi) ·
+`suno-video-render/SKILL.md` + `README.md:16` (`generate_cover` → önce Pexels;
+dış API bağımlılığı ve lisans artık görünür) · `notify.py` ("beş kalem" → sayma
+bırakıldı, kanonik liste `saglik_kontrol.kontrol_et()`) · `youtube_stats.py:114`
+("HER İKİ kök" → **ÜÇ**) · `youtube_comments.py:17` (var olmayan pano →
+`upload/yorum_gonder.py`) · `youtube_playlists.py:766` (`_video_haritasi` →
+`_video_idler`, yanlış emsalin nerede GERÇEKTEN olduğu da yazıldı) ·
+`stock_art.py:18` + `:226` ("her zaman aynı fotoğraf" → indeks yalnızca
+başlangıç noktası) · `dj_hud.py:11-14` (ekolayzer iddiası — `ffmpeg_utils`'te
+`showwaves`/`showfreqs` YOK, doğrulandı) · `saglik_kontrol.py` (dört ayrı yerde
+donmuş adım sayısı; artık "kanonik liste `kontrol_et()`" deniyor) ·
+`youtube_upload.py` argparse (`projects/ (+ dj_sets/)` → **üç** kök) ·
+`log_rotate.py:1` (`dj_famous_process.log` de kapsamda, üç çağıran yazıldı).
+
+**`bluesky_upload.py:224` — bu satır bir BELGE değil, bir KOD hatasıydı ve öyle
+kapatıldı.** ZWJ dalı bir sonraki karakteri KOŞULSUZ yutuyordu: `"a"+ZWJ+"b"`
+gerçekte 2 grapheme iken **1** sayılıyordu, yani docstring'in "asla AZ saymaz"
+GARANTİSİ tam ters yönde çiğneniyordu. Bedeli soyut değil: AZ sayan bir sayaç
+`trim_to_graphemes()`'i "daha yer var" diye yanıltır ve Bluesky'ın **300
+grapheme** sınırını AŞAN bir gönderi üretir — istek REDDEDİLİR, gönderi hiç
+yayınlanmaz. Düzeltme: `_piktografik_mi()` ile lookahead (UAX#29 GB11'in
+yaklaşık hâli) — ZWJ artık yalnızca bir EMOJİ yutuyor, harf/rakam yutmuyor.
+Yanılma yönü bilinçli: emin olunamayan yerde FAZLA sayılıyor (fazla sayma metni
+erken kırpar, az sayma gönderiyi öldürür). Koruma:
+`tests/test_bluesky_grapheme.py` (35 test — aile/bayrak/gökkuşağı/ten rengi
+dizileri hâlâ TEK grapheme, NFD birleşik işaretler doğru, ve garantinin kendisi
+ölçülüyor). Kırmızı/yeşil: HEAD'in dosyasıyla iki ZWJ testi FAILED, düzeltmeyle
+35/35 passed.
+
+**Kapatılmayan 10 satır — hepsi DOSYA SAHİPLİĞİ dışında** (bu turda o dosyalara
+yazma yetkisi yoktu; paralel ajan / kalıcı bağlam dosyaları):
+`CLAUDE.md:637`, `CLAUDE.md:494`, `CLAUDE.md` Zamanlayıcı bölümü,
+`derlemeler/README.md:43`, `derlemeler/README.md` ("sıralama izlenmeye göre"),
+`derlemeler/README.md:15`, `dj_sets/README.md:234`, `:104`, `:259`, `:273`, `:3`.
+⚠ İkisi **kodda da** vardı ve kod tarafı DÜZELTİLDİ: `derleme.py`'nin kendi
+modül docstring'i de "sıralama izlenmeye göre" diyordu (gerçek: SEÇİM izlenmeye,
+**SIRALAMA enerji eğrisine** — `sec()` doğru anlatıyor).
 
 ---
 

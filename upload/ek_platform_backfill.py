@@ -37,7 +37,7 @@ doğrulandı ve ikisi de burada kapatıldı:
      "Telegram'a hiç gitmemiş" görünür (oysa dikey sürüm GİTMİŞ), her koşuda
      `_ensure_size_ok` hatası alır ve GÜNLÜK TEK SLOTU kalıcı olarak işgal edip
      asıl eksik şarkıları da bloke ederdi. Çözüm: kök başına SAPMA
-     (`KOK_SAPMALARI`), dj_famous_process'teki tablonun birebir karşılığı.
+     (`TELEGRAM_DJ_SAPMASI`), dj_famous_process'teki tablonun birebir karşılığı.
   2. **Boyut ön koşulu.** Yukarıdaki sapma bugünkü vakayı çözüyor ama koruma
      dosya boyutunun KENDİSİNE de bağlandı (`MAKS_BAYT`): hiçbir zaman
      yüklenemeyecek bir aday, kuyruğun başında sonsuza kadar oturan ve her gün

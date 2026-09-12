@@ -16,7 +16,11 @@ yorumları TEK istekte geliyor — sayfa başına 1 birim. Video video dolaşmak
 
 YANIT YAZMA BU MODÜLDE YOK. Bilerek: yanıt 50 birim ve daha önemlisi
 YouTube'un "high-volume, repetitive" spam tanımına giren tek şey şablon yanıt.
-Yanıt, panodan tek tek onaylanarak gönderilmeli (bkz. plugin_api).
+Yanıt, tek tek ONAYLANARAK gönderilmeli; bunun GERÇEK yolu
+`upload/yorum_gonder.py` (taslaklar `yorum_taslaklari.json`'da
+`onay_bekliyor` durumunda bekler, `--gonder --limit N` ile gider).
+Pano (plugin_api) tarafında gönderen bir uç YOK — eski hâli spam riskini
+yöneten insan onayı adımını var olmayan bir yere havale ediyordu.
 
 Kullanım:
     python upload/youtube_comments.py            # önbelleği tazele

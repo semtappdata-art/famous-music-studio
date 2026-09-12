@@ -23,8 +23,12 @@ TASARIM KARARLARI:
 
 * Yalnızca YAYINDA olan şarkılar. Liste dışı (unlisted) olanlar atlanıyor —
   'Küllerimden Geç' gibi kopyalar derlemeye girmemeli.
-* Sıralama izlenmeye göre, EN ÇOK İZLENEN ÖNDE. Derlemede ilk 30 saniye
-  izleyiciyi tutar ya da kaybeder; en güçlü parçayı sona saklamak riskli.
+* SEÇİM izlenmeye göre (en çok izlenenden başlayıp hedef süre dolana kadar),
+  **SIRALAMA enerji eğrisine göre** — sakin açılış → yükseliş → tepe → iniş;
+  açılışta İKİNCİ en sakin parça var, çünkü ilk 30 saniye izleyiciyi tutar ya
+  da kaybeder. Gerekçe ve kod: `sec()`. (Bu satır 2026-09-12'ye kadar
+  "sıralama izlenmeye göre" diyordu — YANLIŞTI; izlenme sırası bir metrikten
+  üretilir, "küratörlük" iddiasının tam tersi.)
 * Parçalar arası çapraz geçiş (sert kesme değil) — DJ setindeki gerekçeyle aynı.
 * `state.json`'da TELİF İŞARETİ (`telif_araliklari` YA DA `telif_eser`,
   bkz. `TELIF_ISARETLERI`) taşıyan şarkılar TAMAMEN atlanıyor.

@@ -111,8 +111,10 @@ def get_stats_batch(base: str | None = None, force: bool = False) -> dict:
     force=False ise TAZELEME_ARALIGI_SN dolmadan hicbir istek atilmaz — bu
     fonksiyon saatlik auto_process'ten cagriliyor.
     """
-    # base verilmezse HER IKI kok taranir; verilirse (testler, tek kok islemek
-    # isteyen cagrilar) yalnizca o.
+    # base verilmezse UC kokun HEPSI taranir (projects / dj_sets / derlemeler,
+    # bkz. KOKLER); verilirse (testler, tek kok islemek isteyen cagrilar)
+    # yalnizca o. "HER IKI kok" yazan eski hali YANLISTI ve bu dosyanin VAR
+    # OLMA SEBEBI tam olarak "yanlis kumeye bakan dogru kod" arizasiydi.
     kokler = (base,) if base else KOKLER
 
     hedefler = []          # (state_yolu, alan_oneki, video_id)

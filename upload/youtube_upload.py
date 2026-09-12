@@ -839,7 +839,8 @@ def main():
     )
     parser.add_argument(
         "--all", action="store_true",
-        help="--thumbnail-only ya da --description-only ile birlikte: projects/ (+ dj_sets/) "
+        help="--thumbnail-only ya da --description-only ile birlikte: ÜÇ içerik kökünün "
+             "(projects/ + dj_sets/ + derlemeler/, bkz. uyumluluk.KOK_ADLARI) "
              "altındaki YouTube'a zaten yüklü TÜM projeleri tek seferde düzeltir.",
     )
     parser.add_argument(

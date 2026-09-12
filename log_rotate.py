@@ -1,4 +1,9 @@
-"""auto_process.log ve watch_projects.log için paylaşılan basit log temizleme.
+"""auto_process.log, watch_projects.log VE dj_famous_process.log için
+paylaşılan basit log temizleme.
+
+Üç çağıran var: `auto_process.main()`, `watch_projects` (kendi log'u + DJ
+log'u, bkz. DJ_FAMOUS_LOG_PATH) ve `dj_famous_process.main()`.
+`gorev_izleri/*.log` KAPSAM DIŞI (bilerek — bkz. gorev_sarmalayici._buda).
 
 Log dosyaları süresiz büyümesin diye — 7 günden eski satırlar her çağrıda
 atılıp dosya yeniden yazılıyor (ayrı .1/.2 gibi döndürülmüş dosyalar yok,

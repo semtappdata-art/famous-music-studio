@@ -51,9 +51,14 @@ değil: koşu başına BİR KEZ (her çağrıda değil, gürültü olmasın diye
 scriptin kendi log dosyasına "bildirim kanalı kurulu değil" satırı düşer —
 bkz. uyar_bir_kez(). NEDEN: bu dosya 2026-09-11'e kadar hiç oluşturulmamıştı,
 send() her seferinde sessizce False döndüğü için telefona BUGÜNE KADAR TEK BİR
-bildirim gitmedi ve buna bağlı TÜM emniyet ağları (TikTok taslak hatırlatması,
+bildirim gitmedi ve buna bağlı emniyet ağlarının HEPSİ ölü durumdaydı — kimse
+fark etmedi. Liste o gün BEŞ kalemdi (TikTok taslak hatırlatması,
 watch_projects nabız uyarısı, Instagram token uyarısı, Content ID karantina
-bildirimi, haftalık rapor hatırlatması) ölü durumdaydı — kimse fark etmedi.
+bildirimi, haftalık rapor hatırlatması); 2026-09-12'de EN AZ BEŞ tane daha
+bağlandı (görev tanımı, kaçan koşu, git senkron, ses takip tutarlılığı, yayın
+durgunluğu, üretim kuyruğu). Sayıyı BURADA saymayı bırak: kanonik liste
+`saglik_kontrol.kontrol_et()`. "Beş kalem" yazan eski hâli, yeni ağ ekleyen
+kişiye kapsamı doğru saydığını düşündürüyordu.
 
 GÖNDERİM BİÇİMİ: ntfy'nin JSON publish uç noktası (POST https://ntfy.sh/,
 topic/title/message GÖVDEDE) — HTTP başlığı DEĞİL. NEDEN: bkz. send().

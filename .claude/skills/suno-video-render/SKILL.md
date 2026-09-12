@@ -42,7 +42,12 @@ kontrol etmek hızlı bir sağlık kontrolü.
 ## Proje Yapısı
 
 - `render.py` — CLI giriş noktası (`--project <klasör>` veya `--all`), platformları paralel render eder (`config.PLATFORMS`)
-- `generate_cover.py` — eksik `cover.png`/`art.png`'yi tema rengi + bokeh dokusuyla otomatik üretir (`auto_process.py` render'dan önce çağırır)
+- `generate_cover.py` — eksik `cover.png`/`art.png`'yi otomatik üretir (`auto_process.py`
+  render'dan önce çağırır). SIRA ÖNEMLİ: **önce `stock_art.py` ile Pexels'ten şarkının
+  tarzına/sözlerine uygun GERÇEK bir fotoğraf indiriliyor**; tema rengi + deterministik
+  bokeh dokusu yalnızca anahtar/ağ/sonuç yoksa düşülen YEDEK yol. Yani bu adımın bir DIŞ
+  API bağımlılığı (`stock_art_config.json`, gitignored) ve 3. taraf lisansı (Pexels
+  License — ücretsiz, ticari kullanıma açık, atıf zorunlu değil) var.
 - `ffmpeg_utils.py` — ffprobe süre okuma + kart/backdrop(pan+hue)/marquee/progress-bar filtergraph inşası + `render_video()`
 - `audio_highlight.py` — Shorts/Reels için sesin en yoğun/enerjik bölümünü bulur (`config.HIGHLIGHT_DURATION`, 45sn)
 - `auto_process.py` — asıl production giriş noktası: cover/art üretimi + render + YouTube (uzun+Shorts) + TikTok + Instagram, hepsi tek komutta
@@ -76,9 +81,13 @@ kontrol etmek hızlı bir sağlık kontrolü.
 - `MARQUEE_SEPARATOR`, `MARQUEE_REPEAT`, `MARQUEE_SPEED_PX_S`, `FONT_SIZE_RATIO`, `FONT_COLOR` — künye tarzı kayan yazı.
 - `PROGRESS_BAR_*` — alttaki ilerleme çubuğu boyut/renk/konum ayarları.
 - `MAX_PARALLEL_RENDERS` — kaç platformun aynı anda render edileceği.
-- `THEMES` / `DEFAULT_THEME` — meta.json'daki `"theme"` alanına göre (`pop`, `rock`,
-  `elektronik`, `akustik`, `hiphop`, `arabesk`) kayan yazının rengini ve caption'daki tür
-  hashtag'lerini belirler — backdrop'un rengini DEĞİL (o artık `art.jpg`'den geliyor).
+- `THEMES` / `DEFAULT_THEME` — meta.json'daki `"theme"` alanına göre kayan yazının rengini
+  ve caption'daki tür hashtag'lerini belirler — backdrop'un rengini DEĞİL (o artık
+  `art.jpg`'den geliyor). **YEDİ tema var, altı değil:** ana kataloğun altısı (`pop`,
+  `rock`, `elektronik`, `akustik`, `hiphop`, `arabesk`) + `dj`. `dj` listede
+  görünmüyordu ve YALNIZCA bir renk slotu DEĞİL: `social_text.resolve_language()` dil
+  seçimini `THEMES[tema]["language"]` üzerinden yapıyor ve `dj` tek `"en"` kayıt —
+  silen/atlayan biri DJ Famous hattının metinlerini sessizce Türkçeye düşürür.
 - `HIGHLIGHT_DURATION`, `HIGHLIGHT_PLATFORMS` — Shorts/Reels için hangi platformların ses
   highlight'ıyla kırpılacağı ve ne kadar süreyle.
 

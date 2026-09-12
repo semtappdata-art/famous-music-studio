@@ -15,11 +15,15 @@ ARAMA TERİMİ nereden gelir (öncelik sırasıyla):
   2. config.THEMES[theme]["art_query"] — tarzın varsayılan atmosferi
 Terimler İngilizce yazılır (Pexels'in arama dizini ağırlıklı İngilizce).
 
-DETERMİNİSTİK: Aynı şarkı (aynı başlık + aynı sorgu) her zaman AYNI fotoğrafı
-seçer — sonuç listesinden başlığın hash'ine göre bir indeks alınır. Böylece bir
-projeyi yeniden işlemek kapağı rastgele değiştirmez (projenin genelindeki
-deterministik üretim ilkesiyle aynı, bkz. social_text.py, generate_cover.py'nin
-bokeh seed'i).
+DETERMİNİSTİK ama SABİT DEĞİL: başlığın hash'i artık sonucun KENDİSİNİ değil
+yalnızca BAŞLANGIÇ NOKTASINI veriyor; o noktadan itibaren alaka filtresi ve
+katalog-içi kopya kontrolü seçimi KAYDIRABİLİR (doğru anlatan yer: bu dosyadaki
+`_sec()` yorumu). Yani "aynı şarkı her zaman aynı fotoğrafı alır" YANLIŞ; doğru
+ifade: aynı girdi + aynı katalog durumu + aynı Pexels sonucu = aynı fotoğraf.
+Rastgelelik YOK, ama sonuç KATALOĞA BAĞLI. Amaç değişmedi: bir projeyi yeniden
+işlemek kapağı rastgele değiştirmesin (projenin genelindeki deterministik
+üretim ilkesiyle aynı, bkz. social_text.py, generate_cover.py'nin bokeh
+seed'i).
 
 BOZULMAZ: API anahtarı yoksa, ağ yoksa, sonuç yoksa ya da indirme başarısızsa
 None döner — generate_cover.py sessizce eski prosedürel bokeh üretimine düşer.
@@ -223,7 +227,12 @@ def _load_api_key(alan: str = "pexels_api_key") -> str | None:
 
 
 def _secim_indeksi(title: str, n: int) -> int:
-    """Başlıktan türeyen sabit indeks — aynı şarkı hep aynı fotoğrafı alır."""
+    """Başlıktan türeyen sabit BAŞLANGIÇ indeksi.
+
+    "Aynı şarkı hep aynı fotoğrafı alır" DEĞİL: bu yalnızca aramanın nereden
+    başladığını söylüyor. Alaka filtresi ve kopya kontrolü seçimi ileri
+    kaydırabilir (bkz. `_sec()`).
+    """
     seed = int(hashlib.sha256(title.encode("utf-8")).hexdigest()[:8], 16)
     return seed % n
 
