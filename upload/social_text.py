@@ -5,6 +5,7 @@ kısa bir caption üretilir — Instagram/TikTok'ta caption içindeki linkler za
 tıklanabilir değildir.
 """
 
+import hashlib
 import os
 import sys
 
@@ -27,6 +28,28 @@ def pick_deterministic(title: str, options: list, salt: int = 0) -> str:
     return options[index]
 
 
+def pick_subset(title: str, options: list, count: int, salt: int = 0) -> list:
+    """Havuzdan `count` tane seçer — şarkı başlığına göre DETERMİNİSTİK.
+
+    Aynı şarkı her koşuda aynı seti alır (yeniden üretim arşivi bozmasın),
+    şarkılar arasında set değişir. Adım da başlığa göre kayıyor; sabit adımda
+    havuzun hep aynı üçlüsü seçiliyordu.
+    """
+    n = len(options)
+    if n == 0:
+        return []
+    count = min(count, n)
+    seed = int(hashlib.sha256((title + str(salt)).encode("utf-8")).hexdigest()[:8], 16)
+    adim = 1 if n < 2 else 1 + seed % (n - 1)
+    secilen, i = [], 0
+    while len(secilen) < count and i < n * 3:
+        aday = options[(seed + i * adim) % n]
+        if aday not in secilen:
+            secilen.append(aday)
+        i += 1
+    return secilen
+
+
 def resolve_language(meta: dict) -> str:
     """Paylaşım metinlerinin dilini belirler: meta.json'da açık bir "language"
     varsa o öncelikli (istisna/override için), yoksa Suno'da üretilen müziğin
@@ -39,7 +62,24 @@ def resolve_language(meta: dict) -> str:
     return config.THEMES.get(theme_key, {}).get("language", "tr")
 
 
+def stil_etiketleri(meta: dict) -> list:
+    """DJ setinin muzik stiline ozel etiketler (config.SET_STILLERI).
+
+    Tema etiketlerine EK olarak donuyor, onlarin yerine degil: "DJ Set"/"Mix"
+    marka sinyali olarak kalmali, stil etiketleri ise seti kendi kitlesine
+    tasiyor. meta.json'da `set_style` yoksa bos liste - eski setler etkilenmez.
+    """
+    stil = config.set_stili(meta)
+    return list(stil["etiketler"]) if stil else []
+
+
 def build_caption(meta: dict) -> str:
+    """Şarkıya ÖZEL metin varsa genel havuzun önüne geçer (2026-09-10):
+    meta.json içindeki `custom_hooks` / `custom_questions`, o şarkının
+    SÖZLERİNDEN türetilmiş satırlardır ("Masada iki tabak, biri hep boş" gibi).
+    Yoksa config.py'deki genel havuza düşülür — söz dosyası olmayan ilk üç
+    şarkı (Gece Sürüşü, Beni Bırakma, Yeniden Doğacağım) o yolda kalır.
+    """
     """Caption BİLİNÇLİ olarak başka bir platforma yönlendirme içermiyor — Instagram/
     TikTok'un keşfet/For You dağıtımı, caption'da "başka platforma git" mesajı olan
     içeriği hafifçe cezalandırıyor olabilir (resmi olarak açıklanmıyor ama yaygın
@@ -52,28 +92,39 @@ def build_caption(meta: dict) -> str:
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
-    genre_hashtags = [hashtag(theme["label"])] + [hashtag(t) for t in theme.get("related", [])]
+    genre_hashtags = ([hashtag(theme["label"])]
+                      + [hashtag(t) for t in theme.get("related", [])]
+                      + [hashtag(t) for t in stil_etiketleri(meta)])
 
     if resolve_language(meta) == "en":
-        discovery_hashtags = config.DISCOVERY_HASHTAGS_EN
+        discovery_hashtags = pick_subset(title, config.DISCOVERY_HASHTAGS_EN,
+                                         config.DISCOVERY_HASHTAG_COUNT, salt=13)
         hashtags = " ".join(config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags)
-        hook = pick_deterministic(title, config.HOOK_LINES_EN)
-        engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS_EN, salt=7)
+        hook = pick_deterministic(title, meta.get("custom_hooks") or config.HOOK_LINES_EN)
+        engagement_question = pick_deterministic(
+            title, meta.get("custom_questions") or config.ENGAGEMENT_QUESTIONS_EN, salt=7)
+        use_line = pick_deterministic(title, config.USE_LINES_EN, salt=3)
+        follow_line = pick_deterministic(title, config.FOLLOW_LINES_EN, salt=11)
         return (
             f"{hook}\n\n{title} 🎵\n\n"
-            f"Feel free to use this track in your edits 🔥\n\n"
-            f"Follow for more tracks\n\n"
+            f"{use_line}\n\n"
+            f"{follow_line}\n\n"
             f"{engagement_question}\n\n{hashtags}"
         )
 
-    hashtags = " ".join(config.BRAND_HASHTAGS + config.DISCOVERY_HASHTAGS + genre_hashtags)
-    hook = pick_deterministic(title, config.HOOK_LINES)
-    engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS, salt=7)
+    discovery_hashtags = pick_subset(title, config.DISCOVERY_HASHTAGS,
+                                     config.DISCOVERY_HASHTAG_COUNT, salt=13)
+    hashtags = " ".join(config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags)
+    hook = pick_deterministic(title, meta.get("custom_hooks") or config.HOOK_LINES)
+    engagement_question = pick_deterministic(
+        title, meta.get("custom_questions") or config.ENGAGEMENT_QUESTIONS, salt=7)
+    use_line = pick_deterministic(title, config.USE_LINES, salt=3)
+    follow_line = pick_deterministic(title, config.FOLLOW_LINES, salt=11)
 
     return (
         f"{hook}\n\n{title} 🎵\n\n"
-        f"Bu sesi edit/kesit videolarında kullanabilirsin 🔥\n\n"
-        f"Yeni şarkılar için takipte kalın\n\n"
+        f"{use_line}\n\n"
+        f"{follow_line}\n\n"
         f"{engagement_question}\n\n{hashtags}"
     )
 
@@ -112,6 +163,20 @@ def build_youtube_comment(youtube_url: str, lang: str = "tr", platform: str = "i
     latest.html, bkz. latest_release.py) görünür/tıklanabilir. Bio linkinin
     kendisini o adrese bağlamak kullanıcının uygulamadan elle yapması gereken,
     tek seferlik bir profil ayarı."""
+    # Facebook'ta @handle satiri YOK ve olmamali. Iki ayri sebep:
+    #   1. Ikinci satirin tek varlik sebebi Instagram/TikTok'ta duz linklerin
+    #      TIKLANAMAMASI. Facebook yorumundaki link zaten tiklanabilir, yani
+    #      satir orada bir sorunu cozmuyor.
+    #   2. config.SOCIAL_HANDLES'da "facebook" anahtari yok ve varsayilan
+    #      Instagram handle'ina dusuyordu — Facebook yorumuna baska bir
+    #      platformun hesap adi, o sayfanin adiymis gibi yaziliyordu.
+    #      Sayfanin vanity URL'i de alinmamis durumda (username: None),
+    #      yani mention teknik olarak zaten mumkun degil.
+    if platform == "facebook":
+        if lang == "en":
+            return f"🎧 Full track on YouTube: {youtube_url}"
+        return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}"
+
     handle = config.SOCIAL_HANDLES.get(platform, config.SOCIAL_HANDLES["instagram"])
     if lang == "en":
         return f"🎧 Full track on YouTube: {youtube_url}\nTap @{handle} above and check the link in bio 🔗"

@@ -19,19 +19,23 @@ bağlantı eklemek için).
 """
 
 import argparse
+import collections
 import json
 import os
 import subprocess
 import sys
 import time
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO_DIR)
 
 import config
+import state_io
+import uyumluluk
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
-from social_text import build_caption, hashtag, pick_deterministic, resolve_language
+from social_text import build_caption, hashtag, pick_deterministic, resolve_language, stil_etiketleri
 from youtube_auth import get_authenticated_service
 
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
@@ -44,6 +48,64 @@ def load_meta(project_dir: str) -> dict:
         with open(meta_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
+
+
+def _derleme_temalari(meta: dict) -> list:
+    """Derlemedeki her parçanın tema anahtarı (çoklu, seçim sırasıyla).
+
+    Birincil kaynak `meta["derleme_temalari"]` — derleme.py bunu yazıyor.
+    GERİYE DÖNÜK YOL: bu alan eklenmeden ÖNCE üretilmiş derlemelerde (ör. bu
+    değişiklik yazılırken render'da olan "Gece Seansı Vol. 1") alan yok; o
+    durumda temalar `derleme_liste`'deki parça adlarından kaynak projelerin
+    meta.json'ına bakılarak okunuyor. Aksi hâlde tür bilgisi hiç bulunamaz ve
+    derleme, meta'daki tek `theme` alanına (karma bir derlemede yanıltıcı)
+    geri düşerdi. Okuma hatası yutuluyor: eksik tür etiketi yüklemeyi
+    durdurmaya değmez.
+    """
+    temalar = [t for t in (meta.get("derleme_temalari") or []) if t]
+    if temalar:
+        return temalar
+    kok = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for parca in meta.get("derleme_liste") or []:
+        yol = os.path.join(kok, "projects", str(parca.get("ad", "")), "meta.json")
+        try:
+            with open(yol, "r", encoding="utf-8") as f:
+                tema = json.load(f).get("theme")
+        except (OSError, ValueError):
+            continue
+        if tema:
+            temalar.append(tema)
+    return temalar
+
+
+def _derleme_tur_bilgisi(meta: dict) -> tuple:
+    """(başlıkta kullanılacak tür adı, etiket listesi) — derlemedeki parçalardan.
+
+    NEDEN: derlemenin meta.json'ındaki tek `theme` alanı derlemeyi anlatmıyor
+    (eskiden --en-iyi ile tema verilmediği için config.DEFAULT_THEME'e düşüyor
+    ve 13 parçalık karma bir derleme "Türkçe Hip-Hop Şarkısı" diye
+    yayınlanıyordu). Tür artık parçaların temalarından türetiliyor.
+
+    Baskın tema parçaların YARISINDAN fazlasını kapsıyorsa başlıkta o türün adı
+    kullanılıyor; kapsamıyorsa derleme gerçekten KARMA demektir ve "Müzik"
+    deniyor — "Gece Seansı Vol. 1"de en kalabalık tema 13 parçanın 5'i; buna
+    "Hip-Hop derlemesi" demek ilk sürümdeki yanlışın daha yumuşak bir hâli
+    olurdu. Etiketler (tags) yine TÜM temaları içeriyor: orada çoğulluk
+    yanıltıcı değil, arama sinyali.
+    """
+    temalar = _derleme_temalari(meta)
+    sayac = collections.Counter(temalar)
+    etiketler = []
+    for anahtar, _ in sayac.most_common():
+        etiket = config.THEMES.get(anahtar, {}).get("label")
+        if etiket and etiket not in etiketler:
+            etiketler.append(etiket)
+    tur = "Müzik"
+    if sayac:
+        baskin, adet = sayac.most_common(1)[0]
+        if adet * 2 > len(temalar):
+            tur = config.THEMES.get(baskin, {}).get("label") or "Müzik"
+    return tur, etiketler
 
 
 def build_snippet(meta: dict) -> dict:
@@ -62,7 +124,16 @@ def build_snippet(meta: dict) -> dict:
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
-    genre_tags = [theme["label"]] + theme.get("related", [])
+    # DERLEME DALI: derleme tek bir şarkı değil, birden çok temadan parça
+    # içeriyor — tema etiketleri meta'daki tek `theme` alanından türetilemez
+    # (bkz. _derleme_tur_bilgisi). "Derleme"/"Mix" etiketleri de ekleniyor:
+    # izleyicinin aradığı şey uzun formatta budur.
+    derleme = bool(meta.get("derleme"))
+    derleme_tur, derleme_etiketleri = _derleme_tur_bilgisi(meta) if derleme else ("", [])
+    if derleme:
+        genre_tags = derleme_etiketleri + ["Derleme", "Mix", "Karışık Müzik"]
+    else:
+        genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta)
     links = config.SOCIAL_LINKS
 
     if resolve_language(meta) == "en":
@@ -96,15 +167,46 @@ def build_snippet(meta: dict) -> dict:
         if theme_key == "dj":
             video_title = title
             lyrics_tags = []
+        elif derleme:
+            # "(Sözleri)" EKİ YOK: derlemenin sözleri yok, 13 ayrı şarkının
+            # sözleri var — "<ad> sözleri" arama niyetiyle yayınlamak izleyiciyi
+            # yanlış beklentiyle getirir (ve "Hip-Hop Şarkısı" demek 39 dakikalık
+            # karma bir derleme için düpedüz yanlıştı). Başlık artık ne olduğunu
+            # söylüyor: kaç şarkılık, hangi türde bir DERLEME.
+            _adet = len(meta.get("derleme_liste") or [])
+            _sayi = f"{_adet} Şarkılık " if _adet else ""
+            video_title = f"{title} | {_sayi}Türkçe {derleme_tur} Derlemesi"
+            lyrics_tags = []
         else:
             video_title = f"{title} (Sözleri) | Türkçe {theme['label']} Şarkısı"
             lyrics_tags = [f"{title} sözleri", "sözleri", "lyrics"]
 
-    genre_hashtags = [hashtag(theme["label"])] + [hashtag(t) for t in theme.get("related", [])]
+    if derleme:
+        genre_hashtags = [hashtag(t) for t in derleme_etiketleri] + ["#Derleme", "#Mix"]
+    else:
+        genre_hashtags = ([hashtag(theme["label"])]
+                          + [hashtag(t) for t in theme.get("related", [])]
+                          + [hashtag(t) for t in stil_etiketleri(meta)])
     hashtags = " ".join(config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags)
 
+    # Derleme parca listesi -> YouTube BOLUMLERI (chapters).
+    # YouTube'un kurali: ilk damga 0:00 olmali, en az 3 bolum, her biri >=10 sn.
+    # derleme.py bu ucunu de sagliyor. Bolumler hem gezinmeyi kolaylastiriyor
+    # hem de "inauthentic content" politikasina karsi kuratorluk sinyali veriyor
+    # (bkz. derleme.py modul notu) - toplu uretim degil, secilmis bir liste.
+    # Kuratorluk gerekcesi -> aciklamanin BASINA, bolum listesinden once.
+    # Incelemeci aciklamaya bakiyor; katkinin ne oldugunu yazili gormeli.
+    _not = meta.get("derleme_notu")
+    kurator = ("\n\n" + _not) if _not else ""
+
+    bolumler = ""
+    _liste = meta.get("derleme_liste") or []
+    if len(_liste) >= 3:
+        _satirlar = [("%s %s" % (x["zaman"], x["ad"])) for x in _liste]
+        bolumler = "\n\nParçalar:\n" + "\n".join(_satirlar)
+
     description = (
-        f"{hook}\n\n{title} | {config.STATIC_LABEL_TEXT}\n\n"
+        f"{hook}\n\n{title} | {config.STATIC_LABEL_TEXT}{kurator}{bolumler}\n\n"
         f"{follow_line}\n\n"
         f"📷 Instagram: {links['instagram']}\n"
         f"🎵 TikTok: {links['tiktok']}\n"
@@ -122,6 +224,15 @@ def build_snippet(meta: dict) -> dict:
         "description": description,
         "tags": tags,
         "categoryId": "10",  # Music
+        # Video dili AYARLANMALI. Boş bırakılınca YouTube tahmin ediyor ve
+        # Türkçe şarkıları "İngilizce (ABD)" olarak işaretliyor — Studio'da
+        # üç videoda doğrulandı (2026-09-10). Sonuçları: otomatik altyazı
+        # (ASR) yanlış dilde deneniyor ya da hiç üretilmiyor, otomatik çeviri
+        # ve dublaj yanlış kaynaktan türüyor, öneri algoritması yanlış
+        # kitleye gösteriyor. resolve_language() zaten stile göre "tr"/"en"
+        # veriyor (DJ Famous "en", ana katalog "tr").
+        "defaultLanguage": resolve_language(meta),
+        "defaultAudioLanguage": resolve_language(meta),
     }
 
 
@@ -137,7 +248,13 @@ def build_shorts_snippet(meta: dict, full_video_id: str | None = None) -> dict:
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
-    genre_tags = [theme["label"]] + theme.get("related", [])
+    # Shorts başlığında "(Sözleri)" zaten yoktu, ama ETİKETLER uzun formattaki
+    # aynı hatayı taşıyordu: derlemenin Short'u meta'daki tek `theme` yüzünden
+    # "Hip-Hop/Trap/Rap" etiketleniyordu. Uzun formatla AYNI kaynaktan türet.
+    if meta.get("derleme"):
+        genre_tags = _derleme_tur_bilgisi(meta)[1] + ["Derleme", "Mix", "Karışık Müzik"]
+    else:
+        genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta)
 
     description = build_caption(meta)
     if full_video_id:
@@ -151,6 +268,15 @@ def build_shorts_snippet(meta: dict, full_video_id: str | None = None) -> dict:
         "description": description,
         "tags": tags,
         "categoryId": "10",  # Music
+        # Video dili AYARLANMALI. Boş bırakılınca YouTube tahmin ediyor ve
+        # Türkçe şarkıları "İngilizce (ABD)" olarak işaretliyor — Studio'da
+        # üç videoda doğrulandı (2026-09-10). Sonuçları: otomatik altyazı
+        # (ASR) yanlış dilde deneniyor ya da hiç üretilmiyor, otomatik çeviri
+        # ve dublaj yanlış kaynaktan türüyor, öneri algoritması yanlış
+        # kitleye gösteriyor. resolve_language() zaten stile göre "tr"/"en"
+        # veriyor (DJ Famous "en", ana katalog "tr").
+        "defaultLanguage": resolve_language(meta),
+        "defaultAudioLanguage": resolve_language(meta),
     }
 
 
@@ -212,22 +338,46 @@ def _upload(video_path: str, snippet: dict, privacy: str, publish_at: str | None
     return response["id"]
 
 
+def _en_yeni_kapak(project_dir: str, names: list) -> str | None:
+    """Verilen adaylar arasından EN YENİ (mtime) olanı döndürür, birden fazla
+    aday varsa UYARI basar.
+
+    NEDEN: eskiden liste sırasıyla İLK eşleşen dönüyordu — yani `cover.jpg`
+    her zaman `cover.png`'yi yeniyordu, oysa kapak üreticisi
+    (`generate_cover.py`) `cover.png` yazıyor. Bir projede eski bir
+    `cover.jpg` kalmışsa yenilenen PNG SESSİZCE yok sayılıyor ve ESKİ kapak
+    yükleniyordu; hiçbir hata mesajı yoktu. Uyarı satırı bilerek var: asıl
+    arıza yanlış dosyanın seçilmesi değil, seçimin sessiz olmasıydı."""
+    adaylar = [
+        os.path.join(project_dir, ad)
+        for ad in names
+        if os.path.isfile(os.path.join(project_dir, ad))
+    ]
+    if not adaylar:
+        return None
+    # Eşit mtime'da liste sırası korunsun diye sıralama kararlı (stable) kullanılıyor.
+    adaylar.sort(key=os.path.getmtime, reverse=True)
+    if len(adaylar) > 1:
+        digerleri = ", ".join(os.path.basename(p) for p in adaylar[1:])
+        print(
+            f"  UYARI: birden fazla kapak adayı var ({os.path.basename(project_dir)}), "
+            f"en yenisi kullanılıyor: {os.path.basename(adaylar[0])} "
+            f"(yok sayılan: {digerleri})"
+        )
+    return adaylar[0]
+
+
 def _find_cover(project_dir: str) -> str | None:
-    for name in COVER_NAMES:
-        path = os.path.join(project_dir, name)
-        if os.path.isfile(path):
-            return path
-    return None
+    return _en_yeni_kapak(project_dir, COVER_NAMES)
 
 
 def _find_cover_vertical(project_dir: str) -> str | None:
     """Shorts thumbnail'i için 9:16 kapak — yoksa (eski projeler) 16:9 cover.png'ye
     düşülür (hiç thumbnail'siz kalmaktan iyidir, sadece Shorts'un dikey kutusunda
     üstte/altta ince bir şerit görünebilir)."""
-    for name in COVER_VERTICAL_NAMES:
-        path = os.path.join(project_dir, name)
-        if os.path.isfile(path):
-            return path
+    dikey = _en_yeni_kapak(project_dir, COVER_VERTICAL_NAMES)
+    if dikey:
+        return dikey
     return _find_cover(project_dir)
 
 
@@ -239,7 +389,7 @@ def _prepare_thumbnail_jpeg(cover_path: str) -> str:
     dosyaya yazıp döndürüyoruz — çağıran temizlemekten sorumlu."""
     tmp_path = cover_path + "._thumb_tmp.jpg"
     cmd = ["ffmpeg", "-y", "-i", cover_path, "-q:v", "3", tmp_path]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise RuntimeError(f"Thumbnail JPEG'e dönüştürülemedi: {result.stderr[-500:]}")
     return tmp_path
@@ -278,8 +428,13 @@ def _update_state(project_dir: str, fields: dict) -> None:
         with open(state_path, "r", encoding="utf-8") as f:
             state = json.load(f)
     state.update(fields)
-    with open(state_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+    # ATOMIK yazim (state_io): bu fonksiyon video ID'si / yukleme damgasi gibi
+    # YENIDEN URETILEMEYEN alanlari yaziyor ve tam da uzun bir yukleme bittikten
+    # SONRA cagriliyor. Dogrudan `open(..., "w")` hedefi once sifirliyordu —
+    # yarida kesilen bir yazim hem bu kaydi hem dosyanin eski icerigini
+    # kaybettiriyordu. Ayrica uyumluluk._durum() bozuk state.json'da artik HATA
+    # uretip boru hattini durduruyor.
+    state_io._atomik_yaz(state_path, state)
 
 
 def _compute_publish_at(privacy: str, schedule: bool) -> str | None:
@@ -350,6 +505,113 @@ def upload_short(project_dir: str, privacy: str, full_video_id: str | None = Non
     return video_id
 
 
+def _golden_publish_at(gun_ertele: int = 0) -> str:
+    """`gun_ertele` gun SONRAKI ilk golden-hour'u UTC ISO8601 ("...Z") olarak doner.
+
+    _compute_publish_at ile AYNI mekanizma (config.next_golden_publish_time),
+    tek fark baslangic aninin ileri kaydirilmasi -- ikinci dalga kesitleri
+    (bkz. dj_clips.py) setin kendi yayin gunune binmesin diye. Yeni bir
+    zamanlama mantigi YOK, var olan fonksiyona baska bir `now` veriliyor.
+
+    TUZAK: next_golden_publish_time, verilen an ZATEN bir golden-hour
+    penceresinin icindeyse None doner ("hemen yayinla" demek). Burada None'i
+    "zamanlama yok"a cevirmek kesidi BUGUN yayinlardi -- tam kacinmak
+    istedigimiz sey. O yuzden None gelirse kaydirilmis anin KENDISI
+    kullaniliyor (o an zaten bir golden-hour).
+    """
+    hedef = datetime.now(config.TR_TZ) + timedelta(days=max(0, gun_ertele))
+    sonraki = config.next_golden_publish_time(hedef)
+    if sonraki is not None:
+        hedef = sonraki
+    return hedef.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _dakika_damgasi(saniye: float) -> str:
+    """123.4 -> "2:03" — kesidin setin neresinden geldigini gosteren damga."""
+    tam = max(0, int(saniye))
+    return "%d:%02d" % (tam // 60, tam % 60)
+
+
+def build_clip_snippet(meta: dict, full_video_id: str | None, bas_sn: float) -> dict:
+    """Ikinci dalga kesiti (output/clip_XX.mp4, bkz. dj_clips.py) icin snippet.
+
+    build_shorts_snippet'ten AYRI olmasinin tek sebebi BASLIK ve aciklamanin
+    ilk satiri. Kesit, setin kendi Shorts'uyla ayni baslikta ("<set> #Shorts")
+    cikarsa kanalda ayni adla iki neredeyse-ayni video olur -- bu, YouTube'un
+    "inauthentic content" politikasindaki (15 Temmuz 2025'te "repetitious
+    content"ten yeniden adlandirildi) tekrarlayici icerik tarifinin ta
+    kendisi. Baslikta ve aciklamanin ilk satirinda kesidin setin HANGI
+    dakikasindan geldigi ACIKCA yaziyor: hem izleyici icin bilgi, hem de
+    inceleyen bir insan icin kuratorluk sinyali -- derleme.py'deki
+    `derleme_notu`nun aciklamanin basina konmasiyla AYNI gerekce.
+    """
+    title = meta.get("title", "Untitled")
+    theme_key = meta.get("theme", config.DEFAULT_THEME)
+    theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
+    genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta)
+
+    damga = _dakika_damgasi(bas_sn)
+    lang = resolve_language(meta)
+    if lang == "en":
+        video_title = f"{title} — Set Highlight {damga} #Shorts"
+        kurator = f"A different moment from the same set, starting at {damga}."
+        tam_satir = "🎧 Full set on the channel: https://youtu.be/%s"
+    else:
+        video_title = f"{title} — Setin {damga} Anı #Shorts"
+        kurator = f"Aynı setin farklı bir anı — {damga} dakikasından."
+        tam_satir = "🎧 Setin tamamı kanalımızda: https://youtu.be/%s"
+
+    description = kurator + "\n\n" + build_caption(meta)
+    if full_video_id:
+        description += "\n\n" + (tam_satir % full_video_id)
+
+    discovery_hashtags = config.DISCOVERY_HASHTAGS_EN if lang == "en" else config.DISCOVERY_HASHTAGS
+    tags = genre_tags + [config.STATIC_LABEL_TEXT, "Shorts"] + [h.lstrip("#") for h in discovery_hashtags]
+
+    return {
+        "title": video_title,
+        "description": description,
+        "tags": tags,
+        "categoryId": "10",  # Music
+        "defaultLanguage": lang,
+        "defaultAudioLanguage": lang,
+    }
+
+
+def upload_clip(project_dir: str, clip_name: str, full_video_id: str | None = None,
+                bas_sn: float = 0.0, gun_ertele: int = 0,
+                privacy: str = "public") -> tuple[str, str]:
+    """output/<clip_name>'i ayri bir Short olarak, `gun_ertele` gun sonraki
+    golden-hour'a ZAMANLANMIS sekilde yukler. (video_id, publish_at) doner.
+
+    upload_short'tan AYRI bir fonksiyon: o `shorts_9x16.mp4`'u sabit kodluyor
+    ve state'e `youtube_shorts_*` yaziyor -- kesitte ikisi de yanlis olurdu
+    (dosya farkli; ayni anahtarlara yazmak setin kendi Shorts kaydini ezerdi).
+
+    state.json'a BURADA yazilmiyor (upload_video/upload_short'tan farkli olarak):
+    kesit alanlarinin sahibi dj_clips.kesit_yayinla -- hangi kesidin gittigi,
+    tekrar gonderilmemesi ve kuresel tempo ayni yerden yonetiliyor.
+    """
+    video_path = os.path.join(project_dir, "output", clip_name)
+    meta = load_meta(project_dir)
+    snippet = build_clip_snippet(meta, full_video_id, bas_sn)
+
+    # gun_ertele HER ZAMAN uygulaniyor (privacy/schedule bayraklarina
+    # bakilmiyor): kesidin gecikmesi bir "guzel olsa iyi olur" degil, yayin
+    # hacmi kisitinin kendisi. --no-schedule gibi bir bayrakla kazara
+    # kapatilabilir olmamali.
+    publish_at = _golden_publish_at(gun_ertele)
+    video_id = _upload(video_path, snippet, privacy, publish_at=publish_at)
+    print(f"  tamam: https://youtube.com/shorts/{video_id} (yayin: {publish_at})")
+
+    try:
+        upload_thumbnail(get_authenticated_service(), video_id, project_dir, vertical=True)
+    except Exception as e:
+        print(f"  Thumbnail HATA: {e}")
+
+    return video_id, publish_at
+
+
 def fix_thumbnail(project_dir: str) -> None:
     """Zaten yüklenmiş video(lar) için thumbnail'i (yeniden) ayarlar — video
     upload_thumbnail eklenmeden ÖNCE yüklendiyse YouTube'un rastgele seçtiği
@@ -380,20 +642,36 @@ def fix_thumbnail(project_dir: str) -> None:
             print(f"  Shorts thumbnail HATA: {e}")
 
 
-def fix_all_thumbnails(bases: tuple[str, ...] = ("projects", "dj_sets")) -> None:
+def _kok_yolu(base: str) -> str:
+    """Kök adını (ya da göreli yolu) repo köküne bağlar.
+
+    NEDEN: `os.path.isdir("projects")` cwd'ye BAĞLI — script başka bir klasörden
+    çağrıldığında False döner ve toplu düzeltme hiçbir proje bulamadan SESSİZCE
+    biter (bu deponun en sık arızası; aynı not `uyumluluk.KOKLER`'de de var).
+    Mutlak bir yol verilirse `os.path.join` onu olduğu gibi döndürür, yani elle
+    mutlak yol geçen çağıranlar bozulmaz.
+    """
+    return os.path.join(REPO_DIR, base)
+
+
+def fix_all_thumbnails(bases: tuple[str, ...] = uyumluluk.KOK_ADLARI) -> None:
     """--thumbnail-only --all: bases altındaki, YouTube'a zaten yüklü (state.json'da
     youtube_video_id ve/veya youtube_shorts_video_id olan) TÜM projelerin
     thumbnail'ini tek seferde düzeltir. Zaten doğru kapakla yüklü videolarda da
     tekrar çağırmak güvenlidir (thumbnails().set() üzerine yazar, idempotent).
-    Varsayılan olarak hem ana katalog (`projects/`) hem DJ Famous setlerini
-    (`dj_sets/`) tarar — eskiden sadece `projects/` taranıyordu, bu yüzden
-    dj_sets/ projelerinin thumbnail'i hiç düzeltilmiyordu (kullanıcı geri
-    bildirimiyle tespit edildi: City Pulse Set'in kapağı YouTube'da hiç
-    görünmüyordu)."""
+    Varsayılan ÜÇ içerik kökünün hepsi (`uyumluluk.KOK_ADLARI`): ana katalog
+    (`projects/`), DJ Famous setleri (`dj_sets/`) ve derlemeler (`derlemeler/`).
+    NEDEN kök listesi burada ELLE sayılmıyor: varsayılan önce `("projects",)`,
+    sonra `("projects", "dj_sets")` idi ve her genişlemede bir kök unutuldu —
+    City Pulse Set'in kapağı YouTube'da hiç görünmüyordu (kullanıcı bildirdi),
+    aynı arıza `derlemeler/` eklenince bir derlemenin kapağı için tekrar
+    edecekti. Tek kanonik kaynak `uyumluluk.KOK_ADLARI`
+    (muhafız: tests/test_kok_listesi_muhafizi.py)."""
     for base in bases:
-        if not os.path.isdir(base):
+        kok = _kok_yolu(base)
+        if not os.path.isdir(kok):
             continue
-        _fix_all_thumbnails_in(base)
+        _fix_all_thumbnails_in(kok)
 
 
 def _fix_all_thumbnails_in(base: str) -> None:
@@ -457,15 +735,17 @@ def fix_description(project_dir: str) -> None:
             print(f"  Shorts açıklama HATA: {e}")
 
 
-def fix_all_descriptions(bases: tuple[str, ...] = ("projects", "dj_sets")) -> None:
+def fix_all_descriptions(bases: tuple[str, ...] = uyumluluk.KOK_ADLARI) -> None:
     """--description-only --all: fix_all_thumbnails ile aynı desen — bases
     altındaki, YouTube'a zaten yüklü TÜM projelerin açıklamasını tek seferde
     günceller. Idempotent (üzerine yazar), zaten doğru olan projelerde de
-    güvenle tekrar çağrılabilir."""
+    güvenle tekrar çağrılabilir. Varsayılan üç içerik kökünün hepsi
+    (`uyumluluk.KOK_ADLARI`) — gerekçe fix_all_thumbnails'te."""
     for base in bases:
-        if not os.path.isdir(base):
+        kok = _kok_yolu(base)
+        if not os.path.isdir(kok):
             continue
-        _fix_all_descriptions_in(base)
+        _fix_all_descriptions_in(kok)
 
 
 def _fix_all_descriptions_in(base: str) -> None:
