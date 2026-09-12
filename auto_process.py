@@ -609,6 +609,10 @@ def _check_instagram_pending(project_dir: str) -> None:
 def _check_tiktok_notification(project_dir: str, state: dict) -> None:
     """state.json'da tiktok_publish_id var (zaten yüklü) ama henüz bildirim
     gönderilmediyse, golden-hour'daysak telefona bildirim gönderir."""
+    if state.get("tiktok_hatirlatma") == "kit":
+        # Yeni yüklemenin hatırlatması YAYIN KİTİ (_tiktok_kit_sirasi, her koşuda
+        # kendi özet satırını basıyor) — burada proje başına ikinci satır yok.
+        return
     if state.get("tiktok_notified"):
         log("  TikTok: zaten yüklü, atlanıyor")
         return
@@ -1602,6 +1606,28 @@ def _tiktok_yayin_dogrulama() -> None:
     except Exception as e:
         log(f"  TikTok yayın doğrulama HATA: {maskele(str(e))}")
 
+
+def _tiktok_kit_sirasi() -> None:
+    """TikTok YAYIN KITI sirasi (upload/tiktok_yayin_kiti.py) — her kosuda.
+
+    Taslagi telefondan eksiksiz yayinlamak icin kapak/aciklama/ayarlar/ilk
+    yorum/onay satiri Telegram'dan AYRI mesajlar olarak gider. Golden-hour,
+    tempo (config.TIKTOK_KIT_*), durum on sarti ve "onceki kit onaylanmadan
+    yenisi yok" kapilari modulun ICINDE. `_tiktok_yayin_dogrulama()` SONRASINDA
+    cagriliyor: ayni kosuda yayinda bulunup isaretlenen taslaga kit gitmesin.
+    Secenek B (CLAUDE.md): kendi tempo tavani olan supurge; `_is_fully_done()`a
+    EKLENMEDI, yeni Gorev Zamanlayici gorevi yok. Hicbir hata otomasyonu
+    durdurmaz.
+    """
+    if not getattr(config, "TIKTOK_KIT_AKTIF", False):
+        log("  TikTok yayın kiti: kapalı (config.TIKTOK_KIT_AKTIF=False)")
+        return
+    try:
+        from tiktok_yayin_kiti import kit_gonder_sirasi
+        kit_gonder_sirasi(log)
+    except Exception as e:
+        log(f"  TikTok yayın kiti HATA: {maskele(str(e))}")
+
 def _facebook_yorumlari() -> None:
     """Canliya cikmis zamanlanmis Facebook gonderilerine YouTube yorumunu ekler.
 
@@ -1812,6 +1838,7 @@ def main():
         _haftalik_gozden_gecirme()
         _gunluk_izlenme()
         _tiktok_yayin_dogrulama()
+        _tiktok_kit_sirasi()
         _release_lock()
 
 

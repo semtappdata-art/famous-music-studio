@@ -550,9 +550,9 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   ana katalog kurgusal, DJ Famous GERÇEK bir kişiyi (kendi açık onayıyla) konu alıyor —
   bu yüzden bilerek ayrı bir klasör, ayrı bir script, ayrı bir kilit/log dosyası. AI-üretimi
   olduğu gizlenmiyor (kullanıcıyla netleştirilen tasarım kararı): YouTube'un
-  `containsSyntheticMedia` bayrağı zaten otomatik, TikTok'ta yüklerken uygulamadan native
-  "AI-generated content" etiketinin açılması gerektiği hatırlatılıyor, Instagram
-  caption'ının sonuna `social_text.build_ai_disclosure_line()` ile tek satır ekleniyor
+  `containsSyntheticMedia` bayrağı zaten otomatik; TikTok kit/Instagram/Facebook açıklamasında
+  hashtag'lerden önce `config.AI_BEYAN_SATIRLARI` DJ satırı ("Selection & mix: DJ Famous · Music:
+  AI-assisted"; 2026-09-13 — eskiden Instagram caption'ının sonuna ayrı bir satır ekleniyordu)
   (Meta'nın `is_ai_generated` API alanı ikincil kaynaklarda geçiyor ama resmi
   dokümantasyonda doğrulanamadı, bkz. `upload/instagram_upload.py`'deki not — bu yüzden
   API'ye güvenmek yerine caption satırı kullanıldı). Gerçek bir kişinin fotoğrafını
@@ -567,6 +567,16 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   `containsSyntheticMedia: True` set ediliyor (resmi kaynakla doğrulandı). TikTok/Instagram
   tarafında resmi API alan adı bu ortamdan doğrulanamadı — koda hiçbir şey eklenmedi (yanlış
   alan adı riskli), sadece kullanıcıya elle etiketleme hatırlatması var.
+  **2026-09-13 kullanıcı kararı — yazılı beyan satırı:** YouTube'da bayrak AYNEN, açıklamaya satır
+  EKLENMEZ. TikTok kit, Instagram ve Facebook açıklamasında hashtag bloğundan hemen önce TEK satır
+  `config.AI_BEYAN_SATIRLARI` (vokalli "Söz: Famous Music Studio · Müzik ve vokal: AI destekli",
+  vokalsiz, DJ seti; İngilizce karşılıkları; seçim `social_text.ai_beyan_turu`, belirsizse vokalli).
+  TikTok'taki "Yapay zekayla üretilen içerik" anahtarı KAPALI (`config.TIKTOK_AI_BEYANI = "aciklama"`).
+  Telegram/Bluesky değişmez. Üretim aracının adı kamuya açık HİÇBİR metinde geçmez. Bu satır
+  AI-vurgulu hashtag/hook DEĞİL, zorunlu beyan kategorisinde; yalnız YENİ gönderiler etkilenir.
+  Kaynaklar: https://www.tiktok.com/community-guidelines/en/integrity-authenticity ·
+  https://transparency.meta.com/policies/community-standards/manipulated-media/ ·
+  https://support.google.com/youtube/answer/14328491 — Koruma: `tests/test_ai_beyan_satiri.py`.
 - **"#AIMusic"/"#YapayZekaMüzik"/"#AIMusicChallenge"/"#SunoAI" gibi AI-vurgulu
   ibareler KULLANILMIYOR** (kullanıcı kararı): ne caption'da (`config.BRAND_HASHTAGS`,
   `config.DISCOVERY_HASHTAGS`), ne YouTube etiketlerinde
@@ -668,21 +678,49 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   `POST /v2/post/publish/status/fetch/`'i SALT OKUNUR çağırır (resmî scope "video.upload/video.publish",
   30 istek/dk/token). Aday: `tiktok_publish_id` VAR + `tiktok_published_at` YOK; en uzun süredir
   sorgulanmayan önce, koşu başına 10, istekler arası 2,5 sn. Eşleşme publish_id ile, başlıkla DEĞİL.
-  Her yanıtta `tiktok_publish_status` + `tiktok_status_checked_at`. **İşaret YALNIZ
-  `PUBLISH_COMPLETE` + dolu `publicaly_available_post_id`** (yazım API'deki gibi) **VE `build_plan`
-  `hazir=True`**: `isaretle_yayinlandi(kaynak=...)` + `tiktok_post_ids`; damga = TESPİT ANI (API
-  zaman vermez, kaynak "yaklaşık, tespit anı" der). Post id yoksa ("Sadece ben"/moderasyon) yalnız
-  durum; `hazir=False` ise durum + `tiktok_status_isaret_engeli`. Projeye özgü hata → 24 sa soğuma
+  Her yanıtta `tiktok_publish_status` + `tiktok_status_checked_at`. **İşaret: `PUBLISH_COMPLETE`
+  TEK BAŞINA VE `build_plan` `hazir=True`** (2026-09-13 KARAR DEĞİŞTİ — eskiden dolu
+  `publicaly_available_post_id` de şarttı; aşağıdaki ölçümde herkese açık `Gece Sürüşü` post id
+  vermedi, kural bu hesapta hiç tetiklenmezdi. İşaretin amacı ikinci paylaşımı önlemek; "Sadece ben"
+  yayını da taslağı tüketir): `isaretle_yayinlandi(kaynak="TikTok API PUBLISH_COMPLETE (otomatik),
+  <an> — yaklaşık zaman; görünürlük bilinmiyor")`, post id gelirse `tiktok_post_ids`; damga = TESPİT
+  ANI. `hazir=False` ise işaret YOK: durum + `tiktok_status_isaret_engeli`. Projeye özgü hata → 24 sa soğuma
   (`tiktok_status_sonraki_deneme`); `invalid_publish_id` 3, diğerleri 7 ardışık hatada, `FAILED`'da
   hemen `tiktok_status_denenmez`. Token/izin/429/süren taşıma hatası koşuyu durdurur, damga atılmaz.
-  Yeni işaretler için koşu başına TEK `notify.send` ("TikTok'ta yayında doğrulandı (API): <adlar>").
+  Yeni işaretler için koşu başına TEK `notify.send` ("TikTok'ta yayında bulundu (API): N taslak — <adlar>";
+  bu taslaklara kit gitmeyeceğini de söyler).
   ÜÇ SORU: `auto_process.main()` `finally` → `_tiktok_yayin_dogrulama()`; günde bir
   (`saglik_durum.json` → `tiktok_yayin_dogrulama_gun`, yalnız tamamlanan koşuda); her koşuda özet
   log satırı, token sorununda `uyar_bir_kez`. `_is_fully_done`'a EKLENMEDİ.
   **ÖLÇÜLDÜ (2026-09-13, tek gerçek okuma)**: kullanıcının yayınladığı `Gece Sürüşü` →
   `PUBLISH_COMPLETE`, `publicaly_available_post_id` alanı yanıtta HİÇ YOK (12 günlük publish_id
-  hâlâ sorgulanabiliyor). Yani bu hesapta otomatik işaret pratikte hiç tetiklenmeyebilir; durum
-  yine yazılır, Telegram onayı birincil yol olarak kalır. Koruma: `tests/test_tiktok_yayin_dogrulama.py`.
+  hâlâ sorgulanabiliyor) — yukarıdaki kural değişikliğinin sebebi bu. Telegram onayı birinci katman
+  olarak kalıyor. **Kaçan işaretler için API'siz yol:** `python upload/tiktok_yayin_dogrulama.py
+  --kayitli-durumdan` (varsayılan KURU; `--uygula` ile yazar) — state'te zaten `PUBLISH_COMPLETE`
+  okunmuş, işaretsiz, `hazir=True` taslakları kayıtlı okuma anıyla işaretler, bayat
+  `tiktok_status_isaret_engeli` notunu siler; saatlik hatta bağlı DEĞİL. (2026-09-13 02:23'te canlı
+  checkout'taki yarım düzenleme 6 PUBLISH_COMPLETE taslağın işaretini TypeError ile kaçırdı.)
+  Koruma: `tests/test_tiktok_yayin_dogrulama.py`.
+  (f) **Yayın kiti (2026-09-13)**: `upload/tiktok_yayin_kiti.py`. Taslak akışında API açıklama/
+  gizlilik/AI etiketi/duet-stitch ALAMIYOR; kit bunları telefonda elle uygulanacak AYRI Telegram
+  mesajları olarak veriyor (`parse_mode` yok): (1) kapak `notify.send_photo`, (2) YALNIZ açıklama +
+  hashtag `notify.send_text` (`social_text.build_tiktok_kit_caption`: ilk satır ad + tür, 5-6 etiket,
+  şarkı adı etiketi + `config.TEMA_KESIF_ETIKETLERI`, #fyp/#foryou/#viral YOK, set/derleme ayrı hook
+  havuzu; diğer platformların `build_caption`'ı aynen), (3) ayar listesi + önerilen saat, (4) YALNIZ
+  ilk yorum, (5) "yayınladım <ad>" + kod (onay kalıbı değişmedi). Kapılar: durum ön şartı fail-closed
+  (yalnız doğrulamanın `SEND_TO_USER_INBOX` okuduğu, 72 sa taze, işaretsiz/denenmez olmayan taslak),
+  `hazir=False` → kit yok + engel bir kez (sha1, engelli arkadakini tıkamaz), golden-hour, koşu/pencere/
+  gün başına 1, haftada 4, arada 36 sa (`config.TIKTOK_KIT_*`), ÖNCEKİ KİT ONAYLANMADAN YENİSİ YOK (48
+  sa'te tek hatırlatma). Gizlilik önerisi "Herkes" (plandaki `SELF_ONLY` denetimsiz API DIRECT_POST
+  kısıtı; uygulamadan elle yayında yok). State: `tiktok_kit_gonderildi_at`/`tiktok_kit_kodu` (açıklama
+  mesajı başarılıysa), `tiktok_kit_hatirlatildi_at`, `tiktok_kit_engel_bildirimi`. Yeni yüklemeler
+  `tiktok_hatirlatma: "kit"` alır, düz metin hatırlatma gitmez. **Ana şalter
+  `config.TIKTOK_KIT_AKTIF` (canlıda `False` başladı):** kapalıyken hiçbir şey gönderilmez,
+  state'e yazılmaz, her koşuda yalnız "kit kapalı (config)" log satırı. ÜÇ SORU: `auto_process.main()`
+  `finally` → `_tiktok_yayin_dogrulama()` SONRASI `_tiktok_kit_sirasi()`; saatlik görev; her koşuda tek
+  özet log satırı; `_is_fully_done`'a EKLENMEDİ. Önizleme (göndermez):
+  `python upload/tiktok_yayin_kiti.py --project "<proje>" --onizle`. Koruma:
+  `tests/test_tiktok_yayin_kiti.py`, `tests/test_social_text_hashtag.py`.
 - **`watch_projects.py` (opsiyonel klasör izleyici) saatlik tetikleyiciyi DEĞİŞTİRMEZ,
   tamamlar**: kullanıcı isteğiyle eklendi — Suno'dan yeni indirilen (herhangi bir adla)
   ses dosyasını yakalayıp `audio.wav`'a çevirir ve `auto_process.py`'yi hemen tetikler,

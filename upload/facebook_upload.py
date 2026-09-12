@@ -419,7 +419,9 @@ def upload_reels(project_dir: str, description: str | None = None, schedule: boo
     access_token = token["page_access_token"]
 
     if description is None:
-        description = build_caption(_load_meta(project_dir))
+        # Zorunlu AI beyan satırı (2026-09-13, config.AI_BEYAN_SATIRLARI) — yalnız
+        # yeni gönderi; mevcut gönderileri düzenleyen kod yok.
+        description = build_caption(_load_meta(project_dir), ai_beyani=True)
 
     # 1) Yukleme oturumu baslat (bitirilmeyen oturum Sayfa'ya CIKMAZ -> guvenli)
     start_resp = ag.guvenli_istek(
@@ -533,7 +535,7 @@ def upload_long(project_dir: str, description: str | None = None, schedule: bool
 
     meta = _load_meta(project_dir)
     if description is None:
-        description = build_caption(meta)
+        description = build_caption(meta, ai_beyani=True)   # AI beyanı: bkz. upload_reels
 
     scheduled_ts, scheduled_at = _compute_scheduled_time(schedule)
     data = {

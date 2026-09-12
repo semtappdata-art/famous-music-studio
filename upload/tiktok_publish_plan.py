@@ -287,7 +287,9 @@ def build_plan(project_dir: str) -> dict:
         youtube_url = "https://youtu.be/" + durum["youtube_video_id"]
 
     dil = resolve_language(meta)
-    caption = build_caption(meta)
+    # AI beyan satırı TikTok açıklamasında (2026-09-13 kullanıcı kararı,
+    # config.AI_BEYAN_SATIRLARI); hashtag bloğundan önce, tek satır.
+    caption = build_caption(meta, ai_beyani=True)
     ilk_yorum = (build_youtube_comment(youtube_url, dil, platform="tiktok")
                  if youtube_url else None)
 

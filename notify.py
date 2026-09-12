@@ -293,14 +293,24 @@ def _telegram_gonder(bot_token: str, chat_id: str, title: str, message: str) -> 
             timeout=(5, 10),
         )
     except Exception as e:
-        uyar_bir_kez(
-            "telegram-gonderim-hatasi",
-            "UYARI: Telegram bildirimi gonderilemedi (%s) — operatore ULASMADI. "
-            "(Gecici olabilir: ag/Telegram; damga atilmadi, bir sonraki kosu "
-            "yeniden dener.)" % _token_maskele(str(e)[:200], bot_token),
-        )
+        _telegram_ag_hatasi(e, bot_token)
         return False
+    return _telegram_yanit(resp, bot_token)
 
+
+def _telegram_ag_hatasi(e: BaseException, bot_token: str) -> None:
+    """Ağ istisnası: token MASKELİ tek satır (`sendMessage` ve `sendPhoto` ortak)."""
+    uyar_bir_kez(
+        "telegram-gonderim-hatasi",
+        "UYARI: Telegram bildirimi gonderilemedi (%s) — operatore ULASMADI. "
+        "(Gecici olabilir: ag/Telegram; damga atilmadi, bir sonraki kosu "
+        "yeniden dener.)" % _token_maskele(str(e)[:200], bot_token),
+    )
+
+
+def _telegram_yanit(resp, bot_token: str) -> bool:
+    """Bot API yanıtını değerlendirir: 200+ok → True; 4xx KALICI, diğerleri
+    GEÇİCİ diye AYRI anahtarla tek satır (bkz. `_telegram_gonder` docstring'i)."""
     kod = getattr(resp, "status_code", 0)
     try:
         payload = resp.json()
@@ -378,14 +388,7 @@ def send(title: str, message: str) -> bool:
     bildirim yüzünden durmaz)."""
     tg_token, tg_chat, tg_engel = _telegram_ayari()
     if tg_engel == "yayin-kanali":
-        uyar_bir_kez(
-            "telegram-yayin-kanali",
-            "HATA (KALICI, yapilandirma duzeltmesi gerek): notify_config.json'daki "
-            "telegram_chat_id, YUKLEME hattinin yayin chat id'siyle AYNI — operator "
-            "uyarilari yayin akisina KARISMASIN diye gonderim DURDURULDU. Telegram'a "
-            "hicbir istek atilmadi. Duzeltme: telegram_chat_id'ye kendi KISISEL "
-            "(DM) chat id'ni yaz; kurulum adimlari notify.py docstring'inde.",
-        )
+        uyar_bir_kez("telegram-yayin-kanali", _YAYIN_KANALI_UYARISI)
     elif tg_engel == "token-yok":
         uyar_bir_kez(
             "telegram-token-yok",
@@ -461,3 +464,111 @@ def send(title: str, message: str) -> bool:
             "dener.)" % str(e)[:200],
         )
         return False
+
+
+_YAYIN_KANALI_UYARISI = (
+    "HATA (KALICI, yapilandirma duzeltmesi gerek): notify_config.json'daki "
+    "telegram_chat_id, YUKLEME hattinin yayin chat id'siyle AYNI — operator "
+    "uyarilari yayin akisina KARISMASIN diye gonderim DURDURULDU. Telegram'a "
+    "hicbir istek atilmadi. Duzeltme: telegram_chat_id'ye kendi KISISEL "
+    "(DM) chat id'ni yaz; kurulum adimlari notify.py docstring'inde."
+)
+
+# sendPhoto sınırları (core.telegram.org/bots/api#sendphoto): caption "0-1024
+# characters after entities parsing"; "The photo must be at most 10 MB in size".
+_TELEGRAM_FOTO_ACIKLAMA_MAX = 1024
+_TELEGRAM_FOTO_MAX_BAYT = 10 * 1024 * 1024
+
+
+def _yalniz_telegram(ne: str) -> tuple:
+    """(bot_token, chat_id) ya da (None, None). ntfy YEDEĞİ YOK.
+
+    NEDEN ntfy'ye düşülmüyor (`send()`'in tersine): TikTok yayın kitinin
+    fotoğrafı ve kopyalamaya hazır metinleri için ntfy işe yaramaz — ntfy
+    fotoğraf taşımıyor, metne başlık ekliyor ve "yayınladım <ad>" yanıtını okuyan
+    Hermes Telegram'da. Aynı yayın kanalı kapısı (`_telegram_ayari`): kapı
+    kapalıysa HİÇBİR istek atılmaz. Her yol koşu başına bir log satırı bırakır."""
+    tg_token, tg_chat, tg_engel = _telegram_ayari()
+    if tg_engel == "yayin-kanali":
+        uyar_bir_kez("telegram-yayin-kanali", _YAYIN_KANALI_UYARISI)
+        return None, None
+    if tg_engel == "token-yok":
+        uyar_bir_kez(
+            "telegram-yalniz-token-yok",
+            "UYARI: %s gonderilemedi — notify_config.json'da telegram_chat_id VAR ama "
+            "bot token'i okunamadi (upload/telegram_client_secrets.json). Bu mesaj "
+            "YALNIZ Telegram'dan gider, ntfy'ye dusulmedi." % ne,
+        )
+        return None, None
+    if not (tg_token and tg_chat):
+        uyar_bir_kez(
+            "telegram-yalniz-kanal-yok",
+            "UYARI: %s gonderilemedi — Telegram yapilandirilmamis (notify_config.json "
+            "telegram_chat_id yok). Bu mesaj YALNIZ Telegram'dan gider, ntfy'ye "
+            "dusulmedi." % ne,
+        )
+        return None, None
+    return tg_token, tg_chat
+
+
+def send_text(message: str) -> bool:
+    """Başlıksız düz metin — YALNIZ Telegram (`sendMessage`, `parse_mode` yok).
+
+    TikTok yayın kitinin "yalnız açıklama" / "yalnız ilk yorum" mesajları için:
+    metin telefonda KOPYALANACAK, önüne başlık eklenmemeli. `send()` sözleşmesi
+    DEĞİŞMEDİ; bu ayrı bir giriş."""
+    token, chat = _yalniz_telegram("baslıksız metin (send_text)")
+    if not (token and chat):
+        return False
+    return _telegram_gonder(token, chat, "", message)
+
+
+def send_photo(path: str, caption: str) -> bool:
+    """Fotoğraf + kısa açıklama — YALNIZ Telegram (`sendPhoto`, `parse_mode` yok).
+
+    Sınırlar istekten ÖNCE: açıklama 1024 karakterde kırpılır (sendMessage'daki
+    4096 kırpmasıyla aynı gerekçe — Telegram TÜM isteği reddeder); dosya 10 MB'ı
+    aşarsa ya da okunamazsa İSTEK ATILMAZ, log + False. Dosya adı telde sabit
+    ASCII ("kapak.png"): Türkçe proje adı multipart başlığına girmesin (ntfy'de
+    yaşanan latin-1 tuzağının eşi). Token maskesi ve hata ayrımı `send_text` ile
+    ortak (`_telegram_ag_hatasi`, `_telegram_yanit`)."""
+    token, chat = _yalniz_telegram("fotograf (send_photo)")
+    if not (token and chat):
+        return False
+    ad = os.path.basename(str(path))
+    try:
+        boyut = os.path.getsize(path)
+        if boyut > _TELEGRAM_FOTO_MAX_BAYT:
+            uyar_bir_kez(
+                "telegram-foto-buyuk",
+                "UYARI: fotograf 10 MB sinirini asiyor (%.1f MB, %s) — Telegram "
+                "reddeder, istek atilmadi." % (boyut / 1048576.0, ad),
+            )
+            return False
+        with open(path, "rb") as f:
+            veri = f.read()
+    except OSError as e:
+        uyar_bir_kez(
+            "telegram-foto-okunamadi",
+            "UYARI: gonderilecek fotograf okunamadi (%s: %s) — istek atilmadi."
+            % (type(e).__name__, ad),
+        )
+        return False
+    aciklama = str(caption or "")
+    if len(aciklama) > _TELEGRAM_FOTO_ACIKLAMA_MAX:
+        aciklama = aciklama[:_TELEGRAM_FOTO_ACIKLAMA_MAX - 1] + "…"
+    uzanti = os.path.splitext(ad)[1].lower()
+    mime = "image/png" if uzanti == ".png" else "image/jpeg"
+    url = "%s/bot%s/sendPhoto" % (_TELEGRAM_API, token)
+    try:
+        resp = requests.post(
+            url,
+            data={"chat_id": chat, "caption": aciklama},
+            files={"photo": ("kapak" + (uzanti if uzanti in (".png", ".jpg", ".jpeg") else ".jpg"),
+                             veri, mime)},
+            timeout=(5, 30),
+        )
+    except Exception as e:
+        _telegram_ag_hatasi(e, token)
+        return False
+    return _telegram_yanit(resp, token)

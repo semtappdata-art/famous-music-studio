@@ -640,7 +640,10 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
 
     if caption is None:
         meta = _load_meta(project_dir)
-        caption = build_caption(meta)
+        # Zorunlu AI beyan satırı hashtag'lerden önce (2026-09-13 kullanıcı kararı,
+        # config.AI_BEYAN_SATIRLARI). YALNIZ yeni gönderi — mevcut gönderileri
+        # düzenleyen kod YOK ve yazılmamalı.
+        caption = build_caption(meta, ai_beyani=True)
 
     # AÇIK MADDE: Meta, gerçekçi AI-üretimi içerik için "AI Info" etiketlemesini
     # zorunlu kılıyor (about.fb.com/news/2024/02 ve 2024/04 duyuruları). Graph API

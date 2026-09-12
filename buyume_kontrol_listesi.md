@@ -126,6 +126,14 @@ yer, `projects/` (ana katalog) aynı kotadan besleniyor.
 
 ### A4. TikTok gelen kutusundaki taslakları elle yayınla — **20 video bekliyor**
 
+> **YENİ (2026-09-13) — bekleyen taslakların ÇOĞU büyük olasılıkla ZATEN YAYINDA.** TikTok'ta
+> açıklaması yalnız `#FamousMusicStudio` olan ~18 gönderi var; aşağıdaki "20 video" bir
+> "yüklendi" kaydı. `tiktok_yayin_dogrulama` artık API'de `PUBLISH_COMPLETE` gördüğü taslağı
+> kendisi işaretliyor ve **Telegram yayın kiti durum taramasını BEKLİYOR**: bir taslak için API
+> durumu `SEND_TO_USER_INBOX` okunmadan o taslağa kit gitmez, önceki kit onaylanmadan yenisi
+> gitmez. Yani "hepsini yayınla" yerine: telefona gelen kiti uygula, "yayınladım <ad>" yaz.
+> Kiti elle görmek (göndermez): `python upload/tiktok_yayin_kiti.py --project "<proje>" --onizle`
+
 **Ne yapılacak** TikTok uygulaması → Gelen kutusu/Taslaklar → her videoyu aç,
 yayınla. Yayınlarken **iki şey elle**:
 - Native **"AI-generated content"** etiketini AÇ.

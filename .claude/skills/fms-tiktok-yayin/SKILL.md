@@ -28,6 +28,34 @@ Sonuç — iş bilerek ikiye bölündü:
 1. Boru hattı videoyu render eder ve yayın planını üretir.
 2. **Bu skill** ile asistan, kullanıcı istediğinde MCP'den gönderir.
 
+## Önce bak: TASLAK akışında yayın kiti (Telegram, 2026-09-13)
+
+Boru hattının TikTok gelen kutusuna yüklediği taslaklar için asıl yol artık MCP değil
+**yayın kiti** (`upload/tiktok_yayin_kiti.py`, saatlik hattan otomatik). Taslak akışında API
+açıklama, gizlilik, AI etiketi ve duet/stitch ALAMIYOR; kit bunları kullanıcının telefonda
+elle uygulayacağı ayrı Telegram mesajları olarak gönderiyor:
+
+1. Kapak fotoğrafı (galeriye kaydet → TikTok'ta Kapağı düzenle → Yükle)
+2. YALNIZ açıklama + hashtag (olduğu gibi yapıştır; ilk satır şarkı adı + tür, 5-6 etiket,
+   hashtag'lerden önce tek satır AI beyanı)
+3. Ayar listesi: Kimler izleyebilir → Herkes · yorum/düet/stitch AÇIK · "Yapay zekayla
+   üretilen içerik" → `config.TIKTOK_AI_BEYANI`'na göre (varsayılan KAPALI, beyan açıklamada)
+   · marka içeriği KAPALI · konum yok · yüksek kalite AÇIK · ses/müzik EKLEME
+4. YALNIZ ilk yorum (YouTube linki)
+5. "yayınladım <ad>" + kod → Hermes onay becerisi işaretler (kalıp değişmedi)
+
+Kit YALNIZ API durumu `SEND_TO_USER_INBOX` okunmuş, işaretsiz ve `hazir=True` taslağa gider;
+önceki kit onaylanmadan yenisi gitmez (48 saatte tek hatırlatma), golden-hour içinde, günde en
+fazla 1 / haftada 4 / arada 36 saat. Bir taslağın kitini ELLE görmek için (göndermez):
+
+```bash
+python upload/tiktok_yayin_kiti.py --project "projects/<Şarkı Adı>" --onizle
+```
+
+Kullanıcı "bu taslağı yayınla" derse önce kiti öner; bekleyen taslakların çoğu büyük olasılıkla
+zaten yayında (API `PUBLISH_COMPLETE` gördüğünü kendisi işaretliyor) — aynı şarkıyı ikinci kez
+yayınlatma. Aşağıdaki MCP akışı DIRECT_POST içindir (taslaktan bağımsız yeni gönderi).
+
 ## Adım 1 — Planı al (caption'ı ASLA uydurma)
 
 ```bash
@@ -136,10 +164,14 @@ python upload/tiktok_publish_plan.py --dogrulandi "projects/<Şarkı Adı>"   # 
 `is_aigc: true` gönderiliyor ama TikTok'ta "AI-generated content" etiketinin
 gerçekten açık geldiği **henüz teyit edilmedi**.
 
-**Yürürlükteki uyum kuralı: TikTok'ta AI etiketi UYGULAMADAN ELLE açılmalı.**
-Yani gönderiyi yayınlarken (taslaksa yayınlarken, DIRECT_POST ise sonrasında
-kontrol ederek) TikTok uygulamasındaki "AI-generated content" anahtarı elle
-açılır. API'nin `is_aigc` bayrağına TEK BAŞINA güvenilmiyor: etiketin gerçekten
+**Yürürlükteki uyum kuralı (2026-09-13 kullanıcı kararı): AI beyanı AÇIKLAMADA.**
+TikTok kit açıklaması hashtag'lerden önce tek satır `config.AI_BEYAN_SATIRLARI` taşıyor
+(TikTok kuralları açıklamada yazılı beyanı kabul ediyor:
+https://www.tiktok.com/community-guidelines/en/integrity-authenticity); uygulamadaki
+"Yapay zekayla üretilen içerik" anahtarı bu yüzden varsayılan KAPALI
+(`config.TIKTOK_AI_BEYANI = "aciklama"`; "etiket" / "etiket+aciklama" ile değiştirilebilir).
+Açıklamada ya da ilk yorumda üretim aracının adı GEÇMEZ. Aşağıdaki eski gerekçe, anahtarın
+açık tutulduğu dönemin notudur. API'nin `is_aigc` bayrağına TEK BAŞINA güvenilmiyor: etiketin gerçekten
 açık geldiğini API'den okumanın bir yolu yok, ve bu etiket kanalın en büyük
 riski olan "inauthentic / toplu üretilmiş AI içerik" politikasına karşı verilen
 bildirimin ta kendisi.
