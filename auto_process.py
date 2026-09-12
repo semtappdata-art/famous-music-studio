@@ -1150,8 +1150,12 @@ def _refresh_comments() -> None:
     """Yanit bekleyen YouTube yorumlarini onbellege yazar (saatte bir).
 
     Depoda bugune kadar yorum OKUYAN kod YOKTU — 11 gercek yorum (4-8 Eylul,
-    5 ayri kisiden) hic gorulmemisti. Pano bunlari `comments_cache.json`'dan
-    okuyor; YANIT bu hattan GONDERILMIYOR, panodan tek tek onaylaniyor.
+    5 ayri kisiden) hic gorulmemisti. Bu fonksiyon SADECE okur ve
+    `comments_cache.json`'a yazar; YANIT bu hattan GONDERILMIYOR.
+    Yanit gonderme yolu: `upload/yorum_gonder.py --gonder` (elle calistirilir).
+    ONCEKI HALI YALANDI: "panodan tek tek onaylaniyor" diyordu, oysa boyle
+    bir pano depoda YOK — ayni uydurma iddia youtube_comments.py:17'de de
+    vardi ve 2026-09-12'de duzeltildi, bu ikizi o turda atlanmisti.
 
     Kota: allThreadsRelatedToChannelId ile tum kanal yorumlari tek istekte
     geliyor — sayfa basina 1 birim. Tazeleme araligi modulun icinde.
