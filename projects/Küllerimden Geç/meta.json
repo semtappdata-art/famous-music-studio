@@ -1,1 +1,13 @@
-{"title": "Küllerimden Geç", "theme": "arabesk"}
+{
+  "title": "Küllerimden Geç",
+  "theme": "arabesk",
+  "custom_hooks": [
+    "Küllerin altında hâlâ kor var 🔥",
+    "Düştüm ama bitmedim 🕯️",
+    "Yeniden doğmak da bir seçim 🌅"
+  ],
+  "custom_questions": [
+    "Sen küllerinden kaç kez geçtin? 💬",
+    "Yeniden başlamak zor mu geldi? 👇"
+  ]
+}

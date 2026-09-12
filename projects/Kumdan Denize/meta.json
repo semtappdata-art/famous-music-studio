@@ -1,1 +1,14 @@
-{"title": "Kumdan Denize", "theme": "elektronik", "art_query": "golden desert dunes meeting ocean aerial cinematic"}
+{
+  "title": "Kumdan Denize",
+  "theme": "elektronik",
+  "art_query": "golden desert dunes meeting ocean aerial cinematic",
+  "custom_hooks": [
+    "Motor susar, şehir uyanır 🌙",
+    "Riyad'dan kıyıya uzanan yol 🏜️",
+    "Her virajda yeni bir kapı 🚗"
+  ],
+  "custom_questions": [
+    "Gece sürüşü mü sahil mi? 👇",
+    "Bu şarkı hangi yolculuğu hatırlattı? 💬"
+  ]
+}

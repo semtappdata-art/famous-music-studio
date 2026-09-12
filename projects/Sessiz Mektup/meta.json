@@ -1,5 +1,14 @@
 {
   "title": "Sessiz Mektup",
   "theme": "akustik",
-  "art_query": "misty lake quiet dawn soft fog cinematic"
+  "art_query": "misty lake quiet dawn soft fog cinematic",
+  "custom_hooks": [
+    "Bir mektup yazdım, göndermedim ✉️",
+    "Eski defterlerde saklısın 📖",
+    "Bazı anılar hiç silinmiyor 🕊️"
+  ],
+  "custom_questions": [
+    "Hiç göndermediğin bir mektup var mı? 💬",
+    "Kimin gülüşünü hâlâ hatırlıyorsun? 👇"
+  ]
 }

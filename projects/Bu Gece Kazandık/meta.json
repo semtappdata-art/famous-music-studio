@@ -1,1 +1,13 @@
-{"title": "Bu Gece Kazandık", "theme": "pop"}
+{
+  "title": "Bu Gece Kazandık",
+  "theme": "pop",
+  "custom_hooks": [
+    "Uzun kışlardan sonra ilk gülüş 🎉",
+    "Ceketi fırlat, meydan bizim 🥁",
+    "Bu gece hesap kapandı ✨"
+  ],
+  "custom_questions": [
+    "Sen en son ne zaman kazandın? 💬",
+    "Bu şarkı hangi zaferini hatırlattı? 👇"
+  ]
+}

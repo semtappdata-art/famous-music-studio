@@ -1,1 +1,13 @@
-{"title": "Kırık Zincir", "theme": "rock"}
+{
+  "title": "Kırık Zincir",
+  "theme": "rock",
+  "custom_hooks": [
+    "Zincir kırıldı, ses çıkardı ⛓️",
+    "Yıllarca sustum, artık değil 🎸",
+    "Kendi sesimi buldum 🔊"
+  ],
+  "custom_questions": [
+    "Sen hangi zinciri kırdın? 💬",
+    "Kime 'yapamazsın' dedirtmedin? 👇"
+  ]
+}

@@ -1,1 +1,13 @@
-{"title": "Sokaklar Beni Tanır", "theme": "hiphop"}
+{
+  "title": "Sokaklar Beni Tanır",
+  "theme": "hiphop",
+  "custom_hooks": [
+    "Neon tabelalar adımı yazar 🌆",
+    "Bir sigara, bir yağmur, bir sen eksik 🌧️",
+    "Şehir söner, ben ayaktayım 🚬"
+  ],
+  "custom_questions": [
+    "Hangi sokak seni tanır? 💬",
+    "Sensiz yabancılaşan bir şehir var mı? 👇"
+  ]
+}

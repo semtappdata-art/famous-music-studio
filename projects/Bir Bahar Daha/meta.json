@@ -1,1 +1,13 @@
-{"title": "Bir Bahar Daha", "theme": "pop"}
+{
+  "title": "Bir Bahar Daha",
+  "theme": "pop",
+  "custom_hooks": [
+    "Bir bahar daha geldi, o yok 🌸",
+    "Artık peşinden koşmuyorum 🚶",
+    "Bu bahar sadece bana ait 🌿"
+  ],
+  "custom_questions": [
+    "Sen ne zaman peşinden koşmayı bıraktın? 💬",
+    "Hangi mevsim sana iyi geliyor? 👇"
+  ]
+}
