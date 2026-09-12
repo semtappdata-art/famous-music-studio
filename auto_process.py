@@ -1085,6 +1085,25 @@ def _izlenme_raporu() -> None:
         log(f"  İzlenme raporu HATA: {e}")
 
 
+def _haftalik_gozden_gecirme() -> None:
+    """Haftalik "ne oldu / ne bekliyor / ne yapmaliyim" ozeti — saatlik kosudan.
+
+    YENI bir Gorev Zamanlayici gorevi EKLENMEDI (CLAUDE.md bunu yasakliyor):
+    bu kanca da _izlenme_raporu gibi saatlik hatta bagli ve damga kontrolu
+    fonksiyonun ICINDE — haftanin geri kalaninda hicbir sey yapmaz, diske ve
+    aga dokunmaz. Calisma penceresi pazartesi 09:00 sonrasi, golden-hour
+    disi; gerekcenin tamami weekly_report.RAPOR_GUNU'nun yanindaki notta.
+
+    Rapor uretilemezse SESSIZ KALMAZ: weekly_report ayri bir "uretilemedi"
+    bildirimi gonderir ve hafta damgasini ATMAZ.
+    """
+    try:
+        from weekly_report import haftalik_gozden_gecirme
+        haftalik_gozden_gecirme(log)
+    except Exception as e:
+        log(f"  Haftalık özet HATA: {e}")
+
+
 def _facebook_yorumlari() -> None:
     """Canliya cikmis zamanlanmis Facebook gonderilerine YouTube yorumunu ekler.
 
@@ -1258,6 +1277,7 @@ def main():
         _dj_tarama()
         _saglik_kontrol()
         _izlenme_raporu()
+        _haftalik_gozden_gecirme()
         _release_lock()
 
 
