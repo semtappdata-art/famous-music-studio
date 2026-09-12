@@ -7,7 +7,7 @@ dosyalarında hazır; TikTok uygulamasından elle yüklenip "abart" sesi elle
 eklenmeli (API üzerinden otomasyona BİLİNÇLİ olarak bağlanmadı — telif riski).
 
 ## Gece Sürüşü
-- Video: `projects/ilk-sarkim/output/tiktok_abart_9x16.mp4`
+- Video: `projects/Gece Sürüşü/output/tiktok_abart_9x16.mp4`
 - "Abart" sesi klibin **0:00**'ından itibaren başlasın
 
 ```
@@ -29,7 +29,7 @@ Bu şarkıyı kaç kez tekrar dinlersin? Yorumda söyle 🔁
 ```
 
 ## Beni Bırakma
-- Video: `projects/beni bırakma/output/tiktok_abart_9x16.mp4`
+- Video: `projects/Beni Bırakma/output/tiktok_abart_9x16.mp4`
 - "Abart" sesi klibin **0:00**'ından itibaren başlasın
 
 ```
@@ -51,7 +51,7 @@ Yorumda hangi türü bir sonraki duymak istersin? 👇
 ```
 
 ## Yeniden Doğacağım
-- Video: `projects/ilk otomasyon/output/tiktok_abart_9x16.mp4`
+- Video: `projects/Yeniden Doğacağım/output/tiktok_abart_9x16.mp4`
 - "Abart" sesi klibin **0:00**'ından itibaren başlasın
 
 ```
