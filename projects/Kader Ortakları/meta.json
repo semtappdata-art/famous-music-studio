@@ -1,1 +1,13 @@
-{"title": "Kader Ortakları", "theme": "hiphop"}
+{
+  "title": "Kader Ortakları",
+  "theme": "hiphop",
+  "custom_hooks": [
+    "Cebinde son sigara, ateş yok 🚬",
+    "Aynı mahalle, aynı sızı 🌧️",
+    "Islak asfaltta iki gölge 🌃"
+  ],
+  "custom_questions": [
+    "Kader ortağın kim? Etiketle 👇",
+    "Aynı taşa bastığın biri var mı? 💬"
+  ]
+}

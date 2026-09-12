@@ -15,5 +15,48 @@
   "tiktok_suggested_comment": "🎧 Şarkının tamamı YouTube'da: https://youtu.be/X3xRBwjUaEQ\n@famousmusicstudio hesabına dokun, bio'daki linkten de ulaşabilirsin 🔗",
   "tiktok_cover_hint": "projects\\Yeraltı\\cover_vertical.png",
   "youtube_captions_done": true,
-  "youtube_captions_synced_at": "2026-09-08T19:12:24"
+  "youtube_captions_synced_at": "2026-09-08T19:12:24",
+  "youtube_views": 239,
+  "youtube_likes": 2,
+  "youtube_comments": 2,
+  "youtube_stats_checked_at": "2026-09-11T16:12:21",
+  "youtube_shorts_views": 60,
+  "youtube_shorts_likes": 2,
+  "youtube_shorts_comments": 0,
+  "youtube_stats_prev_at": "2026-09-10T19:15:38",
+  "youtube_views_prev": 229,
+  "youtube_likes_prev": 2,
+  "youtube_comments_prev": 1,
+  "youtube_shorts_views_prev": 61,
+  "youtube_shorts_likes_prev": 2,
+  "youtube_shorts_comments_prev": 0,
+  "telegram_message_id": 3,
+  "telegram_uploaded_at": "2026-09-10T21:09:40",
+  "telegram_chat_id": "-1004337174284",
+  "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mv6owocx562t",
+  "bluesky_post_cid": "bafyreihgz625hpxwf2wkqktp7unke4zquewt3jndtuoxtqdpxzfrpmy2u4",
+  "bluesky_uploaded_at": "2026-09-10T21:34:54",
+  "facebook_cope_tasindi": {
+    "tarih": "2026-09-11T08:51:49",
+    "eski": {
+      "facebook_reels_id": "1421888749896337",
+      "facebook_uploaded_at": "2026-09-10T18:59:19",
+      "facebook_comment_pending": false
+    }
+  },
+  "facebook_reels_id": "1088169766995907",
+  "facebook_uploaded_at": "2026-09-11T09:12:26",
+  "facebook_scheduled_for": "2026-09-11T12:00:00+03:00",
+  "facebook_comment_pending": false,
+  "instagram_media_id": "18116372956757371",
+  "instagram_uploaded_at": "2026-09-11T13:37:01",
+  "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
+  "youtube_thumbnail_kapak_surumu": "v2_buyuk_baslik",
+  "tiktok_notified": true,
+  "youtube_playlists": [
+    "PLamU8IEtNO2k",
+    "PLKFBTOXunWQ0",
+    "PLIfBoPfEuEWQ"
+  ],
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ"
 }

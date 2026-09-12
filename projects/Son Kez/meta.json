@@ -1,1 +1,13 @@
-{"title": "Son Kez", "theme": "akustik"}
+{
+  "title": "Son Kez",
+  "theme": "akustik",
+  "custom_hooks": [
+    "Elimde hâlâ o eski anahtar 🔑",
+    "Işık yanmıyordu, biliyordum 🌑",
+    "Sessizce bitmeliydi belki 🍂"
+  ],
+  "custom_questions": [
+    "Hangi anahtarı hâlâ atamadın? 💬",
+    "Sessizce biten bir şey oldu mu? 👇"
+  ]
+}

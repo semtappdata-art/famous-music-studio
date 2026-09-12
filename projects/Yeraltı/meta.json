@@ -1,1 +1,13 @@
-{"title": "Yeraltı", "theme": "hiphop"}
+{
+  "title": "Yeraltı",
+  "theme": "hiphop",
+  "custom_hooks": [
+    "Yeraltında ışık az, biz görürüz 🕶️",
+    "Burda kurallar başka ⚡",
+    "Herkes korkar, biz evimizdeyiz 🔦"
+  ],
+  "custom_questions": [
+    "Sana hayatı ne öğretti? 💬",
+    "Kaç kez düşüp kalktın? 👇"
+  ]
+}
