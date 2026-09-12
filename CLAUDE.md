@@ -7,10 +7,14 @@ keşfetmeye çalışmadan, projenin mimarisini ve buraya nasıl gelindiğini hı
 ## Proje nedir
 
 "Famous Music Studio" — Suno-AI ile üretilen Türkçe şarkılardan otomatik olarak YouTube
-(uzun format + Shorts), TikTok ve Instagram Reels için video üreten ve yükleyen, tek
-kişilik bir otomasyon kanalı. Kullanıcı Suno'da şarkı üretip `projects/<isim>/audio.wav`
-olarak indiriyor, gerisi (kapak/kart görseli üretimi, video render, üç platforma yükleme)
-`auto_process.py` ile tam otomatik. Windows Görev Zamanlayıcı ile periyodik çalışıyor.
+(uzun format + Shorts), TikTok, Instagram Reels ve — opt-in olarak, `config.EK_PLATFORMLAR`
+(2026-09-10'da üçü de açıldı) — Facebook Reels / Telegram / Bluesky için video üreten ve
+yükleyen, tek kişilik bir otomasyon kanalı. Kullanıcı Suno'da şarkı üretip
+`projects/<isim>/audio.wav` olarak indiriyor, gerisi (kapak/kart görseli üretimi, video
+render, platformlara yükleme) `auto_process.py` ile tam otomatik. Windows Görev
+Zamanlayıcı ile periyodik çalışıyor. Ana katalogdan AYRI iki hat daha var: haftalık DJ
+Famous setleri (`dj_sets/`) ve ayda en fazla bir derleme (`derlemeler/`) — ikisi de
+`dj_famous_process.py` ile işleniyor.
 
 Detaylı workflow için `.claude/skills/suno-video-render/SKILL.md`'yi (Skill tool ile)
 yükle — render mimarisi, ffmpeg tuzakları, config.py ayarları orada.
@@ -18,8 +22,11 @@ yükle — render mimarisi, ffmpeg tuzakları, config.py ayarları orada.
 ## Mimari — kısa özet
 
 ```
-audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project.py (sağlık kontrolü)
-    → render.py (ffmpeg ile video) → auto_process.py: YouTube (uzun+Shorts) + TikTok + Instagram
+audio.wav → generate_cover.py (eksikse cover/art üretir)
+  → validate_project.py (sağlık kontrolü + uyumluluk.kontrol(..., "render") politika kapısı)
+  → render.py (ffmpeg ile video)
+  → auto_process.py: uyumluluk.kontrol(..., "yukleme") → YouTube (uzun+Shorts) + TikTok
+    + Instagram + (opt-in) Facebook/Telegram/Bluesky
 ```
 
 - `config.py` — tüm görünüm/kalite ayarları (temalar, kart boyutu, backdrop pan/hue hızı, vb.)
@@ -29,7 +36,8 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
 - `stock_art.py` — şarkının tarzına/sözlerine uygun gerçek fotoğrafı Pexels'ten indirir
 - `validate_project.py` — render'dan ÖNCE otomatik çalışan sağlık kontrolü (bozuk ses,
   geçersiz meta.json/theme, art==cover metin sızması şüphesi) — `render.py` her projede
-  render başlamadan önce bunu çağırır, HATA varsa render'a hiç girmez
+  render başlamadan önce bunu çağırır, HATA varsa render'a hiç girmez; `uyumluluk.kontrol()`
+  politika kapısı da buradan tetikleniyor
 - `auto_process.py` — asıl production giriş noktası, `--count` kadar bekleyen projeyi işler
 - `caption_align.py` — YouTube'un otomatik (ASR) altyazısının zamanlamasını gerçek
   sözlerle (`<slug>_sozler.md`) hizalar; `upload/youtube_captions.py` bunu çağırır
@@ -37,10 +45,114 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
 - `upload/social_text.py` — caption/hashtag/etkileşim sorusu üretimi (şarkı başlığından
   deterministik seçim — aynı şarkı hep aynı satırları alır)
 - `dj_famous_process.py` — ana katalogdan (yukarıdaki akış) TAMAMEN AYRI, haftalık DJ
-  Famous üretimi (`dj_sets/` klasörü) — detay: `dj_sets/README.md`.
+  Famous üretimi (`dj_sets/` klasörü) — detay: `dj_sets/README.md`. `--base derlemeler`
+  ile derlemeleri de AYNI hattan yayınlıyor (ayrı bir işleyici gerekmedi).
+- `uyumluluk.py` — render ve yükleme adımlarında otomatik çalışan politika kapısı (aşağıya bkz.)
+- `state_io.py` — `state.json` için TEK atomik yazıcı (`.tmp` + `flush`/`fsync` +
+  `os.replace`; Windows'ta da atomik). Üç ayrı yerde `open(..., "w")` ile HEDEFİN ÜSTÜNE
+  yazılıyordu; `open` dosyayı önce sıfırladığı için yarıda kesilen bir yazım diskte yarım
+  bir JSON bırakıyordu — `uyumluluk._durum()` sertleştikten sonra bunun bedeli "boru hattı
+  tamamen durur"a çıktı. state.json'ı elle yazan YENİ kod ekleme, bu modülü kullan.
+- `dj_tarama_kontrol.py` — DJ setleri + derlemeler için Content ID karantinası (aşağıya bkz.)
+- `saglik_kontrol.py` — sessiz duruşları yakalar: Instagram token süresi (son 10 gün) +
+  Netlify kimlik bilgisi (`netlify_kontrol.py`); saatlik koşudan, bildirimler günde bir
+- `upload/ek_platform_backfill.py` (Telegram/Bluesky) + `upload/facebook_backfill.py` —
+  geri doldurma; ikisi de golden-hour VE günlük tavan olmak üzere İKİ kapıdan geçiyor
+- `upload/youtube_analytics.py` — izlenme SÜRESİ ölçümü. AYRI bir `analytics_token.json`
+  kullanıyor: `yt-analytics.readonly` iznini mevcut `upload/token.json`'a eklemek en kolay
+  yol olurdu ama `Credentials.from_authorized_user_file` kayıtlı izinlerle istenenleri
+  karşılaştırdığı için o token'ı GEÇERSİZ KILAR ve saatlik YÜKLEME HATTI DURUR.
+- `derleme.py` — yayınlanmış şarkılardan uzun format derleme (Suno kotasına HİÇ dokunmadan).
+  Zamanlayıcıda BİLEREK yok: ayda en fazla bir tane, her biri farklı konseptle, elle.
+- `dj_clips.py` — bir setten birden çok dikey kesit ÜRETİR ama set başına EN FAZLA BİRİNİ
+  yayınlar (üretim bedava, yayın kısıtlı — "inauthentic content" riski). ÜRETİM tarafı
+  çalıştı (`dj_sets/Just Relax/output/clip_01..03.mp4`), YAYIN tarafı 2026-09-11 itibarıyla
+  HİÇ çalışmadı: süpürge (`dj_clips.supur`, `dj_famous_process.py`'den) üç koşuda da
+  "yayınlanacak kesit yok" dedi. Hattın ikinci yarısı üretimde HENÜZ DOĞRULANMADI.
+
+## Bu deponun EN SIK hatası: BAĞLANTI seviyesindeki sessiz arıza
+
+2026-09-11'de tek bir günde **en az on** ayrı "yazıldı, kendi içinde doğru, ama hiçbir
+yerden çağrılmıyor / yanlış argümanla çağrılıyor / hiçbir zamanlayıcı görevine bağlı
+değil" vakası bulundu. Hepsi gerçek:
+
+- `notify_config.json` hiç oluşturulmamıştı → `notify.send()` her seferinde sessizce
+  `False` döndü; TikTok hatırlatması, nabız uyarısı, token/Netlify uyarısı ve karantina
+  bildirimi (beş emniyet ağı) aynı anda ölüydü ve kimse bilmiyordu.
+- `netlify_kontrol.py` ile `weekly_report._check_instagram_token_expiry()` tam da "sessiz
+  duruşu yakalamak" için yazılmıştı; ikisi de hiçbir yerden çağrılmıyordu. 2026-09-08'de
+  Netlify token'ı doldu, Instagram yüklemeleri 401'le sessizce durdu, 25+ koşu fark edilmedi.
+- `upload/youtube_analytics.py` doğruydu ama tek çağıranı, zamanlayıcıya bağlı OLMAYAN
+  `weekly_report.py`'ydi — yani ölçüm pratikte hiç çalışmadı.
+- `_ek_platformlari_isle()` yalnızca `process_project()` içinden çağrılıyordu; dört ana
+  anahtarı dolan proje `pending`'den kalıcı düştüğü için 18 şarkının 14'ü Telegram/Bluesky'yı
+  BİR DAHA hiç görmedi ve log'a tek satır bile düşmedi.
+- `_refresh_stats(args.base)` yanlış argümanla çağrılıyordu; çok-kök düzeltmesi ölü dalda
+  kaldı, `dj_sets`'in deltası hiç hesaplanmadı.
+- `uyumluluk.KOKLER` göreli yoldaydı: yanlış cwd'de `os.path.isdir` False döner, `kontrol()`
+  `hata=0 uyari=0` der ve **kapı kendiliğinden AÇILIR**. (Aynı düzeltme `dj_tarama_kontrol.py`
+  ve `upload/youtube_analytics.py`'de de yapıldı.)
+- `generate_cover.py`'daki `max(alt, min(tavan, sığan))` koruma gibi duruyordu; matematiksel
+  olarak yaptığı TEK şey taşmayı garantilemekti.
+- **Yeni bir alt sınıf: "çağrı doğru, ama YANLIŞ YERDE."** `sync_project` hem
+  `auto_process.py` hem `dj_famous_process.py`'de Shorts yüklemesinden ÖNCE çağrılıyordu;
+  o an `state.json`'da `youtube_shorts_video_id` HENÜZ YOK — yani 20 Shorts'un HİÇBİRİ
+  playlist'e girmemişti, ve proje `_is_fully_done()`'dan geçip `pending`den düştüğü için
+  bir daha hiç denenmedi. Düzeltme: Shorts yüklendikten SONRA İKİNCİ bir `sync_project`
+  çağrısı (idempotent; üyeliği YouTube'dan doğruluyor). İlk çağrı da KALMALI — Content ID
+  kapısı `return` ettiğinde ikinciye hiç gelinmiyor. Koruma testi bu yüzden çağrının
+  VARLIĞINI değil SIRASINI doğruluyor (`ast` ile çağrı satır numaraları,
+  `tests/test_entegrasyon_duman.py`; davranış tarafı `tests/test_playlist_shorts_sirasi.py`).
+- **Yalan söyleyen yorum, hiç yorum olmamasından KÖTÜDÜR**: `dj_famous_process.py`'nin
+  başında "Merkezi maskeleyici — log'a yazılan HER metin buradan geçiyor" yazıyordu;
+  `gizli_maskele.maskele` import EDİLMİŞTİ ama `log()` içinde hiç ÇAĞRILMIYORDU — dosyadaki
+  tek geçiş import satırının kendisiydi. Bedeli tam orada ödendi: 2026-09-04'te gerçek bir
+  Instagram erişim token'ı `dj_famous_process.log`'a düştü. Yorum doğruyu söylediği için
+  arıza grep'le bile görünmüyordu. Bir yorum bir GARANTİ ifade ediyorsa, o garantiyi
+  doğrulayan bir test olmadan yazma (`tests/test_sizinti_kaynaklari.py`).
+
+**Ortak nokta: hiçbiri fonksiyon seviyesinde bozuk değil.** grep ile "çağrılmayan fonksiyon"
+aramak bunların hiçbirini yakalamaz — hepsinde bir çağrı VAR, ya da çağrı doğru ama hattın
+dışında. Arıza BAĞLANTIDA.
+
+Yeni bir modül/koruma yazarken ÜÇ soruyu cevaplamadan bitmiş sayma:
+
+1. **Bunu kim çağıracak?** — dosya + fonksiyon adıyla.
+2. **Hangi zamanlayıcı görevinden?** — `setup_task_scheduler.ps1` yalnızca ÜÇ görev kuruyor
+   (saatlik `auto_process.py`, haftalık `dj_famous_process.py`, dakikalık
+   `watch_projects.py`); başkası YOK. Yeni görev eklemek yerine bu üçünden birine bağla —
+   `auto_process.main()`'in `finally` bloğu, "iş olsun olmasın her koşuda" çalışan arka
+   plan kancalarının yeri.
+3. **Çalışmadığını nasıl anlarız?** — Sessizce `False`/`{}`/boş liste dönen bir koruma,
+   OLMAYAN korumadan KÖTÜDÜR: yokluğu görünmez. En az bir log satırı bırak
+   (`notify.uyar_bir_kez(anahtar, mesaj)` koşu başına bir kez yazar) ya da bir test yaz.
+
+**Yeni bir platform/adım eklerken `auto_process._is_fully_done()`'a EKLEME** — gerekçenin
+tamamı o fonksiyonun docstring'inde ("YENİ BİR PLATFORM EKLERKEN — BURAYA EKLEME",
+2026-09-11). Kural iki seçenekli, üçüncüsü YOK: **(A)** ucuz/idempotent/kotasız bir
+TAMAMLAMA işi → `_drain_golden_hour_queue()` (o fonksiyon `pending` değil **`ready`** ile
+geziyor — `_is_fully_done`'dan geçmiş projeleri de kapsayan TEK yer); **(B)** kendi hız
+sınırı/API kotası/günlük tavanı olan bir iş → AYRI süpürge modülü + `main()`'in `finally`
+bloğu. `pending`e (yani `process_project()`'e) bağlamak, o platformu kataloğun büyük kısmı
+için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
 
 ## Önemli tasarım kararları (nedenini bilmeden değiştirme)
 
+- **`Küllerimden Geç` YouTube'da BİLEREK `unlisted` — public YAPMA**: `Yeniden Doğacağım`
+  (`kZML9g4GdBs`, 1 Eylül, public) ile AYNI ses (`audio.wav` md5'leri eşit) ve aynı sözler;
+  `Küllerimden Geç` (`-CQ7MmUygTQ` + Shorts `jN78mJrZd3c`) 7 Eylül'deki İKİNCİ yüklemedir ve
+  2026-09-11'de liste dışına alındı — silinmedi. Kanıt: iki projenin `state.json`/`meta.json`
+  dosyalarındaki `kopya_notu`. `derleme.py`, `latest_release.py` ve
+  `upload/ek_platform_backfill.py` üçü de bu kaydı "unlisted = kopya" diye BİLEREK dışlıyor;
+  `uyumluluk.py`'deki md5 tekrar kontrolü de bu olaydan doğdu — ve o kontrol 2026-09-11'de
+  UYARI'dan **HATA**'ya çekildi: aynı md5 artık boru hattını DURDURUR. İki muafiyet var,
+  ikisi de dar: (a) BU projenin kaydında `kopya_notu` VAR *ve* çiftin bir tarafı yayından
+  çekilmiş (unlisted / zamanlanmamış private); (b) bu proje zaten yayında ve eşleşen klasör
+  HENÜZ yayınlanmamış (hata o klasöre düşer). Yani "nota yaz, yayınla" diye bir kaçış yolu
+  yok. Public yapmak aynı sesi kanalda
+  iki kez yayına sokar — kanalın en büyük riski olan "inauthentic / toplu üretilmiş AI içerik"
+  politikasına doğrudan yem, ve o üç kopya kapısını aynı anda açar
+  (bkz. `buyume_kontrol_listesi.md`, E7).
 - **Kapak İKİ ayrı oranda üretiliyor: `cover.png` (16:9) + `cover_vertical.png` (9:16)**:
   eskiden tek kare (1600x1600) kapak vardı, YouTube'un 16:9 oynatıcısında sağ/sol
   kenarlarda çirkin koyu şeritler (pillarbox) oluşuyordu (kullanıcı geri bildirimi).
@@ -74,6 +186,47 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
 - **Alt karartma katsayısı 0.72** (eskiden 0.55, %50'den başlıyor): prosedürel bokeh
   dokularında 0.55 yetiyordu ama gerçek fotoğraflara geçince parlak gündüz kareleri
   geldi ve altın amblem soluk kalıyordu.
+- **Kapak başlık tipografisi (2026-09-11, `generate_cover.py`)**: punto kapağın kısa
+  kenarının %7,5'inden **%14'üne** çıkarıldı (`basis*0.14`) — kapak YouTube feed'inde
+  ~246 px genişlikte görünüyor, eski oran orada ~10 px'lik okunmaz yazıya düşüyordu
+  (9/9 kapakta ölçüldü); ayrıca `shadowcolor=black@0.75` gölge eklendi, çünkü stok
+  fotoğrafların bir kısmı açık tonlu (deniz, gökyüzü) ve beyaz yazı kayboluyordu.
+  Sığdırma TAHMİNLE değil, ffmpeg'e tek bir kısa çağrı yapılıp metnin GERÇEK piksel
+  genişliği ÖLÇÜLEREK yapılıyor (`_basligi_sigdir`) — karakter başına ortalama genişlik
+  0,43-0,50 em arasında oynuyor, %15'lik tahmin hatası ya taşma ya gereksiz küçültme
+  demek. Kural DÖRT adımlı: (1) tek satır, tavan puntoda; (2) sığmazsa ve en az iki
+  kelime varsa iki satıra bölünür ve **punto tavanı KORUNUR** (bölme noktası ölçülerek
+  en dengeli yerden); (3) tek kelimelik başlık bölünemez, SADECE orada küçültülür;
+  (4) iki satır da sığmazsa küçültülür. `MAKS_BASLIK_SATIRI = 2` — üç satır kapağı blok
+  metne çevirip fotoğrafın üstünü kapatıyor (kullanıcının reddettiği dekoratif yön).
+  **Eski ALT SINIR (`basis*0.075`) KALDIRILDI**: `max(alt, min(tavan, sığan))` ifadesi
+  ancak sığan punto alt sınırın ALTINDAYKEN devreye giriyordu, yani koruma gibi durup
+  yaptığı tek şey taşmayı GARANTİLEMEKTİ — yukarıdaki "sessiz arıza" bölümünün ders
+  niteliğinde örneği. `_compose_cover_rich` de artık aynı ölçümlü sığdırmayı kullanıyor
+  (eskiden hiç ölçmüyordu, 20 başlığın 13'ü taşıyordu). Logo: `LOGO_GLOW_FILTER`
+  (parlak hâle) kaldırıldı, yerine logonun KENDİ alfasından türetilen KOYU hâle geldi —
+  parlak hâle koyu zeminde işe yarıyordu ama sıcak/parlak fotoğrafta altın-üstüne-altın
+  kontrastı sıfırdı (ölçüldü: luma farkı 22.8/255); logo yüksekliği `basis*0.2 → 0.26`.
+  **Başlığın ALTINDAKİ ayracın/markanın yeri artık font metriğinden DEĞİL, ÖLÇÜLMÜŞ
+  sabitlerden türüyor**: `DRAWTEXT_SATIR_YUKSEKLIGI = 1.3333` (drawtext'in satır
+  yüksekliği ÷ punto oranı — 144 puntoda 192 px olarak ÖLÇÜLDÜ, tahmin değil) +
+  `BASLIK_AYRAC_BOSLUGU`. Eski formül kazara font metriğine bağımlıydı: `FONT_BOLD_PATH`
+  değişse ayraç sessizce iki satırlı başlığın üstüne biner ya da metni keserdi
+  (`tests/test_kapak_ayrac_geometri.py`).
+- **ffmpeg tuzağı — drawtext'te `"\n"` satır sonu DEĞİLDİR**: filtre grafiği
+  ayrıştırıcısı ters eğik çizgiyi kaçış sayıp yutuyor ve ekrana düz bir `n` harfi
+  çiziliyor ("YenidennDoğacağım" — gerçek bir render'da görüldü). Çalışan tek yol HAM
+  0x0A satır sonu (`generate_cover.DRAWTEXT_SATIR_SONU`), tırnak içinde sorunsuz geçiyor.
+  SIRA da kritik: satırlar TEK TEK `_escape_drawtext()`'ten geçirilip SONRA birleştiriliyor
+  — o fonksiyon ters eğik çizgiyi ikiye katladığı için önce birleştirip sonra kaçırmak
+  satır sonunu her hâlükârda bozar. (Aynı sınıftan bir tuzak: `drawbox` şeffaf tuvalde
+  alfa yazmıyor.)
+- **Dosya YAZARKEN ters eğik çizgi yutuluyor — ffmpeg tuzağından FARKLI**: orada metni
+  ffmpeg'in ayrıştırıcısı bozuyor, burada dosyayı yazan araç zinciri. 2026-09-11'de beş kez: JSON
+  araç parametresi / bash heredoc kaçışı bir kez DAHA çözüp diske GERÇEK baytı yazdı
+  (`generate_cover.py`→NUL 0x00, `youtube_upload.py`+`saglik_kontrol.py`→0x0A, `gizli_maskele.py`→0x08).
+  ÇALIŞAN YÖNTEM: ters eğik çizgili metni `chr(92)` ile kur ya da `Write` aracıyla doğrudan yaz;
+  her yazımdan sonra `ast.parse` + kontrol karakteri taraması (`tests/test_kaynak_bayt_muhafizi.py`).
 - **Kapaktaki marka satırı düz metin DEĞİL, gerçek amblem**: "Famous Music Studio"
   yazısının yerini `config.LOGO_PATH`'teki altın sunburst logo aldı (kullanıcı isteği).
   Logo düz SİYAH zemin üzerine kaydedilmiş, alfa kanalı YOK — `colorkey` ile siyah
@@ -134,13 +287,13 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   anında değil her run'da, çünkü golden-hour zamanlı bir video private→public'e
   YouTube tarafından SONRADAN geçebiliyor, bir sonraki run bunu yakalıyor)
   bağlaması gerekiyor, bu ELLE ve TEK SEFERLİK yapılan bir profil ayarı, API'den
-  değiştirilemiyor (bkz. `buyume_kontrol_listesi.md`, madde 5). Meta Verified (ücretli, Reels'e özel tıklanabilir link) araştırıldı
+  değiştirilemiyor (bkz. `buyume_kontrol_listesi.md`, C3). Meta Verified (ücretli, Reels'e özel tıklanabilir link) araştırıldı
   ama hem $49.99/ay'dan başlıyor hem Content Publishing API ile uyumluluğu
   doğrulanamadı — kullanıcı bunun yerine ücretsiz bio-link + mention çözümünü
   seçti.
 - **`art.jpg` METİNSİZ olmalı**: hem kartın içeriği hem blur backdrop'ın kaynağı. İçine
   metin gömülüyse blur'da okunaksız lekeye dönüşür. Bu hataya birkaç kez düşüldü (Kalbim
-  Oynuyor, ilk otomasyon/Yeniden Doğacağım) — `art.* == cover.*` (byte-birebir aynı) hızlı
+  Oynuyor, Yeniden Doğacağım) — `art.* == cover.*` (byte-birebir aynı) hızlı
   bir sağlık kontrolü.
 - **Backdrop artık statik değil**: `art.jpg`'den türetilen blur arka plan, hedef
   çözünürlükten %14 büyük üretilip render sırasında yavaşça kayıyor (pan) + dar bir açı
@@ -189,7 +342,23 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   bir) TEK bir tetikleyiciyle çalışması yeterli — script her çağrıldığında "sırası
   geldi mi" diye kendi karar veriyor. `--count N` elle verilirse bu mantık devre
   dışı kalır (eski sabit davranış).
-- **Üç platform, üç FARKLI golden-hour stratejisi (`config.GOLDEN_HOURS`,
+- **YENİ yayınlar için 52 saatlik bir TABAN aralık var (`auto_process.MIN_YAYIN_ARALIGI_SN`)**:
+  yukarıdaki 24 saatlik bölüşüm TEK BAŞINA, bir günde `projects/` altına 7 dosya düşerse
+  yedisini de AYNI GÜN yayınlıyordu (24/7 ≈ 3,4 saat ara). Haftalık sayı doğru çıkıyor ama
+  günlük desen YouTube'un "inauthentic content" tarifinin ta kendisi — kanalın en büyük
+  tekil riski telif değil, TAM OLARAK bu. Gerçek aralık artık
+  `max(52 saat, 24 saat / bekleyen proje sayısı)`; 52 saat haftada 3 şarkı hedefinden
+  geliyor (7×24/3 = 56 saat, eksi golden-hour kaymasının haftalık sürüklenme payı).
+  **Geri doldurma bu tabandan MUAF**: `state.json`'ında zaten bir `youtube_video_id` olan
+  proje (ör. YouTube'a çıkmış ama Instagram'ı yarım kalmış şarkı) yeni bir yayın değil,
+  yarım kalmış bir işin tamamlanmasıdır — kanalın yükleme desenini etkilemez. Kontrol, bu
+  koşuda işlenecek dilimin TAMAMINA bakıyor:
+  `any("youtube_video_id" not in _load_state(p) for p in pending[:count])` — dilim
+  `main()`'deki `batch = pending[:count]` ile aynı olmak ZORUNDA; `count > 1` olduğunda ilk
+  sıradaki bir geri doldurma, arkasındaki yeni şarkıya muafiyet kazandırmasın diye
+  (2026-09-11). Log'a hangi kuralın beklettiği ("yeni yayın tabanı" / "günlük pencere
+  bölüşümü") yazılıyor.
+- **Platform başına FARKLI golden-hour stratejisi (`config.GOLDEN_HOURS`,
   `config.next_golden_publish_time`, TR yerel 12:00-14:00/18:00-22:00)** — otomatik
   kademeleme render/upload anını günün her saatine denk getirebildiği için (eskiden
   sabit 13:00/19:00, artık saatte bir kontrol), kullanıcıyla netleştirilip her
@@ -205,8 +374,12 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
     — batch'e girmeyen projeler için bile `_drain_golden_hour_queue()` ile kontrol
     ediliyor). Instagram konteynerleri 24 saat sonra EXPIRED oluyor (WebSearch ile
     doğrulandı) — golden-hour pencereleri arası en kötü senaryoda ~14 saat olduğu
-    için güvenli marj var, yine de `try_publish_pending()` EXPIRED durumunu
-    algılayıp konteyneri sıfırdan yeniden oluşturuyor.
+    için güvenli marj var. **EXPIRED'ı `try_publish_pending()` YENİDEN OLUŞTURMAZ**
+    (bu belgede öyle yazıyordu, YANLIŞTI): bayat kaydı siler, operatöre
+    `instagram_upload.py --project ...` komutunu basıp çıkar — yeniden paylaşım
+    hacim etkisi olan bir karar, kendiliğinden tetiklenmemeli. Kapı da artık
+    "media_id var mı" değil "bekleyen konteyner SON yayından yeni mi"
+    (`_konteyner_yayindan_yeni`); eski hâli iki konteyneri 6 gün bloklamıştı.
   - **TikTok** — Content Posting API'de de native zamanlanmış yayın YOK, ayrıca
     henüz audit'ten geçmediği için zaten sadece taslak/gelen kutusuna yükleyip
     kullanıcının uygulamadan ELLE yayınlamasını gerektiriyor (bkz. aşağıdaki
@@ -215,8 +388,31 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
     `notify_pending_publish()`'i golden-hour'a girildiğinde bir kereliğine
     hatırlatma gönderiyor (`state.json`'da `tiktok_notified` ile tekrar
     göndermiyor, TikTok API'sinden kullanıcının gerçekten yayınlayıp
-    yayınlamadığını öğrenmenin bir yolu yok). `notify_config.json` (gitignored,
-    `{"ntfy_topic": "..."}`) yoksa sessizce atlanır, otomasyon bozulmaz.
+    yayınlamadığını öğrenmenin bir yolu yok). **`notify_config.json` (gitignored,
+    `{"ntfy_topic": "..."}`) BUGÜNE KADAR HİÇ YOKTU** — yani `notify.py` yazıldığından
+    beri TEK BİR push bildirimi gitmedi; 2026-09-11'de kuruldu. Dosya yoksa otomasyon
+    hâlâ bozulmuyor ama artık SESSİZ de değil: `notify.send()` kanal yoksa
+    `notify.uyar_bir_kez()` ile koşu başına BİR kez log'a "bu koşudaki TÜM bildirimler
+    atlanıyor" satırı yazıyor, ve `notify.is_configured()` sayesinde çağıranlar (ör.
+    `tiktok_upload.notify_pending_publish()`) "bildirim gitmedi"nin sebebini
+    golden-hour beklemesinden ayırt edebiliyor.
+  - **Facebook** — YouTube gibi NATIVE zamanlama desteği VAR (Reels'te
+    `video_state=SCHEDULED` + `scheduled_publish_time`, uzun formatta
+    `published=false` + `scheduled_publish_time`), bu yüzden orada da kendi
+    kuyruğumuza gerek yok ve `--no-schedule` orada da geçerli. **Telegram/Bluesky**'da
+    zamanlama yok — script o an çalıştığında gönderiliyorlar.
+- **`notify.send()` ntfy'ye JSON GÖVDESİYLE gönderiyor, HTTP BAŞLIĞIYLA DEĞİL**
+  (2026-09-11 arızası): eski sürüm başlığı `headers={"Title": ...}` ile yolluyordu, ama
+  `requests`ın altındaki `http.client` HTTP başlıklarını **latin-1** ile kodluyor ve
+  Türkçenin `ı İ ş ğ` harfleri latin-1'de YOK (`ç ö ü` VAR — bu yüzden arıza tüm
+  başlıklarda değil sadece bir kısmında görünüyordu, yanıltıcıydı). `UnicodeEncodeError`
+  `send()` içinde yakalanıp sessizce `False` dönüyordu: 12 bildirim başlığının **5'i
+  ölüydü**. Başlığa değişken metin koyan HER yeni bildirim aynı tuzağa düşerdi; JSON
+  gövdesi (topic/title/message hepsi gövdede, UTF-8) kısıtı KÖKÜNDEN kaldırdı. ntfy'nin
+  JSON publish uç noktası **KÖK yola** POST istiyor — topic URL yoluna KONMAZ
+  (`https://ntfy.sh/`, `https://ntfy.sh/<topic>` değil). Koruma:
+  `tests/test_notify_turkce_baslik.py` (depodaki TÜM `notify.send()` çağrılarının
+  başlıklarını `ast` ile tarıyor).
 - **Paylaşım metinlerinin dili (caption/hashtag/YouTube yorumu) artık STİLE göre
   otomatik (`config.THEMES[...]["language"]`, `social_text.resolve_language()`)**:
   kullanıcı isteği — Suno'da üretilen müziğin STİLİNE göre dil hazırlığı otomatik
@@ -278,7 +474,7 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   gönderiyi kaldırmak gerekiyorsa (ör. kapak tasarımı değişip eski post yeni
   bir kopyayla değiştirildiğinde) bunu API'ye eklemeye ÇALIŞMA — kullanıcı
   Instagram uygulamasından elle silmeli (bkz. `buyume_kontrol_listesi.md`,
-  madde 4 — 2026-09-05 kapak-tasarımı migrasyonunun canlı örneği).
+  A6 — 2026-09-05 kapak-tasarımı migrasyonunun canlı örneği).
 - **TikTok kapak (cover) görseli API'den ayarlanamıyor**: `video_cover_image_url` sadece
   audit'ten geçmiş Direct Post akışında var, bu projenin kullandığı Taslak/Gelen Kutusu
   akışında yok (WebSearch ile doğrulandı, Eylül 2026) — API üzerinden koda eklenebilecek
@@ -291,6 +487,49 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   sonra 7 gün içinde "Gönderiyi düzenle" → "Kapağı düzenle") "Yükle" ile galeriden elle
   seçiyor — video karesi seçmek zorunda değil. Detay: README.md, "Kimlik doğrulama" →
   TikTok adımı.
+- **TikTok'a ELLE yayın yaparken caption/ilk yorum `upload/tiktok_publish_plan.py`'den
+  ALINIR, asistanın kafasından UYDURULMAZ**: bu modül depoda hiçbir yerden referans
+  almıyor (ne `auto_process.py`, ne `tiktok_upload.py`, ne Görev Zamanlayıcı) — var
+  olma sebebi tam olarak bu elle adım. TikTok yayını higgsfield MCP bağlayıcısı
+  üzerinden bir asistan oturumundan yapılıyor (kendi app'imizin `video.publish` izni
+  yok); metin o sırada yeniden yazılırsa boru hattının ürettiğinden farklı olur.
+  Doğru kullanım:
+  `python upload/tiktok_publish_plan.py --project "projects/<isim>" --json`
+  — caption `social_text.build_caption()`'dan TAZE hesaplanıyor (`state.json`'daki
+  `tiktok_suggested_caption` eski projelerde yok), ilk yorum ve kapak ipucu da
+  aynı çıktıda. Detay: modülün kendi docstring'i.
+  **2026-09-12'de bu modülde İKİ arıza birden bulundu ve düzeltildi, ikisi de
+  "elle yapılan adım kimsenin denetlemediği tek yol" sınıfından:**
+  (a) **Politika kapısı bu yolu HİÇ kapsamıyordu.** `uyumluluk.kontrol()`
+  render'dan ve yüklemeden önce otomatik çalışıyor, ama TikTok yayını tasarım
+  gereği o hattın dışında — boru hattı yalnızca TASLAK yüklüyor. Kuru tarama,
+  bekleyen 20 taslağın ikisinin `hazir: True` dediğini gösterdi:
+  `dj_sets/City Pulse Set` (state.json'ında `telif_eser` + `telif_araliklari`
+  kayıtlı, `uyumluluk` HATA veriyor) ve `projects/Küllerimden Geç`
+  (`Yeniden Doğacağım` ile aynı md5; TikTok'ta İKİSİ de taslak, yani tekrar
+  orada henüz ÖNLENMİŞ değil). `build_plan()` artık `uyumluluk.kontrol(...,
+  "yukleme")` çağırıyor (HATA → `engel`) ve TikTok'a ÖZEL bir ikiz kapısı var
+  (`_tiktok_ikiz_kapisi`) — çünkü `uyumluluk`'un muafiyeti *YouTube*'da bir
+  tarafın çekilmiş olması, TikTok hakkında hiçbir şey söylemiyor. Kapı
+  çökerse `hazir` **False** olur (sessizce açılmaz). `buyume_kontrol_listesi.md`
+  A4'ün düz metindeki "ikisi aynı ses, körü körüne yayınlama" uyarısı artık
+  kodda.
+  (b) **Modül bu makinede caption'ı HİÇ basamıyordu.** Windows'ta
+  `sys.stdout.encoding` ANSI kod sayfası (`cp1254`) ve üretilen HER caption
+  `config.HOOK_LINES`'tan gelen bir emoji taşıyor — hem düz hem `--json`
+  çıktısı tam caption satırında `UnicodeEncodeError` ile çöküyordu. Yani
+  "caption'ı uydurma, buradan al" diyen modülün verdiği tek şey bir
+  traceback'ti. `_cikti_utf8()` (konsol kod sayfası 65001 + akışlar UTF-8)
+  `main()`'in ilk satırı. Koruma: `tests/test_tiktok_plan_politika_kapisi.py`
+  (alt süreçte `PYTHONIOENCODING=cp1254` ile aynı koşulu kuruyor).
+  (c) **`build_plan` iki alanı (`tiktok_published_at`, `tiktok_dogrulandi`) OKUYORDU,
+  YAZAN hiçbir kod yoktu** — 22 klasörün hiçbirinde mevcut değildi; ikiz kapısının en
+  ağır kuralı ("ikiz zaten yayınlanmış → ENGEL") ölü daldı. `--yayinlandi` /
+  `--yayinlandi-hepsi` (etkileşimli, tek tek onay) / `--dogrulandi` eklendi.
+  `tiktok_dogrulandi` proje değil **KANAL** seviyesinde okunuyor (proje bazlı hâli
+  ispaten sabit `SELF_ONLY` üretiyordu). Üç soru: çağıran KULLANICININ KENDİSİ;
+  zamanlayıcı görevi YOK (olgunun tek kaynağı insan); çalışmadığı `--yayinlandi-hepsi
+  --dry-run` listesi 20'de takılı kaldığında görülür. Koruma: `tests/test_tiktok_yayin_isaretleme.py`.
 - **`watch_projects.py` (opsiyonel klasör izleyici) saatlik tetikleyiciyi DEĞİŞTİRMEZ,
   tamamlar**: kullanıcı isteğiyle eklendi — Suno'dan yeni indirilen (herhangi bir adla)
   ses dosyasını yakalayıp `audio.wav`'a çevirir ve `auto_process.py`'yi hemen tetikler,
@@ -344,7 +583,71 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   pull orada zaten oluyor. Görev Zamanlayıcı görev TANIMINI (tetikleyici, hangi
   script/python.exe) etkileyen değişiklikler bu mekanizmayla YAYILMAZ — o zaman
   hâlâ `setup_task_scheduler.ps1`'in elle yeniden çalıştırılması gerekiyor.
+- **`uyumluluk.py` politika kapısı İKİ ayrı aşamada OTOMATİK çalışıyor**: render'dan önce
+  `render.py → validate_project.validate() → uyumluluk.kontrol(proje, "render")`, yayından
+  önce `auto_process.py`/`dj_famous_process.py` içinden `kontrol(proje, "yukleme")`. Ağa
+  ÇIKMAZ (güncel politika araştırması `icerik-uyumluluk-ajani`'nın işi; bu modül hızlı,
+  yerel, bilinen kuralları üretilen dosyalara uyguluyor): telif eşleşmesi işareti, aynı
+  sesin başka projede tekrarı (md5, önce boyut ön filtresi), derlemede bölüm damgası/
+  küratörlük notu, `meta.json`'da AI beyanının kapatılmış olması, bugün kaç yükleme
+  yapıldığı (`GUNLUK_YUKLEME_UYARI = 3`). **HATA bulursa o proje yayınlanmaz**, uyarı
+  sadece log'a düşer.
+  **Bozuk `state.json` HATA, bozuk `meta.json` UYARI — asimetri BİLİNÇLİ.** Eskiden ikisi
+  de sessizce `{}` sayılıyordu; `state.json`'da bu, `telif_araliklari`yi boş gösterip
+  "bu içerik yeniden yayınlanmamalı" KAPISINI sessizce açıyordu (City Pulse'ta bir kez
+  yaşanan olayın tekrarı — geri dönüşü yok). `meta.json`'da açılan bir kapı YOK: AI
+  beyanını gerçekten yapan mekanizma bu dosya değil, `youtube_upload`'ın koşulsuz
+  `containsSyntheticMedia: True`'su; kaybı uyarı düzeyinde ve meta ELLE yazılan bir
+  dosya, bir yazım hatasının tüm kanalı durdurması ağır kaçar. Gerekçenin tamamı
+  `uyumluluk.kontrol()` içindeki yorumda — değiştirmeden önce ORADAN oku.
+- **DJ setleri VE derlemeler Content ID karantinasından geçer (`dj_tarama_kontrol.py`)**:
+  YouTube'a önce `private` yüklenir (`dj_tarama_bekliyor`), diğer platformlara HİÇ
+  gitmez; `config.DJ_TARAMA_BEKLEME_SN` (2 saat) dolunca SAATLİK koşudan kontrol edilir
+  (haftalık koşuya bağlansaydı ikinci aşama bir sonraki haftaya kalırdı), temizse `public`
+  olup kalan platformlar devam eder.
+  **"Araştırıldı, YOK" bilgisi — tekrar aramaya değmez**: YouTube Data API, partner
+  olmayan normal kanallara Content ID itiraz listesini AÇMIYOR; öyle bir uç yok
+  (2026-09-11'de 20 videoda doğrulandı — itiraz varken de her şey `processed` görünüyor).
+  Bu yüzden `contentDetails.regionRestriction.blocked` alanına bakılıyor ve bu bir
+  VARSAYIM; ikinci ağ olarak süre dolduğunda sonuç ne olursa olsun telefona bildirim
+  gidip Studio'dan ELLE bakılması isteniyor.
+  **`videos.update` KISMİ GÜNCELLEME YAPMAZ**: `part` içinde yer alıp gövdede verilmeyen
+  mutable alanlar SİLİNİR. İlk sürüm yalnızca `privacyStatus` gönderiyordu ve her temiz
+  taramada `containsSyntheticMedia`/`selfDeclaredMadeForKids`'i siliyordu — yani
+  `dj_sets/README.md`'nin ilk taahhüdü her sette kayboluyordu. Üstelik oku-birleştir-yaz
+  TEK BAŞINA yetmiyor: `videos.list(part="status")` `containsSyntheticMedia`'yı GERİ
+  DÖNDÜRMÜYOR (yazılabilir ama OKUNAMAZ), yani round-trip onu sessizce kaybettirir —
+  o alan her yazımda AÇIKÇA yeniden set ediliyor.
+- **Kilit deseni: `O_CREAT|O_EXCL` ile ATOMİK alma + nabız `log()`'un İÇİNDE**
+  (`auto_process.py`; `dj_famous_process.py` aynı desen): `os.path.exists` + `open`
+  ikilisi yarış durumu yaratıyordu, iki süreç aynı anda "kilit yok" görüp ikisi de devam
+  edebiliyordu. Bayat kilidin devralınması da (`LOCK_STALE_SECONDS = 4 saat`) aynı
+  O_EXCL'le korunuyor, yoksa bayat kilidi iki süreç birden devralırdı. Nabzın (kilit
+  dosyasının `os.utime` ile tazelenmesi) `log()` İÇİNDE olması bilinçli: "her uzun
+  adımdan sonra tazele" listesine bağlamak, yeni bir adım eklendiğinde UNUTULACAK bir
+  liste demektir — her adım zaten bir satır bastığı için nabız adım listesiyle
+  kendiliğinden büyüyor.
+- **Derleme başlık kuralı**: derlemeler `<ad> (Sözleri) | Türkçe Hip-Hop Şarkısı` diye
+  çıkıyordu — derlemenin sözleri YOK, ve 13 parçalık karma bir derlemeye `meta.json`'daki
+  tek `theme` alanından tür vermek düpedüz yanlıştı. Artık `build_snippet`'te ayrı bir
+  derleme dalı var: tür, parçaların temalarının ÇOĞUNLUĞUNDAN türüyor ve çoğunluk yarıyı
+  GEÇMİYORSA "Müzik" deniyor (`_derleme_tur_bilgisi`, `adet * 2 > len(temalar)`) — karma
+  bir derlemeye "Hip-Hop Derlemesi" demek aynı yanlışın yumuşak hâli.
 
+- **`upload/youtube_playlists.py` ÜÇ katmanlı, ve üyelik kapısı `state.json` DEĞİL
+  YouTube'un KENDİSİ**: (1) tarz playlist'leri (`config.THEMES`) — keşif/kimlik;
+  (2) `_tum_sarkilar` — SADECE ana kataloğun (`projects/`) uzun formatları tek zincirde,
+  enerji eğrisine göre sıralı (`derleme._enerji` İÇE AKTARILIYOR, kopyalanmıyor —
+  kopyalamak `state_io`ya yol açan hatanın ta kendisiydi); (3) `_shorts` AYRI, çünkü
+  her Short aynı şarkının dikey kesiti: tek listede olsalardı dinleyici aynı şarkıyı
+  arka arkaya iki kez duyardı. "Zaten ekli mi" kapısı `playlistItems.list` (1 birim,
+  süreç ömrü önbellekli); eskiden `state.json`'daki `youtube_playlist_id`, yani YEREL bir
+  İDDİA kapı olarak kullanılıyordu ve bir videoyu ("Beton Krallığı") kalıcı olarak
+  listesiz bırakmıştı.
+  **Kartlar ve son ekranlar YouTube Data API v3'te YOK** (kaynak listesinde `cards`/
+  `endScreens` geçmiyor) — sadece Studio'dan; araştırmaya değmez. İzleyiciyi bir sonraki
+  videoya taşıyan yüzeylerden API'den yönetilebilen TEK şey playlist'ler.
+  (`PlaylistImages` kaynağı var, kullanılmıyor.)
 - **YouTube OAuth scope'u (`youtube.upload` + `youtube.force-ssl`) DAHA FAZLA DARALTILAMAZ**:
   WebSearch ile Google'ın resmi YouTube Data API dokümantasyonu doğrulandı (2026-09) —
   `videos.update` (bkz. `set_privacy.py`/`update_metadata.py`) ve `playlistItems.insert`
@@ -405,6 +708,22 @@ audio.wav → generate_cover.py (eksikse cover/art üretir) → validate_project
   kontrolünü atlar. Aynı desen `process_project()` içindeki tekil çağrı
   için sorun değil (zaten aynı anda işlenen proje sayısı `--count`/otomatik
   kademelemeyle sınırlı, tipik olarak 1).
+  **Hizalama artık ASR/sözler EŞLEŞME ORANINA bakıyor ve 0,25'in altında
+  altyazıyı YAYINLAMIYOR** (`caption_align.LyricsMismatch`, 2026-09-11); eşik
+  keyfî değil, ölçüldü: yanlış eşleşmelerin tavanı 0,146, doğruların tabanı
+  0,303 (`tests/test_altyazi_sozler_eslesmesi.py` iki bulutun ayrık kalmasını
+  bekçilik ediyor). **Sözler dosyası eşleşmesi altyazı hattında İKİNCİ kez
+  doğrulanıyor** (`youtube_captions.SLUG_BENZERLIK_ESIGI`), çünkü
+  `stock_art.find_lyrics_file`in ön-ek kuralının uzunluk koruması yoktu
+  ("Neon" -> `neon_kalp_sozler.md`) — o boşluk aynı gün
+  `stock_art.ONEK_UZUNLUK_ORANI` ile kapatıldı, ama İKİ kapı da KALIYOR.
+- **Türkçe tuzağı — `"İ".lower()` Python'da `i` + U+0307 (BİRLEŞEN NOKTA)
+  üretir**: ASR küçük harf yazdığı için "İ" ile başlayan kelimeler altyazı
+  hizalamasında HİÇ eşleşmiyordu (katalogda 14 kelime / 9 şarkı, çoğu satır
+  başı). Doğrusu: ÖNCE `İ→i, I→ı` eşlemesi, SONRA `lower()`
+  (`caption_align._norm_word`). ffmpeg'in `drawtext` tuzakları gibi "bir daha
+  düşülmesin" sınıfından — Türkçe metni küçük harfe çeviren HER yeni kod
+  (eşleştirme, arama, slug) aynı tuzağa düşer.
 
 ## Beş özel subagent (`.claude/agents/`)
 
@@ -419,28 +738,36 @@ Salt-okunur denetçiler — kod yazmazlar, sadece bulgu raporlarlar:
 - **icerik-uyumluluk-ajani** — AI-içerik açıklama/platform politika uyumluluğu (WebSearch
   ile güncel politika kontrolü şart, hafızaya güvenme).
 
-Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların çoğu düzeltildi
+Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
 (bkz. git geçmişi, PR #25/#26/#27). Periyodik olarak tekrar çalıştırılabilirler.
 
 ## Testler ve otomatik sağlık izleme
 
 - **`tests/` (pytest) + `.github/workflows/tests.yml`**: projede daha önce hiç otomatik
-  test yoktu (`otomasyon-denetcisi` denetiminin tekrar eden bulgularından biri). Şimdi
-  `git_sync.auto_pull()` (geçici git depolarıyla uçtan uca), `log_rotate.trim_log()`,
-  `config.next_golden_publish_time()`/`THEMES` (golden-hour pencere sınırları dahil),
-  `auto_process._auto_pace_count()` (otomatik kademeleme aritmetiği) ve
-  `validate_project.validate()` (bozuk ses/art==cover sızıntısı/geçersiz tema gibi bu
-  projede tekrar tekrar düşülen hatalar), `stock_art` (arama terimi önceliği,
-  deterministik fotoğraf seçimi, ağ/anahtar yokken sessizce False dönmesi) ve
-  `caption_align` (ASR kelime-zamanı hizalaması: eşleşen kelimede ASR zamanının
-  korunması, tekrarlanan nakarat satırlarının KENDİ ASR anına ayrışması, şarkı
-  başı/sonundaki eşleşmeyen kelimelerin tek bir ortak zamana çökmemesi, dejenere
-  sıfır-süreli cue birleştirmesi) için testler var.
+  test yoktu (`otomasyon-denetcisi` denetiminin tekrar eden bulgularından biri). Kapsamı
+  `ls tests/` ile gör — her dosya adı bir modülün ya da bir tuzağın adı (golden-hour
+  pencere sınırları, kademeleme aritmetiği, ASR hizalaması, uyumluluk kapısı, atomik
+  state yazımı, backfill günlük tavanı, nabız, DJ yayın kapısı...). Yeni bir modül
+  yazdıysan test dosyasını da yaz: yukarıdaki "sessiz arıza" sorularından üçüncüsünün
+  en ucuz cevabı bu.
   **Bu Windows makinesinde `pytest`'i düz çalıştırmak yanıltıcı:** pytest'in varsayılan
   geçici klasörü (`%LOCALAPPDATA%\Temp\pytest-of-ACER`) okunamıyor, `tmp_path` kullanan
   HER test "PermissionError" ile hata veriyor — kodla ilgisi yok. Doğru çalıştırma:
   `python -m pytest -q -p no:cacheprovider --basetemp="<scratchpad>/pytest_tmp"`
-  (böylece 82 testin hepsi geçiyor). CI'da (Linux) böyle bir sorun yok. CI her push/PR'da `pytest`'i
+  **Buraya sabit bir TEST SAYISI yazma** — sayı sürekli artıyor (bu satırdaki rakam tek
+  bir günde defalarca eskidi) ve dakikalar içinde yanlışa düşen bir sayı bu dosyanın
+  amacına aykırı; gerektiğinde `python -m pytest --collect-only -q` ile öğren.
+  `--basetemp` her ajan/oturum için AYRI olmalı: ortak klasörde paralel koşular
+  `WinError 145` ile çakıştı.
+  **`tests/conftest.py` — testler artık ÜRETİM log/kilit dosyalarına YAZAMIYOR**: autouse
+  bir fixture, repo modüllerindeki `LOG_PATH`/`LOCK_PATH`/marker sabitlerini geçici
+  klasöre çekiyor. Sebep "log kirleniyor"dan çok daha ağır: `watch_projects.py`'nin nabız
+  gözcüsü `auto_process.log`'un mtime'ına bakıyor — testler her koşuda o dosyayı
+  tazelediği için, makine gerçekten dursa bile watchdog ASLA ateşlenmezdi; yani test
+  paketini çalıştırmak üretimin emniyet ağını kapatıyordu. Koruma dosya ADINA bağlı
+  (yolun bugünkü kullanımına değil), yeni test dosyalarının hiçbir şey yapmasına gerek
+  YOK — "unutulacak liste" tuzağı bilerek kapatıldı.
+  CI'da (Linux) böyle bir sorun yok. CI her push/PR'da `pytest`'i
   çalıştırıyor — `ffprobe` gerektiren testler `ffprobe` yoksa (bu geliştirme ortamı gibi)
   otomatik atlanıyor, CI'da `ffmpeg` kurulduğu için hepsi çalışıyor. `requirements-dev.txt`
   sadece test için (`pytest`) — üretim makinesinde gerekmiyor.
@@ -457,6 +784,29 @@ Dördü de baseline (ilk kapsamlı) denetimini bir kere yaptı, bulguların ço�
   tetikleyicisiyle çalışmaya devam eder, sadece bu nabız kontrolü devre dışı kalır) —
   makine tamamen kapalıysa zaten hiçbir yerel script bir şey gönderemez, bu harici
   altyapısı olmayan bir kişisel otomasyonun doğal sınırı.
+
+## TARİHLİ RANDEVU — 2026-10-09: ölçüm penceresi
+
+2026-09-11'de kanalın **40 kapağı birden** ve **video açılışları** değişti. Bunun işe
+yarayıp yaramadığının TEK kanıtı, o günkü temel çizgiyle bir ay sonraki ölçümün
+karşılaştırılması. **2026-10-09'da (ya da ilk sonraki oturumda) çalıştır:**
+
+```
+python olcum_temel_cizgi.py --dry-run      # önce bu: hiç API çağırmaz, hiç yazmaz
+python olcum_temel_cizgi.py --cek          # -> olcum_2026-10-09.json (yeni dosya)
+python olcum_temel_cizgi.py --karsilastir  # temel çizgi <-> yeni ölçüm
+```
+
+- **Neyle karşılaştırılıyor:** `olcum_temel_cizgi.json` (2026-09-11, değişiklikten ÖNCESİ).
+  Bu dosya TEMEL ÇİZGİ — script onun üstüne yazmayı bir muhafızla reddediyor.
+- **Birincil metrik:** `audienceWatchRatio` **%2 ve %3** noktaları (temel: 0,837 / 0,715;
+  `Küllerimden Geç` kopya olduğu için ortalamaya katılmıyor).
+- **Gürültü tabanı 21,2 puan** (aynı md5'li iki video arasında ölçüldü) — tek video
+  farkları anlamsız, sadece 7 videonun ortalamasındaki YÖN okunur. Güvenilir karar için
+  ikinci ölçüm: 2026-10-23 … 2026-11-06.
+- **Elle tek ek adım:** tıklanma oranı API'de YOK; Studio > Analizler > Erişim'den
+  2026-08-14..2026-09-10 ve 2026-09-12..2026-10-09 aralıklarını CSV dışa aktar.
+  (Detay ve gerekçenin tamamı `olcum_temel_cizgi.py` docstring'inde.)
 
 ## Açık/bilinen boşluklar (henüz yapılmadı)
 
