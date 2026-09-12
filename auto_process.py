@@ -150,6 +150,13 @@ GORUNURLUK_UYGULANDI_ALANI = "youtube_gorunurluk_uygulandi_at"
 # 50+ birim yakardı); 3 saat öğlen penceresine (12-14) bir, akşam penceresine
 # (18-22) en fazla iki deneme bırakıyor.
 GORUNURLUK_TEKRAR_BEKLEME_SN = 3 * 3600
+# Plan `tempo_sayilir: False` ile verildiyse UZUN formatın gerçek public anı
+# (UTC "...Z") `youtube_publish_at` yerine BURAYA yazılır. `_son_yeni_yayin_ani`
+# bu alanı OKUMAZ (YENI_YAYIN_PUBLIC_ANI_KEYS'te yok) — yani o geçiş 52 saatlik
+# tabanı başlatmaz. Varsayılan True: gerçek bir unlisted -> public uzun format
+# geçişi izleyici için YENİ yayındır ve tempoya sayılmaya DEVAM eder (2026-09-13).
+GORUNURLUK_TEMPO_ALANI = "tempo_sayilir"
+TEMPO_DISI_PUBLIC_ANI_ALANI = "youtube_public_ani_tempo_disi"
 
 
 # Kilit BİZDE mi? Sadece kendi kilidimizin mtime'ını tazelemek için (bkz. log()).
@@ -454,7 +461,8 @@ def _son_yeni_yayin_ani(project_dirs: list):
     return latest
 
 
-def _auto_pace_count(pending: list, ready: list, count: int = 1) -> int:
+def _auto_pace_count(pending: list, ready: list, count: int = 1,
+                     pencere_paydasi: int | None = None) -> int:
     """--count elle verilmediğinde kaç proje işleneceğini OTOMATİK belirler:
     bekleyen proje sayısına göre 24 saati eşit aralıklara böler (ör. 9 proje
     bekliyorsa ~2.7 saatte bir 1 tane, 2 proje bekliyorsa 12 saatte bir 1 tane)
@@ -469,7 +477,13 @@ def _auto_pace_count(pending: list, ready: list, count: int = 1) -> int:
 
     `count` = bu koşuda EN FAZLA kaç proje serbest bırakılacağı (main()'deki
     `batch = pending[:count]` ile BİREBİR aynı dilim). Fonksiyon 0 ya da
-    `count` döner; varsayılan 1 olduğu için bugünkü davranış değişmiyor."""
+    `count` döner; varsayılan 1 olduğu için bugünkü davranış değişmiyor.
+
+    `pencere_paydasi` (2026-09-13): günlük pencerenin bölüneceği sayı; verilmezse
+    `len(pending)`. main() artık `pending` olarak yalnız SEÇİLEBİLİR projeleri
+    veriyor (yalnız IG golden-hour'u bekleyenler `_yalniz_drain_bekleyenleri_ayir`
+    ile ayrıldı) ama paydayı bugünkü gibi TÜM pending sayısıyla geçiyor — sıra
+    düzeltmesi tempo aritmetiğini değiştirmesin."""
     if not pending:
         return 0
     # Taban SADECE sırada GERÇEKTEN yeni bir yayın varsa uygulanır.
@@ -500,7 +514,7 @@ def _auto_pace_count(pending: list, ready: list, count: int = 1) -> int:
     if last is None:
         return count  # hiç yükleme yapılmamış, hemen başla
 
-    pencere_gap = DAILY_WINDOW_SECONDS / len(pending)
+    pencere_gap = DAILY_WINDOW_SECONDS / (pencere_paydasi or len(pending))
     pencere_kalan = pencere_gap - (simdi - last)
 
     taban_kalan = 0.0
@@ -525,7 +539,7 @@ def _auto_pace_count(pending: list, ready: list, count: int = 1) -> int:
     # Beklemenin hangi kuraldan geldiğini logda ayırt et: sonraki oturum
     # "neden 2 gündür hiçbir şey çıkmıyor" diye sorduğunda cevap logda olsun.
     sebep = "yeni yayın tabanı" if yeni_yayin else "günlük pencere bölüşümü"
-    log(f"  Otomatik zamanlama: {len(pending)} proje bekliyor, sıradaki için "
+    log(f"  Otomatik zamanlama: {pencere_paydasi or len(pending)} proje bekliyor, sıradaki için "
         f"~{remaining_h:.1f} saat daha var (henüz erken, bu koşuda atlanıyor; "
         f"kural: {sebep}, gerekli ara ~{required_gap / 3600:.1f} saat).")
     return 0
@@ -711,6 +725,48 @@ def _bekletilenleri_ayir(project_dirs: list) -> tuple:
     return kalan, bekletilen
 
 
+_ANA_ANAHTARLAR = ("youtube_video_id", "youtube_shorts_video_id",
+                   "tiktok_publish_id", "instagram_media_id")
+
+
+def _yalniz_drain_bekleyenleri_ayir(project_dirs: list) -> tuple:
+    """(secilebilir, yalniz_drain) — sıra korunur (2026-09-13).
+
+    NEDEN: `batch = pending[:count]` kuyruğun başındaki projeyi seçer. Proje
+    yalnız Instagram konteynerinin golden-hour yayınını bekliyorsa
+    `process_project` onun için hiçbir şey yapamaz (yayını golden-hour'da
+    `_drain_golden_hour_queue` yapıyor, `ready` ile gezerek) — ama seçildiği
+    koşuda arkadaki YENİ şarkı işlenemez. Log'dan sayıldı: Son Kez 28,
+    Sessiz Mektup 34, Yeraltı 11 kez yalnız bunun için seçildi.
+
+    ÖLÇÜT (üçü BİRLİKTE): dört ana anahtardan YALNIZ `instagram_media_id`
+    eksik; `instagram_creation_id` VAR; konteyner BAYAT DEĞİL
+    (`instagram_upload._konteyner_bayat` — aynı 23 saatlik kapı, kopya yok).
+    Bayat konteyner normal seçilir: onu temizleyen yol `process_project`.
+
+    Okunamayan state ya da `instagram_upload` import edilemezse proje
+    SEÇİLEBİLİR kalır (bugünkü davranış) — ayırıcı bir kapı değil, sıra
+    düzeltmesi; "bilmiyorum" durumunda eski yola düşer.
+    Günlük pencere paydası bu ayırmadan ETKİLENMEZ (bkz. main()).
+    Koruma: tests/test_kuyruk_basi_drain.py."""
+    try:
+        from instagram_upload import _konteyner_bayat
+    except Exception:  # noqa: BLE001
+        return list(project_dirs), []
+    secilebilir, yalniz_drain = [], []
+    for p in project_dirs:
+        try:
+            st = _load_state(p)
+            eksik = [k for k in _ANA_ANAHTARLAR if k not in st]
+            drain = (eksik == ["instagram_media_id"]
+                     and bool(st.get("instagram_creation_id"))
+                     and not _konteyner_bayat(st))
+        except (OSError, ValueError, TypeError):
+            drain = False
+        (yalniz_drain if drain else secilebilir).append(p)
+    return secilebilir, yalniz_drain
+
+
 def _tr_simdi():
     """Şimdi (TR yerel, tz'li). Testler bunu değiştirir."""
     from datetime import datetime
@@ -732,7 +788,7 @@ def _youtube_servisi():
     return get_authenticated_service()
 
 
-def _gorunurlugu_youtubeda_uygula(youtube, video_idler: list, hedef: str) -> None:
+def _gorunurlugu_youtubeda_uygula(youtube, video_idler: list, hedef: str) -> list:
     """Videoları `hedef` gizliliğine alır ve GERİ OKUYARAK doğrular; olmazsa raise.
 
     Gövde `set_privacy.guvenli_status_govdesi` ile kuruluyor: `videos.update`
@@ -740,6 +796,13 @@ def _gorunurlugu_youtubeda_uygula(youtube, video_idler: list, hedef: str) -> Non
     zorunlu AI beyanı (`containsSyntheticMedia`) dahil, ve o alan okumada geri
     GELMEDİĞİ için round-trip onu korumaz (bkz. set_privacy.py docstring'i).
     Zaten hedefte olan videoya update HARCANMIYOR (50 birim).
+
+    DÖNÜŞ: gizliliği GERÇEKTEN değişen kimlikler (sıra korunur). Ölçüt state
+    DEĞİL, API'den okunan ÖNCEKİ gizlilik — state bayat olabiliyor (canlı
+    vaka: `Küllerimden Geç` uzun formatı Studio'dan public yapıldı, state
+    "unlisted" diyordu). Çağıran `*_publish_at`'i YALNIZ bunlara yazar;
+    değişmeyen videoya damga yazmak 52 saatlik tabanı sahte bir "yeni yayın"la
+    yeniden başlatıyordu (2026-09-13, doğrulama turu 2 bulgu 3).
     """
     from set_privacy import guvenli_status_govdesi
 
@@ -755,12 +818,14 @@ def _gorunurlugu_youtubeda_uygula(youtube, video_idler: list, hedef: str) -> Non
         # korumaya çalıştığımız alanları silen gövdenin ta kendisi olurdu.
         raise RuntimeError("status okunamadı: %s — gizlilik DEĞİŞTİRİLMEDİ"
                            % ", ".join(eksik))
+    degisen = []
     for vid in video_idler:
         if mevcut[vid].get("privacyStatus") == hedef:
             continue
         govde = guvenli_status_govdesi(mevcut[vid], hedef)
         youtube.videos().update(part="status",
                                 body={"id": vid, "status": govde}).execute()
+        degisen.append(vid)
     sonra = _oku()
     yanlis = ["%s=%s" % (v, (sonra.get(v) or {}).get("privacyStatus"))
               for v in video_idler
@@ -768,6 +833,7 @@ def _gorunurlugu_youtubeda_uygula(youtube, video_idler: list, hedef: str) -> Non
     if yanlis:
         raise RuntimeError("geri okuma hedefi (%s) doğrulamadı: %s"
                            % (hedef, ", ".join(yanlis)))
+    return degisen
 
 
 def _youtube_gorunurluk_planlarini_uygula(project_dirs: list) -> None:
@@ -793,10 +859,18 @@ def _youtube_gorunurluk_planlarini_uygula(project_dirs: list) -> None:
         kopyasını public'e çıkarmak da bir yayındır) — fail-closed;
       * hata: plan SİLİNMEZ, `son_hata_at`/`son_hata` yazılır; aynı projeye
         `GORUNURLUK_TEKRAR_BEKLEME_SN` dolmadan yeni `videos.update` harcanmaz.
-    BAŞARI: `<önek>_privacy` = hedef; hedef public ise `<önek>_publish_at` =
-    GERÇEK public anı (UTC "...Z" — `_son_yeni_yayin_ani` bunu 52 saatlik tempo
-    tabanına sayıyor); plan silinir, uygulama damgası yazılır; state `state_io`
-    ile atomik yazılır. Koruma: tests/test_youtube_gorunurluk_plani.py.
+    BAŞARI: `<önek>_privacy` = hedef (geri okumayla doğrulandı); hedef public ise
+    `<önek>_publish_at` = GERÇEK public anı (UTC "...Z") — AMA YALNIZ gizliliği
+    bu koşuda GERÇEKTEN değişen videoya (`_gorunurlugu_youtubeda_uygula`'nın
+    dönüşü; ölçüt API'den okunan önceki gizlilik). Zaten public olan videoya
+    damga YAZILMAZ: `_son_yeni_yayin_ani` `youtube_publish_at`'i 52 saatlik tempo
+    tabanına sayıyor ve Shorts-only bir plan tabanı sahte bir "yeni yayın"la
+    yeniden başlatıyordu (2026-09-13). `youtube_shorts_publish_at` tempoya
+    zaten sayılmaz. Gerçek unlisted -> public UZUN format geçişi sayılmaya
+    DEVAM eder; plan `tempo_sayilir: False` taşıyorsa o an
+    `TEMPO_DISI_PUBLIC_ANI_ALANI`na yazılır (taban okumaz). Plan silinir,
+    uygulama damgası yazılır; state `state_io` ile atomik yazılır.
+    Koruma: tests/test_youtube_gorunurluk_plani.py.
     """
     from datetime import datetime, timezone
 
@@ -873,8 +947,9 @@ def _youtube_gorunurluk_planlarini_uygula(project_dirs: list) -> None:
         return
 
     try:
-        _gorunurlugu_youtubeda_uygula(
+        degisen = set(_gorunurlugu_youtubeda_uygula(
             _youtube_servisi(), [state[o + "_video_id"] for o in onekler], hedef)
+            or ())
     except Exception as e:  # noqa: BLE001
         taze = uyumluluk._durum(proje)
         taze_plan = taze.get(GORUNURLUK_PLANI_ALANI)
@@ -888,17 +963,29 @@ def _youtube_gorunurluk_planlarini_uygula(project_dirs: list) -> None:
         return
 
     an_utc = simdi.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # `plan` YAZMADAN önceki okumadan; varsayılan True (kural gevşemiyor).
+    tempo_sayilir = plan.get(GORUNURLUK_TEMPO_ALANI, True) is not False
     taze = uyumluluk._durum(proje)
+    notlar = []
     for o in onekler:
         taze[o + "_privacy"] = hedef
-        if hedef == "public":
+        vid = state[o + "_video_id"]
+        if hedef != "public":
+            continue
+        if vid not in degisen:
+            notlar.append(f"{vid} zaten public, damga yazılmadı")
+            continue
+        if o == "youtube" and not tempo_sayilir:
+            taze[TEMPO_DISI_PUBLIC_ANI_ALANI] = an_utc
+            notlar.append(f"{vid} tempo DIŞI")
+        else:
             taze[o + "_publish_at"] = an_utc
     taze.pop(GORUNURLUK_PLANI_ALANI, None)
     taze[GORUNURLUK_UYGULANDI_ALANI] = simdi.isoformat(timespec="seconds")
     state_io.durum_yaz(proje, taze)
     idler = ", ".join(str(taze.get(o + "_video_id")) for o in onekler)
     log(f"  YouTube görünürlük planı UYGULANDI: '{ad}' -> {hedef} ({idler}), "
-        f"public anı {an_utc}")
+        f"public anı {an_utc}" + (f" [{'; '.join(notlar)}]" if notlar else ""))
 
 
 def _drain_golden_hour_queue(project_dirs: list) -> None:
@@ -1159,24 +1246,32 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
 # Bayrak açıkça yazılıyor, modül adından TÜRETİLMİYOR: modül bir gün yeniden
 # adlandırılırsa türetme sessizce yanlış anahtara bakar ve platform hiç
 # çalışmadığı hâlde hata da vermezdi.
-# Üçü de aynı sözleşmeye uyuyor: fonksiyon project_dir alır, state.json'ı
-# kendi yazar, hata durumunda istisna fırlatır.
+# Sözleşme: fonksiyon project_dir alır, state.json'ı kendi yazar, hata
+# durumunda istisna fırlatır.
+#
+# TELEGRAM VE BLUESKY BİLEREK YOK (2026-09-13). Burada gönderildiklerinde
+# golden-hour, gizlilik ve günlük tavan kapılarının HİÇBİRİ yoktu: pencere
+# dışında işlenen yeni şarkı YouTube'da private + `publishAt` iken linkiyle bu
+# platformlara düşüyordu (Bluesky 12 Eylül'de tavan 1 iken 2 gönderi yaptı).
+# İkisinde de native zamanlama yok; artık YALNIZ `upload/ek_platform_backfill.py`
+# gönderiyor (golden-hour + günlük tavan + politika kapısı + public-anı kapısı,
+# yeni public şarkılar kuyruğun önünde). CLAUDE.md'nin A/B kuralındaki (B):
+# günlük tavanı olan iş süpürgeye. Facebook KALDI: native zamanlaması var
+# (`scheduled_publish_time`, `schedule` argümanı). Koruma:
+# tests/test_ek_platform_ana_hattan_cikis.py.
 _EK_PLATFORMLAR = [
     ("facebook", "Facebook", "facebook_reels_id", "facebook_token.json",
      "facebook_upload", "upload_reels", True,
      "önce facebook_auth.py çalıştır"),
-    ("telegram", "Telegram", "telegram_message_id", "telegram_client_secrets.json",
-     "telegram_upload", "upload_video", False,
-     "BotFather'dan token al, botu kanala yönetici ekle"),
-    ("bluesky", "Bluesky", "bluesky_post_uri", "bluesky_client_secrets.json",
-     "bluesky_upload", "upload_video", False,
-     "pip install atproto + bsky.app App Password"),
 ]
 
 
 def _ek_platformlari_isle(project_dir: str, state: dict, upload_dir: str,
                           schedule: bool) -> None:
-    """Facebook / Telegram / Bluesky — hepsi OPT-IN ve hepsi hatasız-geçer.
+    """Ana hattaki ek platformlar (bugün yalnız Facebook) — OPT-IN, hatasız-geçer.
+
+    Telegram/Bluesky 2026-09-13'ten beri burada DEĞİL (bkz. `_EK_PLATFORMLAR`
+    üstündeki not) — yalnız geri doldurma süpürgesinde.
 
     Üç kapı sırayla:
       1. config.EK_PLATFORMLAR[bayrak] True mu — kapalıysa hiç denenmez, log da
@@ -1367,6 +1462,10 @@ def _facebook_veri_erisimi() -> None:
 def _ek_platform_backfill() -> None:
     """Telegram/Bluesky'ya hic gitmemis sarkilari geri doldurur.
 
+    2026-09-13'ten beri Telegram/Bluesky'nin TEK yolu bu: ana hat
+    (`_ek_platformlari_isle`) artik bu iki platformu gondermiyor. Yeni public
+    sarkilar (public ani son 7 gun) aday listesinin ONUNDE.
+
     NEDEN AYRI SUPURGE: _is_fully_done() bu iki platformu SAYMIYOR, dolayisiyla
     dort ana platformu tamamlayan proje pending'den kalici olarak dusuyor ve
     _ek_platformlari_isle() bir daha hic calismiyor. 2026-09-11 taramasi: 18
@@ -1468,6 +1567,23 @@ def _haftalik_gozden_gecirme() -> None:
         haftalik_gozden_gecirme(log)
     except Exception as e:
         log(f"  Haftalık özet HATA: {e}")
+
+
+def _gunluk_izlenme() -> None:
+    """Gunluk "tum sarkilar adlariyla" izlenme mesaji — saatlik kosudan.
+
+    YENI bir Gorev Zamanlayici gorevi EKLENMEDI (CLAUDE.md). Pencere ve damga
+    kontrolu fonksiyonun ICINDE (gunde bir, 09:00 sonrasi, yalniz yeni ve taze
+    olcumle); gunun geri kalaninda yalniz birkac yerel dosya okur, aga
+    dokunmaz. `_refresh_stats(None)`dan SONRA cagrilmali — once cagrilirsa
+    bayat olcumu raporlar (tests/test_gunluk_izlenme.py sirayi `ast` ile
+    kilitliyor). Hicbir hata otomasyonu durdurmaz.
+    """
+    try:
+        from weekly_report import gunluk_izlenme_raporu
+        gunluk_izlenme_raporu(log)
+    except Exception as e:
+        log(f"  Günlük izlenme HATA: {e}")
 
 
 def _facebook_yorumlari() -> None:
@@ -1609,12 +1725,33 @@ def main():
             log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
             return
 
-        # _auto_pace_count'un 3. parametresi (varsayılan 1) aşağıdaki
-        # `batch = pending[:count]` dilimiyle AYNI olmak ZORUNDA: 52 saatlik
-        # yeni-yayın tabanının muafiyeti o dilimin TAMAMINA bakarak veriliyor
-        # (bkz. o fonksiyondaki "AYIRT ETME" notu). Burada bir gün 1'den büyük
-        # bir kademe istenirse, aynı sayı oraya da geçilmeli.
-        count = args.count if args.count is not None else _auto_pace_count(pending, ready)
+        # YALNIZ Instagram golden-hour yayınını bekleyenler de sıra DIŞI
+        # (2026-09-13). Onlar için `process_project` hiçbir şey yapamaz; yayını
+        # aşağıdaki `_drain_golden_hour_queue` (`ready` ile) yapıyor. Ayrılmasalardı
+        # kuyruk başında her koşu boşuna seçilip arkadaki YENİ şarkıyı tıkıyorlardı
+        # (Son Kez 28, Sessiz Mektup 34, Yeraltı 11 koşu). Günlük pencere paydası
+        # DEĞİŞMEDİ: TÜM pending sayısı (`pencere_paydasi`).
+        pencere_paydasi = len(pending)
+        secilebilir, yalniz_drain = _yalniz_drain_bekleyenleri_ayir(pending)
+        if yalniz_drain:
+            log(f"Yalnız Instagram golden-hour yayını bekliyor, sıraya alınmadı "
+                f"(drain yayınlayacak): "
+                f"{', '.join(os.path.basename(os.path.normpath(p)) for p in yalniz_drain)}")
+        if not secilebilir:
+            _drain_golden_hour_queue(ready)
+            log("İşlenecek proje yok bu koşuda (yalnız golden-hour bekleyenler var), "
+                "sadece golden-hour kontrolü yapıldı.")
+            return
+
+        # _auto_pace_count'un 1. argümanı ile aşağıdaki `batch = secilebilir[:count]`
+        # AYNI liste, 3. parametresi (varsayılan 1) de o dilimle AYNI olmak
+        # ZORUNDA: 52 saatlik yeni-yayın tabanının muafiyeti o dilimin TAMAMINA
+        # bakarak veriliyor (bkz. o fonksiyondaki "AYIRT ETME" notu). Burada bir
+        # gün 1'den büyük bir kademe istenirse, aynı sayı oraya da geçilmeli.
+        # Sözleşme ast ile kilitli: tests/test_kuyruk_basi_drain.py.
+        count = (args.count if args.count is not None
+                 else _auto_pace_count(secilebilir, ready,
+                                       pencere_paydasi=pencere_paydasi))
         if count == 0:
             # Bu koşuda yeni bir proje işlenmeyecek olsa bile, ZATEN başlatılmış
             # (Instagram konteyneri / TikTok yüklemesi) ama golden-hour'u bekleyen
@@ -1633,7 +1770,7 @@ def main():
             log("İşlenecek proje yok bu koşuda (count=0), sadece golden-hour kontrolü yapıldı.")
             return
 
-        batch = pending[:count]
+        batch = secilebilir[:count]
         log(f"{len(pending)} bekleyen proje var, bu koşuda işlenecek ({len(batch)}): "
             f"{', '.join(os.path.basename(p) for p in batch)}")
         for project_dir in batch:
@@ -1657,6 +1794,7 @@ def main():
         _saglik_kontrol()
         _izlenme_raporu()
         _haftalik_gozden_gecirme()
+        _gunluk_izlenme()
         _release_lock()
 
 

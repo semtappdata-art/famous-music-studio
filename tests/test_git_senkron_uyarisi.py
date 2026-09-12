@@ -81,6 +81,10 @@ def ortam(tmp_path, monkeypatch):
 
     monkeypatch.setattr(SK, "_git_oku", _git_yasak)
     monkeypatch.setattr(SK, "_yerel_sayfa_metni", _sayfa_yasak)
+    # Eksik kimlik -> proje adı eşlemesi GERÇEK kataloğu taramasın: varsayılan
+    # boş katalog (kimlikler ham yazılır). Ad testleri kendi kataloğunu kurar.
+    import uyumluluk
+    monkeypatch.setattr(uyumluluk, "proje_klasorleri", lambda kokler=None: iter(()))
     return types.SimpleNamespace(gonderilen=gonderilen, monkeypatch=monkeypatch,
                                  tmp=tmp_path)
 
@@ -434,3 +438,139 @@ def test_kontrol_et_git_senkronu_cagiriyor():
                   for k in d.keys
                   if isinstance(k, ast.Constant)]
     assert "git_senkron" in anahtarlar
+
+
+# --- Eksik içerikler ADIYLA (2026-09-13) -----------------------------------
+#
+# GERÇEK VAKA: bildirim yalnız SAYI veriyordu ("5 içerik canlıda YOK").
+# Kullanıcı linki açtı, DJ bölümünde `Just Relax`'i göremedi ve bunu AYRI bir
+# arıza sandı. Hangi içeriklerin eksik olduğu mesajda yazsaydı tek bakışta
+# aynı arızanın parçası olduğu görülürdü.
+
+def _proje(tmp, kok, ad, state, meta=None):
+    import json
+    yol = tmp / "katalog" / kok / ad
+    yol.mkdir(parents=True)
+    (yol / "state.json").write_text(json.dumps(state), encoding="utf-8")
+    if meta is not None:
+        (yol / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    return str(yol)
+
+
+def _katalog(o, klasorler):
+    import uyumluluk
+    o.monkeypatch.setattr(uyumluluk, "proje_klasorleri",
+                          lambda kokler=None: iter(list(klasorler)))
+
+
+def _esige_kadar(o, dal, canli, yerel):
+    _kur(o, dal, canli, yerel)
+    _saat(o, T0)
+    SK.git_senkron(log=lambda *a: None)
+    _saat(o, T0 + 7 * SAAT)
+    loglar = []
+    s = SK.git_senkron(log=loglar.append)
+    return s, loglar
+
+
+def test_eksik_icerikler_adiyla_dj_set_ve_derleme_isaretli(ortam):
+    t = ortam.tmp
+    _katalog(ortam, [
+        _proje(t, "projects", "kirik_zincir", {"youtube_video_id": "vid14"},
+               {"title": "Kırık Zincir"}),
+        # meta.json yok -> klasör adı; yalnız Shorts kimliği eşleşiyor.
+        _proje(t, "projects", "Sokaklar Beni Tanır",
+               {"youtube_video_id": "baskaXX", "youtube_shorts_video_id": "vid15"}),
+        _proje(t, "dj_sets", "just_relax", {"youtube_video_id": "vid16"},
+               {"title": "Just Relax"}),
+        _proje(t, "derlemeler", "gece_seansi", {"youtube_video_id": "vid17"},
+               {"title": "Gece Seansı Vol. 1"}),
+        # Canlıda OLAN proje listeye girmemeli.
+        _proje(t, "projects", "canlida", {"youtube_video_id": "vid00"},
+               {"title": "Canlıda Olan"}),
+    ])
+    yerel = CANLI_IDS + ["vid14", "vid15", "vid16", "vid17"]
+    s, loglar = _esige_kadar(ortam, "claude/dal", CANLI_IDS, yerel)
+
+    assert s["bildirildi"] is True and s["eksik"] == 4
+    _, mesaj = ortam.gonderilen[0]
+    uyari = [l for l in loglar if "UYARI: git senkron" in l]
+    assert len(uyari) == 1
+    for metin in (mesaj, uyari[0]):
+        assert "Kırık Zincir" in metin
+        assert "Sokaklar Beni Tanır" in metin
+        assert "Just Relax (DJ set)" in metin
+        assert "Gece Seansı Vol. 1 (derleme)" in metin
+        assert "Canlıda Olan" not in metin
+        assert "Kırık Zincir (" not in metin      # şarkıya ek YOK
+        assert "vid16" not in metin               # eşleşen kimlik ham yazılmaz
+    # Eski sayı metni ve eylem satırları aynen duruyor.
+    assert "4 yayındaki içerik" in mesaj
+    assert "canlıda 14 giriş, olması gereken 18" in mesaj
+
+
+def test_eslesmeyen_kimlik_ham_yaziliyor(ortam):
+    t = ortam.tmp
+    _katalog(ortam, [
+        _proje(t, "dj_sets", "just_relax", {"youtube_video_id": "vid16"},
+               {"title": "Just Relax"}),
+    ])
+    yerel = CANLI_IDS + ["vid16", "yetimKimlik1"]
+    s, loglar = _esige_kadar(ortam, "claude/dal", CANLI_IDS, yerel)
+
+    _, mesaj = ortam.gonderilen[0]
+    uyari = next(l for l in loglar if "UYARI: git senkron" in l)
+    for metin in (mesaj, uyari):
+        assert "Just Relax (DJ set)" in metin
+        assert "yetimKimlik1" in metin, "eşleşmeyen kimlik sessizce düştü"
+
+
+def test_bozuk_state_ve_meta_cokertmez(ortam):
+    t = ortam.tmp
+    bozuk = t / "katalog" / "projects" / "bozuk"
+    bozuk.mkdir(parents=True)
+    (bozuk / "state.json").write_text("{bozuk", encoding="utf-8")
+    meta_bozuk = _proje(t, "projects", "meta_bozuk", {"youtube_video_id": "vid14"})
+    with open(os.path.join(meta_bozuk, "meta.json"), "w", encoding="utf-8") as f:
+        f.write("{yarim")
+    _katalog(ortam, [str(bozuk), meta_bozuk])
+    s, _ = _esige_kadar(ortam, "claude/dal", CANLI_IDS, CANLI_IDS + ["vid14"])
+    assert s["bildirildi"] is True
+    _, mesaj = ortam.gonderilen[0]
+    assert "meta_bozuk" in mesaj            # title okunamadı -> klasör adı
+
+
+def test_sekizden_fazla_eksikte_ve_n_tane_daha(ortam):
+    t = ortam.tmp
+    ekler = ["ekvid%02d" % i for i in range(12)]
+    _katalog(ortam, [
+        _proje(t, "projects", "sarki_%02d" % i, {"youtube_video_id": v},
+               {"title": "Şarkı %02d" % i})
+        for i, v in enumerate(ekler)
+    ])
+    s, loglar = _esige_kadar(ortam, "claude/dal", CANLI_IDS, CANLI_IDS + ekler)
+
+    assert s["eksik"] == 12
+    _, mesaj = ortam.gonderilen[0]
+    uyari = next(l for l in loglar if "UYARI: git senkron" in l)
+    for metin in (mesaj, uyari):
+        assert "ve 4 tane daha" in metin
+        assert sum(("Şarkı %02d" % i) in metin for i in range(12)) == 8
+
+
+def test_adli_metinler_cp1254_guvenli(ortam):
+    """Başlık meta.json'dan geliyor: cp1254'te OLMAYAN bir karakter (✓, →)
+    elle koşuda log satırını UnicodeEncodeError ile çökertmemeli."""
+    t = ortam.tmp
+    _katalog(ortam, [
+        _proje(t, "dj_sets", "neon", {"youtube_video_id": "vid14"},
+               {"title": "Neon Gece ✓ → Işık"}),
+        _proje(t, "derlemeler", "gece", {"youtube_video_id": "vid15"},
+               {"title": "Gece Seansı Vol. 1"}),
+    ])
+    s, loglar = _esige_kadar(ortam, "claude/dal", CANLI_IDS,
+                             CANLI_IDS + ["vid14", "vid15", "hamKimlik9"])
+    baslik, mesaj = ortam.gonderilen[0]
+    assert "Neon Gece" in mesaj and "(DJ set)" in mesaj
+    for metin in loglar + [baslik, mesaj]:
+        metin.encode("cp1254")

@@ -69,12 +69,18 @@ BELIRSIZ_BILDIRIM_ESIGI = 6
 # 1800 + koşu başına TEK kök (KOSU_BASINA_KOK) ile en kötü hâl 30 dakika.
 DJ_SUREC_TIMEOUT = 1800
 
-# Koşu başına kaç kök (dj_sets / derlemeler) işlensin — KOTA KAPISI.
-# Her kök AYRI bir dj_famous_process koşusu demek ve her koşu uzun format +
-# Shorts = 2 x ~1600 = ~3200 YouTube birimi harcıyor. Aynı saatte hem bir DJ
-# seti hem bir derleme kapıdan temiz geçerse 6400, üstüne aynı finally
-# bloğundaki normal auto_process yüklemeleri (3200) = 9600/10000 ve günün geri
-# kalanı kotasız kalıyordu. Kalan kök bir sonraki SAATLİK koşuya bırakılıyor
+# Koşu başına kaç kök (dj_sets / derlemeler) işlensin — KOTA KAPISI olarak eklendi.
+# Her kök AYRI bir dj_famous_process koşusu demek. Eklendiği hesap: her koşu uzun
+# format + Shorts = 2 x ~1600 = ~3200 YouTube birimi; aynı saatte hem bir DJ seti
+# hem bir derleme kapıdan temiz geçerse 6400, üstüne aynı finally bloğundaki
+# normal auto_process yüklemeleri (3200) = 9600/10000.
+# O hesap ESKİ maliyetle yapılmıştı: resmî tabloya göre `videos.insert`
+# 2026-06-01'den beri kendi kovasında, çağrı başına 1 birim, günde 100 çağrı
+# (developers.google.com/youtube/v3/determine_quota_cost). Üç kökün yüklemeleri
+# 6 çağrı; ortak 10.000'lik havuza yalnız kapak/playlist/altyazı adımları kalıyor.
+# Sabit yine de 1: DJ_SUREC_TIMEOUT'un "en kötü 30 dakika" hesabı da koşu başına
+# TEK köke dayanıyor. Artırmak ayrı ve testli bir iş (tests/test_dj_tarama_kota.py).
+# Kalan kök bir sonraki SAATLİK koşuya bırakılıyor
 # (`dj_kalan_bekliyor` bayrağıyla kalıcı, yoksa hiç tetiklenmezdi).
 KOSU_BASINA_KOK = 1
 

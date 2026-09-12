@@ -94,6 +94,28 @@ SLUG_BENZERLIK_ESIGI = 0.85
 # fazlası tek bir bozuk projeye giderdi.
 UYUSMAZLIK_BEKLEME_SN = 24 * 3600
 
+# API'de patlayan BEKLENMEDİK bir istisnadan sonra aynı projenin tekrar API'ye
+# gönderilmeden önce beklediği süre. NEDEN: `auto_process._check_youtube_captions`
+# istisnayı "API'ye dokunuldu" sayıyor ve `_drain_golden_hour_queue` koşu başına
+# TEK olan altyazı API hakkını o projeye veriyor. Kalıcı bir arıza (bozuk dosya,
+# silinmiş video, beklenmedik yanıt) soğumasız kalırsa hak her saat aynı projeye
+# gider, sıradaki sağlam projeler hiç sıra alamaz (08-10 Eylül: 33 ardışık HATA,
+# iki şarkı 37,8 saat altyazısız bekledi). 6 saat: geçici bir arızanın aynı gün
+# içinde tekrar denenmesine yetecek kadar kısa, günde en fazla 4 deneme.
+HATA_BEKLEME_SN = 6 * 3600
+
+# Kota/hız sınırı imzaları — bu hatalar PROJE değil KANAL düzeyinde; soğuma
+# damgası yazmak o an sırası gelmiş masum projeyi cezalandırırdı. Metin
+# üzerinden bakılıyor (`upload/ai_beyani_onar.KOTA_IMZALARI` ile aynı gerekçe:
+# HttpError'ın `str()`i "Details: [... 'reason': 'quotaExceeded']" taşıyor,
+# tek bir istisna tipine/özniteliğe bağlanmak kütüphane sürümüne bağımlı olurdu).
+KOTA_IMZALARI = (
+    "quotaexceeded",
+    "dailylimitexceeded",
+    "ratelimitexceeded",
+    "userratelimitexceeded",
+)
+
 
 def _log(mesaj: str) -> None:
     """`auto_process.log`'a tek satır. Maskeleme YAZMADAN ÖNCE (auto_process.log
@@ -130,6 +152,42 @@ def _sozler_dosyasi(title: str):
          "benzemiyor (%.3f < %.2f) — yanlış şarkının sözleri yazılmasın diye "
          "reddedildi." % (title, slug, stem, oran, SLUG_BENZERLIK_ESIGI))
     return None
+
+
+def _yerel_on_kontrol(ad: str, lyrics_path: str) -> bool:
+    """Sözler dosyası hizalamaya UYGUN mu — hiçbir API çağrısından ÖNCE.
+
+    `caption_align.temiz_sozleri_oku` `align()`'ın kullandığı okuyucunun TA
+    KENDİSİ (ayrı bir ayrıştırıcı yazılmadı, bkz. o fonksiyonun docstring'i).
+    Uygun değilse False: çağıran "skipped" döner, `_check_youtube_captions`
+    bunu "API'ye dokunulmadı" sayar, drain hakkı tüketmeden sıradaki projeye
+    geçer. Sebep log'a KOŞU BAŞINA bir kez düşer (`notify.uyar_bir_kez`):
+    aynı proje bir koşuda hem `process_project` hem drain'den görülebilir."""
+    try:
+        caption_align.temiz_sozleri_oku(lyrics_path)
+        return True
+    except caption_align.LyricsNotReady:
+        kod, sebep = "eksik", ("sözler dosyası kendini 'eksik/tamamlanmalı' diye "
+                               "işaretlemiş, sözler henüz tamamlanmamış")
+    except caption_align.TemizSozlerYok:
+        kod, sebep = "bolumsuz", "dosyada '## Temiz Sözler' bölümü yok ya da boş"
+    except (OSError, UnicodeDecodeError) as e:
+        kod, sebep = "okunamadi", "sözler dosyası okunamadı (%s)" % type(e).__name__
+    import notify
+    notify.uyar_bir_kez(
+        "youtube_captions_on_kontrol:%s:%s" % (ad, kod),
+        maskele("  YouTube altyazı atlandı (%s): %s — %s. API'ye gidilmedi "
+                "(kota harcanmadı)." % (ad, os.path.basename(lyrics_path), sebep)))
+    return False
+
+
+def _kota_hatasi(e: BaseException) -> bool:
+    metin = (str(e) + " " + str(getattr(e, "error_details", "") or "")).lower()
+    icerik = getattr(e, "content", b"") or b""
+    if isinstance(icerik, bytes):
+        icerik = icerik.decode("utf-8", "replace")
+    metin += " " + str(icerik).lower()
+    return any(imza in metin for imza in KOTA_IMZALARI)
 
 
 def _damga_saniye(damga: str) -> float:
@@ -179,8 +237,11 @@ def _find_caption_tracks(youtube, video_id: str):
 
 def sync_captions(project_dir: str) -> str:
     """Döner: "done" (bu koşuda yayınlandı/güncellendi), "already" (daha
-    önce yapılmıştı), "skipped" (sözler dosyası/video/render çıktısı yok ya da
-    önceki koşudaki uyuşmazlığın soğuma penceresi sürüyor — kalıcı, bu proje
+    önce yapılmıştı), "skipped" (sözler dosyası/video/render çıktısı yok,
+    sözler dosyası hizalamaya uygun değil — "Temiz Sözler" yok / eksik
+    işaretli / okunamıyor; bunlar API'den ÖNCE yerelde bakılıyor — ya da
+    önceki koşudaki uyuşmazlığın (24 sa) veya API hatasının (6 sa, kota
+    hariç) soğuma penceresi sürüyor — kalıcı, bu proje
     için bir daha denenmeyecek bir durum DEĞİL, sadece bu koşuda uygulanabilir
     değil), "pending" (video var
     ama YouTube'un ASR'si henüz hazır değil — sonraki koşuda tekrar denenecek).
@@ -208,6 +269,15 @@ def sync_captions(project_dir: str) -> str:
              "24 saat soğuma penceresinde." % ad)
         return "skipped"
 
+    # Genel hata soğuma penceresi (HATA_BEKLEME_SN'in yanındaki nota bkz.):
+    # önceki koşuda API'de beklenmedik bir istisna olduysa 6 saat API'ye
+    # gidilmez — koşu başına tek altyazı hakkı sıradaki projelere kalsın.
+    hata_at = state.get("youtube_captions_hata_at")
+    if hata_at and (time.time() - _damga_saniye(hata_at)) < HATA_BEKLEME_SN:
+        _log("  YouTube altyazı atlandı (%s): önceki denemede API hatası "
+             "(%s), 6 saat soğuma penceresinde." % (ad, hata_at))
+        return "skipped"
+
     meta = _load_json(os.path.join(project_dir, "meta.json"))
     baslik = meta.get("title", "")
     lyrics_path = _sozler_dosyasi(baslik)
@@ -217,13 +287,45 @@ def sync_captions(project_dir: str) -> str:
              % (ad, baslik))
         return "skipped"
 
+    # YEREL ÖN KONTROL — API'den ÖNCE. "Temiz Sözler" yok / sözler eksik
+    # işaretli / dosya okunamıyor: bunlar eskiden `align()` içinde, yani
+    # ~250 birim harcandıktan SONRA ortaya çıkıyordu.
+    if not _yerel_on_kontrol(ad, lyrics_path):
+        return "skipped"
+
     video_path = os.path.join(project_dir, "output", VIDEO_FILENAME)
     if not os.path.isfile(video_path):
         _log("  YouTube altyazı atlandı (%s): render çıktısı yok (%s) — "
              "süre ölçülemiyor." % (ad, VIDEO_FILENAME))
         return "skipped"
 
+    # Yetkilendirme sarmalayıcının DIŞINDA: token/yenileme arızası kanal
+    # düzeyinde (kota gibi), proje soğuması yanlış projeyi cezalandırırdı.
     youtube = get_authenticated_service()
+    try:
+        return _api_hatti(project_dir, ad, youtube, video_id, meta,
+                          lyrics_path, video_path)
+    except caption_align.LyricsMismatch:
+        raise                     # kendi 24 saatlik soğuması zaten yazıldı.
+    except Exception as e:
+        # Dönüş sözleşmesi: istisna TAŞINIYOR ("skipped" dönülmüyor) çünkü
+        # API'ye dokunuldu — `_check_youtube_captions` bunu hak tüketimi sayar.
+        # Ek olarak (kota hariç) proje damgası yazılıyor ki bir sonraki koşu
+        # hakkı yine bu projeye vermesin.
+        if not _kota_hatasi(e):
+            try:
+                _update_state(project_dir, {
+                    "youtube_captions_hata_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "youtube_captions_hata": maskele(
+                        "%s: %s" % (type(e).__name__, str(e)[:200])),
+                })
+            except Exception:
+                pass              # damga yazılamadı diye asıl hata gizlenmesin.
+        raise
+
+
+def _api_hatti(project_dir, ad, youtube, video_id, meta, lyrics_path, video_path):
+    """sync_captions'ın API'ye dokunan kısmı (yerel kontrollerin hepsi geçti)."""
     asr_track_id, manual_track_id = _find_caption_tracks(youtube, video_id)
     if not asr_track_id:
         return "pending"

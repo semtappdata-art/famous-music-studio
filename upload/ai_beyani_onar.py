@@ -92,8 +92,9 @@ gerçekten okumak, kuru koşunun raporunu güvenilir kılan şeyin ta kendisi.
 KOTA
 ----
 Video başına: 1 (`videos.list`) + 50 (`videos.update`) = 51 birim.
-Günlük tavan 10.000 ve saatlik yükleme hattı video başına ~1600 birim yiyor,
-bu yüzden `--limit` VARSAYILAN olarak küçük (`VARSAYILAN_LIMIT`): bir koşu
+Günlük tavan 10.000 (ortak havuz) ve saatlik yükleme hattının kapak, playlist ve
+altyazı adımları da o havuzdan yiyor (yayın başına ~950 birim; `videos.insert`
+2026-06-01'den beri ayrı kovada, çağrı başına 1 birim), bu yüzden `--limit` VARSAYILAN olarak küçük (`VARSAYILAN_LIMIT`): bir koşu
 kotanın ~%6'sını alır, iş birkaç koşuya yayılır. `quotaExceeded` gelirse
 TEMİZ DURULUR — o ana kadarki ilerleme diskte, bir sonraki koşu kaldığı
 yerden devam eder.
@@ -172,7 +173,8 @@ VIDEO_BASINA_BIRIM = LIST_BIRIMI + UPDATE_BIRIMI
 GUNLUK_KOTA = 10000
 
 # Koşu başına en fazla kaç video. 12 x 51 = 612 birim = günlük kotanın ~%6'sı;
-# saatlik yükleme hattı (video başına ~1600 birim) rahatça sığmaya devam eder.
+# saatlik yükleme hattının ortak havuzdaki payı (yayın başına ~950 birim;
+# `videos.insert` 2026-06-01'den beri ayrı kovada) rahatça sığmaya devam eder.
 # Tamamını tek koşuda yapmak için: --limit 100 (42 video = ~2.142 birim = %21).
 VARSAYILAN_LIMIT = 12
 

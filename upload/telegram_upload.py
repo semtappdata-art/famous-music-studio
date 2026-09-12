@@ -380,8 +380,9 @@ def upload_video(project_dir: str, kind: str = "uzun", dry_run: bool = False) ->
 
     # KOPYA KAPISI: önceki bir koşuda bu gönderi "belirsiz" kaldıysa (gövde
     # gitti, yanıt gelmedi) YENİDEN YÜKLEME. Kapı burada, çağıranda DEĞİL:
-    # bu fonksiyonu üç ayrı yol çağırıyor (auto_process._ek_platformlari_isle,
-    # upload/ek_platform_backfill süpürgesi, elle --project) ve süpürge
+    # bu fonksiyonu üç ayrı yol çağırıyor (dj_famous_process._ek_platformlari_isle,
+    # upload/ek_platform_backfill süpürgesi, elle --project; auto_process ana
+    # hattı 2026-09-13'ten beri Telegram'ı ÇAĞIRMIYOR) ve süpürge
     # projeyi "hiç gitmemiş" görüp her koşuda yeniden denemeye hazır —
     # kopyayı üretecek olan tam olarak orası.
     ag.kapi(project_dir, durum_anahtari, "Telegram")

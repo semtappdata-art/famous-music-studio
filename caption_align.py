@@ -96,6 +96,38 @@ def extract_clean_lyrics(md_content: str):
     return match.group(1).strip()
 
 
+class TemizSozlerYok(RuntimeError):
+    """Söz dosyası kendini "eksik" diye işaretlememiş ama "## Temiz Sözler"
+    bölümü yok (ya da boş). RuntimeError alt sınıfı: eskiden düz RuntimeError
+    atılıyordu, çağıranların "gerçek arıza" yorumu değişmesin diye."""
+
+
+def temiz_sozleri_oku(lyrics_md_path: str) -> str:
+    """Sözler dosyasının hizalamada kullanılacak "Temiz Sözler" metni.
+
+    TEK OKUYUCU: hem `align()` hem `upload/youtube_captions.py`'nin API'den
+    ÖNCEKİ yerel ön kontrolü bunu çağırıyor. NEDEN: bu kontrol eskiden yalnız
+    `align()` içindeydi, `align()` ise `captions.list` + `download` (~250 birim)
+    HARCANDIKTAN sonra çalışıyor — bölümü eksik tek bir dosya, koşu başına tek
+    olan altyazı API hakkını her koşuda yiyordu (Sofraya Gelmedin, 08-10 Eylül,
+    33 ardışık HATA). Ön kontrol ayrı bir ayrıştırıcıyla yazılsaydı iki kural
+    zamanla sapardı: ön kontrol "geçer" der, `align()` API harcandıktan sonra
+    yine patlar.
+
+    Atar: LyricsNotReady (dosya kendini eksik işaretlemiş), TemizSozlerYok
+    (işaretsiz ama bölüm yok), OSError/UnicodeDecodeError (okunamadı)."""
+    with open(lyrics_md_path, encoding="utf-8") as f:
+        md = f.read()
+    lyrics = extract_clean_lyrics(md)
+    if not lyrics:
+        if lyrics_marked_incomplete(md):
+            raise LyricsNotReady(
+                f"{lyrics_md_path}: sözler henüz tamamlanmamış "
+                "(dosya kendini 'eksik' olarak işaretlemiş).")
+        raise TemizSozlerYok(f"{lyrics_md_path}: '## Temiz Sözler' bölümü bulunamadı.")
+    return lyrics
+
+
 def split_into_cues(lyrics: str):
     cues = []
     for raw_line in lyrics.splitlines():
@@ -226,14 +258,7 @@ def align(asr_srt_path: str, lyrics_md_path: str, video_duration: float,
     asr_words = _build_word_time_list(asr_cues)
     asr_norm = [w[0] for w in asr_words]
 
-    md = open(lyrics_md_path, encoding="utf-8").read()
-    lyrics = extract_clean_lyrics(md)
-    if not lyrics:
-        if lyrics_marked_incomplete(md):
-            raise LyricsNotReady(
-                f"{lyrics_md_path}: sözler henüz tamamlanmamış "
-                "(dosya kendini 'eksik' olarak işaretlemiş).")
-        raise RuntimeError(f"{lyrics_md_path}: '## Temiz Sözler' bölümü bulunamadı.")
+    lyrics = temiz_sozleri_oku(lyrics_md_path)
     real_cues = split_into_cues(lyrics)
 
     real_words = []  # (norm, original, cue_idx)

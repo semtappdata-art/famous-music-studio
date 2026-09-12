@@ -15,12 +15,14 @@ yalnızca iz sürmek için, maddenin kendisi tek başına anlaşılır.
 **Ölçüm (28 gün, 20 Shorts):** 1.363 izlenme (kanalın %31,8'i) ama 70 dk izlenme süresi
 (%1,94) — izlenme başına ~2,1 sn. Ve **0 abone, 0 paylaşım, 0 yorum.** Shorts'un tek
 savunulabilir gerekçesi keşif; keşfin üç göstergesi de sıfır (uzun formla r = 0,135).
-Maliyet: yayın başına 1.701 kota birimi (%17) ve YouTube'a giden video sayısının iki
+Maliyet: yayın başına ~101 kota birimi (%1) + 1 `videos.insert` çağrısı (ayrı kova, günde 100;
+eski ~1.600'lük yükleme maliyetiyle 1.701 hesaplanmıştı) ve YouTube'a giden video sayısının iki
 katına çıkması — kanalın en büyük riskinin ("toplu üretilmiş AI içerik") tam merkezi.
 
 - **A — açık kalsın:** örneklem küçük ve genç, Shorts dağıtımı gecikmelidir; en iyi Short
   %72,6 izlenme yüzdesi tutturmuş — içerik izlendiğinde tutuyor, sorun hiç gösterilmemesi.
-- **B — tamamen kapat:** video sayısı yarıya, 1.701 birim serbest; izlenmenin üçte biri gider.
+- **B — tamamen kapat:** video sayısı yarıya, ~101 birim + 1 yükleme çağrısı serbest (kota
+  kazancı artık önemsiz); izlenmenin üçte biri gider.
 - **C — kısmi (rapor önerisi):** otomatik şarkı Shorts'unu kapat, `dj_clips` hattı
   (haftada ≤1 kürate kesit) açık kalsın. Keşif bileti elde kalır, hacim 1/7'ye iner.
 
@@ -221,7 +223,8 @@ kampanyasını çalıştır · ~10 dk · kota planı gerektirir.**
 `upload/ai_beyani_onar.py` var ama `upload/ai_beyani_onarim.json` **YOK** → **42 videonun
 hiçbiri onarılmamış.** Maliyet 42 × 51 = **2.142 birim (%21,4)**. Önce dört maddeyi
 `auto_process.log`'un son 30 satırından doğrula: (1) bugün **Cuma değil** (Cuma DJ koşusu
-+3.454…5.104 birim); (2) sıradaki yayına **≥3 saat** var; (3) log'da `DJ tarama: karantinada
++3.454…5.104 birim — o günkü eski ~1.600'lük yükleme maliyetiyle; 2026-09-12 itibarıyla
++254…304 birim + 2-3 `videos.insert` çağrısı); (2) sıradaki yayına **≥3 saat** var; (3) log'da `DJ tarama: karantinada
 bekleyen içerik yok`; (4) elle `--count N` planı yok. **Tavsiye:** Cuma olmayan gün
 **10:15 TR**, önce `--dry-run --limit 100` (42 birim), sonra `--uygula --limit 42`; günün
 kalanına ~6.600 birim kalır. Kampanya kesintiye dayanıklı (`quotaExceeded`'da temiz durur,
@@ -1027,15 +1030,26 @@ saatin hemen sonrasına.
 
 ### Kota — ölçülmüş sayılar
 
-Tek yayın **~4.150 birim** (%42); `videos.insert` ×2 = 3.200, maliyetin %91'i. Yayınsız
-günlük taban **49** (%0,5), bir şarkı ASR beklerken **1.249** (%12,5). Günde en fazla **6**
-`videos.insert` (pratikte 4-5). **İlk aşılan senaryo: 2 yayın + onarım kampanyası =
-11.697/10.000**; DJ seti + kesit + 1 yayın kampanya olmadan bile aşar (10.506). **Kotayı
+> **Düzeltme (2026-09-12, resmî kaynak):** bu bölümün ilk hesabı `videos.insert`'i ~1.600
+> birim sayıyordu. Resmî maliyet tablosu (son güncelleme 2026-09-04): `videos.insert` için
+> "100 quota per day. Each call costs 1 quota." ve "search.list and videos.insert methods have
+> their own quota buckets". Revizyon geçmişi: 2025-12-04 ~1600 → ~100 birim; 2026-06-01 ayrı
+> kova. Diğer metodların maliyeti değişmedi; ortak havuz hâlâ 10.000.
+
+Tek yayın ortak havuzdan **~950 birim** (%9,5) + 2 `videos.insert` çağrısı (günlük 100'lük
+ayrı kovadan). İlk hesap yüklemeyi ×2 = 3.200 sayıp **~4.150** (%42) bulmuştu. Yayınsız
+günlük taban **49** (%0,5), bir şarkı ASR beklerken **1.249** (%12,5). `videos.insert`
+sınırı günde **100 çağrı** (ilk hesaptaki "günde en fazla 6, pratikte 4-5" eski maliyetten
+türemişti). **Eski hesabın ilk aşılan senaryoları** (2 yayın + onarım kampanyası =
+11.697/10.000; DJ seti + kesit + 1 yayın = 10.506) yeni maliyetle **5.297** ve **2.506**
+birim + 4 ve 5 yükleme çağrısı; ikisi de tavanın altında. **Kotayı
 öldüren tek düğme `--count`** — `MIN_YAYIN_ARALIGI_SN = 52 saat` sayesinde elle verilmedikçe
 günde en fazla 1 yeni yayın. Görev tablosunda olmayan maliyetler: `captions.download`
 **200**, `thumbnails.set` **50**, `channels.list` **1**. ⚠ "Kota bitse de yüklemeler
 geçiyor" diye **davranma**: 09-06'da okumalar 403 alırken iki `videos.insert` başarılı oldu,
-sebebi doğrulanamadı — tek gözlem, garanti değil.
+sebebi o gün doğrulanamadı. Resmî açıklama (2026-09-12'de bulundu): 2026-06-01'den beri
+`videos.insert` ortak havuzda değil, kendi kovasında. Ortak 10.000 bitince yükleme geçer ama
+kapak, playlist ve altyazı adımları yine düşer; kendi 100 çağrılık kovası da ayrıca dolabilir.
 
 ### Ölçülüp temiz çıkanlar
 
@@ -1085,7 +1099,8 @@ sebebi doğrulanamadı — tek gözlem, garanti değil.
   `sendVideo`, Bluesky `createRecord`, Facebook `/videos` ve `/comments`, Instagram
   `media_publish`, YouTube `videos.insert` ve `comments.insert`.
 - **B-23.** `dj_clips` **YAYIN tarafı üretimde hâlâ hiç çalışmadı** (doğrulandı) — kesit
-  kota tahmini (~1.650 birim) teorik.
+  kota tahmini (~50 birim ortak havuz + 1 `videos.insert` çağrısı; eski maliyetle ~1.650)
+  teorik.
 - **B-24.** **Shorts uzun forma trafik TAŞIMIYOR** (r = 0,135). **Başlık uzunluğunu optimize
   etmeye çalışma:** 18 şarkıda r = −0,507 görünüyor ama 5 Eylül toplu yüklemesi çıkarılınca
   işaret **ters dönüyor** (+0,261) — örüntü değil, gürültü.

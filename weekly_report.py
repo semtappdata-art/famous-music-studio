@@ -24,6 +24,12 @@ Kullanım:
    sağlık / senin işin" özeti. Detay ve gerekçeler aşağıdaki
    "HAFTALIK GÖZDEN GEÇİRME" bölümünün başında. Elle:
    `python weekly_report.py --haftalik` (bildirim GÖNDERMEZ, sadece basar).
+   Haftanın TEK izlenme mesajı budur: toplam haftalık izlenme + önceki
+   haftayla kıyas + en çok artan şarkılar + izlenme süresi (2026-09-12).
+4. `gunluk_izlenme_raporu()` — aynı saatlik koşudan, GÜNDE BİR telefona giden
+   "tüm şarkılar adlarıyla, son ölçüm aralığındaki artış" mesajı. Detay:
+   aşağıdaki "GÜNLÜK İZLENME RAPORU" bölümü. Elle:
+   `python weekly_report.py --gunluk` (bildirim GÖNDERMEZ, sadece basar).
 """
 
 import argparse
@@ -40,7 +46,7 @@ REPO = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "upload"))
 
-from youtube_stats import get_stats_batch, KOKLER
+from youtube_stats import get_stats_batch, KOKLER, GIZLILIK_ALANI_SONEKI
 
 INSTAGRAM_TOKEN_PATH = os.path.join(REPO, "upload", "instagram_token.json")
 INSTAGRAM_WARN_DAYS = 10  # bu kadar gün kala uyar (60 günlük token için makul bir tampon)
@@ -52,7 +58,10 @@ DURUM_DOSYASI = os.path.join(REPO, "upload", "saglik_durum.json")
 HAFTA_ANAHTARI = "izlenme_rapor_hafta"        # rapor bu hafta çalıştı mı
 BOS_ANAHTARI = "izlenme_rapor_bos_gun"        # veri gelmedi -> bugün tekrar deneme
 TOKEN_ANAHTARI = "izlenme_token_bildirim_hafta"
-RAPOR_BILDIRIM = "izlenme_rapor_bildirim_hafta"
+# NOT: eskiden burada `RAPOR_BILDIRIM = "izlenme_rapor_bildirim_hafta"` vardı —
+# izlenme süresinin AYRI "Haftalık izlenme süresi" bildiriminin damgası. O
+# bildirim 2026-09-12'de kaldırıldı (kullanıcı haftada TEK izlenme raporu
+# istedi); süre artık `haftalik_gozden_gecirme()`in İZLENME bölümünde.
 
 AUTH_KOMUTU = "python upload/youtube_analytics.py --auth"
 
@@ -314,6 +323,14 @@ def izlenme_raporu(log=print, zorla: bool = False, durum_dosyasi: str | None = N
 
     for satir in _ozet_satirlari(ozet):
         log(satir)
+    # AYRI BİLDİRİM YOK (2026-09-12). Eskiden burada
+    # `_bildir("Haftalık izlenme süresi", ...)` vardı; kullanıcı haftada TEK
+    # izlenme raporu istedi ve aynı hafta "Haftalık özet" de izlenme
+    # sayılarını taşıyordu — iki mesaj aynı konuyu iki farklı biçimde
+    # anlatıyordu. Süre özeti aşağıda KAYDEDİLİYOR ve
+    # `haftalik_gozden_gecirme()` onu İZLENME bölümüne koyuyor. Bu fonksiyon
+    # hâlâ HAFTADA BİR Analytics'e gidiyor (ölçümün kendisi) ve izin yoksa
+    # "İzlenme ölçümü kapalı" alarmını gönderiyor — o bir rapor değil, arıza.
     # Hafta damgalanıyor: bir sonraki koşularda tekrar API'ye gitmesin.
     # BOS_ANAHTARI temizleniyor ki yeni haftada eski gün damgası engel olmasın.
     # ÖZET DE KAYDEDİLİYOR (2026-09-12): haftalık gözden geçirme raporu
@@ -326,7 +343,6 @@ def izlenme_raporu(log=print, zorla: bool = False, durum_dosyasi: str | None = N
                  "video": o.get("video"), "izlenme": o.get("izlenme"),
                  "dakika": o.get("dakika"), "ort_izlenme_sn": o.get("ort_izlenme_sn"),
              } for k, o in ozet.items() if isinstance(o, dict)}}, yol)
-    _bildir("Haftalık izlenme süresi", _bildirim_metni(ozet), RAPOR_BILDIRIM, hafta, yol)
     return {"durum": "tamam", "hafta": hafta, "ozet": ozet}
 
 
@@ -553,14 +569,12 @@ def _katalog_taramasi(t: float) -> dict:
     yayin_gun = {}      # platform -> gönderi yapılan günler (tavan tahmini)
     bekleyen = {}       # ana platform anahtarı -> eksik proje sayısı
     proje = 0
-    izlenme = 0
 
     for yol in uyumluluk.proje_klasorleri():
         if not any(os.path.isfile(os.path.join(yol, a)) for a in SES_DOSYALARI):
             continue                      # proje değil (bkz. SES_DOSYALARI)
         proje += 1
         state = _load_state(yol)
-        izlenme += _sayi(state, "youtube_views", "youtube_shorts_views")
         for anahtar in ANA_PLATFORM_ANAHTARLARI:
             if not state.get(anahtar):
                 bekleyen[anahtar] = bekleyen.get(anahtar, 0) + 1
@@ -575,7 +589,7 @@ def _katalog_taramasi(t: float) -> dict:
             yayin_gun.setdefault(ad, set()).add(str(deger)[:10])
 
     return {"yayin": yayin, "yayin_gun": yayin_gun, "bekleyen": bekleyen,
-            "proje": proje, "izlenme": izlenme}
+            "proje": proje}
 
 
 def _dolu_gunler(yayin_gun: dict, bayrak: str) -> set:
@@ -672,54 +686,555 @@ def _saglik_satiri(saglik_fn=None) -> str:
     return " - ".join(parca)
 
 
-def _olcum_satiri(d: dict, izlenme: int) -> tuple:
-    """(satır, yeni anlık görüntü) — izlenme ve izlenme süresi DEĞİŞİMİ.
+# --------------------------------------------------------------------------
+# İZLENME KATALOĞU (2026-09-12) — günlük rapor ile haftalık kıyasın ORTAK
+# kaynağı. İki rapor aynı şarkıyı aynı sınıfa koysun (liste dışı / kopya /
+# DJ-derleme) diye tek yerde.
+#
+# KOTA: SIFIR YouTube isteği. Sayılar `state.json`'dan; onları günde bir
+# `youtube_stats.get_stats_batch` (`TAZELEME_ARALIGI_SN` = 20 saat) tazeliyor
+# ve aynı `finally` bloğunda bu raporlardan ÖNCE çalışıyor.
+# --------------------------------------------------------------------------
+# Şarkı kökü TEK: geri kalan her içerik kökü (bugün dj_sets + derlemeler) ayrı
+# "DJ SET / DERLEME" bölümünde. Kök listesi ELLE SAYILMIYOR (bkz.
+# tests/test_kok_listesi_muhafizi.py) — yarın açılacak bir kök şarkı
+# listesine karışmaz, kendiliğinden ayrı bölüme düşer.
+SARKI_KOKU = "projects"
 
-    İki kaynak da HAZIR veriden okunuyor, hiçbiri yeniden hesaplanmıyor:
-      * izlenme -> `state.json` (günde bir `youtube_stats` tazeliyor),
-      * izlenme süresi -> `izlenme_raporu()`nun AYNI koşuda bıraktığı özet.
-    Değişim için geçen haftanın anlık görüntüsü `saglik_durum.json`'da duruyor;
-    ilk haftada temel çizgi yok, bu açıkça yazılıyor (sessizce "0 değişim"
-    demek yanlış bilgi olurdu).
+
+def _load_meta(project_dir: str) -> dict:
+    try:
+        with open(os.path.join(project_dir, "meta.json"), "r", encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return meta if isinstance(meta, dict) else {}
+
+
+def _tam_sayi(deger):
+    """int ya da None — None/bool/bozuk değer 'bilinmiyor' demek, 0 DEĞİL."""
+    if deger is None or isinstance(deger, bool):
+        return None
+    try:
+        return int(deger)
+    except (TypeError, ValueError):
+        return None
+
+
+def _sayi_bicim(n) -> str:
+    """12345 -> "12.345" (Türkçe binlik ayracı)."""
+    return "{:,}".format(int(n)).replace(",", ".")
+
+
+def _isaretli(n) -> str:
+    return ("-" if n < 0 else "+") + _sayi_bicim(abs(n))
+
+
+def _gelecekte_mi(deger, t: float) -> bool:
+    if not isinstance(deger, str) or not deger:
+        return False
+    try:
+        an = datetime.datetime.fromisoformat(deger.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if an.tzinfo is None:
+        return time.mktime(an.timetuple()) > t
+    return an.timestamp() > t
+
+
+def _gizli_mi(st: dict, onek: str, t: float):
+    """Bu video herkese KAPALI mı? Video yoksa None.
+
+    GERÇEK gizlilik (`<onek>_privacy_gercek`, `youtube_stats` ölçüyor) İSTENEN
+    gizliliğin (`<onek>_privacy`) önüne geçiyor: `Küllerimden Geç`in uzun
+    formatı Studio'dan elle public yapıldı ama state hâlâ "unlisted" diyor.
+    Zamanlanmış (`private` + gelecekteki `*_publish_at`) video KAPALI
+    sayılmıyor — yarın çıkacak bir şarkı "liste dışı" bölümüne düşmesin.
     """
+    if not st.get(onek + "_video_id"):
+        return None
+    gizlilik = st.get(onek + GIZLILIK_ALANI_SONEKI) or st.get(onek + "_privacy")
+    if gizlilik == "unlisted":
+        return True
+    if gizlilik == "private":
+        return not _gelecekte_mi(st.get(onek + "_publish_at"), t)
+    return False
+
+
+def _izlenme_katalogu(klasorler=None, simdi: float | None = None) -> list:
+    """Ölçülmüş her proje için bir sözlük.
+
+    `disi`: None (toplama girer) | "kopya" | "liste dışı".
+      * "kopya" — `kopya_notu` (state ya da meta). Yeniden Doğacağım:
+        Küllerimden Geç ile AYNI ses; izlenmesini toplama katmak aynı şarkıyı
+        iki kez saymak olurdu.
+      * "liste dışı" — projenin HİÇBİR videosu herkese açık değil (Bu Gece
+        Kazandık). Bir videosu açık olan proje toplama GİRER; o durumda kapalı
+        videonun izlenmesi de sayılıyor (proje başına tek satır okunaklılığı
+        için bilinçli bir sadeleştirme — bugün bu durumda tek proje var).
+    """
+    import uyumluluk
+    t = simdi if simdi is not None else time.time()
+    if klasorler is None:
+        klasorler = uyumluluk.proje_klasorleri()
+    liste = []
+    for yol in klasorler:
+        st = _load_state(yol)
+        if not isinstance(st, dict):
+            continue
+        uzun = _tam_sayi(st.get("youtube_views"))
+        shorts = _tam_sayi(st.get("youtube_shorts_views"))
+        if uzun is None and shorts is None:
+            continue                      # hiç ölçülmemiş / yüklenmemiş
+        meta = _load_meta(yol)
+        klasor = os.path.basename(os.path.normpath(yol))
+        kok = os.path.basename(os.path.dirname(os.path.normpath(yol)))
+        kapali = [g for g in (_gizli_mi(st, "youtube", t),
+                              _gizli_mi(st, "youtube_shorts", t)) if g is not None]
+        if st.get("kopya_notu") or meta.get("kopya_notu"):
+            disi = "kopya"
+        elif kapali and all(kapali):
+            disi = "liste dışı"
+        else:
+            disi = None
+        ad = meta.get("title")
+        ad = ad.strip() if isinstance(ad, str) and ad.strip() else klasor
+        at = st.get("youtube_stats_checked_at")
+        prev_at = st.get("youtube_stats_prev_at")
+        liste.append({
+            "anahtar": "%s/%s" % (kok, klasor),
+            "ad": ad,
+            "grup": "sarki" if kok == SARKI_KOKU else "set",
+            "disi": disi,
+            "uzun": uzun,
+            "shorts": shorts,
+            "toplam": (uzun or 0) + (shorts or 0),
+            "uzun_prev": _tam_sayi(st.get("youtube_views_prev")),
+            "shorts_prev": _tam_sayi(st.get("youtube_shorts_views_prev")),
+            "at": at if isinstance(at, str) else None,
+            "prev_at": prev_at if isinstance(prev_at, str) else None,
+        })
+    return liste
+
+
+def _son_olcum(katalog: list):
+    """(epoch, damga metni) — katalogdaki en yeni ölçüm; hiç yoksa None."""
+    olcumler = [(ts, k["at"]) for k in katalog
+                for ts in (_damga_ts(k.get("at")),) if ts is not None]
+    return max(olcumler) if olcumler else None
+
+
+def _kisa_an(ts: float) -> str:
+    return time.strftime("%d.%m %H:%M", time.localtime(ts))
+
+
+# --------------------------------------------------------------------------
+# HAFTALIK İZLENME KIYASI — `haftalik_gozden_gecirme()`in İZLENME bölümü
+#
+# HAFTADA TEK İZLENME MESAJI (kullanıcı isteği, 2026-09-12): eskiden
+# `izlenme_raporu()` ayrı bir "Haftalık izlenme süresi" bildirimi atıyor,
+# pazartesi de "Haftalık özet" ayrıca bir ÖLÇÜM satırı taşıyordu. İkincisi
+# zaten pazartesi sabahı, kataloğun tamamını gören ve damgası yalnız başarıda
+# atılan TEK rapor; izlenme oraya katıldı, ayrı süre bildirimi kaldırıldı.
+#
+# ANLIK GÖRÜNTÜ (`HAFTALIK_OLCUM_ANAHTARI`, saglik_durum.json) — yalnız özet
+# BAŞARIYLA gönderildiğinde yenilenir:
+#   izlenme   tüm videoların toplamı (eski biçimle uyumlu anahtar)
+#   toplam    toplama giren (açık, kopya olmayan) projelerin toplamı
+#   projeler  {"kök/klasör": toplam} — şarkı bazında artış bunun farkı
+#   artis     bu raporun "bu hafta" sayısı -> gelecek haftanın "önceki hafta"sı
+#   artis_tum aynısı tüm videolar için (eski biçimli görüntüden geçiş)
+#   olcum_at  sayıların ait olduğu ölçüm anı (aralık bununla yazılıyor)
+# "Önceki haftanın toplamı" için İKİNCİ bir anlık görüntü gerekmiyor: geçen
+# haftanın raporu kendi artışını `artis` olarak bırakıyor.
+# --------------------------------------------------------------------------
+HAFTALIK_EN_COK = 5
+
+
+def _yuzde(fark: int, taban) -> str:
+    if not taban or taban <= 0:
+        return "yüzde hesaplanamaz"
+    y = fark * 100.0 / taban
+    return "%s%%%s" % ("-" if y < 0 else "+", ("%.1f" % abs(y)).replace(".", ","))
+
+
+def _haftalik_izlenme_satirlari(d: dict, katalog: list, t: float) -> tuple:
+    """(satırlar, yeni anlık görüntü). Hiçbir şey yeniden ölçülmüyor."""
     ozet = d.get(IZLENME_OZET_ANAHTARI) or {}
     dakika = 0
     video = 0
+    gecerli_ozet = {}
     if isinstance(ozet, dict):
-        for o in ozet.values():
+        for kok, o in ozet.items():
             if isinstance(o, dict):
                 try:
                     dakika += int(o.get("dakika") or 0)
                     video += int(o.get("video") or 0)
+                    gecerli_ozet[kok] = {"video": int(o.get("video") or 0),
+                                         "dakika": int(o.get("dakika") or 0)}
                 except (TypeError, ValueError):
                     pass
-    yeni = {"izlenme": izlenme, "dakika": dakika, "video": video}
 
-    ek = ""
-    if not ozet:
-        # İzlenme SÜRESİ hiç yazılmamış: ya Analytics izni yok ya da haftalık
-        # izlenme raporu henüz hiç çalışmadı. Sessizce "0 dk" göstermek tam da
-        # bu deponun düzeltmeye çalıştığı sessiz arıza olurdu.
-        ek = " [izlenme süresi kaydı YOK - izlenme raporu çalışmamış olabilir]"
+    acik = [k for k in katalog if not k.get("disi")]
+    acik_toplam = sum(int(k["toplam"]) for k in acik)
+    tum_toplam = sum(int(k["toplam"]) for k in katalog)
+    son = _son_olcum(katalog)
+    yeni = {"izlenme": tum_toplam, "toplam": acik_toplam, "dakika": dakika,
+            "video": video, "olcum_at": son[1] if son else None,
+            "projeler": {k["anahtar"]: int(k["toplam"]) for k in katalog},
+            "artis": None, "artis_tum": None}
 
+    satirlar = []
     onceki = d.get(HAFTALIK_OLCUM_ANAHTARI)
     if not isinstance(onceki, dict):
-        return ("ÖLÇÜM: izlenme %d, izlenme süresi %d dk (ilk hafta - temel "
-                "çizgi kaydedildi)%s" % (izlenme, dakika, ek)), yeni
+        satirlar.append("İZLENME: toplam %s (ilk hafta - temel çizgi kaydedildi, "
+                        "kıyas gelecek hafta)" % _sayi_bicim(acik_toplam))
+    else:
+        onceki_projeler = onceki.get("projeler")
+        if not isinstance(onceki_projeler, dict):
+            onceki_projeler = None
+        onceki_tum = _tam_sayi(onceki.get("izlenme"))
+        if onceki_tum is not None:
+            yeni["artis_tum"] = tum_toplam - onceki_tum
 
-    def _fark(simdi, ad):
-        try:
-            eski = int(onceki.get(ad) or 0)
-        except (TypeError, ValueError):
-            return "?"
-        return "%+d" % (simdi - eski)
+        artislar = []
+        kapsam = ""
+        if onceki_projeler is not None:
+            # ŞARKI BAZINDA fark: geçen hafta liste dışı olup bu hafta açılan
+            # bir şarkının ESKİ izlenmeleri "bu haftanın artışı" sayılmasın
+            # (toplamların farkı bunu yapardı). Geçen hafta hiç olmayan şarkı
+            # = bu hafta yayınlandı; izlenmesinin tamamı bu haftanın.
+            artis = 0
+            for k in acik:
+                eski = _tam_sayi(onceki_projeler.get(k["anahtar"]))
+                a = int(k["toplam"]) - (eski if eski is not None else 0)
+                artis += a
+                artislar.append((a, k["ad"], eski is None))
+            yeni["artis"] = artis
+            gecen = _tam_sayi(onceki.get("artis"))
+            gecen_tum = _tam_sayi(onceki.get("artis_tum"))
+            if gecen is None and gecen_tum is not None and yeni["artis_tum"] is not None:
+                # Geçen haftanın yalnız TÜM-video artışı biliniyor: elma-elma
+                # kıyas için bu hafta da tüm videolarla karşılaştırılıyor.
+                artis, gecen, kapsam = yeni["artis_tum"], gecen_tum, " (liste dışı dahil)"
+        else:
+            # ESKİ BİÇİMLİ görüntü ({izlenme, dakika, video}): şarkı dökümü
+            # yok, yalnız tüm videoların toplamı biliniyor. Uydurmadan,
+            # etiketleyerek o farkı veriyoruz.
+            artis, gecen, kapsam = yeni["artis_tum"], None, " (liste dışı dahil)"
 
-    return ("ÖLÇÜM: izlenme %d (%s), izlenme süresi %d dk (%s)%s"
-            % (izlenme, _fark(izlenme, "izlenme"), dakika,
-               _fark(dakika, "dakika"), ek)), yeni
+        if artis is None:
+            satirlar.append("İZLENME: toplam %s (önceki ölçüm okunamadı - kıyas yok)"
+                            % _sayi_bicim(acik_toplam))
+        else:
+            satirlar.append("İZLENME bu hafta: %s%s (toplam %s)"
+                            % (_isaretli(artis), kapsam, _sayi_bicim(acik_toplam)))
+            bas = _damga_ts(onceki.get("olcum_at"))
+            if bas is not None and son and son[0] > bas:
+                satirlar.append("  Ölçüm aralığı: %s - %s (%s gün)" % (
+                    _kisa_an(bas), _kisa_an(son[0]),
+                    ("%.1f" % ((son[0] - bas) / 86400.0)).replace(".", ",")))
+            if gecen is None:
+                satirlar.append("  Önceki haftayla kıyas yok (önceki haftanın artışı "
+                                "kayıtlı değil - gelecek hafta)")
+            else:
+                satirlar.append("  Önceki hafta: %s%s -> fark %s (%s)" % (
+                    _isaretli(gecen), kapsam, _isaretli(artis - gecen),
+                    _yuzde(artis - gecen, gecen)))
+            if onceki_projeler is None:
+                satirlar.append("  Şarkı bazında kıyas gelecek hafta (önceki ölçümde "
+                                "şarkı dökümü yok)")
+            else:
+                artanlar = sorted([x for x in artislar if x[0] > 0],
+                                  key=lambda x: (-x[0], x[1]))[:HAFTALIK_EN_COK]
+                satirlar.append("  En çok artan: " + (", ".join(
+                    "%s %s%s" % (ad, _isaretli(a), " (yeni)" if yeni_mi else "")
+                    for a, ad, yeni_mi in artanlar) or "bu hafta artış yok"))
+
+    if son and (t - son[0]) > BAYAT_ESIK_SN:
+        satirlar.append("  UYARI: son ölçüm %d saat önce - istatistik tazelenmiyor "
+                        "olabilir" % round((t - son[0]) / 3600.0))
+
+    if not gecerli_ozet:
+        # İzlenme SÜRESİ hiç yazılmamış: Analytics izni yok ya da
+        # izlenme_raporu() hiç çalışmadı. Sessizce "0 dk" demek yanlış olurdu.
+        satirlar.append("  İzlenme süresi kaydı YOK - izlenme raporu çalışmamış olabilir")
+    else:
+        ek = ""
+        if isinstance(onceki, dict) and _tam_sayi(onceki.get("dakika")) is not None:
+            ek = " (%s)" % _isaretli(dakika - _tam_sayi(onceki.get("dakika")))
+        satirlar.append("  İzlenme süresi: %s dk%s - %s" % (
+            _sayi_bicim(dakika), ek, _bildirim_metni(gecerli_ozet)))
+    return satirlar, yeni
 
 
-_TARIH_RE = re.compile(r"(20\d\d-\d\d-\d\d)")
+# --------------------------------------------------------------------------
+# GÜNLÜK İZLENME RAPORU (2026-09-12)
+#
+# KULLANICI İSTEĞİ: "günlük izlenme olarak tüm parçaların isimleri ile tek
+# mesaj". Telefona (Telegram DM) GÜNDE BİR mesaj.
+#
+# ÜÇ SORU (CLAUDE.md):
+#   1. Kim çağıracak? — `auto_process._gunluk_izlenme()`.
+#   2. Hangi zamanlayıcı görevinden? — saatlik `auto_process.py`,
+#      `main()`in `finally` bloğu, `_refresh_stats(None)`dan SONRA (bir `ast`
+#      muhafızı bu sırayı kilitliyor). YENİ görev YOK.
+#   3. Çalışmadığını nasıl anlarız? — (a) gönderim/başarısızlık log satırı;
+#      (b) istatistik tazelenmezse akşam 21:00'den sonra açık bir "VERİ BAYAT"
+#      mesajı gidiyor, yani günlük mesajın GELMEMESİ asla sessiz değil;
+#      (c) üretim patlarsa günde bir "üretilemedi" bildirimi;
+#      (d) tests/test_gunluk_izlenme.py.
+#
+# GÜNLÜK FARK NEREDEN — ÖLÇÜLDÜ (2026-09-12, gerçek state.json'lar):
+# `get_stats_batch` her tazelemede eski değeri `*_prev`e kaydırıyor; son iki
+# ölçüm 11.09 16:12 ve 12.09 13:05 (21 saat). Tazeleme 20 saatte bir olduğu
+# için ölçüm saati her gün ~4 saat geriye kayıyor ve bir takvim gününe İKİ
+# ölçüm düşebiliyor. `*_prev`ten fark almak o günlerde aradaki ölçümün
+# artışını KAYBEDERDİ. Bu yüzden fark, en son RAPORLANAN anlık görüntüden
+# (`GUNLUK_ANLIK_ANAHTARI`) alınıyor; `*_prev` yalnız ilk mesajda (anlık
+# görüntü henüz yokken) ve anlık görüntüde olmayan yeni projede kullanılıyor.
+# Aralık hiçbir zaman "24 saat" diye varsayılmıyor: başlık GERÇEK saati yazar
+# ("son 21 saat (11.09 16:12 - 12.09 13:05)").
+#
+# ZAMANLAMA: her gün 09:00'dan sonraki, RAPORLANMAMIŞ TAZE bir ölçüm gören
+# ilk saatlik koşu.
+#   * 09:00: gece yarısı/sabaha karşı düşen ölçüm uyku saatinde telefonu
+#     çaldırmasın; sabah okunacak bir özet.
+#   * "Raporlanmamış" şartı: aynı ölçüm iki gün üst üste raporlanmaz (ölçüm
+#     20 saatte bir, rapor 24 saatte bir — bazı günler yeni ölçüm 09:00'dan
+#     sonra gelir, mesaj o koşuya kadar BEKLER).
+#   * "Taze" = son ölçüm en fazla `BAYAT_ESIK_SN` (26 saat) eski: tazeleme
+#     20 saatte bir + saatlik koşu payı + tampon. Daha eskisi "bugün" diye
+#     sunulmaz.
+#   * Makine kapalıysa mesaj KAYBOLMAZ: açıldığı ilk koşuda `_refresh_stats`
+#     bayatlamış veriyi aynı `finally`de tazeler, bu rapor hemen ardından
+#     çıkar (aralık o zaman "son 46 saat" gibi dürüstçe yazılır).
+#   * Golden-hour kaçınması YOK (haftalık özetten farklı olarak): rapor
+#     yayın işinden SONRA `finally`de, yalnız yerel dosya okuyor; koşuyu
+#     uzatmıyor. Kaçınmak, yalnız öğlen açılan bir makinede mesajı akşama
+#     iterdi.
+#   * 21:00'e kadar yeni ölçüm gelmediyse tazeleme ARIZALIDIR (koşu varsa
+#     `_refresh_stats` 20 saati geçen veriyi o koşuda zaten tazelerdi) — o
+#     gün "VERİ BAYAT" mesajı gider, anlık görüntü İLERLEMEZ.
+#
+# DAMGA: gün damgası YALNIZ başarılı gönderimde (`_bildir` deseni); anlık
+# görüntü de yalnız o zaman yenilenir — gönderilemeyen bir günün artışı
+# ertesi günün mesajına eksiksiz biner.
+# --------------------------------------------------------------------------
+GUNLUK_GUN_ANAHTARI = "gunluk_izlenme_gun"          # bugün gönderildi mi
+GUNLUK_ANLIK_ANAHTARI = "gunluk_izlenme_anlik"      # son raporlanan ölçüm
+GUNLUK_HATA_ANAHTARI = "gunluk_izlenme_hata_gun"    # üretilemedi bildirimi
+GUNLUK_SAATI = 9               # yerel saat; bu saatten önce gönderilmez
+GUNLUK_BAYAT_SAATI = 21        # yeni ölçüm yoksa bu saatten sonra "BAYAT" der
+BAYAT_ESIK_SN = 26 * 60 * 60   # TAZELEME_ARALIGI_SN (20 sa) + koşu payı + tampon
+ARALIK_SAPMA_SN = 3 * 60 * 60  # projenin aralığı başlıktakinden bu kadar saparsa yazılır
+# Telegram sendMessage sınırı 4096 karakter (notify._TELEGRAM_MAX_CHARS) ve
+# notify başlığı da aynı mesaja koyuyor. notify'ın kör kırpması "GÜNÜN
+# TOPLAMI" satırını kesebilirdi; burada liste ANLAMLI biçimde kısaltılıyor.
+MESAJ_TAVANI = 3800
+
+
+def _gunluk_farki(k: dict, anlik_projeler: dict) -> tuple:
+    """(fark | None, taban damgası | None, bir videosu ilk kez mi ölçüldü)."""
+    onceki = anlik_projeler.get(k["anahtar"]) if isinstance(anlik_projeler, dict) else None
+    if isinstance(onceki, dict) and _damga_ts(onceki.get("at")) is not None:
+        taban = (_tam_sayi(onceki.get("uzun")), _tam_sayi(onceki.get("shorts")))
+        taban_at = onceki["at"]
+    elif _damga_ts(k.get("prev_at")) is not None:
+        taban = (k.get("uzun_prev"), k.get("shorts_prev"))
+        taban_at = k["prev_at"]
+    else:
+        return None, None, False
+    fark, bilinen, ilk = 0, False, False
+    for simdi, eski in ((k.get("uzun"), taban[0]), (k.get("shorts"), taban[1])):
+        if simdi is None:
+            continue
+        if eski is None:
+            # Bu video ilk kez ölçüldü: tüm izlenmesi "bugünün artışı" DEĞİL.
+            ilk = True
+            continue
+        fark += simdi - eski
+        bilinen = True
+    return (fark if bilinen else None), taban_at, ilk
+
+
+def _gunluk_satir(r: tuple, ana_sure) -> str:
+    k, fark, bas, bit, ilk = r
+    s = "%s: %s (%s)" % (k["ad"], "yeni" if fark is None else _isaretli(fark),
+                         _sayi_bicim(k["toplam"]))
+    notlar = []
+    if fark is not None and bas is not None and bit is not None:
+        if bit <= bas:
+            notlar.append("yeni ölçüm yok")
+        elif ana_sure is not None and abs((bit - bas) - ana_sure) > ARALIK_SAPMA_SN:
+            notlar.append("%d saatte" % round((bit - bas) / 3600.0))
+    if ilk and fark is not None:
+        notlar.append("bir videosu ilk ölçüm")
+    if k.get("disi") == "kopya":
+        notlar.append("kopya")
+    return s + (" [%s]" % ", ".join(notlar) if notlar else "")
+
+
+def _gunluk_metin(katalog: list, anlik_projeler: dict, t: float, limit=None) -> str:
+    satir_verisi = []
+    araliklar = {}
+    for k in katalog:
+        fark, taban_at, ilk = _gunluk_farki(k, anlik_projeler)
+        bas, bit = _damga_ts(taban_at), _damga_ts(k.get("at"))
+        satir_verisi.append((k, fark, bas, bit, ilk))
+        if fark is not None and bas is not None and bit is not None and bit > bas \
+                and not k.get("disi"):
+            araliklar[(bas, bit)] = araliklar.get((bas, bit), 0) + 1
+    # Başlığın aralığı: EN ÇOK projenin paylaştığı ölçüm çifti (toplu
+    # tazelemede hepsi aynı). Sapan projenin kendi aralığı satırında yazar.
+    ana = max(araliklar.items(), key=lambda kv: (kv[1], kv[0][1]))[0] if araliklar else None
+    ana_sure = (ana[1] - ana[0]) if ana else None
+
+    satirlar = ["GÜNLÜK İZLENME %s" % time.strftime("%d.%m.%Y", time.localtime(t))]
+    if ana:
+        satirlar.append("Artış: son %d saat (%s - %s)" % (
+            round(ana_sure / 3600.0), _kisa_an(ana[0]), _kisa_an(ana[1])))
+    else:
+        satirlar.append("Artış: önceki ölçüm yok, fark hesaplanamadı")
+    satirlar.append("ad: artış (toplam izlenme) - uzun + Shorts")
+
+    gruplar = (
+        ("ŞARKILAR", True, lambda k: not k.get("disi") and k.get("grup") != "set"),
+        ("DJ SET / DERLEME", True, lambda k: not k.get("disi") and k.get("grup") == "set"),
+        ("LİSTE DIŞI / KOPYA (toplama katılmadı)", False, lambda k: bool(k.get("disi"))),
+    )
+    gun_fark = gun_toplam = 0
+    for baslik, toplama, uygun in gruplar:
+        grup = sorted((r for r in satir_verisi if uygun(r[0])),
+                      key=lambda r: (r[1] is None, -(r[1] or 0), -r[0]["toplam"], r[0]["ad"]))
+        if not grup:
+            continue
+        fark = sum(r[1] for r in grup if r[1] is not None)
+        if toplama:
+            gun_fark += fark
+            gun_toplam += sum(r[0]["toplam"] for r in grup)
+        satirlar.append("")
+        satirlar.append("%s: %s" % (baslik, _isaretli(fark)))
+        gosterilen = grup if limit is None else grup[:limit]
+        satirlar.extend(_gunluk_satir(r, ana_sure) for r in gosterilen)
+        kalan = grup[len(gosterilen):]
+        if kalan:
+            satirlar.append("... ve %d tane daha: %s" % (
+                len(kalan), _isaretli(sum(r[1] or 0 for r in kalan))))
+    satirlar.append("")
+    satirlar.append("GÜNÜN TOPLAMI: %s (toplam izlenme %s)"
+                    % (_isaretli(gun_fark), _sayi_bicim(gun_toplam)))
+    return _cp1254_guvenli("\n".join(satirlar))
+
+
+def _gunluk_mesaji(katalog: list, anlik_projeler: dict, t: float) -> str:
+    """Sınırı aşarsa her bölümün EN AZ artan satırları "... ve N tane daha"ya
+    katlanır; başlık, bölüm toplamları ve GÜNÜN TOPLAMI HER ZAMAN kalır."""
+    metin = _gunluk_metin(katalog, anlik_projeler, t)
+    limit = max(len(katalog), 1)
+    while len(metin) > MESAJ_TAVANI and limit > 1:
+        limit -= max(1, limit // 10)
+        metin = _gunluk_metin(katalog, anlik_projeler, t, limit)
+    return metin[:MESAJ_TAVANI]
+
+
+def _bayat_metni(katalog: list, t: float, son) -> str:
+    satirlar = ["GÜNLÜK İZLENME %s - VERİ BAYAT"
+                % time.strftime("%d.%m.%Y", time.localtime(t))]
+    if son is None:
+        satirlar.append("Ölçüm yok: hiçbir projede YouTube istatistiği kayıtlı değil; "
+                        "artış hesaplanamadı.")
+    else:
+        satirlar.append("Son ölçüm: %s (%d saat önce). İstatistik tazelenmedi; "
+                        "bugünkü artış BİLİNMİYOR."
+                        % (_kisa_an(son[0]), round((t - son[0]) / 3600.0)))
+        satirlar.append("Son ölçümdeki toplam izlenme: %s" % _sayi_bicim(
+            sum(k["toplam"] for k in katalog if not k.get("disi"))))
+    satirlar.append("Bakılacak yer: auto_process.log, 'İstatistik güncelleme HATA' satırları.")
+    return _cp1254_guvenli("\n".join(satirlar))
+
+
+def gunluk_izlenme_raporu(log=print, zorla: bool = False,
+                          durum_dosyasi: str | None = None, gonder: bool = True,
+                          simdi: float | None = None, klasorler=None) -> dict:
+    """GÜNDE BİR "tüm şarkılar adlarıyla" izlenme mesajı. Hiçbir hata
+    otomasyonu durdurmaz; YouTube'a istek atmaz. Ayrıntı: bölüm başı."""
+    yol = durum_dosyasi or DURUM_DOSYASI
+    t = simdi if simdi is not None else time.time()
+    yerel = time.localtime(t)
+    bugun = time.strftime("%Y-%m-%d", yerel)
+    d = _durum(yol)
+    if not zorla:
+        if d.get(GUNLUK_GUN_ANAHTARI) == bugun:
+            return {"durum": "atlandi", "neden": "bugün gönderildi"}
+        if yerel.tm_hour < GUNLUK_SAATI:
+            return {"durum": "atlandi", "neden": "günlük pencere henüz açılmadı"}
+
+    try:
+        katalog = _izlenme_katalogu(klasorler, t)
+        anlik = d.get(GUNLUK_ANLIK_ANAHTARI)
+        anlik = anlik if isinstance(anlik, dict) else {}
+        projeler = anlik.get("projeler")
+        projeler = projeler if isinstance(projeler, dict) else {}
+        son = _son_olcum(katalog)
+        raporlanan = _damga_ts(anlik.get("olcum_at"))
+        yeni = son is not None and (raporlanan is None or son[0] > raporlanan)
+        if yeni and (t - son[0]) <= BAYAT_ESIK_SN:
+            tur = "taze"
+            metin = _gunluk_mesaji(katalog, projeler, t)
+        elif zorla or yerel.tm_hour >= GUNLUK_BAYAT_SAATI:
+            tur = "bayat"
+            metin = _bayat_metni(katalog, t, son)
+        else:
+            return {"durum": "atlandi", "neden": "yeni ölçüm bekleniyor"}
+    except Exception as e:
+        mesaj = "Günlük izlenme raporu üretilemedi: %s" % str(e)[:150]
+        log("  " + _cp1254_guvenli(mesaj))
+        gonderildi = _bildir("Günlük izlenme raporu üretilemedi", _cp1254_guvenli(mesaj),
+                             GUNLUK_HATA_ANAHTARI, bugun, yol)
+        return {"durum": "hata", "hata": str(e)[:150], "bildirim": gonderildi}
+
+    if not gonder:
+        for satir in metin.split("\n"):
+            log(satir)
+        return {"durum": "uretildi", "tur": tur, "metin": metin}
+
+    if _bildir("Günlük izlenme", metin, GUNLUK_GUN_ANAHTARI, bugun, yol):
+        if tur == "taze":
+            _kaydet({GUNLUK_ANLIK_ANAHTARI: {
+                "olcum_at": son[1],
+                "projeler": {k["anahtar"]: {"uzun": k["uzun"], "shorts": k["shorts"],
+                                            "at": k["at"]} for k in katalog},
+            }}, yol)
+        log("  Günlük izlenme bildirimi gönderildi (%s, %d proje)." % (tur, len(katalog)))
+        return {"durum": "tamam", "tur": tur, "metin": metin}
+
+    log("  Günlük izlenme bildirimi GÖNDERİLEMEDİ (bildirim kanalı) - sonraki "
+        "saatlik koşuda yeniden denenecek.")
+    return {"durum": "gonderilemedi", "tur": tur, "metin": metin}
+
+
+# TARİHLİ İŞ = tarihi bir ANAHTAR SÖZCÜKTEN ("TARİH" / "RANDEVU") HEMEN SONRA
+# gelen başlık. Neden bu kadar dar (2026-09-13):
+#   - Eskiden başlıkta HERHANGİ bir tarih yetiyordu. Bu depoda tarih çoğunlukla
+#     bir OLAYIN/KAYDIN tarihi: "### 2026-09-12'de YANLIŞ ÇIKAN İKİ SAYI —
+#     tekrar kullanma" haftalık özetin "SENİN İŞİN" bölümüne "GEÇTİ, 1 gün"
+#     diye İŞ olarak girdi; "(2026-09-12 gece TERSİNE ÇEVRİLDİ)" de aynı sınıf.
+#   - Gerçek randevu/son tarih başlıklarının HEPSİ tarihi bir sözcükle
+#     tanıtıyor: "TARİHLİ RANDEVU — 2026-10-09", "İKİNCİ TARİH — 2026-10-11",
+#     "SON TARİH 2026-10-11", "son tarih ≈2026-12-09". Kayıt notları ise
+#     tarihle BAŞLIYOR ya da parantez içinde veriyor, önünde bu sözcük yok.
+#   - Neden "—" ya da "'de" eki DEĞİL: "—" kayıt başlığında da var (yukarıdaki
+#     vakanın kendisi), "'de" ekine bakmak ise yalnız bugünkü bir yazım
+#     biçimini yasaklardı ("12 Eylül gecesi", "(… gece …)" kaçardı).
+#   - Sözcükle tarih arasında en fazla 12 RAKAMSIZ karakter (" — ", " **",
+#     " ≈"): başlığın başka yerindeki bir "tarih" sözcüğü uzaktaki bir tarihi
+#     çekmesin.
+#   `re.IGNORECASE` KULLANILMIYOR: Python "İ"yi "i" ile eşlemiyor; biçimler
+#   açıkça sayıldı.
+_RANDEVU_TARIH_RE = re.compile(
+    r"(?:TARİH|Tarih|tarih|TARIH|RANDEVU|Randevu|randevu)[^0-9\n]{0,12}?"
+    r"(20\d\d-\d\d-\d\d)")
 
 
 def _basligi_temizle(satir: str, tarih: str) -> str:
@@ -749,7 +1264,7 @@ def _tarihli_isler(t: float) -> list:
                     s = satir.strip()
                     if not s.startswith("#"):
                         continue
-                    m = _TARIH_RE.search(s)
+                    m = _RANDEVU_TARIH_RE.search(s)   # gerekçe: tanımında
                     if m:
                         bulunan.append((m.group(1), _basligi_temizle(s, m.group(1))))
         except OSError:
@@ -787,6 +1302,15 @@ def _haftalik_satirlar(t: float, d: dict, saglik_fn=None) -> tuple:
     satirlar = ["HAFTALIK ÖZET %s (%s)" % (hafta, time.strftime("%d.%m", time.localtime(t)))]
     olcum = {}
 
+    # İZLENME EN ÜSTTE: haftanın tek izlenme raporu bu (bkz. "HAFTALIK
+    # İZLENME KIYASI"). Patlarsa `olcum` BOŞ kalır ve temel çizgi silinmez.
+    try:
+        izlenme_satirlari, olcum = _haftalik_izlenme_satirlari(
+            d, _izlenme_katalogu(simdi=t), t)
+        satirlar.extend(izlenme_satirlari)
+    except Exception as e:
+        satirlar.append("İZLENME: hesaplanamadı (%s)" % str(e)[:80])
+
     try:
         tarama = _katalog_taramasi(t)
     except Exception as e:
@@ -808,11 +1332,6 @@ def _haftalik_satirlar(t: float, d: dict, saglik_fn=None) -> tuple:
                       for a, s in sorted(bekleyen.items())) or "ana hat temiz"))
         for satir in _geri_doldurma_satirlari(tarama["yayin_gun"]):
             satirlar.append("  " + satir)
-        try:
-            olcum_satiri, olcum = _olcum_satiri(d, tarama["izlenme"])
-            satirlar.append(olcum_satiri)
-        except Exception as e:
-            satirlar.append("ÖLÇÜM: hesaplanamadı (%s)" % str(e)[:80])
 
     satirlar.append(_saglik_satiri(saglik_fn))
 
@@ -866,8 +1385,12 @@ def haftalik_gozden_gecirme(log=print, zorla: bool = False,
     if _bildir("Haftalık özet %s" % hafta, metin, HAFTALIK_ANAHTARI, hafta, yol):
         # Anlık görüntü SADECE gönderim başarılıysa yenileniyor: yoksa
         # gönderilemeyen bir hafta temel çizgiyi kaydırır ve bir sonraki
-        # haftanın "değişim" sayısı sessizce yanlış olurdu.
-        _kaydet({HAFTALIK_OLCUM_ANAHTARI: olcum, HAFTALIK_DENEME_ANAHTARI: ""}, yol)
+        # haftanın "değişim" sayısı sessizce yanlış olurdu. İzlenme bölümü
+        # hesaplanamadıysa (`olcum` boş) eski temel çizgi KORUNUR.
+        guncel = {HAFTALIK_DENEME_ANAHTARI: ""}
+        if olcum:
+            guncel[HAFTALIK_OLCUM_ANAHTARI] = olcum
+        _kaydet(guncel, yol)
         return {"durum": "tamam", "hafta": hafta, "metin": metin}
 
     log("  Haftalık özet gönderilemedi (bildirim kanalı) — yarın tekrar denenecek.")
@@ -887,10 +1410,22 @@ def main():
     )
     parser.add_argument("--izlenme", action="store_true",
                         help="Sadece izlenme süresi raporunu bas (damgayı yok sayar).")
+    parser.add_argument("--gunluk", action="store_true",
+                        help=("Günlük izlenme mesajını bas (damgayı yok sayar, "
+                              "BİLDİRİM GÖNDERMEZ, hiçbir şey yazmaz)."))
     parser.add_argument("--haftalik", action="store_true",
                         help=("Haftalık gözden geçirme özetini bas (damgayı yok "
                               "sayar, BİLDİRİM GÖNDERMEZ)."))
     args = parser.parse_args()
+
+    if args.gunluk:
+        # gonder=False: telefonu çaldırmaz, gün damgasını ve anlık görüntüyü
+        # YAKMAZ — yakarsa otomatik günlük mesaj o gün hiç çıkmazdı.
+        sonuc = gunluk_izlenme_raporu(zorla=True, gonder=False,
+                                      log=lambda s: print(_cp1254_guvenli(s)))
+        if sonuc.get("durum") == "hata":
+            print("Günlük izlenme raporu üretilemedi: %s" % sonuc.get("hata"))
+        return
 
     if args.haftalik:
         # gonder=False: elle koşu telefonu çaldırmasın ve hafta damgasını

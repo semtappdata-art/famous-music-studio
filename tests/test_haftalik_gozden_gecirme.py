@@ -486,7 +486,7 @@ def test_rapor_bes_soruyu_da_cevapliyor(durum, sahte_saglik, bildirimler,
     assert "youtube 1" in mesaj and "tiktok 1" in mesaj
     assert "BEKLEYEN (2 proje)" in mesaj                # 2) ne bekliyor
     assert "youtube_shorts 1" in mesaj and "instagram 1" in mesaj
-    assert "ÖLÇÜM: izlenme 157" in mesaj                # 3) ölçüm
+    assert "İZLENME: toplam 157" in mesaj               # 3) ölçüm (izlenme)
     assert "SAĞLIK:" in mesaj                           # 4) sağlık
     assert "SENİN İŞİN:" in mesaj                       # 5) eldeki işler
 
@@ -502,8 +502,10 @@ def test_izlenme_degisimi_gecen_haftayla_karsilastiriliyor(
     _calistir(durum, sahte_saglik, simdi=_an(*PAZARTESI, 10))
     assert "ilk hafta" in bildirimler[0][1]
     # Bir hafta sonra: aynı katalog, delta sıfır ama AÇIKÇA yazılıyor.
+    # (2026-09-12: ÖLÇÜM satırı haftanın TEK izlenme raporu olan İZLENME
+    # bölümüne dönüştü — ayrıntılı kıyas testleri tests/test_gunluk_izlenme.py.)
     _calistir(durum, sahte_saglik, simdi=_an(2026, 9, 21, 10))
-    assert "izlenme 157 (+0)" in bildirimler[1][1]
+    assert "İZLENME bu hafta: +0 (toplam 157)" in bildirimler[1][1]
 
 
 def test_gonderilemeyen_hafta_temel_cizgiyi_kaydirmaz(
@@ -577,3 +579,46 @@ def test_elle_kosu_bildirim_gondermiyor(durum, sahte_saglik, bildirimler,
     assert bildirimler == []
     assert not os.path.exists(durum) or \
         weekly_report.HAFTALIK_ANAHTARI not in json.load(open(durum, encoding="utf-8"))
+
+
+# --- Tarihli işler: belge başlığı İŞ DEĞİLDİR (2026-09-13) -----------------
+#
+# GERÇEK VAKA: 13 Eylül haftalık özetinin "SENİN İŞİN" bölümü
+# "2026-09-12 (GEÇTİ, 1 gün) 'de YANLIŞ ÇIKAN İKİ SAYI — tekrar kullanma"
+# satırını üretti. O bir iş değil, CLAUDE.md'deki bir bilgi notunun başlığı.
+# Aşağıdaki satırlar iki kaynak dosyadaki GERÇEK başlıkların birebir kopyası.
+_GERCEK_BASLIKLAR = (
+    "## TARİHLİ RANDEVU — 2026-10-09: ölçüm penceresi\n"
+    "### İKİNCİ TARİH — 2026-10-11: YouTube Reporting API'yi AÇ\n"
+    "### 2026-09-12'de YANLIŞ ÇIKAN İKİ SAYI — tekrar kullanma\n"
+    "### B1. YouTube Reporting API'yi aç — **SON TARİH 2026-10-11, kaçarsa veri GERİ GELMEZ**\n"
+    "### B3. Facebook veri erişimi yenilemesi — **son tarih ≈2026-12-09**\n"
+    "### E7. ASIL `Küllerimden Geç`, `Yeniden Doğacağım` BİLEREK `unlisted` (2026-09-12 gece TERSİNE ÇEVRİLDİ)\n"
+)
+
+
+def test_tarihli_isler_randevuyu_yakalar_kayit_tarihini_yakalamaz(tmp_path, monkeypatch):
+    md = tmp_path / "basliklar.md"
+    md.write_text(_GERCEK_BASLIKLAR, encoding="utf-8")
+    monkeypatch.setattr(weekly_report, "TARIH_KAYNAKLARI", (str(md),))
+    monkeypatch.setattr(weekly_report, "TARIHLI_TAVAN", 50)
+    metin = "\n".join(weekly_report._tarihli_isler(_an(2026, 9, 13, 10)))
+
+    assert "YEDEK LİSTE" not in metin
+    # Gerçek randevular / son tarihler YAKALANMAYA devam ediyor.
+    assert "2026-10-09" in metin and "ölçüm penceresi" in metin
+    assert "YouTube Reporting API'yi AÇ" in metin
+    assert "SON TARİH" in metin          # etiket 58 karakterde kesiliyor
+    assert "2026-12-09" in metin
+    # Olay/kayıt tarihi taşıyan başlıklar İŞ DEĞİL.
+    assert "YANLIŞ ÇIKAN" not in metin, metin
+    assert "TERSİNE ÇEVRİLDİ" not in metin, metin
+    assert "2026-09-12" not in metin, metin
+
+
+def test_tarihli_isler_gercek_claude_md_basligi_ise_donusmuyor():
+    """Gerçek kaynak dosyalarla (TARIH_KAYNAKLARI varsayılanı)."""
+    metin = "\n".join(weekly_report._tarihli_isler(_an(2026, 9, 13, 10)))
+    assert "YEDEK LİSTE" not in metin
+    assert "2026-10-09" in metin and "2026-10-11" in metin
+    assert "YANLIŞ ÇIKAN" not in metin, metin

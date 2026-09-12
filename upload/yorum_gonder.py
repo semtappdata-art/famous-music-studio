@@ -18,8 +18,9 @@ Bir sonraki oturum bunu Görev Zamanlayıcı'ya ya da `auto_process.main()`'in
    yanıtları toplu göndermek bu tanımın tam ortası. Gerçek izleyiciye yazılan
    bir cümlenin insan tarafından okunmuş olması bu riske karşı ASIL sinyal.
 2. **Kota.** `comments.insert` adet başına **50 birim** (okuma 1 birim).
-   Günlük kota 10.000 ve tek bir video yüklemesi ~1600 birim harcıyor;
-   kontrolsüz bir yanıt döngüsü ASIL yükleme hattını durdurur (2026-09-06'da
+   Günlük ortak kota 10.000; yüklemenin kendisi (`videos.insert`) 2026-06-01'den
+   beri ayrı kovada ama kapak, playlist ve altyazı adımları bu havuzdan yiyor;
+   kontrolsüz bir yanıt döngüsü yükleme hattının bu adımlarını durdurur (2026-09-06'da
    `captions.list` döngüsüyle bu bir kez yaşandı).
 3. **Geri dönüşü yok.** Yanlış/tekrar eden bir yanıt gerçek bir insana,
    kanalın adına yazılmış olur.

@@ -206,3 +206,17 @@ kesebilir" maddesi YANLIŞ ALARM**: `watch_projects._trigger_script` `auto_proce
 2 saat. Diğer bulgular (kuyruk başı tıkanması, altyazı hakkının tek projede tükenmesi,
 görünürlük planının tempo tabanını yeniden başlatması, Telegram/Bluesky'ın golden-hour'u
 beklememesi, `gorev_izleri` iz boşlukları) doğrulanmadı ve açık görev olarak kayıtlı.
+
+### Doğrulama turu 2 (salt okunur ajan, 2026-09-12 gece)
+
+Kalan beş bulgu koddan ve log'dan tek tek doğrulandı:
+
+| # | Bulgu | Sonuç |
+|---|---|---|
+| 1 | Kuyruk başı tıkanması (`pending[:1]`) | **DOĞRU** — Son Kez 28, Sessiz Mektup 34, Yeraltı 11 kez yalnız "Instagram konteyneri golden-hour bekliyor" için seçildi. Simülasyon: `Sabah Senin` 14 Eyl 13:05 (baş atlansaydı 13 Eyl 02:05). |
+| 2 | Altyazı hakkının tek projede tükenmesi | **KISMEN** — `Sofraya Gelmedin` 33 ardışık hata; soğuma yalnız `LyricsMismatch`'i kapsıyor. Bugün etkisi yok (18/18 altyazı tamam), sınıf açık. Ek ters hata: `LyricsNotReady` API harcandıktan sonra atılıyor ve hakkı tüketmediği için kota katlanıyor. |
+| 3 | Görünürlük planı tempo tabanını yeniden başlatıyor | **DOĞRU** — plan zaten public olan uzun formata da `_publish_at` yazıyor; `Sabah Senin`'i 28 saat geri itiyor (15 Eyl 17:05 yerine 14 Eyl 13:05). |
+| 4 | Telegram/Bluesky golden-hour beklemiyor | **DOĞRU** — ana hat `_ek_platformlari_isle`'de golden-hour/gizlilik/tavan kapısı yok (geri doldurmada üçü de var); pencere dışında işlenen yeni şarkı YouTube private + `publishAt` iken linkiyle TG/BS'ye düşer. |
+| 5 | `gorev_izleri` iz boşlukları | **YANLIŞ ALARM** — 13:05-23:05 arası 11 koşunun hepsinde BAŞLADI/BİTTİ çifti var; izleyicinin tetiklediği koşu da sarmalayıcıdan geçiyor. `auto_process.log`'daki BAŞLADI'sız 20:36-20:55 satırları zamanlayıcı dışı (pytest/elle) koşular. |
+
+Yani bu dosyadaki altı kod bulgusunun **ikisi yanlış alarm** (izleyici 5 dk limiti, iz boşlukları), üçü doğru, biri kısmen doğru. Uygulama kararı ve sırası: `denetim_bulgulari_2026-09-12.md` / görev listesi.

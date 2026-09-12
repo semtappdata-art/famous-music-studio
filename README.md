@@ -212,16 +212,20 @@ API'den erişilemiyor) — zaten bu projede kullanılan Inbox/Draft akışı da 
 elle yapılması gereken bir adım olarak bırakıyor.
 
 **YouTube günlük quota uyarısı:** her şarkı YouTube'a 2 ayrı video olarak gidiyor (uzun
-format + Shorts), her `video.insert` çağrısı ~1600 unit'lik varsayılan günlük kotanın
-(10.000 unit) bir kısmını tüketiyor (thumbnail + playlist çağrıları dahil biraz daha
-fazla) — yani günde ~6 projeden fazlası teorik olarak kotayı aşabilir. **Otomatik
+format + Shorts). 2026-06-01'den beri `videos.insert` kendi kotasında: çağrı başına 1 unit,
+günde 100 çağrı (resmî: https://developers.google.com/youtube/v3/determine_quota_cost).
+Kapak (`thumbnails.set` 50), playlist (`playlistItems.insert` 50) ve altyazı çağrıları
+varsayılan günlük 10.000 unit'lik ortak kotadan düşüyor; tek yayın bu havuzdan ~950 unit
+(denetimdeki ölçümden türetildi) — yani günde ~10 projeden fazlası teorik olarak ortak
+kotayı aşabilir (eski ~1600 unit'lik yükleme maliyetiyle bu sayı ~6'ydı). **Otomatik
 kademeleme artık kotayı kendiliğinden zorlayamaz**: 52 saatlik yeni-yayın tabanı
 yüzünden bekleyen proje sayısı ne kadar artarsa artsın günde en fazla bir YENİ yayın
 çıkar (yukarıya bkz.). Kota riski geriye iki durumda kalıyor: `--count` ile elle yüksek
 bir sayı verirsen (ör. bir kerelik toplu çalıştırma) ya da çok sayıda geri doldurma
 projesi (`youtube_video_id`'si zaten olanlar) aynı gün sıraya girerse — o zaman 10.000
-unit'i aşmadığından kendin emin ol; aşarsan o günün geri kalanında YouTube yüklemeleri
-başarısız olur (TikTok/Instagram etkilenmez, kendi kotalarına tabidir).
+unit'i aşmadığından kendin emin ol; aşarsan o günün geri kalanında YouTube'daki kapak,
+playlist ve altyazı adımları başarısız olur (yüklemenin kendisi ayrı kotada, günde 100
+çağrıyı aşınca o da durur; TikTok/Instagram etkilenmez, kendi kotalarına tabidir).
 
 Kimlik doğrulama (her platform için bir kerelik, ilgili script'in kendisiyle):
 

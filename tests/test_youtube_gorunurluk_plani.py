@@ -15,8 +15,10 @@ SÖZLEŞME (state alanları):
     `son_hata_at`/`son_hata` eklenir.
   * Başarıda: `youtube_privacy`/`youtube_shorts_privacy` = hedef,
     `youtube_publish_at`/`youtube_shorts_publish_at` = GERÇEK public anı (UTC
-    "...Z" — `auto_process._son_yeni_yayin_ani` bunu 52 saatlik tempo tabanına
-    sayıyor), `youtube_gorunurluk_uygulandi_at` = pencere kuralının damgası.
+    "...Z" — `auto_process._son_yeni_yayin_ani` uzun formatınkini 52 saatlik
+    tempo tabanına sayıyor) YALNIZ gizliliği gerçekten DEĞİŞEN videoya (bkz.
+    bölüm 7; `tempo_sayilir: False` -> `youtube_public_ani_tempo_disi`),
+    `youtube_gorunurluk_uygulandi_at` = pencere kuralının damgası.
 
 KURALLAR: yalnız golden-hour içinde; pencere başına EN FAZLA BİR proje (iki
 şarkı aynı anda yayına dönmesin); hata sonrası aynı projeye saatte bir
@@ -167,7 +169,9 @@ def test_pencerede_uygulaniyor_state_alanlari_ve_plan_siliniyor(ortam):
     assert d["youtube_privacy"] == "public"
     assert d["youtube_shorts_privacy"] == "public"
     beklenen = PENCERE_ICI.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    assert d["youtube_publish_at"] == beklenen
+    # 2026-09-13: bu satır eskiden `== beklenen` idi — yani ARIZAYI sabitliyordu
+    # (zaten public uzun formata damga -> 52 saatlik taban yeniden başlıyordu).
+    assert d["youtube_publish_at"] is None
     assert d["youtube_shorts_publish_at"] == beklenen
     assert d["youtube_gorunurluk_uygulandi_at"]
     # zaten public olan uzun formata videos.update HARCANMADI
@@ -313,3 +317,95 @@ def test_drain_plani_uyguluyor(ortam, monkeypatch):
     p = _proje(ortam.kok, "Sade", {})
     ap._drain_golden_hour_queue([p])
     assert cagrilar == [[p]]
+
+
+# --- 7. TEMPO: publish_at YALNIZ gerçekten değişen videoya (2026-09-13) ------
+#
+# ARIZA (doğrulama turu 2, bulgu 3): plan her iki öneke de `*_publish_at`
+# yazıyordu. `Küllerimden Geç`in uzun formatı ZATEN public (kullanıcı Studio'dan
+# açtı); plan yalnız Shorts'u açacak. Ama `youtube_publish_at` = plan anı
+# yazılınca `_son_yeni_yayin_ani` bunu YENİ YAYIN saydı ve 52 saatlik taban
+# yeniden başladı: `Sabah Senin` 28 saat geri itildi. Ölçüt artık API'den okunan
+# ÖNCEKİ gizlilik: değişmeyen videoya damga yazılmaz. Gerçek bir unlisted ->
+# public UZUN format geçişi tempoya sayılmaya DEVAM eder (`tempo_sayilir`
+# varsayılanı True); False verilirse o an ayrı bir alana yazılır.
+
+import time as _time
+
+
+def _dun_pencerede():
+    """Gerçek saate göre DÜN 12:30 TR: pencere içinde, her zaman geçmişte ve
+    52 saatten YAKIN — yani tabanı başlatırsa mutlaka bekletir."""
+    return (datetime.now(TR) - timedelta(days=1)).replace(
+        hour=12, minute=30, second=0, microsecond=0)
+
+
+def _yerel_damga(saat_once):
+    return _time.strftime("%Y-%m-%dT%H:%M:%S",
+                          _time.localtime(_time.time() - saat_once * 3600))
+
+
+def _utc(an):
+    return an.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_youtubeda_uygula_gercekten_degisen_kimlikleri_dondurur():
+    yt = _SahteYouTube({"a": "public", "b": "unlisted"})
+    assert ap._gorunurlugu_youtubeda_uygula(yt, ["a", "b"], "public") == ["b"]
+    assert [g["id"] for g in yt.guncellemeler] == ["b"]
+
+
+def test_zaten_public_uzun_formatin_publish_at_i_yazilmaz_degisen_shorts_unki_yazilir(ortam):
+    # state BAYAT ("unlisted") ama YouTube'da uzun format zaten public —
+    # canlı `Küllerimden Geç` state'inin birebir eşi. Ölçüt state değil API.
+    p = _kg(ortam, youtube_privacy="unlisted")
+    ortam.servis["yt"] = _SahteYouTube({"-CQ7MmUygTQ": "public",
+                                        "jN78mJrZd3c": "unlisted"})
+    ap._youtube_gorunurluk_planlarini_uygula([p])
+    d = _oku(p)
+    assert "youtube_gorunurluk_plani" not in d
+    assert d["youtube_publish_at"] is None, "değişmeyen uzun formata damga yazıldı"
+    assert d["youtube_shorts_publish_at"] == _utc(PENCERE_ICI)
+    assert d["youtube_privacy"] == "public" and d["youtube_shorts_privacy"] == "public"
+    assert "youtube_public_ani_tempo_disi" not in d
+
+
+def test_shorts_only_plan_sonrasi_yeni_sarkinin_52_saatlik_tabani_baslamaz(ortam):
+    ortam.saat["simdi"] = _dun_pencerede()
+    p = _kg(ortam, youtube_privacy="public", youtube_uploaded_at=_yerel_damga(100))
+    ortam.servis["yt"] = _SahteYouTube({"-CQ7MmUygTQ": "public",
+                                        "jN78mJrZd3c": "unlisted"})
+    ap._youtube_gorunurluk_planlarini_uygula([p])
+    assert "youtube_gorunurluk_plani" not in _oku(p)
+    yeni = _proje(ortam.kok, "Sabah Senin", {})
+    assert ap._auto_pace_count([yeni], [p, yeni], 1) == 1, (
+        "yalnız Shorts açıldı; yeni şarkının tabanı yeniden BAŞLAMAMALI")
+
+
+def test_tempo_sayilir_varsayilaninda_gercek_unlisted_public_uzun_format_tabani_baslatir(ortam):
+    ortam.saat["simdi"] = _dun_pencerede()
+    p = _kg(ortam, youtube_uploaded_at=_yerel_damga(100))
+    ortam.servis["yt"] = _SahteYouTube({"-CQ7MmUygTQ": "unlisted",
+                                        "jN78mJrZd3c": "unlisted"})
+    ap._youtube_gorunurluk_planlarini_uygula([p])
+    d = _oku(p)
+    assert d["youtube_publish_at"] == _utc(ortam.saat["simdi"])
+    yeni = _proje(ortam.kok, "Sabah Senin", {})
+    assert ap._auto_pace_count([yeni], [p, yeni], 1) == 0, "kural GEVŞEMEMELİ"
+
+
+def test_tempo_sayilir_false_uzun_format_anini_ayri_alana_yazar_taban_baslamaz(ortam):
+    ortam.saat["simdi"] = _dun_pencerede()
+    p = _kg(ortam, youtube_uploaded_at=_yerel_damga(100),
+            youtube_gorunurluk_plani=_plan(tempo_sayilir=False))
+    ortam.servis["yt"] = _SahteYouTube({"-CQ7MmUygTQ": "unlisted",
+                                        "jN78mJrZd3c": "unlisted"})
+    ap._youtube_gorunurluk_planlarini_uygula([p])
+    d = _oku(p)
+    an = _utc(ortam.saat["simdi"])
+    assert d["youtube_publish_at"] is None
+    assert d["youtube_public_ani_tempo_disi"] == an
+    assert d["youtube_shorts_publish_at"] == an
+    assert "youtube_public_ani_tempo_disi" not in ap.YENI_YAYIN_PUBLIC_ANI_KEYS
+    yeni = _proje(ortam.kok, "Sabah Senin", {})
+    assert ap._auto_pace_count([yeni], [p, yeni], 1) == 1
