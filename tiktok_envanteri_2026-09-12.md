@@ -22,12 +22,12 @@ Notlar:
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | 12 Eyl 10:44 | #FamousMusicStudio | belirsiz (olası Sofraya Gelmedin: kapakta cam/yağmur dokusu, 12 Eyl 06:47 yüklemesi; güven orta-düşük) | Herkes | 104 | 3 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7684551360271944980 |
 | 2 | 11 Eyl 20:36 | #FamousMusicStudio | belirsiz (olası Gece Seansı Vol. 1: kapakta gece köprü ışıkları, 11 Eyl 18:13 yüklemesi; güven orta-düşük) | Herkes | 117 | 3 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7684332947041815829 |
-| 3 | 9 Eyl 09:31 | Abarttık mı abarttık… **Küllerimden Geç** … | Yeniden Doğacağım / Küllerimden Geç ses grubu (başlık) — İÇERİK: Küllerimden Geç yeni render (yağmurlu cam kartı, yeşil bulanık zemin, kayan yazı "Kü…") | **Sadece ben** (önce Herkes) | 151 | 1 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7683419315344887061 |
-| 4 | 7 Eyl 20:24 | Abarttık mı abarttık… **Yeniden Doğacağım** … | başlık: Yeniden Doğacağım — İÇERİK: **Kırık Zincir** (siyah-beyaz şehir/otobüs durağı kartı = `projects/Kırık Zincir/art.jpg`; taslak 7 Eyl 18:05) | **Sadece ben** (önce Herkes) | 153 | 2 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7682845410657930517 |
-| 5 | 7 Eyl 17:54 | Abarttık mı abarttık… **Yeniden Doğacağım** … | başlık: Yeniden Doğacağım — İÇERİK: **Just Relax** DJ seti (karanlık oda/figür kartı = `dj_sets/Just Relax/art.jpg`; taslak 7 Eyl 16:20) | **Sadece ben** (önce Herkes) | 142 | 2 | 1 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7682806805373717781 |
+| 3 | 9 Eyl 09:31 | Abarttık mı abarttık… **Küllerimden Geç** … | Yeniden Doğacağım / Küllerimden Geç ses grubu (başlık) — İÇERİK: Küllerimden Geç yeni render (yağmurlu cam kartı, yeşil bulanık zemin, kayan yazı "Kü…") | **Herkes** (12 Eyl sabah Sadece ben yapılmıştı, 13 Eyl geri açıldı) | 151 | 1 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7683419315344887061 |
+| 4 | 7 Eyl 20:24 | Abarttık mı abarttık… **Yeniden Doğacağım** … | başlık: Yeniden Doğacağım — İÇERİK: **Kırık Zincir** (siyah-beyaz şehir/otobüs durağı kartı = `projects/Kırık Zincir/art.jpg`; taslak 7 Eyl 18:05) | **Herkes** (12 Eyl sabah Sadece ben yapılmıştı, 13 Eyl geri açıldı) | 153 | 2 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7682845410657930517 |
+| 5 | 7 Eyl 17:54 | Abarttık mı abarttık… **Yeniden Doğacağım** … | başlık: Yeniden Doğacağım — İÇERİK: **Just Relax** DJ seti (karanlık oda/figür kartı = `dj_sets/Just Relax/art.jpg`; taslak 7 Eyl 16:20) | **Herkes** (12 Eyl sabah Sadece ben yapılmıştı, 13 Eyl geri açıldı) | 142 | 2 | 1 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7682806805373717781 |
 | 6 | 7 Eyl 13:30 | Abarttık mı abarttık… **Yeniden Doğacağım** … | başlık: Yeniden Doğacağım — İÇERİK: Küllerimden Geç render'ı (yağmurlu cam kartı + yeşil zemin; taslak 7 Eyl 13:24) | **Sadece ben** (önce Herkes) | 182 | 8 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7682738927769357588 |
 | 7 | 6 Eyl 18:00 | Abarttık mı abarttık… **Yeniden Doğacağım** … | başlık: Yeniden Doğacağım — İÇERİK: **Beni Bırakma** abart videosu (yeşil kepenk/elektrik direği kartı = `projects/Beni Bırakma/art.jpg`, kayan yazı "Be…") | Herkes | 616 | 2 | 0 | 0:29 | https://www.tiktok.com/@famousmusicstudio/video/7682100132795518228 |
-| 8 | 6 Eyl 12:00 | Bu şarkıda gerçekten abarttık… **Beni Bırakma** … | başlık: Beni Bırakma — İÇERİK: **Yeniden Doğacağım** abart videosu (gün batımı/hilal kartı, kayan yazı "Trap • Türkçe Rap • Yeniden Doğacağım • Arabesk" = `projects/Yeniden Doğacağım/output/tiktok_abart_9x16.mp4`; kart şarkının kendi kapağı DEĞİL) | Herkes | 583 | 10 | 1 | 0:28 | https://www.tiktok.com/@famousmusicstudio/video/7682099043274624276 |
+| 8 | 6 Eyl 12:00 | Bu şarkıda gerçekten abarttık… **Beni Bırakma** … | başlık: Beni Bırakma — İÇERİK: **Yeniden Doğacağım** abart videosu (gün batımı/hilal kartı, kayan yazı "Trap • Türkçe Rap • Yeniden Doğacağım • Arabesk" = `projects/Yeniden Doğacağım/output/tiktok_abart_9x16.mp4`; kart şarkının kendi kapağı DEĞİL) | **Sadece ben** (13 Eyl gizlendi, önce Herkes) | 583 | 10 | 1 | 0:28 | https://www.tiktok.com/@famousmusicstudio/video/7682099043274624276 |
 | 9 | 5 Eyl 19:36 | İtiraf edelim, bu sefer biraz abarttık… **Gece Sürüşü** … | Gece Sürüşü (kesin: başlık) | Herkes | 288 | 5 | 0 | 0:30 | https://www.tiktok.com/@famousmusicstudio/video/7682090856102300949 |
 | 10 | 5 Eyl 15:35 | #FamousMusicStudio | belirsiz | Herkes | 312 | 3 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7682028949559348500 |
 | 11 | 5 Eyl 15:06 | #FamousMusicStudio | belirsiz | Sadece ben | 4 | 0 | 0 | 0:45 | https://www.tiktok.com/@famousmusicstudio/video/7682021476056304917 |
@@ -157,4 +157,31 @@ Gece Sürüşü içerik doğrulaması (kısmi, yalnız depo tarafı): `projects/
 `output/tiktok_abart_9x16.mp4` (30 sn) ve `shorts_9x16.mp4` aynı kartı ve "Gece Sürüşü • Pop • R&B • Trap" kayan yazısını taşıyor.
 TikTok taslak damgası 2026-09-01T21:51:43. TikTok gönderileriyle (7682090856102300949, 5 Eyl 19:36, 30 sn;
 7680641635755117844, 1 Eyl 21:52) kare karşılaştırması YAPILMADI. `tiktok_published_at` kaydı hâlâ doğrulanmamış.
+
+## UYGULANDI (2026-09-13 01:00–01:15 TRT, TikTok Studio web, içerik doğrulamasına göre)
+
+Her gönderi kendi düzenleme sayfasında (`/tiktokstudio/upload/post/<kimlik>`) işlendi; liste satırından işlem YAPILMADI.
+Değişiklikten önce URL kimliği + alt yazı + süre okundu, "Kaydet" sonrası sayfa yeniden yüklenip görünürlük tekrar okundu.
+Hiçbir alt yazı, hashtag ya da başka ayar değişmedi. Silme yok.
+
+| gönderi | içerik | önce | sonra (yeniden yükleme okuması) |
+|---|---|---|---|
+| 7682099043274624276 (583, başlık Beni Bırakma) | Yeniden Doğacağım (kapağı eksik) | Herkes | **Sadece siz** |
+| 7683419315344887061 (151, başlık Küllerimden Geç) | Küllerimden Geç (yeni görsel) | Sadece siz | **Herkes** |
+| 7682845410657930517 (153, başlık Yeniden Doğacağım) | Kırık Zincir | Sadece siz | **Herkes** |
+| 7682806805373717781 (142, başlık Yeniden Doğacağım) | Just Relax | Sadece siz | **Herkes** |
+| 7682100132795518228 (616, başlık Yeniden Doğacağım) | Beni Bırakma | Herkes | Herkes (dokunulmadı) |
+| 7682738927769357588 (182, başlık Yeniden Doğacağım) | Küllerimden Geç kopyası | Sadece siz | Sadece siz (dokunulmadı) |
+
+Sayım (önceki 17/13 üzerinden): **19 Herkes / 11 Sadece ben**.
+
+Not: Kayıttan hemen sonra Studio'nun bir görünümü (liste ya da düzenleme sayfası) birkaç saniye eski değeri gösterebiliyor.
+Son okumada altı gönderinin hepsi yukarıdaki "sonra" değerindeydi.
+
+**616 izlenmeli gönderinin alt yazı düzeltmesi YAPILAMADI.** Studio'da alt yazı editörü kilitli (`disabled-wrapper disabled`).
+Sayfadaki kural: "Alt yazılar ve kapaklar yalnızca günde bir kez ve paylaşıldıktan sonraki ilk 7 gün içinde düzenlenebilir."
+Gönderi kimliğine göre oluşturma zamanı 2026-09-05 17:11 TRT, yani 7 gün 12 Eyl 17:11'de doldu. 583'lük gönderide de editör kilitli.
+Başlık "Yeniden Doğacağım" yazıyor ama içerik Beni Bırakma; bu uyuşmazlık web'den düzeltilemez (telefonda da aynı süre sınırı olabilir).
+
+Şu an Yeniden Doğacağım içeriğinin herkese açık gönderisi YOK (kendi 45 sn'lik render'ı belirsiz #FamousMusicStudio grubunda olabilir).
 
