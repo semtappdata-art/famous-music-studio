@@ -1,10 +1,18 @@
 # Ses ve Tarz Çeşitliliği Takibi
 
-**SON DURUM (2026-09-11) — son 3 üretimin üçü de ERKEK vokal** (Sokaklar Beni Tanır:
-tekli erkek → Kader Ortakları: E+E düet → Bu Gece Kazandık: E+E düet). Son kadın vokal
-5 Eylül'deki **Kumdan Denize**. **Sıradaki şarkı: KADIN vokal, düet DEĞİL.** Tempo da
-kümelendi: son dört ölçülebilir üretim 90/92/118/122 BPM; 76-80 BPM (yavaş) aralığı
-Sessiz Mektup'tan (76) beri hiç kullanılmadı.
+**SON DURUM (2026-09-12) — sıradaki üretim SEÇİLDİ ve tabloya girdi: `Vardiya`**
+(rock, 78 BPM, kadın, düet değil, smoky husky low-register). Bir önceki SON DURUM
+(2026-09-11) üç şey istiyordu ve üçü de karşılandı: kadın vokal (son üç üretim erkekti),
+düet olmaması (son ikisi E+E düetti), ve 76-80 BPM aralığı (Sessiz Mektup'tan/76 beri
+boştu). Tarz seçimi ayrıca en az kullanılan slotu dolduruyor: rock katalogda 1 şarkı
+(Kırık Zincir) ve o tek örnek ERKEK vokal — kadın rock hiç yoktu. Doku da yeni: mevcut
+kadın dokuları soft breathy / bright breathy / powerful belting / polished.
+
+**Vardiya'nın sesi henüz Suno'dan indirilmedi** — klasör ve `meta.json` hazır, sözler
+`vardiya_sozler.md`'de. İndirme yapılınca bu satır güncellenmeli.
+
+**Sıradaki (Vardiya'dan SONRA):** kadın vokal üst üste ikiye çıkmasın; erkek ya da düet
+tarafına dönülebilir. Tempo tarafında 100-110 aralığı hiç kullanılmadı.
 
 Yeni bir şarkı prompt'u (Suno Style etiketi) yazmadan önce bu listeye bak —
 aynı vokal cinsiyetini/dokusunu art arda tekrarlamamak için. (Kalbim Oynuyor,
@@ -43,6 +51,7 @@ YANSITMIYOR.
 | Küllerimden Geç *(yeni kayıt değil)* | arabesk | (kayıt yok) | (kayıt yok — "Yeniden Doğacağım"ın sesi yeniden markalandı) |
 | Kader Ortakları | hiphop (Pop-Hip-Hop, arabesk-vokal etkili) | 90 | **düet: erkek-erkek** — Male 1: warm smooth melancholic tenor, Male 2: raspy gritty passionate baritone |
 | Bu Gece Kazandık | pop (dance-arabesk-pop) | 118 | **düet: erkek-erkek** — Male 1: tender warm melismatic tenor (vibrato), Male 2: bright energetic nasal-edged voice |
+| Vardiya *(ses HENÜZ indirilmedi)* | rock | 78 | smoky husky low-register female vocals — düet DEĞİL |
 
 **Sütun işaretleri:** `(yok)` = stil etiketi VAR ama içinde BPM yazmıyor.
 `(kayıt yok)` = şarkının hiç arşivlenmiş stil etiketi yok (ilk üç şarkı +
