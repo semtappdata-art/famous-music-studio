@@ -5,13 +5,44 @@ kısa bir caption üretilir — Instagram/TikTok'ta caption içindeki linkler za
 tıklanabilir değildir.
 """
 
+import difflib
 import hashlib
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
+
+# Sözler dosyası adı ile şarkı başlığının slug'ı arasında istenen en düşük
+# benzerlik — `upload/youtube_captions.SLUG_BENZERLIK_ESIGI` ile AYNI değer ve
+# AYNI gerekçe. O modülden İÇE AKTARILMIYOR, bilerek: `youtube_captions`
+# googleapiclient/OAuth bağımlılıklarını çekiyor ve bu dosya (social_text) her
+# platform yükleyicisinin ilk import'u — oraya OAuth bağımlılığı taşımak, ağ
+# anahtarı olmayan bir ortamda caption üretimini bile kırardı. Eşiğin kendisi
+# üç satırlık bir süzgeç; kopyalanan şey mantık değil, bir sayı.
+SOZ_SLUG_BENZERLIK_ESIGI = 0.85
+
+# Açıklamaya alınacak ardışık söz satırı sayısı. İki satır bir "beyit" —
+# tek satır çoğu zaman bağlamsız ("Yine aynı yol"), üç satır açıklamanın
+# üst kısmını blok metne çeviriyor.
+SOZ_ALINTI_SATIR_SAYISI = 2
+# Alıntı olarak KULLANILABİLİR bir söz satırının uzunluk aralığı (karakter):
+# çok kısa satır ("Ah...") alıntı olarak bir şey anlatmıyor, çok uzun satır
+# açıklamanın ilk ekranını dolduruyor.
+SOZ_ALINTI_MIN_UZUNLUK = 10
+SOZ_ALINTI_MAKS_UZUNLUK = 70
+# Düet şarkılarında (CLAUDE.md: `arabesk` teması SABİT olarak düet) "Temiz
+# Sözler" bölümündeki satırlar KİMİN söylediğini baştaki bir parantezle
+# taşıyor: "(Kadın) Bir yara açtın...", "(Erkek) ...", "(İkisi) ...". Bu,
+# `[Verse - Kadın]` etiketinin parantezli hâli — açıklamadaki bir alıntının
+# başında "(Erkek)" yazması tam da CLAUDE.md'nin "etiket açıklamaya sızmasın"
+# kararının kapatmak istediği görüntü. ÖLÇÜLDÜ: süzgeç yokken 19 şarkının
+# 2'sinin alıntısı bu işaretle çıkıyordu (Yürek Yarası, Kader Ortakları).
+# Uzunluk sınırı dar tutuldu: satır ORTASINDAKİ parantezler (geri vokal, ör.
+# "...bırakma (bırakma)") sözün parçası, onlara dokunulmuyor.
+SOZ_KONUSMACI_ISARETI = re.compile(r"^\([^()]{1,20}\)\s*")
 
 
 def hashtag(text: str) -> str:
@@ -48,6 +79,120 @@ def pick_subset(title: str, options: list, count: int, salt: int = 0) -> list:
             secilen.append(aday)
         i += 1
     return secilen
+
+
+def dogrulanmis_sozler_yolu(title: str) -> str | None:
+    """Başlığa GERÇEKTEN ait olduğu doğrulanmış `<slug>_sozler.md` (yoksa None).
+
+    `stock_art.find_lyrics_file()` BULANIK eşleşiyor (ön-ek + difflib 0,85) ve
+    orada yanlış eşleşmenin bedeli alakasız bir Pexels arama terimi. BURADA
+    bedeli BAŞKA BİR ŞARKININ SÖZLERİNİ yayındaki açıklamaya yazmak — izleyici
+    görür, biz görmeyiz. Bu yüzden sonuç ikinci kez süzülüyor
+    (`upload/youtube_captions._sozler_dosyasi` ile AYNI desen, aynı eşik).
+
+    `stock_art` TEMBEL import ediliyor: modül `requests` çekiyor ve bu dosya
+    her platform yükleyicisinin ilk import'u; söz alıntısı bir SÜS, yokluğu
+    yüklemeyi durdurmamalı.
+    """
+    if not title:
+        return None
+    try:
+        import stock_art
+    except Exception:
+        return None
+    try:
+        yol = stock_art.find_lyrics_file(title)
+        if not yol:
+            return None
+        slug = stock_art._slugify(title)
+    except Exception:
+        return None
+    stem = os.path.basename(yol)[: -len("_sozler.md")]
+    if stem == slug:
+        return yol
+    oran = difflib.SequenceMatcher(None, slug, stem).ratio()
+    return yol if oran >= SOZ_SLUG_BENZERLIK_ESIGI else None
+
+
+def sozlerden_alinti(meta: dict) -> str:
+    """Şarkının KENDİ sözlerinden deterministik seçilmiş tek satırlık alıntı
+    (bulunamazsa boş string).
+
+    NEDEN VAR: YouTube uzun format açıklamalarının şarkıya özel TEK parçası
+    başlıktı — 18 açıklamanın sekiz dolu satırından dördü birebir aynıydı ve
+    açıklama başına ortak kelime payı %62,5 ölçüldü. Kanalın en büyük riski
+    telif değil "toplu üretilmiş / özgün olmayan AI içerik" politikası; her
+    videonun altında neredeyse aynı metin bunun en kolay görülen imzası.
+    Havuzdan seçilen bir şablon satırı çeşitlilik sayısını iyileştirir ama
+    açıklamaya GERÇEK bir içerik katmaz — şarkının kendi sözünden bir beyit
+    katar.
+
+    KAYNAK "## Temiz Sözler" BÖLÜMÜ, etiketli Suno sürümü DEĞİL: CLAUDE.md
+    kararı gereği `[Verse 1]`/`[Chorus]` gibi köşeli parantez etiketleri
+    açıklamaya SIZMAMALI (amatör görünüyordu, kullanıcı geri bildirimi) ve o
+    bölüm tam bunun için var. `caption_align.extract_clean_lyrics()` İÇE
+    AKTARILIYOR, kopyalanmıyor — aynı bölümü iki ayrı regex'le okumak, birinin
+    sessizce bayatlaması demek. Yine de etiket taşıyan satırlar ayrıca
+    süzülüyor: bir söz dosyasında "Temiz Sözler" bölümü elle yazılıyor ve
+    etiket unutulabilir; süzgeç YOKSA o etiket doğrudan yayına çıkar.
+
+    DETERMİNİSTİK: aynı şarkı her zaman aynı beyti alır (arşiv tutarlılığı —
+    bir projeyi yeniden işlemek yayındaki açıklamadan farklı bir metin
+    üretmemeli). Rastgelelik YOK.
+    """
+    if meta.get("derleme"):
+        # Derlemenin KENDİ sözü yok; 13 ayrı şarkının sözü var. Birini seçip
+        # derlemenin açıklamasına koymak izleyiciyi yanlış beklentiyle getirir
+        # (bkz. başlıktaki "(Sözleri)" ekinin derlemelerde neden kaldırıldığı).
+        return ""
+    title = meta.get("title") or ""
+    yol = dogrulanmis_sozler_yolu(title)
+    if not yol:
+        return ""
+    try:
+        with open(yol, "r", encoding="utf-8") as f:
+            icerik = f.read()
+    except OSError:
+        return ""
+    try:
+        import caption_align
+    except Exception:
+        return ""
+    # Kendini "EKSİK / tamamlanmalı" diye işaretlemiş dosyadan alıntı yapılmaz:
+    # o metin henüz insan onayından geçmemiş, yarım bir dize olabilir.
+    if caption_align.lyrics_marked_incomplete(icerik):
+        return ""
+    temiz = caption_align.extract_clean_lyrics(icerik)
+    if not temiz:
+        return ""
+
+    satirlar = []
+    for ham in temiz.splitlines():
+        s = ham.strip()
+        if not s:
+            continue
+        if "[" in s or "]" in s:
+            continue  # etiket sızıntısına karşı ikinci süzgeç (bkz. docstring)
+        s = SOZ_KONUSMACI_ISARETI.sub("", s).strip()
+        if not (SOZ_ALINTI_MIN_UZUNLUK <= len(s) <= SOZ_ALINTI_MAKS_UZUNLUK):
+            continue
+        satirlar.append(s)
+    if len(satirlar) < SOZ_ALINTI_SATIR_SAYISI:
+        return ""
+
+    beyitler = []
+    for i in range(len(satirlar) - SOZ_ALINTI_SATIR_SAYISI + 1):
+        beyit = " / ".join(satirlar[i:i + SOZ_ALINTI_SATIR_SAYISI])
+        if beyit not in beyitler:
+            # Nakarat birebir tekrarlandığı için aynı beyit birden çok kez
+            # aday oluyor; tekrarları elemek seçimi havuzun geneline yayıyor.
+            beyitler.append(beyit)
+    if not beyitler:
+        return ""
+    # Dış tırnak TİPOGRAFİK (“ ”), düz " DEĞİL: söz satırlarının kendisi düz
+    # tırnak taşıyabiliyor (ör. Kırık Zincir: Bana "yapamazsın" dediler hep) —
+    # düz tırnakla sarmak alıntının nerede bittiğini okunamaz hâle getiriyordu.
+    return "“%s”" % pick_deterministic(title, beyitler, salt=29)
 
 
 def resolve_language(meta: dict) -> str:

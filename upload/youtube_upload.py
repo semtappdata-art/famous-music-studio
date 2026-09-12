@@ -35,7 +35,8 @@ import state_io
 import uyumluluk
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
-from social_text import build_caption, hashtag, pick_deterministic, resolve_language, stil_etiketleri
+from social_text import (build_caption, hashtag, pick_deterministic, pick_subset,
+                         resolve_language, sozlerden_alinti, stil_etiketleri)
 from youtube_auth import get_authenticated_service
 
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
@@ -120,7 +121,28 @@ def build_snippet(meta: dict) -> dict:
     sadece kısa-format caption'da vardı, uzun format elinde tek marka
     hashtag'iyle (#FamousMusicStudio) kalıyordu. Link bloğu (Instagram/TikTok/
     Website) uzun formata ÖZGÜ kalıyor — build_caption bunu içermiyor çünkü
-    Instagram/TikTok caption'ında dış link YOK (bkz. build_caption docstring)."""
+    Instagram/TikTok caption'ında dış link YOK (bkz. build_caption docstring).
+
+    ÖZGÜNLÜK (2026-09-12): bu açıklamaların şarkıya özel TEK parçası başlıktı.
+    18 şarkının açıklaması ÜRETİLİP ölçüldü: sekiz dolu satırın DÖRDÜ tüm
+    videolarda birebir aynı, açıklama başına ortak kelime payı %62,5, ikili
+    benzerlik ortalaması 0,79 (SequenceMatcher) — oysa AYNI mekanizmayla
+    üretilen kısa-format caption'larda ortak satır 0 ve ortalama 0,17. Fark
+    mekanizmada değil, uzun formatın havuzları KULLANMAMASINDAYDI:
+      * hook/soru `meta["custom_hooks"]`/`custom_questions`'ı (şarkının KENDİ
+        sözlerinden türetilmiş satırlar) hiç okumuyordu — build_caption okuyor;
+      * takip satırı HARDCODED tek cümleydi (config.FOLLOW_LINES havuzu vardı);
+      * keşfet hashtag bloğu havuzun TAMAMINI aynı sırayla basıyordu
+        (build_caption pick_subset ile 3 tane seçiyor).
+    Üçü de düzeltildi ve açıklamaya şarkının kendi sözünden bir beyit eklendi
+    (`social_text.sozlerden_alinti`). Her şey DETERMİNİSTİK kaldı: aynı şarkı
+    her zaman aynı açıklamayı üretir (arşiv tutarlılığı).
+
+    BİLEREK SABİT KALANLAR — "tekrar" ile "marka" aynı şey değil: marka satırı
+    (`<başlık> | Famous Music Studio`) ve üç satırlık link bloğu (Instagram/
+    TikTok/Website) HER açıklamada birebir aynı olmalı, çünkü işlevleri tam da
+    tanınmak ve her videodan aynı yere götürmek. Zorunlu AI beyanı
+    (containsSyntheticMedia) bu fonksiyonun dışında ve dokunulmadı."""
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
@@ -136,11 +158,22 @@ def build_snippet(meta: dict) -> dict:
         genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta)
     links = config.SOCIAL_LINKS
 
+    # Keşfet hashtag'leri İKİ ayrı yerde kullanılıyor ve ikisi AYNI OLMAMALI:
+    #   - `discovery_hashtags`  -> açıklamanın GÖRÜNEN hashtag bloğu. Havuzdan
+    #     şarkıya göre seçilen bir alt küme (build_caption ile aynı mantık);
+    #     18/18 videoda aynı on etiketi aynı sırayla basmak tekdüzelik sinyali.
+    #   - `discovery_pool`      -> `tags` alanı, izleyiciye GÖRÜNMÜYOR. Orada
+    #     havuzun tamamı kalıyor, bilerek: tekdüzelik riski görünür metinde,
+    #     etiketlerde ise daha geniş liste sadece arama kapsamı demek (ve
+    #     build_shorts_snippet de tam listeyi veriyor — iki format ayrışmasın).
     if resolve_language(meta) == "en":
-        discovery_hashtags = config.DISCOVERY_HASHTAGS_EN
-        hook = pick_deterministic(title, config.HOOK_LINES_EN)
-        engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS_EN, salt=7)
-        follow_line = "Follow for more tracks 🎵"
+        discovery_pool = config.DISCOVERY_HASHTAGS_EN
+        discovery_hashtags = pick_subset(title, discovery_pool,
+                                         config.DISCOVERY_HASHTAG_COUNT, salt=13)
+        hook = pick_deterministic(title, meta.get("custom_hooks") or config.HOOK_LINES_EN)
+        engagement_question = pick_deterministic(
+            title, meta.get("custom_questions") or config.ENGAGEMENT_QUESTIONS_EN, salt=7)
+        follow_line = pick_deterministic(title, config.FOLLOW_LINES_EN, salt=11)
         video_title = title
         lyrics_tags = []
         # DJ Famous setleri için kullanıcının referans aldığı bir YouTube DJ-mix
@@ -155,10 +188,13 @@ def build_snippet(meta: dict) -> dict:
                 f"Follow the journey on Instagram 👉 {links['instagram']}"
             )
     else:
-        discovery_hashtags = config.DISCOVERY_HASHTAGS
-        hook = pick_deterministic(title, config.HOOK_LINES)
-        engagement_question = pick_deterministic(title, config.ENGAGEMENT_QUESTIONS, salt=7)
-        follow_line = "Yeni şarkılar için takipte kalın 🎵"
+        discovery_pool = config.DISCOVERY_HASHTAGS
+        discovery_hashtags = pick_subset(title, discovery_pool,
+                                         config.DISCOVERY_HASHTAG_COUNT, salt=13)
+        hook = pick_deterministic(title, meta.get("custom_hooks") or config.HOOK_LINES)
+        engagement_question = pick_deterministic(
+            title, meta.get("custom_questions") or config.ENGAGEMENT_QUESTIONS, salt=7)
+        follow_line = pick_deterministic(title, config.FOLLOW_LINES, salt=11)
         # "dj" (DJ Famous) enstrümantal/canlı set, "sözleri" arama niyeti taşımıyor —
         # sadece ana kataloğun şarkı temalarına uygulanıyor. Video başlığına arama
         # niyeti (Türkçe dinleyicilerin en sık arama kalıbı: "<şarkı adı> sözleri")
@@ -205,8 +241,16 @@ def build_snippet(meta: dict) -> dict:
         _satirlar = [("%s %s" % (x["zaman"], x["ad"])) for x in _liste]
         bolumler = "\n\nParçalar:\n" + "\n".join(_satirlar)
 
+    # Şarkının KENDİ sözünden bir beyit — açıklamanın şarkıya ÖZEL olan tek
+    # gerçek içeriği (başlık dışında). Köşeli parantez etiketi taşımayan
+    # "## Temiz Sözler" bölümünden geliyor (bkz. social_text.sozlerden_alinti);
+    # sözler dosyası yoksa/eşleşme doğrulanamıyorsa boş string döner ve
+    # açıklama eskisi gibi kurulur — otomasyon bu yüzden ASLA durmaz.
+    _alinti = sozlerden_alinti(meta)
+    alinti = ("\n\n" + _alinti) if _alinti else ""
+
     description = (
-        f"{hook}\n\n{title} | {config.STATIC_LABEL_TEXT}{kurator}{bolumler}\n\n"
+        f"{hook}\n\n{title} | {config.STATIC_LABEL_TEXT}{kurator}{bolumler}{alinti}\n\n"
         f"{follow_line}\n\n"
         f"📷 Instagram: {links['instagram']}\n"
         f"🎵 TikTok: {links['tiktok']}\n"
@@ -217,7 +261,7 @@ def build_snippet(meta: dict) -> dict:
     # Tags (arama/öneri sinyali, açıklamada görünmez) — tema etiketlerine ek olarak
     # keşfet hashtag'lerinin # işaretsiz hâli de eklendi (eskiden sadece tema +
     # STATIC_LABEL_TEXT vardı, YouTube'un izin verdiği alana kıyasla dardı).
-    tags = genre_tags + [config.STATIC_LABEL_TEXT] + [h.lstrip("#") for h in discovery_hashtags] + lyrics_tags
+    tags = genre_tags + [config.STATIC_LABEL_TEXT] + [h.lstrip("#") for h in discovery_pool] + lyrics_tags
 
     return {
         "title": video_title,
