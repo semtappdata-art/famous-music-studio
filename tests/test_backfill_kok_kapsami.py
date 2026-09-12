@@ -87,7 +87,8 @@ def test_facebook_supurgesi_telif_ve_liste_disini_atliyor(tmp_path, monkeypatch)
     """Kapsam genişleyince TEORİK olmaktan çıkan iki kapı.
 
     City Pulse Set gerçekten `telif_araliklari` taşıyor (Content ID eşleşmesi),
-    "Küllerimden Geç" gerçekten `unlisted`. İkisini de Facebook'a taşımak,
+    "Yeniden Doğacağım" (2026-09-12'den beri kopya; eskiden "Küllerimden Geç")
+    gerçekten `unlisted`. İkisini de Facebook'a taşımak,
     uyumluluk.kontrol()'ün engellediği şeyin süpürge üzerinden yapılması olurdu.
     """
     kokler = _katalog(tmp_path)

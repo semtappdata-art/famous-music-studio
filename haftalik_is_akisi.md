@@ -85,7 +85,9 @@ Elle `--count` verme: kotayı öldüren tek düğme o.
 1. **TikTok taslakları (15 dk).** Bekleyenlerden **3-5 tanesini** elle yayınla, sonra
    `python upload/tiktok_publish_plan.py --yayinlandi-hepsi` ile işaretle. API "yayınlandı
    mı" sorusunu cevaplamıyor — işaretleme **tek doğruluk kaynağı.** ⚠ Docstring "20 taslak"
-   diyor, gerçek **21**. ⚠ `City Pulse Set` (telif) ve `Küllerimden Geç` (kopya) hariç.
+   diyor, gerçek **21**. ⚠ `City Pulse Set` (telif), `Yeniden Doğacağım` ve `Küllerimden Geç` hariç — bu
+   sesin TikTok gönderileri zaten yayında; taslak değil mevcut gönderinin görünürlüğü düzeltilir
+   (denetim E-6, 2026-09-12 gece).
 2. Kutu boşalınca sırayla: Instagram bakımı → Facebook/Bluesky varlıkları → D1 playlist
    temizliği. Kuyruk bitene kadar "trend ses ile ek TikTok paylaşımı" **askıda.**
 
@@ -302,8 +304,8 @@ işliyor).
 | 14 Eyl Pzt | **E-10 P1 · robocopy yedek** (111 MB, hedef klasör paylaşıma kapalı) | 5 dk |
 | **15 Eyl Sal** | **Üretim · "Vardiya"** (rock, kadın vokal, 78 BPM). `vardiya_sozler.md` **yazıldı** — §2'nin 1-3. adımları bitti, **4. adımdan başla**: `projects/Vardiya/` klasörünü aç → `{"title": "Vardiya", "theme": "rock"}` → Chrome çevirisi kapalı → stil etiketi + sözler → indir. ⚠ Pazartesi raporu `BEKLEYEN`'de iş gösteriyorsa **bu günü atla.** | 45 dk |
 | 16 Eyl Çar | — (render + kuyruk, otomatik) | 0 |
-| **17 Eyl Prş** | **E-9 + E-11 ·** Instagram'da kopya Reel `18087131705485174`'ü **arşivle** (silme) + 4 eski kapaklı gönderiyi kaldır. Aynı oturumda **E-12 ·** bekleyen 1 yorumu yanıtla. | 10 dk |
-| 17 Eyl Prş | **E-6 ilk kutu ·** 3-5 TikTok taslağı yayınla + `--yayinlandi-hepsi` ile işaretle (City Pulse Set ve Küllerimden Geç hariç) | 15 dk |
+| **17 Eyl Prş** | **E-9 + E-11 ·** Instagram'da kopya Reels'leri **arşivle** (silme): `Dc5vAXxgGIf`, `Dcv6i1PjYUy`, `Dcv5AiRgSsc` — `Dc-5CR9j2XO` (`18087131705485174`, Küllerimden Geç) **KALACAK** (2026-09-12 gece kararı; eski satır tam tersini diyordu) + kalan eski kapaklı gönderiler (E-11). Aynı oturumda **E-12 ·** bekleyen 1 yorumu yanıtla. | 10 dk |
+| 17 Eyl Prş | **E-6 ilk kutu ·** 3-5 TikTok taslağı yayınla + `--yayinlandi-hepsi` ile işaretle (City Pulse Set, Yeniden Doğacağım ve Küllerimden Geç hariç) | 15 dk |
 | 18 Eyl Cum | **Dokunma** — DJ görevi 18:00'de koşuyor | 0 |
 | 19 Eyl Cmt | — | 0 |
 | **20 Eyl Paz** | **Kapanış ·** `ses_ve_tarz_takibi.md`'ye Vardiya satırı (rock / 78 / smoky husky low-register female) **+ SON DURUM satırı** ("son üretim KADIN vokal, tekli"). Vardiya bu tarihe kadar yayına çıkmamış olabilir — **satır yine de yazılır** (dosya üretim sırasını tutuyor). Bio linkini gözle doğrula. | 15 dk |

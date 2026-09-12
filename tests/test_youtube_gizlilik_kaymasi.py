@@ -262,8 +262,10 @@ def test_gonderim_basarisizsa_damga_atilmaz(ortam):
 
 
 def test_kopya_notu_bilincli_istisna(ortam):
-    _proje(ortam.kok, "Küllerimden Geç", {
-        "youtube_video_id": "-CQ7MmUygTQ", "youtube_privacy": "public",
+    # 2026-09-12: asıl/kopya ters çevrildi — kopya artık `Yeniden Doğacağım`
+    # (kapağı eksik sürüm, kullanıcı liste dışına aldı); not onun state'inde.
+    _proje(ortam.kok, "Yeniden Doğacağım", {
+        "youtube_video_id": "kZML9g4GdBs", "youtube_privacy": "public",
         "youtube_privacy_gercek": "unlisted",
         "youtube_privacy_gercek_at": _damga(T0 - SAAT),
         "kopya_notu": "aynı kaydın iki ismi"})
@@ -272,6 +274,36 @@ def test_kopya_notu_bilincli_istisna(ortam):
     assert s["durum"] == "tamam"
     assert not any("UYARI" in x for x in loglar)
     assert ortam.gonderilen == []
+
+
+def test_gorunurluk_plani_hedefi_gercekse_kayma_sayilmaz(ortam):
+    """Planlı geçiş: gerçek zaten hedefte, state planın uygulanmasını bekliyor.
+
+    `Küllerimden Geç` uzun formatı kullanıcı tarafından Studio'dan public
+    yapıldı; state `unlisted` diyor ve golden-hour planı (hedef public)
+    uygulanınca düzelecek. Arada her koşu UYARI basmak gürültü olurdu.
+    """
+    _proje(ortam.kok, "Küllerimden Geç", {
+        "youtube_video_id": "-CQ7MmUygTQ", "youtube_privacy": "unlisted",
+        "youtube_privacy_gercek": "public",
+        "youtube_privacy_gercek_at": _damga(T0 - SAAT),
+        "youtube_gorunurluk_plani": {"hedef": "public", "sebep": "karar",
+                                     "istendi_at": "2026-09-12T22:50:00"}})
+    loglar = []
+    s = SK.youtube_gizlilik_kaymasi(log=loglar.append)
+    assert s["durum"] == "tamam", s
+    assert ortam.gonderilen == []
+
+
+def test_gorunurluk_plani_hedefi_gercekten_farkliysa_kayma_suruyor(ortam):
+    """Plan kaymayı SUSTURMAZ, yalnız hedefe ulaşılmış hâli susturur."""
+    _proje(ortam.kok, "Küllerimden Geç", {
+        "youtube_video_id": "-CQ7MmUygTQ", "youtube_privacy": "public",
+        "youtube_privacy_gercek": "unlisted",
+        "youtube_privacy_gercek_at": _damga(T0 - SAAT),
+        "youtube_gorunurluk_plani": {"hedef": "public"}})
+    s = SK.youtube_gizlilik_kaymasi(log=lambda *_: None)
+    assert s["durum"] == "kayma"
 
 
 def test_istenen_ile_gercek_ayniysa_sessiz(ortam):

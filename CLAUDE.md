@@ -143,21 +143,64 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
 
 ## Önemli tasarım kararları (nedenini bilmeden değiştirme)
 
-- **`Küllerimden Geç` YouTube'da BİLEREK `unlisted` — public YAPMA**: `Yeniden Doğacağım`
-  (`kZML9g4GdBs`, 1 Eylül, public) ile AYNI ses (`audio.wav` md5'leri eşit) ve aynı sözler;
-  `Küllerimden Geç` (`-CQ7MmUygTQ` + Shorts `jN78mJrZd3c`) 7 Eylül'deki İKİNCİ yüklemedir ve
-  2026-09-11'de liste dışına alındı — silinmedi. Kanıt: iki projenin `state.json`/`meta.json`
-  dosyalarındaki `kopya_notu`. `derleme.py`, `latest_release.py` ve
-  `upload/ek_platform_backfill.py` üçü de bu kaydı "unlisted = kopya" diye BİLEREK dışlıyor;
-  `uyumluluk.py`'deki md5 tekrar kontrolü de bu olaydan doğdu — ve o kontrol 2026-09-11'de
-  UYARI'dan **HATA**'ya çekildi: aynı md5 artık boru hattını DURDURUR. İki muafiyet var,
-  ikisi de dar: (a) BU projenin kaydında `kopya_notu` VAR *ve* çiftin bir tarafı yayından
-  çekilmiş (unlisted / zamanlanmamış private); (b) bu proje zaten yayında ve eşleşen klasör
-  HENÜZ yayınlanmamış (hata o klasöre düşer). Yani "nota yaz, yayınla" diye bir kaçış yolu
-  yok. Public yapmak aynı sesi kanalda
-  iki kez yayına sokar — kanalın en büyük riski olan "inauthentic / toplu üretilmiş AI içerik"
-  politikasına doğrudan yem, ve o üç kopya kapısını aynı anda açar
-  (bkz. `buyume_kontrol_listesi.md`, E7).
+- **ASIL kayıt `Küllerimden Geç`; `Yeniden Doğacağım` BİLEREK `unlisted` — kullanıcının SON
+  kararı (2026-09-12 gece). TERSİNE ÇEVİRME.** İki proje AYNI ses (`audio.wav` md5 eşit).
+  Kullanıcı `Yeniden Doğacağım` videosunda kapak eksikliği olduğu için (kart BOŞ — YouTube'un
+  kendi karelerinden doğrulandı) onu liste dışı yaptı, yeni görselli `Küllerimden Geç`'i açtı.
+  **Bu madde eskiden TAM TERSİNİ söylüyordu** ("Küllerimden Geç BİLEREK unlisted — public
+  YAPMA"): 2026-09-11'de bir oturum md5 + yükleme tarihine bakıp İÇERİĞE bakmadan
+  `Küllerimden Geç`'i "ikinci yükleme = kopya" diye gizlemişti. Kullanıcı Studio'dan geri
+  aldı; 2026-09-12 21:27'deki API okuması o değişiklikten ÖNCE yapıldığı için bir süre
+  "çelişki" gibi göründü.
+  Ölçülen durum (2026-09-12 22:38): `Küllerimden Geç` `-CQ7MmUygTQ` **public**, Shorts
+  `jN78mJrZd3c` unlisted → `youtube_gorunurluk_plani` ile golden-hour'da public;
+  `Yeniden Doğacağım` `kZML9g4GdBs` **unlisted**, Shorts `Y6eK2nIBXqA` unlisted (public'ti,
+  gizlendi). `kopya_notu` artık YALNIZ `Yeniden Doğacağım`'da (state + meta).
+  **`uyumluluk.py` md5 kapısı — dar muafiyet, üç şart BİRLİKTE:** bu proje zaten YouTube'da
+  **ve** karşı tarafta `kopya_notu` var **ve** karşı taraf yayından çekilmiş. Yayınlanmamış
+  yeni bir kopya bu muafiyetten GEÇEMEZ; kopya public'e dönerse asıl da HATA alır — "nota
+  yaz, yayınla" kaçış yolu yok. Kapı md5'te 2026-09-11'den beri HATA (boru hattını durdurur).
+  `derleme.py`, `latest_release.py`, `ek_platform_backfill`, `facebook_backfill`
+  `youtube_privacy`'ye baktığı için `Yeniden Doğacağım` bio sayfasından ve geri
+  doldurmalardan kendiliğinden düştü; `Küllerimden Geç` Shorts planı uygulanınca girer.
+  **İKİ DERS, ikisi de bu depoda bedeli ödenmiş:**
+  (1) **Karar İÇERİĞE göre verilir; isim, md5, yükleme tarihi, BAŞLIK birer İDDİADIR.**
+  TikTok'ta gönderi başlıkları içerikle UYUŞMUYOR ("Yeniden Doğacağım" başlıklı gönderilerin
+  içeriği Kırık Zincir, Just Relax ve Beni Bırakma çıktı); başlığa göre yapılan gizleme yanlış
+  iki şarkıyı gizledi. Görünürlük/arşiv/kopya kararından ÖNCE video karesine ya da kart
+  görseline bak (`youtube_playlist_id` ve state-gizlilik dersleriyle aynı sınıf).
+  (2) **Toplu gizlilik değişikliği ÖNCEKİ durumu hatırlamak ZORUNDA.** `444daac` + `2d6da01`
+  (2026-09-07) 16 videoyu state'ten türetilen bir listeyle toplu unlisted→public yaptı; o anda
+  bilerek gizlenmiş bir video olsaydı kararı sessizce ezilirdi. `upload/set_privacy.py` hâlâ
+  önceki gizliliği hatırlamıyor — toplu bir döngüde KULLANMA (`upload/ai_beyani_onar.py`
+  güvenli: gerçek gizliliği okuyor, hiçbir videoyu public'e çevirmiyor).
+  Diğer platformlar: Instagram'da iki sürüm de canlı — kullanıcı telefondan arşivleyecek
+  (`Dc5vAXxgGIf`, `Dcv6i1PjYUy`, `Dcv5AiRgSsc`; KALACAK `Dc-5CR9j2XO`); TikTok görünürlük
+  düzeltmesi kullanıcıda (tarayıcıdan yazma izin sistemince engellendi) — sıra
+  `tiktok_envanteri_2026-09-12.md` ve `denetim_bulgulari_2026-09-12.md` E-6'da.
+  `olcum_temel_cizgi.py`'deki `KOPYA_PROJELER = ("Küllerimden Geç",)` BİLEREK değişmedi:
+  11 Eylül temel çizgisi o hariç tutmayla ölçüldü, değiştirmek karşılaştırmayı bozar.
+- **Yayın BEKLETME (`yayin_beklet`, `uyumluluk.BEKLETME_ALANI`) ve YouTube GÖRÜNÜRLÜK PLANI
+  (`youtube_gorunurluk_plani`) — 2026-09-12.** İkisi de "otomasyon bir şeyi YANLIŞ ANDA
+  yapmasın" sınıfından, ikisi de state tabanlı ve belgelenmiş:
+  - **Bekletme:** state'te `yayin_beklet = {"sebep": ..., "istendi_at": ...}` varsa
+    `uyumluluk.kontrol(..., "yukleme")` HATA döner — fail-closed kapı tek yerden Instagram,
+    Facebook, Telegram, Bluesky, TikTok planı ve geri doldurmaların HEPSİNİ durdurur; `render`
+    aşamasında yalnız UYARI (yeniden render'ı kilitlemesin diye). `_bekletilenleri_ayir`
+    bekletilen projeyi `_auto_pace_count`'tan ÖNCE `pending`'den ayırıyor — ayırıcı olmasaydı
+    `pending[:1]` her koşuda bekletilen projeyi seçer ve arkasındaki şarkıları KALICI olarak
+    tıkardı. İlk vaka: `Bu Gece Kazandık` (kapak/video görselleri eski → yeni formatta yeniden
+    render + yeni YouTube yüklemesi bekliyor). Kaldırmak: render yapıldıktan sonra alanı sil.
+  - **Görünürlük planı:** önceden YAYINLANMIŞ bir videoyu `publishAt` ile zamanlamak MÜMKÜN
+    DEĞİL (`invalidPublishAt` — alan yalnız hiç yayınlanmamış videoda kabul ediliyor). Bu
+    yüzden state'e `youtube_gorunurluk_plani = {"hedef": "public", ...}` yazılır;
+    `_drain_golden_hour_queue` sonundaki `_youtube_gorunurluk_planlarini_uygula` bunu YALNIZ
+    golden-hour içinde, pencere başına ve koşu başına EN FAZLA BİR proje olarak uygular
+    (sıra `istendi_at`; öndeki beklerse arkadaki öne GEÇMEZ), bekletilen ya da `uyumluluk`
+    HATA veren projeye dokunmaz, `guvenli_status_govdesi` ile `containsSyntheticMedia`'yı
+    korur, gerçek public anını UTC `…Z` biçiminde `*_publish_at`'e yazar — **tempo sayacı
+    (`auto_process._son_yeni_yayin_ani`) bu anı YENİ YAYIN sayar**, yani sıradaki yeni şarkı
+    o andan itibaren 52 saat bekler. Hata olursa plan KALIR ve 3 saat yeniden denenmez.
 - **Kapak İKİ ayrı oranda üretiliyor: `cover.png` (16:9) + `cover_vertical.png` (9:16)**:
   eskiden tek kare (1600x1600) kapak vardı, YouTube'un 16:9 oynatıcısında sağ/sol
   kenarlarda çirkin koyu şeritler (pillarbox) oluşuyordu (kullanıcı geri bildirimi).
@@ -561,7 +604,8 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   `dj_sets/City Pulse Set` (state.json'ında `telif_eser` + `telif_araliklari`
   kayıtlı, `uyumluluk` HATA veriyor) ve `projects/Küllerimden Geç`
   (`Yeniden Doğacağım` ile aynı md5; TikTok'ta İKİSİ de taslak, yani tekrar
-  orada henüz ÖNLENMİŞ değil). `build_plan()` artık `uyumluluk.kontrol(...,
+  orada henüz ÖNLENMİŞ değil — 2026-09-12 gece: asıl artık `Küllerimden Geç` ve bu sesin
+  TikTok gönderileri zaten YAYINDA çıktı, bkz. "ASIL kayıt" maddesi). `build_plan()` artık `uyumluluk.kontrol(...,
   "yukleme")` çağırıyor (HATA → `engel`) ve TikTok'a ÖZEL bir ikiz kapısı var
   (`_tiktok_ikiz_kapisi`) — çünkü `uyumluluk`'un muafiyeti *YouTube*'da bir
   tarafın çekilmiş olması, TikTok hakkında hiçbir şey söylemiyor. Kapı
@@ -731,7 +775,7 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   **Fail-closed gerekçesi:** eski kod `kontrol()`ün istisnasını "görmezden geliniyor" diye
   loglayıp DEVAM ediyordu — yani garanti yalnızca kapı düzgün DÖNDÜĞÜNDE geçerliydi.
   "Bilmiyorum" ile "temiz" aynı şey DEĞİL; bu kapıya bağlı iki gerçek koruma (City Pulse
-  Set'in HÂLÂ açık telif itirazı, `Küllerimden Geç` md5 kopyası) yanlış tarafa düşerse
+  Set'in HÂLÂ açık telif itirazı, `Yeniden Doğacağım`/`Küllerimden Geç` md5 kopyası) yanlış tarafa düşerse
   sonuç GERİ ALINAMAZ bir yayındır (Instagram'da yayınlanmış medya API'den silinemiyor).
   Ters yönün maliyeti bu projenin BİR koşu gecikmesi. KAPSAM: `return` yalnızca O PROJEYİ
   atlıyor, koşuyu değil — `for project_dir in batch` devam eder, `finally`'deki süpürgeler
@@ -1056,13 +1100,15 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
     **`youtube_privacy` alanına ASLA yazılmıyor** — `latest_release`, `ek_platform_backfill`,
     `facebook_backfill`, `derleme` o alanın sözleşmesine bağlı. **Söyleyen** bu adım: ağa
     çıkmaz, yalnız state okur; her koşuda log UYARI, günde en fazla bir bildirim. İstisnalar:
-    `kopya_notu` (Küllerimden Geç bilerek unlisted), henüz ölçüm yok, bekleyen zamanlanmış
+    `kopya_notu` (Yeniden Doğacağım bilerek unlisted), görünürlük planı hedefi gerçeğe eşit,
+    henüz ölçüm yok, bekleyen zamanlanmış
     yayın (`private` + gelecekteki `*_publish_at`). **KARAR VERMEZ**: kaymanın hangi tarafta
     düzeltileceği (Studio'da geri public mi, state'te unlisted mi) insan kararı.
     Tuzak: YouTube `publishAt`'i yalnız HİÇ yayınlanmamış videoda kabul ediyor
     (`invalidPublishAt`) — önceden public olmuş bir videoyu "yarın 12:00'de public olsun"
-    diye zamanlamak MÜMKÜN DEĞİL; public anı elle tetiklenip `*_publish_at` state'e elle
-    yazılmalı ki tempo sayacı (`auto_process._son_yeni_yayin_ani`) onu görsün.
+    diye zamanlamak MÜMKÜN DEĞİL; bunun için `youtube_gorunurluk_plani` kuyruğu var (golden-hour'da
+    uygular, `*_publish_at`'i kendisi yazar ve tempo sayacı `auto_process._son_yeni_yayin_ani`
+    onu görür) — bkz. "Yayın BEKLETME ... GÖRÜNÜRLÜK PLANI" maddesi.
   ÇAĞRI SIRASI anlamlı: `yayin_durgunlugu`, `uretim_kuyrugu` ve `youtube_gizlilik`
   `kacan_kosu`'dan ÖNCE, `kacan_kosu` EN SONDA —
   çünkü o adım "saatlik hattın SONUNA ulaşıldı" damgasını atıyor; yukarıdaki adımlardan
@@ -1097,7 +1143,8 @@ python olcum_temel_cizgi.py --karsilastir  # temel çizgi <-> yeni ölçüm
 - **Neyle karşılaştırılıyor:** `olcum_temel_cizgi.json` (2026-09-11, değişiklikten ÖNCESİ).
   Bu dosya TEMEL ÇİZGİ — script onun üstüne yazmayı bir muhafızla reddediyor.
 - **Birincil metrik:** `audienceWatchRatio` **%2 ve %3** noktaları (temel: 0,837 / 0,715;
-  `Küllerimden Geç` kopya olduğu için ortalamaya katılmıyor).
+  `Küllerimden Geç` 11 Eylül'de kopya sayıldığı için ortalamaya katılmıyor — 2026-09-12'den
+  beri ASIL kayıt o, ama temel çizgi karşılaştırılabilir kalsın diye hariç tutma BİLEREK korunuyor).
 - **Gürültü tabanı 21,2 puan** (aynı md5'li iki video arasında ölçüldü) — tek video
   farkları anlamsız, sadece 7 videonun ortalamasındaki YÖN okunur. Güvenilir karar için
   ikinci ölçüm: 2026-10-23 … 2026-11-06.

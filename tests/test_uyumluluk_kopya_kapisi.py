@@ -298,27 +298,82 @@ def test_yayindan_cekilmis(durum, beklenen):
 def test_gercek_katalogdaki_cift_hala_isaretli():
     """Bilinen çiftin KANITI yerinde mi — yoksa kapı meşru işi durdurur.
 
-    `kopya_notu` alanları kanıt: biri silinirse `Yeniden Doğacağım` (public,
-    orijinal) bir anda HATA almaya başlar ve yayın hattı sessizce tıkanır.
-    Bu test o sessiz tıkanmayı önceden bağırır.
+    ASIL/KOPYA 2026-09-12'de TERS ÇEVRİLDİ (kullanıcının son kararı): asıl kayıt
+    `Küllerimden Geç` (yeni görselli sürüm, kalıyor), kopya `Yeniden Doğacağım`
+    (YouTube'un videodan aldığı karelerde kapak kartı BOŞ; kullanıcı liste dışına
+    aldı). Bu test önceden "iki tarafta da `kopya_notu`, `Küllerimden Geç`
+    liste dışı" diyordu — o varsayım artık yanlış.
+
+    Yeni kanıt düzeni: `kopya_notu` YALNIZ kopyada (`Yeniden Doğacağım`) ve o
+    taraf yayından çekilmiş; asıl tarafta not YOK ve kapı ona md5 HATASI
+    VERMİYOR. Biri bozulursa asılın geri doldurmaları sessizce tıkanır — bu
+    test o sessiz tıkanmayı önceden bağırır.
     """
     kok_dizin = os.path.join(os.path.dirname(os.path.abspath(
         uyumluluk.__file__)), "projects")
-    cift = ("Yeniden Doğacağım", "Küllerimden Geç")
-    for ad in cift:
-        p = os.path.join(kok_dizin, ad)
-        if not os.path.isdir(p):
+    asil, kopya = "Küllerimden Geç", "Yeniden Doğacağım"
+    for ad in (asil, kopya):
+        if not os.path.isdir(os.path.join(kok_dizin, ad)):
             pytest.skip("gerçek katalog bu ortamda yok: %s" % ad)
-    isaretli = []
-    cekilmis = []
-    for ad in cift:
-        p = os.path.join(kok_dizin, ad)
-        d, m = uyumluluk._durum(p), uyumluluk._meta(p)
-        isaretli.append(uyumluluk._kopya_notu_var(d, m))
-        cekilmis.append(uyumluluk._yayindan_cekilmis(d))
-    assert all(isaretli), (
-        "çiftin İKİ tarafında da `kopya_notu` olmalı — yoksa md5 kapısı meşru "
-        "'%s' işlemlerini durdurur" % cift[0])
-    assert any(cekilmis), (
-        "çiftin bir tarafı liste dışı KALMALI ('Küllerimden Geç'); ikisi de "
-        "yayına dönerse aynı kayıt kanalda iki kez canlı olur")
+    pa, pk = os.path.join(kok_dizin, asil), os.path.join(kok_dizin, kopya)
+    dk, mk = uyumluluk._durum(pk), uyumluluk._meta(pk)
+    assert uyumluluk._kopya_notu_var(dk, mk), (
+        "kopya tarafında (`%s`) `kopya_notu` olmalı" % kopya)
+    assert uyumluluk._yayindan_cekilmis(dk), (
+        "kopya (`%s`) YouTube'da liste dışı KALMALI; ikisi de yayına dönerse "
+        "aynı kayıt kanalda iki kez canlı olur" % kopya)
+    da, ma = uyumluluk._durum(pa), uyumluluk._meta(pa)
+    assert not uyumluluk._kopya_notu_var(da, ma), (
+        "asıl kayıtta (`%s`) `kopya_notu` OLMAMALI — not kopyayı işaretler" % asil)
+    # Kapının KENDİSİ: iki taraf da md5 HATASI almamalı.
+    for p in (pa, pk):
+        hatalar, uyarilar = uyumluluk.kontrol(p, "yukleme")
+        assert _md5_bulgusu(hatalar) == [], (p, hatalar)
+        assert _md5_bulgusu(uyarilar), "bulgu kaybolmamalı, UYARI kalmalı"
+
+
+# --- 8. TERS YÖN: not yalnız KOPYADA, asıl tarafta YOK ----------------------
+# 2026-09-12 kararıyla gerçek katalog bu düzene geçti. Eski kural "BU projede
+# `kopya_notu` şart" diyordu, yani notu kopyaya taşımak asılın geri
+# doldurmalarını md5 HATASIYLA durdururdu. Yeni (dar) muafiyet: BU proje zaten
+# yayında + karşı taraf `kopya_notu` taşıyor + karşı taraf yayından çekilmiş.
+
+def _ters_cift(kok, asil_gizlilik="public"):
+    asil = _proje(kok, "Kullerimden Gec",
+                  durum={"youtube_video_id": "-CQ7", "youtube_privacy": asil_gizlilik})
+    kopya = _proje(kok, "Yeniden Dogacagim",
+                   durum={"youtube_video_id": "kZML", "youtube_privacy": "unlisted",
+                          "kopya_notu": "kapağı eksik sürüm; asıl = Küllerimden Geç"})
+    return asil, kopya
+
+
+def test_ters_yon_asil_engellenmiyor(kok):
+    asil, kopya = _ters_cift(kok)
+    h, u = uyumluluk.kontrol(asil, "yukleme")
+    assert _md5_bulgusu(h) == [], "asıl kayıt durdurulmamalı: %r" % h
+    assert _md5_bulgusu(u), "bulgu uyarı olarak kalmalı"
+    h2, u2 = uyumluluk.kontrol(kopya, "yukleme")
+    assert _md5_bulgusu(h2) == [] and _md5_bulgusu(u2)
+
+
+def test_ters_yon_asil_henuz_unlisted_iken_de_engellenmiyor(kok):
+    """Golden-hour planı uygulanana kadar asılın state'i unlisted durabilir."""
+    asil, _ = _ters_cift(kok, asil_gizlilik="unlisted")
+    assert _md5_bulgusu(uyumluluk.kontrol(asil, "yukleme")[0]) == []
+
+
+def test_ters_yon_isaretsiz_yayinlanmamis_ucuncu_hala_hata(kok):
+    """Karşı tarafın notu, YENİ bir klasöre muafiyet KAZANDIRMAMALI."""
+    _ters_cift(kok)
+    ucuncu = _proje(kok, "Ucuncu", durum={})
+    assert _md5_bulgusu(uyumluluk.kontrol(ucuncu, "yukleme")[0])
+
+
+def test_ters_yon_kopya_yayina_donerse_asil_hata(kok):
+    """Kopya public'e dönerse "canlıda tek kayıt" kanıtı düşer: HATA."""
+    asil = _proje(kok, "Kullerimden Gec",
+                  durum={"youtube_video_id": "-CQ7", "youtube_privacy": "public"})
+    _proje(kok, "Yeniden Dogacagim",
+           durum={"youtube_video_id": "kZML", "youtube_privacy": "public",
+                  "kopya_notu": "kopya"})
+    assert _md5_bulgusu(uyumluluk.kontrol(asil, "yukleme")[0])

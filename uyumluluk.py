@@ -118,6 +118,10 @@ def proje_klasorleri(kokler=None):
 # ölü kod olurdu. 3 = "desen kaçtı" anlamına gelen ilk sayı.
 GUNLUK_YUKLEME_UYARI = 3
 
+# Yayin bekletme alani (state.json). Deger: {"sebep": ..., "istendi_at": ...}.
+# Kural ve gerekcesi: kontrol() icindeki "0. Yayin BEKLETME" bolumu.
+BEKLETME_ALANI = "yayin_beklet"
+
 
 class DurumBozuk(Exception):
     """Bir JSON dosyasi (state.json / meta.json) VAR ama okunamiyor/parse edilemiyor.
@@ -193,9 +197,10 @@ def _kok(proje: str) -> str:
 def _kopya_notu_var(durum: dict, meta: dict) -> bool:
     """Bu projenin kaydinda `kopya_notu` var mi — operator tekrari BELGELEMIS mi?
 
-    Alan depoda zaten kullaniliyor: 'Kullerimden Gec'in state.json'inda ve
-    'Yeniden Dogacagim'in meta.json'inda (ikisi ayni olayin iki tarafi), bu
-    yuzden IKI dosyaya da bakiliyor — hangisine yazildigi tarihsel bir kaza.
+    Alan tarihsel olarak iki dosyada da yazildi, bu yuzden IKI dosyaya da
+    bakiliyor. 2026-09-12'den beri not YALNIZ kopyada: 'Yeniden Dogacagim'
+    (state.json + meta.json); asil 'Kullerimden Gec'te not YOK — asilin
+    muafiyeti kontrol()'deki TERS YON dalindan geliyor.
     """
     return bool((durum or {}).get("kopya_notu") or (meta or {}).get("kopya_notu"))
 
@@ -271,6 +276,34 @@ def kontrol(proje: str, asama: str = "render") -> tuple:
             "yayına devam edilmemeli" % e)
         durum = {}
 
+    # --- 0. Yayin BEKLETME (operator karari) --------------------------------
+    # NEDEN BURADA (2026-09-12): `Bu Gece Kazandik`in kapak/video gorselleri
+    # eski; yeniden render edilecek. Proje `pending`de siradaydi ve ESKI
+    # shorts ile Instagram konteyneri acilacak, ardindan Facebook/Telegram/
+    # Bluesky geri doldurmalari da eski gorselle gidecekti. Depoda projeye ozel
+    # bir "yayini beklet" mekanizmasi YOKTU. Bu kapi zaten fail-closed ve yayina
+    # cikan yollarin hepsinde cagriliyor (auto_process, dj_famous_process, iki
+    # geri doldurma, dj_clips'te iki nokta, tiktok_publish_plan) — bekletmeyi
+    # yedi yere ayri ayri eklemek "unutulacak liste" olurdu.
+    # SIDDET asamaya gore: "yukleme" HATA; "render" UYARI — yeniden render
+    # bekletmenin SEBEBI olabilir, onu da durdurmak duzeltmeyi kilitlerdi.
+    # Bos/falsy deger bekletme SAYILMAZ (temizlenmis alan); dict olmayan dolu bir
+    # deger (ornegin elle yazilmis metin) SAYILIR: "okuyamiyorum" != "yok".
+    # Kapinin GOREMEDIGI iki yol auto_process'te ayrica kapali:
+    # `_bekletilenleri_ayir` (bekletilen proje `pending`i tikamasin) ve
+    # `_drain_golden_hour_queue` (mevcut Instagram konteyneri / TikTok
+    # bildirimi uyumluluktan gecmiyor). Koruma: tests/test_yayin_bekletme.py.
+    bekletme = durum.get(BEKLETME_ALANI)
+    if bekletme:
+        sebep = bekletme.get("sebep") if isinstance(bekletme, dict) else bekletme
+        metin = ("yayın BEKLETİLİYOR (`%s`: %s) — alan state.json'dan "
+                 "kaldırılana kadar bu proje hiçbir platforma yayınlanmaz"
+                 % (BEKLETME_ALANI, sebep or "sebep yazılmamış"))
+        if asama == "yukleme":
+            hatalar.append(metin)
+        else:
+            uyarilar.append(metin + " (render aşamasında durdurulmuyor)")
+
     # --- 1. Telif eşleşmesi işaretli mi -------------------------------------
     # Bu proje daha önce Content ID eşleşmesi aldıysa YENİDEN yayınlanmamalı.
     if durum.get("telif_araliklari"):
@@ -343,11 +376,11 @@ def kontrol(proje: str, asama: str = "render") -> tuple:
                         # tarafin isaretli olmasi yetseydi, ayni sesi tasiyan
                         # YENI (isaretsiz) bir ucuncu klasor "zaten belgelenmis"
                         # sayilip yayina girerdi — engellemek istedigimiz sey
-                        # tam olarak bu. Gercek katalog bu sarti zaten
-                        # sagliyor: `kopya_notu` CIFTIN IKI TARAFINDA da var
-                        # (Kullerimden Gec -> state.json, Yeniden Dogacagim ->
-                        # meta.json), bu yuzden mesru olan ikisi de UYARI'da
-                        # kaliyor; biri public orijinal, digeri liste disi.
+                        # tam olarak bu. Gercek katalog 2026-09-12'den beri
+                        # notu YALNIZ kopyada tasiyor (`Yeniden Dogacagim`,
+                        # state.json + meta.json; liste disi); asil kayit
+                        # `Kullerimden Gec` notsuz ve asagidaki TERS YON
+                        # muafiyetiyle UYARI'da kaliyor.
                         #
                         # Neden (2) gerekli: `kopya_notu`nun tek basina kapiyi
                         # acmasi, "nota yaz, yayinla" diye bir kacis yolu
@@ -371,11 +404,39 @@ def kontrol(proje: str, asama: str = "render") -> tuple:
                         # bilinmeyen bir durum muafiyet kazandiramaz.
                         oteki_yayinda = (b_durum is None
                                          or bool(b_durum.get("youtube_video_id")))
+                        # TERS YON (2026-09-12): not yalniz KOPYADA. Kullanici
+                        # asil/kopyayi cevirdi — asil `Kullerimden Gec`, kopya
+                        # `Yeniden Dogacagim` — ve notun asil tarafta durmasi
+                        # yanlis bilgi olurdu ("bu kayit kopya"). Eski kural
+                        # (1) "BU projede not" istedigi icin notu kopyaya
+                        # tasimak asilin geri doldurmalarini md5 HATASIYLA
+                        # durdururdu. Dar muafiyet, UC sart birlikte:
+                        #   * BU proje zaten YouTube'da (`youtube_video_id`) —
+                        #     yeni/yayinlanmamis bir klasor bu daldan GECEMEZ,
+                        #     yani "karsi taraf belgelenmis" yeni bir kopyaya
+                        #     kacis yolu acmaz (yukaridaki (1)'in gerekcesi);
+                        #   * karsi tarafin KENDI kaydinda `kopya_notu` var;
+                        #   * karsi taraf yayindan CEKILMIS — canlida tek kayit.
+                        # Karsi tarafin meta.json'i okunamazsa yalniz state'i
+                        # sayilir (daha az muafiyet = guvenli yon).
+                        karsi_belgeli_cekilmis = False
+                        if (b_durum is not None and durum.get("youtube_video_id")
+                                and _yayindan_cekilmis(b_durum)):
+                            try:
+                                b_meta = _meta(bp)
+                            except DurumBozuk:
+                                b_meta = {}
+                            karsi_belgeli_cekilmis = _kopya_notu_var(b_durum, b_meta)
                         if _kopya_notu_var(durum, meta) and cekilmis_taraf:
                             uyarilar.append(
                                 "sesi '%s' ile BİREBİR AYNI (md5) — BİLİNEN kopya "
                                 "(kopya_notu kayıtlı, %s yayından çekilmiş), yayın "
                                 "durdurulmadı" % (baska, cekilmis_taraf))
+                        elif karsi_belgeli_cekilmis:
+                            uyarilar.append(
+                                "sesi '%s' ile BİREBİR AYNI (md5) — bu proje ASIL "
+                                "kayıt: kopyası '%s' kopya_notu taşıyor ve yayından "
+                                "çekilmiş, yayın durdurulmadı" % (baska, baska))
                         elif durum.get("youtube_video_id") and not oteki_yayinda:
                             # BU proje zaten yayinda, eslesen klasor HENUZ DEGIL:
                             # tekrari YARATACAK olan bu isleme degil, o klasorun

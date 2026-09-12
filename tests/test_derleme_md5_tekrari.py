@@ -90,7 +90,24 @@ def test_kalan_ilk_yayinlanan_cok_izlenen_degil(havuz):
            yuklendi="2026-09-07T13:42:00", izlenme=182)
 
     adlar = [p["ad"] for p in derleme.adaylar()]
+    # Bu test GENEL kuralı kilitliyor (iki PUBLIC aday varsa ilk yayınlanan
+    # kalır). Gerçek katalog 2026-09-12'den beri bu dala HİÇ girmiyor: asıl kayıt
+    # kullanıcı kararıyla `Küllerimden Geç`, `Yeniden Doğacağım` liste dışı ve
+    # `adaylar()`ın gizlilik filtresi onu md5 elemesinden ÖNCE düşürüyor —
+    # bkz. bir sonraki test.
     assert adlar == ["Yeniden Doğacağım"]
+
+
+def test_gercek_katalog_duzeni_kopya_liste_disi_asil_kaliyor(havuz):
+    """2026-09-12 kararı: asıl = Küllerimden Geç (public), kopya liste dışı."""
+    ayni = b"RIFF" + b"\x05\x06\x07\x08" * 500
+    _proje(havuz, "Yeniden Doğacağım", ayni,
+           yuklendi="2026-09-01T14:46:26", privacy="unlisted")
+    _proje(havuz, "Küllerimden Geç", ayni,
+           yuklendi="2026-09-07T13:42:00", privacy="public")
+
+    adlar = [p["ad"] for p in derleme.adaylar()]
+    assert adlar == ["Küllerimden Geç"]
 
 
 def test_farkli_md5_ikisi_de_kaliyor(havuz):
