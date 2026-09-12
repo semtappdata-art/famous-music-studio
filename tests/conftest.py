@@ -150,3 +150,37 @@ def uretim_dosyalarini_koru(monkeypatch, _izolasyon_kumu):
                                        os.path.basename(mevcut)))
             monkeypatch.setattr(mod, ad, str(hedef), raising=False)
     yield
+
+
+# ---------------------------------------------------------------------------
+# GERÇEK BİLDİRİM KANALI TESTLERDE KAPALI (2026-09-12)
+#
+# NEDEN: `tests/test_haftalik_gozden_gecirme.py::test_izlenme_raporu_ozeti_damgaya_yaziyor`
+# `notify.send`'i taklit etmeden `weekly_report.izlenme_raporu()`nu çağırıyordu;
+# `_bildir` geç `import notify` yapıp GERÇEK `notify_config.json` + bot token'ı
+# buluyor ve kullanıcının telefonuna "Haftalık izlenme süresi — projects: video
+# başına 20 dk (2 video)" gönderiyordu (sahte veri: 40 dk / 2 video). Gece
+# boyunca her tam test koşusunda bir mesaj — ~4 dakikada bir. Kullanıcı fark etti.
+#
+# NEDEN AYRI FIXTURE, `KORUNAN_YOL_ADLARI`'na ad eklemek DEĞİL: o yönlendirme
+# yalnız fixture anında `sys.modules`'ta OLAN modüllere uygulanıyor; `notify`
+# çoğu çağıranda fonksiyon İÇİNDE geç import ediliyor, yani ilk kez test
+# sırasında yüklenirse yönlendirme onu HİÇ görmezdi. Burada modül önce açıkça
+# import ediliyor, sonra yollar var olmayan geçici yollara çekiliyor: yapılandırma
+# yok -> `send()` hiçbir ağ isteği atmadan False döner.
+#
+# `notify`'ın KENDİ testleri bundan etkilenmez: onlar yolları/`_yapilandirma`'yı
+# kendi monkeypatch'leriyle ayarlıyor ve o monkeypatch bu autouse fixture'dan
+# SONRA çalışıyor. Muhafız: tests/test_bildirim_sizintisi.py
+# ---------------------------------------------------------------------------
+@pytest.fixture(autouse=True)
+def gercek_bildirim_kanalini_kapat(monkeypatch, tmp_path):
+    import importlib
+    try:
+        notify = importlib.import_module("notify")
+    except Exception:
+        return
+    yok = tmp_path / "__bildirim_kanali_yok__"
+    for ad in ("_CONFIG_PATH", "_TELEGRAM_SECRETS_PATH"):
+        if hasattr(notify, ad):
+            monkeypatch.setattr(notify, ad, str(yok / (ad.strip("_").lower() + ".json")))
