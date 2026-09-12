@@ -139,7 +139,7 @@ da dakikalık koşuları yazmaya devam ediyor (20:29'a kadar, 47 KB).
 Uyarının kendisi hâlâ canlı bir koruma: üç görevden biri eski tanıma dönerse bir
 sonraki koşuda yeniden yazılır.
 
-**E-2 · [AÇIK — tarayıcı/konsol oturumu, kullanıcı] YouTube Reporting API'yi aç ·
+**E-2 · [KAPANDI 2026-09-12] YouTube Reporting API'yi aç ·
 ~5 dk · SON TARİH 2026-10-11 (29 gün).** Google Cloud
 Console'da tek tık. Bugün doğrulandı: `olcum_temel_cizgi.json` → `cekilebildi_mi = false`
 (403 SERVICE_DISABLED). **Ertelenemez:** job yalnızca kurulmadan önceki **30 günü**
@@ -156,8 +156,12 @@ dört denemeyle kayıtlı, alternatif yol yok. Yedek: Studio → Analizler → E
 > **1026223060773** → “APIs & Services” → “Library” → “YouTube Reporting API” →
 > **ENABLE**. Sonra depoda `python olcum_temel_cizgi.py` yeniden çalıştırılıp aynı
 > alanın `true` olduğu görülmeli — kapandığının ÖLÇÜSÜ bu, konsoldaki yeşil tik değil.
+> **Kapatıldı (2026-09-12, ajan):** API zaten açıkmış. `python upload/youtube_reporting.py
+> --durum` (hiçbir şey oluşturmayan salt okunur yol, koddan doğrulandı) → `Kurulu job: 2`
+> (`channel_reach_combined_a1`, `channel_reach_basic_a1`). Rapor sayısı henüz 0; ilk dosyalar
+> job açılışından 24-48 saat sonra gelir.
 
-**E-3 · [AÇIK — başka ajanın sahipliğinde + bu oturumda commit/push YASAK] Üretim
+**E-3 · [KISMEN 2026-09-12 — dal birleştirildi, CI yeşil, PR #51 CLEAN; birleştirmek KULLANICIDA] Üretim
 checkout'unu `main`'e al, push'un aktığını doğrula · ~2 dk.**
 `git_sync.push_path()` dal `main` değilse **sessizce `return`** ediyor (bilinçli tasarım).
 HEAD hâlâ `claude/analiz-yap-sk8gpf` ve log'da `otomatik push edildi` satırı sayısı **0**
@@ -180,8 +184,25 @@ otomasyon sürekli commit'siz güncelliyor. Doğrulama: sonraki koşuda log'da
 > edildikten sonra üretim checkout'unda `git checkout main` + `git pull`. Doğrulama
 > bir sonraki saatlik koşuda: `auto_process.log`'da `otomatik push edildi` satırı
 > görünmeli VE `UYARI: git senkron` satırı kesilmeli — birincisi tek başına yetmez.
+> **Kısmen yapıldı (2026-09-12, ajan):** `origin/main` üretim dalına birleştirildi (merge
+> commit `4558cef`) ve push edildi. Tek gerçek çakışma `ses_ve_tarz_takibi.md`'deydi: dalın
+> 4 sütunlu, diskten doğrulanmış tablosu korundu; `main`'den yalnız yeni `Yükseliş` satırı
+> alındı. `CLAUDE.md` ve `README.md` kendiliğinden birleşti (Hermes bölümü eklendi). Yerel
+> test 1321/1321. PR #51 artık `MERGEABLE`.
+> **Birleştirme YAPILMADI:** otomatik izin denetimi `gh pr merge`'ü "incelemesiz birleştirme"
+> diye reddetti; PR 305 dosya / +52.232 satır, inceleme kullanıcıda. İncelerken silinenlere
+> bak: `dj_sets/City Pulse Set/_segments/*.wav` (16), `projects/Neon Kalp/`, eski adlı klasörler.
+> CI o anda Linux'ta 8 testte kırmızıydı (Windows'a özgü testler, `main`'den gelmiyor);
+> düzeltmesi ayrı bir turda.
+> **CI (2026-09-12, ajan):** birleştirmeden sonra GitHub CI Linux'ta 8 testte kırmızıydı
+> (`main`'den gelmeyen, Windows'a özgü testler). Kök nedenleri: Windows'a özgü
+> `CREATE_BREAKAWAY_FROM_JOB` sabiti, CI'da Segoe UI olmaması (font satır yüksekliği),
+> izlenmeyen dosyaları sayan bir eşik (193 < 195) ve `isatty()`'nin iki platformda farklı
+> dönmesi. Ürün kodu değişmedi; 4 test dosyası düzeltildi (`62d2027`). Eşik düşürülmedi,
+> daha sıkı bir kuralla değiştirildi (izlenen her dosya taranmak zorunda). CI → **success**,
+> PR #51 `mergeStateStatus: CLEAN`.
 
-**E-4 · [AÇIK — tarayıcı OAuth, kullanıcı] Instagram token'ını yeniden yetkilendir ·
+**E-4 · [GEREKSİZ 2026-09-12 — token 48,5 gün geçerli] Instagram token'ını yeniden yetkilendir ·
 ~5 dk.** `upload/instagram_token.json`
 mtime **2026-09-01** (doğrulandı): ne daha önce log'a sızmış değer geçersiz kılındı, ne
 60 günlük sayaç sıfırlandı.
@@ -190,8 +211,12 @@ mtime **2026-09-01** (doğrulandı): ne daha önce log'a sızmış değer geçer
 > Bu turda yeniden ölçüldü: `upload/instagram_token.json` mtime **2026-09-01 10:00**,
 > 276 bayt — 11 gündür dokunulmamış, yani madde yazıldığından beri hiç değişmedi.
 > **E-16 ve E-11 bu maddeye BAĞLI** (token tazelenmeden ikisi de 401 alır).
+> **Gereksiz çıktı (2026-09-12, ajan):** `saglik_kontrol.instagram_token_suresi()` →
+> `{'durum': 'tamam', 'kalan_gun': 48.5}`. Hesap dosya tarihi + `expires_in`'den türüyor
+> (canlı sorgu değil); canlı kanıt aynı gün log'da: 13:05 `Instagram: tamam,
+> media_id=18619032325043423`. Maddenin "401" endişesi artık geçerli değil.
 
-**E-5 · [AÇIK — 42 YouTube videosuna YAZAN fiil + ağ çağrısı] AI beyanı onarım
+**E-5 · [KAPANDI 2026-09-12] AI beyanı onarım
 kampanyasını çalıştır · ~10 dk · kota planı gerektirir.**
 `upload/ai_beyani_onar.py` var ama `upload/ai_beyani_onarim.json` **YOK** → **42 videonun
 hiçbiri onarılmamış.** Maliyet 42 × 51 = **2.142 birim (%21,4)**. Önce dört maddeyi
@@ -213,8 +238,18 @@ ilerleme her videodan sonra diske yazılır).
 > yok; (3) `python upload/ai_beyani_onar.py --dry-run --limit 100`; (4) çıktı beklendiği
 > gibiyse `python upload/ai_beyani_onar.py --uygula --limit 42`.
 > Kapandığının ÖLÇÜSÜ: `upload/ai_beyani_onarim.json` oluşmuş ve içinde 42 kayıt olmalı.
+> **Kapatıldı (2026-09-12 21:26-21:27, ajan):** kota hesabı önce yapıldı — bugünkü
+> log'lu okuma 13 + kuru koşu 42 + onarım 2.142 + gece yüklemesi payı 2.500 = 4.697 < 10.000.
+> (Ölçülemeyen kalem: `upload/token.json` 20:37'de yenilenmiş; log'a düşmeyen bir kullanım
+> olmuş, payı yeterliydi.) Emniyet kemerleri koddan okundu, `tests/test_ai_beyani_onar.py`
+> 38/38. `--dry-run --limit 100` → hedef 42, engellenen 0, `Küllerimden Geç` ikisi de unlisted
+> kalıyor. `--uygula --limit 42` → **onarılan 42, hatalı 0, KALAN 0**; her satırda gizlilik
+> "(değişmedi)". `upload/ai_beyani_onarim.json` 42 kayıt.
+> **Doğrulamanın sınırı:** API `containsSyntheticMedia` alanını GERİ DÖNDÜRMÜYOR (09-11'de
+> de ölçülmüştü) — beyanın yerinde olduğu API'den kanıtlanamaz, kesin kanıt ancak Studio
+> ekranında. Geri okunan 3 videoda `privacyStatus` değişmemiş, `selfDeclaredMadeForKids: false`.
 
-**E-6 · [AÇIK — platforma yayın fiili] TikTok taslaklarını elle yayınla · ~40 dk.**
+**E-6 · [AÇIK — taslaklar YALNIZ mobil uygulamada · ÖNCE 29 yayınlı gönderi incelenmeli] TikTok taslaklarını elle yayınla · ~40 dk.**
 **21 taslak** `DRAFT_INBOX`
 (18 `projects/` + 2 `dj_sets/` + 1 `derlemeler/`); `tiktok_published_at` olan: **0**. İkisi
 yayınlanmayacak — `City Pulse Set` (telif eşleşmesi) ve `Küllerimden Geç` (kopya, unlisted)
@@ -237,8 +272,20 @@ kalmalı.**
 > `python upload/tiktok_publish_plan.py --yayinlandi-hepsi` — API “yayınlandı mı”
 > sorusunu cevaplamadığı için bu işaretleme TEK doğruluk kaynağı; atlanırsa madde
 > kapandığı hâlde kapalı görünmez.
+> **Fizibilite (2026-09-12, tarayıcı ajanı — hiçbir şey yayınlanmadı):** TikTok Studio
+> web'de "Gönderiler 29 · Taslaklar 0". API'nin inbox taslakları web'de GÖRÜNMÜYOR; yalnız
+> "Sistem Bildirimleri"nde duruyor ve web'de tıklanınca açılmıyor → **taslaklar yalnız mobil
+> uygulamadan yayınlanabilir.** Web düzenleme ekranında AI-generated seçeneği de yok.
+> **⚠ ÇELİŞKİ, planı değiştiriyor:** hesapta ZATEN **29 yayınlanmış gönderi** var, bir kısmı
+> "Herkes" görünürlüğünde — "Küllerimden Geç" (9 Eyl), BİRDEN FAZLA "Yeniden Doğacağım"
+> (6-7 Eyl), "Beni Bırakma", "Gece Sürüşü" ve yalnız "#FamousMusicStudio" başlıklı çok sayıda
+> gönderi; ikisi "Sadece ben". Depoda `tiktok_published_at` taşıyan kayıt **0**. Yani (a) depo
+> TikTok'ta ne yayında olduğunu bilmiyor, (b) aynı ses ("Yeniden Doğacağım" = "Küllerimden
+> Geç", md5 aynı) TikTok'ta birkaç kez herkese açık — kanalın en büyük riski olarak kayıtlı
+> "tekrarlayıcı içerik" deseni. 19 taslağı yayınlamadan ÖNCE bu 29 gönderi tek tek
+> çıkarılıp kopyalar ele alınmalı.
 
-**E-7 · [AÇIK — üçün BİRİ kaldı; Studio canlı ekran] Studio'da üç telif satırını
+**E-7 · [KAPANDI 2026-09-12 — Studio: hak talebi yok (bir çelişkiyle)] Studio'da üç telif satırını
 kontrol et · ~5 dk · tek ekran.** YouTube Data API
 Content ID itirazlarını göstermiyor; bilgi yalnızca Studio → Kısıtlamalar'da.
 (1) **City Pulse Set** — telif eşleşmesi kayıtlı (4 aralık, 106 sn), itirazın durumu
@@ -264,6 +311,15 @@ O bilgi yalnızca canlı Studio ekranında; API göstermiyor (B-2, kalıcı).
 > `Just Relax`'teki desenle yaz: bir durum alanı + yanında tarihli `*_kaynak` cümlesi.
 > Provenansı yazmak kozmetik değil — `Just Relax`'te tam olarak o cümle, E-8'in
 > “bakmadan true yazılmış mı” sorusunu bu turda cevaplayan şeydi.
+> **Kapatıldı (2026-09-12, tarayıcı ajanı, salt okunur + state):** City Pulse Set
+> (`ph_qlIpHx_A`) hak talepleri sayfası: "Bu videoda hak talebi bulunamadı." / "Videonuzda
+> telif hakkıyla korunan içerik bulunamadı."; kısıtlama sütunu "—"; Studio'da itiraz kaydı
+> YOK — "beklemede/kabul/ret" okunamadı, talep görünür şekilde kalkmış. State'e
+> `state_io.durum_yaz` ile `telif_itiraz_durumu = "studio_hak_talebi_bulunamadi"` + tarihli
+> `telif_itiraz_kaynak` yazıldı; `telif_eser` ve `telif_araliklari` KORUNDU.
+> **Çelişki, kayıtta dursun:** panelde hâlâ 4 Eyl 06:51 tarihli "Video, bazı bölgelerde
+> engellendi" bildirimi var. `uyumluluk.py` bu seti telif kaydı yüzünden hâlâ ERROR sayıyor
+> ve yeni alan o kapıyı AÇMIYOR — açıp açmamak ayrı bir karar.
 
 **E-8 · [KAPANDI 2026-09-12] `Just Relax` state.json'a `dj_tarama_temiz: true` ·
 ~1 dk · KOŞULLU.** Yalnızca
@@ -288,7 +344,7 @@ kapısı**; bakmadan `true` yazmak karantinayı elle açmaktır. Kuru doğrulama
 > `dj_famous_process.py`'nin `finally`'sinden) bu kesidi OTOMATİK yükleyecek —
 > K-5'in “ilk yayın elle izlenerek” şartı burada geçerli.
 
-**E-9 · [AÇIK — platform fiili; API'den YAPILAMAZ (B-1)] Instagram'daki kopya Reels'i
+**E-9 · [AÇIK — web'de Arşivle YOK, yalnız mobil · kimlik kesinleşti] Instagram'daki kopya Reels'i
 ARŞİVLE (silme) · ~5 dk.** Aynı ses (md5 birebir)
 Instagram'da iki kez canlı: `18087131705485174` (07 Eylül, kopya) ve `18112778338817977`
 (05 Eylül, asıl). YouTube tarafı 11 Eylül'de temizlendi, Instagram temizlenmedi — **bugün
@@ -304,6 +360,11 @@ alınabilir). **API'den yapılamaz** (B-1).
 > ⚠ **05 Eylül'deki `18112778338817977` KALACAK** — asıl kayıt odur, arşivlenmeyecek.
 > ⚠ **Silme değil arşivleme**: veri durur, geri alınabilir, ve bu deponun
 > “hiçbir şeyi silme” kuralına uyar.
+> **Denendi (2026-09-12, tarayıcı ajanı):** kopya kesin eşleşti — `Dc-5CR9j2XO`,
+> "Küllerimden Geç", 2026-09-07 13:25:30 TR (= state'teki `18087131705485174`, 13:25:38).
+> Kalacak olan `Dc5vAXxgGIf` (05 Eyl). **instagram.com'da "…" menüsünde Arşivle YOK** —
+> yalnız Sil / Düzenle / Beğenmeyi gizle / Yorumu kapat. Sil'e basılmadı.
+> **KULLANICININ ATACAĞI TAM ADIM:** Instagram uygulaması → `Dc-5CR9j2XO` → … → Arşivle.
 
 **E-10 · [AÇIK — hedef klasör kullanıcı kararı · ama belgedeki KOMUT bu turda
 DÜZELTİLDİ] Yedekleme kur · ~5 dk (P1) + haftalık (P2).** Diskte **5,9 GB** ignore edilmiş,
@@ -366,7 +427,7 @@ paylaşıma kapalı olmalı. ⚠ `/MIR` hedefi aynalar, hedef SADECE bu yedeğe 
 > çalıştır → `$env:OneDrive\fms-yedek-kritik` klasörünün paylaşıma KAPALI olduğunu
 > teyit et (içinde token dosyaları var).
 
-**E-11 · [AÇIK — platform fiili] Instagram'da 4 eski kapaklı gönderiyi kaldır/arşivle ·
+**E-11 · [AÇIK — sayı 4 TUTMADI (profilde 24, state'te 19)] Instagram'da 4 eski kapaklı gönderiyi kaldır/arşivle ·
 ~5 dk · canlı doğrulama.**
 `state.json`'lardaki yeni `instagram_media_id` değerleri "canlı yeni" ile birebir uyuşuyor;
 eskiler ancak uygulamadan görülür, silen kod yok ve olamaz. E-9 ile aynı oturumda +0 dk.
@@ -377,8 +438,16 @@ eskiler ancak uygulamadan görülür, silen kod yok ve olamaz. E-9 ile aynı otu
 > arşivle. Hangilerinin kalacağını ayırt etme ölçütü diskte var: `state.json`'lardaki
 > GÜNCEL `instagram_media_id` değerleri “canlı yeni” ile birebir uyuşuyor — yani
 > **state'te kimliği geçmeyen** gönderi eskidir.
+> **Durduruldu (2026-09-12, tarayıcı ajanı):** şart "sayı 4 değilse DUR" idi ve tutmadı:
+> profilde **24 gönderi**, state'te **19** kimlik. Başlığa göre state'te olmadığı düşünülenler:
+> Beni Bırakma ×2 (`Dc8OQl4sPCd`, `DcwWJB1Er5D`), Bir Bahar Daha (`Dc1AZKbgaHy`), Sabaha
+> Kadar (`DcyPTdwidNH`), "Shudhniy L" (`DcwWXMAgeJ6`), "Küllerimden Geç" başlıklı iki gönderi
+> (`Dcv6i1PjYUy`, `Dcv5AiRgSsc`; ilki `buyume_kontrol_listesi.md`'de eski kapaklı "Yeniden
+> Doğacağım" = `18134444965723339`). Beton Krallığı ve Gece Sürüşü başlıklı gönderi
+> görünmüyor. Web API 429 verdi, gerçek media kimlikleri okunamadı — **eşleştirme kesin
+> DEĞİL**; arşivleme de web'den zaten mümkün değil (E-9).
 
-**E-12 · [AÇIK — YouTube'a YAZAN fiil] Bekleyen 1 yorum yanıtını gönder · ~2 dk.**
+**E-12 · [KAPANDI 2026-09-12] Bekleyen 1 yorum yanıtını gönder · ~2 dk.**
 `yorum_taslaklari.json`: 11 taslağın
 10'u yanıtlanmış, 1'i `onay_bekliyor` (`Kader Ortakları` altında, 2 gündür), taslak hazır:
 `python upload/yorum_gonder.py --gonder --limit 1`. `atlanan` listesindeki tek kayıt
@@ -399,8 +468,18 @@ gerekçesi (kota + "inauthentic" riski + geri dönüşsüzlük) geçerli.
 > **KULLANICININ ATACAĞI TAM ADIM:** depoda
 > `python upload/yorum_gonder.py --gonder --limit 1`. `--limit 1` şart: limitsiz
 > çalıştırmak atlama kararını da ezebilir.
+> **Kapatıldı (2026-09-12, ajan + ana oturum):** kuyruktaki metin GÖNDERİLMEDEN önce
+> olguyla karşılaştırıldı ve **yanlış çıktı**: "altı parçanın altısında da" 18 parçalık
+> katalogda "her parçada yorumun var" diye okunuyor; "Kumdan Denize'den Son Kez'e"
+> aralığındaki 3 parçada (Sessiz Mektup, Yürek Yarası, Sofraya Gelmedin) yorumu yok;
+> "baştan beri" abartı (en eski yorumu 4. şarkıda). Metin olguya indirildi —
+> "Altı farklı parçada yorumun var, hepsini görüyoruz ❤ Kader Ortakları'na da uğradığın
+> için sağ ol!" — önce `--dry-run`, sonra `--gonder --id UgwTQ2104QUJBakLO_l4AaABAg`
+> → **GÖNDERİLDİ**, ~50 birim. Eski metin taslakta `onceki_yanit_2` olarak duruyor.
+> Not: belgedeki `--gonder --limit 1` komutu tek başına çalışmıyor; `--id` ya da
+> `--hepsi` şart.
 
-**E-13 · [AÇIK — telefon; diskten doğrulanamıyor] ntfy aboneliğini doğrula · ~3 dk.**
+**E-13 · [GEREKSİZ 2026-09-12 — ntfy'ye bugünkü yapılandırmada hiç istek gitmiyor] ntfy aboneliğini doğrula · ~3 dk.**
 `notify_config.json`
 var ama telefondaki abonelik iz bırakmıyor. Yapılmadıysa şu emniyet ağlarının **hepsi
 sağır**: Instagram token, Netlify, görev tanımı, kaçan koşu, git senkron, ses takip,
@@ -418,8 +497,14 @@ noktalarındaki docstring'ler bunu bildirim gibi okutuyor; değil.
 > ekle. Uçtan uca ÖLÇÜM: depoda `python saglik_kontrol.py` çalıştırılıp telefona
 > bildirim düşüyor mu bakılmalı — `notify.send()`'i otomasyonda çağıran TEK yer
 > `saglik_kontrol._bildir()`, yani gerçek hattı sınayan tek komut bu.
+> **Gereksiz çıktı (2026-09-12, ajan):** `notify.send()` Telegram yapılandırılmışsa
+> doğrudan Telegram'a gidiyor ve Telegram başarısız olsa bile ntfy'ye DÜŞMÜYOR (bilinçli:
+> düşseydi günlük damga atılıp tekrar 24 saat susturulurdu). `notify_config.json`'da
+> `telegram_chat_id` var, Telegram hattı bugün uçtan uca kanıtlandı. Yani ntfy aboneliği
+> bugünkü yapılandırmada hiçbir bildirimi taşımıyor; madde yalnız Telegram kaldırılırsa
+> anlam kazanır.
 
-**E-14 · [AÇIK — platform profili; E-3'e BAĞLI] Bio linkini kontrol et · ~3 dk.** Instagram/TikTok profillerinde
+**E-14 · [AÇIK — iki platformda da web'den düzenlenemiyor] Bio linkini kontrol et · ~3 dk.** Instagram/TikTok profillerinde
 site alanı `https://famousmusicstudio.com/latest.html` mı? E-3 olmadan yarım kalır.
 > **Bırakıldı (2026-09-12):** profil ayarı yalnızca uygulamadan değişir, API'den
 > değiştirilemiyor (CLAUDE.md, C3) — ve E-3 kapanmadan anlamsız: bugün o adresin
@@ -428,8 +513,18 @@ site alanı `https://famousmusicstudio.com/latest.html` mı? E-3 olmadan yarım 
 > düzenle → Bağlantılar, ve TikTok profili → Profili düzenle → Web sitesi; ikisinde
 > de değer `https://famousmusicstudio.com/latest.html` olmalı. Sonra o adres
 > tarayıcıda açılıp **20** içerik listelediği görülmeli.
+> **Denendi (2026-09-12, tarayıcı ajanı — değişiklik yok):**
+> - **Instagram:** bağlantılar `youtube.com/@Famous_musics_studio`, `famousmusicstudio.com`,
+>   `tiktok.com/@famousmusicstudio` — `/latest.html` YOK. Web: "Bağlantılarını sadece mobil
+>   cihazlarda düzenleyebilirsin."
+> - **TikTok:** web düzenleme penceresinde Web sitesi alanı YOK. Özgeçmişte düz metin
+>   `famousmusicstudio.com/` ve **eski** `youtube.com/@ozgurunlu8579?...` adresi; sayaç
+>   "135/80" (sınır üstü). Başka alan değişeceği için kaydedilmedi.
+> **KULLANICININ ATACAĞI TAM ADIM:** iki uygulamada da profil → bağlantı/web sitesi →
+> `https://famousmusicstudio.com/latest.html` (sayfa PR #51 birleşince 20 içerik gösterir).
+> TikTok özgeçmişindeki eski YouTube adresi ayrıca gözden geçirilmeli.
 
-**E-15 · [AÇIK — platforma yükleme] Facebook sayfa varlıkları + Bluesky banner ·
+**E-15 · [KAPANDI 2026-09-12] Facebook sayfa varlıkları + Bluesky banner ·
 ~10 dk · canlı doğrulama.**
 `marka/facebook_kapak.png` (1640×856) ve `marka/bluesky_banner.png` diskte; yüklenip
 yüklenmedikleri görülmüyor. `marka/facebook_metinleri.txt` bugün düzeltildi, hazır.
@@ -443,6 +538,10 @@ yüklenmedikleri görülmüyor. `marka/facebook_metinleri.txt` bugün düzeltild
 > `marka/facebook_kapak.png`; sayfa açıklaması/bilgi alanlarına
 > `marka/facebook_metinleri.txt` içeriği. Bluesky → Edit Profile → Banner →
 > `marka/bluesky_banner.png`.
+> **Kapatıldı (2026-09-12, tarayıcı ajanı):** iki PNG önce görsel olarak kontrol edildi.
+> **Facebook:** kapak boştu → `marka/facebook_kapak.png` yüklendi ve kaydedildi; önce/sonra
+> ekran görüntüsüyle doğrulandı (ilk iki deneme sonuçsuz kaldı, kapak koymadı; üçüncüsü
+> tuttu). **Bluesky:** banner ZATEN yüklüymüş ("Her hafta yeni şarkı") — tekrar yüklenmedi.
 
 **E-16 · [AÇIK — Instagram'a YÜKLEME gerektiriyor · sayı 3 → 2] İki projenin
 Instagram dağıtımı yarım kalmış.** Bu turda üç kökün TÜM `state.json`'ları yeniden
@@ -465,6 +564,20 @@ kuyruğuna hiç girmemişler — kendiliğinden toparlanmaları beklenemez.
 > ⚠ Yükleme golden-hour kuyruğuna girer — `media_publish` hemen değil, bir sonraki
 > 12:00-14:00 / 18:00-22:00 penceresinde çalışır. “Çalışmadı” sanıp tekrar
 > tetikleme: konteyner iki kez oluşur.
+> **⚠ Yeni uyarı (2026-09-12, ajan):** otomasyon ikisini de tamamlayabilir durumda
+> (`output/shorts_9x16.mp4` ikisinde de var, token geçerli, kuyrukta ilk iki sıra; ilk
+> ikisinin YouTube kimliği olduğu için 52 saatlik taban uygulanmıyor). **AMA `Bu Gece
+> Kazandık`'ın iki videosu da YouTube'da UNLISTED** (`LWGZGtw6UCY`, `2OHEA5Fp3-E`), oysa
+> `state.json` ve `olcum_temel_cizgi.json` "public" diyor; depoda açıklayan `kopya_notu`
+> ya da belge yok. Bilinçliyse (Küllerimden Geç gibi) Instagram'a çıkması niyete aykırı
+> olabilir. Sebep Studio'dan okunuyor; karar bu şarkının koşusundan önce verilmeli.
+> **Studio okuması (2026-09-12, tarayıcı ajanı, salt okunur):** `Bu Gece Kazandık`'ın iki
+> videosu da "Liste dışı"; listede etiket "8 Eyl 2026 **Yüklendi**" (yayındakilerde
+> "Yayınlandı") — büyük ihtimalle ilk günden unlisted yüklendi, sonradan gizlenmedi.
+> Kısıtlama "—", hak talebi YOK, yaş kısıtlaması yok, **"Yapay zeka kullanımı: Evet"**
+> seçili (E-5'in Studio'daki ilk görünür kanıtı). Unlisted olmasının telif/politika sebebi
+> GÖRÜNMÜYOR; açıklayan bir not da yok. Karar kullanıcıda: public yapılsın mı, yoksa
+> Instagram'a çıkması durdurulsun mu.
 
 **E-17 · [AÇIK — insan işi, devredilemez] İlk 20-30 gerçek takipçiyi elle bul ·
 birkaç saat.** Depodan doğrulanamaz ama

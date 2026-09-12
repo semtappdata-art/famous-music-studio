@@ -107,6 +107,8 @@ auto_process.log
 dj_famous_process.log
 .dj_famous_process.lock
 watch_projects.log
+# upload/ai_beyani_onar.py'nin kendi log'u (auto_process.log'a yazmiyor)
+ai_beyani_onar.log
 .watchdog_alerted
 # Görev Zamanlayıcı iz dosyaları (gorev_sarmalayici.py: BAŞLADI/ÇÖKTÜ/BİTTİ
 # damgaları). Tanı amaçlı, makineye özel ve dakikada bir büyüyen dosyalar —
