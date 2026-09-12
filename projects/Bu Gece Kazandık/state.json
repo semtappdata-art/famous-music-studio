@@ -42,5 +42,7 @@
   "yayin_beklet": {
     "sebep": "kullanıcı: kapak ve video görselleri eski; yeni formatta yeniden render bekliyor (2026-09-12) — render yapılana ve bu alan kaldırılana kadar yayına çıkmaz",
     "istendi_at": "2026-09-12T22:56:32+03:00"
-  }
+  },
+  "tiktok_publish_status": "SEND_TO_USER_INBOX",
+  "tiktok_status_checked_at": "2026-09-13T02:23:10"
 }
