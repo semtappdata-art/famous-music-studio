@@ -955,6 +955,260 @@ def git_senkron(log=print) -> dict:
     return s
 
 
+# --- Yayın durgunluğu (yedinci adım, 2026-09-12) ---------------------------
+#
+# ÖLÇÜLEN OLGU: "en son NE ZAMAN bir şey YAYINLANDI" — "koşu oldu mu" DEĞİL.
+#
+# BOŞLUK (bugün doğrulandı): bu modüldeki ALTI adımın hiçbiri yayının
+# durduğunu göremiyor.
+#   - `kacan_kosu()` KENDİ damgasına bakıyor ve o damga `kontrol_et()` her
+#     çağrıldığında (yani HER koşuda) tazeleniyor. Koşu yapılıyor ama hiçbir
+#     şey yayınlanmıyorsa "tamam" der — ölçtüğü şey zaten yayın değil, koşu.
+#   - `git_senkron()` yerel `docs/latest.html` ile canlı sürüm arasındaki
+#     FARKI ölçüyor, BÜYÜMEYİ değil. Hiçbir şey yayınlanmazsa iki taraf eşit
+#     kalır ve o da "tamam" der.
+#   - Geri kalan dördü (token / Netlify / görev tanımı / ses takibi) tek tek
+#     ÖN KOŞULLARA bakıyor; hepsi sağlıklıyken de yayın durabilir.
+# Somut senaryo: `uyumluluk.kontrol()` 2026-09-12'de yedi çağrı noktasında
+# FAIL-CLOSED yapıldı. Bir kapı kapanırsa proje ATLANIYOR ve geriye yalnızca
+# bir log satırı kalıyor — `notify.uyar_bir_kez()` telefona GİTMİYOR (sadece
+# log'a yazıyor; telefona giden tek hat `notify.send()` ve otomasyonda onu
+# çağıran TEK yer `_bildir()`). Yani katalogdaki her proje sırayla bir kapıya
+# takılırsa kanal GÜNLERCE sessizce durur ve kullanıcı ancak "neden video
+# çıkmıyor?" diye şüphelenirse fark eder. Bu adım tam olarak o soruyu soran
+# tek kontrol.
+#
+# ÜÇ SORU (CLAUDE.md):
+#   1. Kim çağıracak? — `saglik_kontrol.kontrol_et()` (aşağıda, `kacan_kosu`
+#      ÖNÜNDE: o adım damgayı tazeleyen adım, sıra bozulursa değil ama
+#      okunurluk bozulur; asıl gerekçe `kontrol_et` içindeki notta).
+#   2. Hangi görevden? — saatlik `FamousMusicStudio-AutoProcess`;
+#      `auto_process.main()`in `finally` bloğu zaten `_saglik_kontrol()`
+#      çağırıyor. YENİ görev/çağrı noktası EKLENMEDİ, `auto_process.py`ye
+#      DOKUNULMADI.
+#   3. Çalışmadığını nasıl anlarız? — "tamam" dışındaki her dal log'a en az
+#      bir satır yazıyor ve yedi senaryonun yedisi de testle kilitli
+#      (`tests/test_yayin_durgunlugu.py`), `kontrol_et`e bağlı olduğu da
+#      `ast` muhafızıyla doğrulanıyor.
+
+# DAMGA SEÇİMİ — SABİT LİSTE DEĞİL, SONEK EŞLEŞMESİ (`*_uploaded_at`).
+# Elle sayılan bir liste bu depoda defalarca eskidi (bkz. uyumluluk.KOK_ADLARI
+# notu). Diskte BUGÜN yedi farklı ad var — `youtube_uploaded_at`,
+# `youtube_shorts_uploaded_at`, `tiktok_uploaded_at`, `instagram_uploaded_at`,
+# `telegram_uploaded_at`, `bluesky_uploaded_at`, `facebook_uploaded_at` — ve
+# DJ setleri/derlemeler bir SEKİZİNCİSİNİ daha yazıyor
+# (`telegram_shorts_uploaded_at`), ki elle yazılmış bir listeye eklenmesi
+# kesinlikle unutulurdu. Sonek kuralı yarın eklenecek platformu da kendiliğinden
+# kapsıyor. Yön de doğru: burada EKSİK bir anahtar yanlış ALARM üretir (sessizlik
+# olduğundan uzun görünür), yani listeyi geniş tutmak güvenli taraf.
+YAYIN_DAMGA_SONEKI = "_uploaded_at"
+
+# "Bekleyen proje var mı" ÖLÇÜTÜ — `auto_process._is_fully_done()` KOPYALANMADI
+# ve `auto_process` IMPORT DA EDİLMEDİ. İki gerekçe:
+#   - `import auto_process` modül düzeyinde `sys.stdout.reconfigure(...)`
+#     yapıyor ve `config` + `upload/*` zincirinin tamamını çekiyor. Bir TANI
+#     adımının böyle bir yan etkisi olamaz (aynı ilke: `gorev_tanimlari`
+#     yalnız `Get-*`, `_git_oku` yalnız salt-okuma fiilleri kullanıyor).
+#     Üstelik `auto_process._saglik_kontrol()` bu modülü import ediyor, yani
+#     ters yönde bir import döngüsü riski de var.
+#   - Sessizce SÜRÜKLENEN bir kopya da istemiyoruz: aşağıdaki dörtlü,
+#     `_is_fully_done()`in dörtlüsüyle AYNI kalmak zorunda ve bunu
+#     `tests/test_yayin_durgunlugu.py` `ast` ile (auto_process'i çalıştırmadan)
+#     doğruluyor. CLAUDE.md bu listeye yeni platform EKLENMESİNİ zaten
+#     yasaklıyor, yani küme tasarım gereği sabit.
+ANA_PLATFORM_ANAHTARLARI = (
+    "youtube_video_id",
+    "youtube_shorts_video_id",
+    "tiktok_publish_id",
+    "instagram_media_id",
+)
+
+# SES DOSYASI ŞARTI — bu kontrolün en önemli yanlış-alarm koruması.
+# `uyumluluk.proje_klasorleri()` TEK SEVİYE tarıyor ve gördüğü her klasörü
+# döndürüyor; bunların hepsi proje DEĞİL. Diskte bugün somut örnek var:
+# `dj_sets/Night Drive` — ne `audio.*`, ne `state.json`. Ses şartı olmasaydı o
+# klasör SONSUZA KADAR "bekleyen proje" sayılırdı; yani katalog gerçekten
+# bitse bile bu nöbetçi ilelebet kurulu kalır ve 78 saat sonra her gün alarm
+# çalardı. Ses yoksa boru hattı o klasöre zaten HİÇ girmiyor
+# (`auto_process.find_ready_projects` aynı şartı kullanıyor), dolayısıyla
+# "yayınlanmayı bekleyen iş" de değildir.
+SES_DOSYALARI = ("audio.wav", "audio.mp3", "audio.m4a")
+
+# EŞİK — 78 saat = 1,5 x yayın tabanı. NEDEN 24 ya da 48 DEĞİL:
+#   - `auto_process.MIN_YAYIN_ARALIGI_SN` 52 SAAT. Yani "iki gün boyunca
+#     hiçbir şey yayınlanmaması" bu kanalda TAMAMEN NORMAL — tasarımın
+#     kendisi. 24 ya da 48 saatlik bir eşik HER HAFTA yanlış alarm demek
+#     olurdu; üç yanlış alarmdan sonra kimse bildirime bakmaz ve bu nöbetçi
+#     de "sessizce ölmüş koruma" sınıfına katılırdı.
+#   - Gerçek aralık `max(52 sa, 24 sa / bekleyen sayısı)` (`_auto_pace_count`);
+#     ikinci terim 24 saati ASLA aşamayacağı için pratik taban her zaman 52
+#     saat. Yani ölçülecek "meşru en uzun sessizlik" 52 saatten başlıyor.
+#   - 52'nin ÜSTÜNE eklenen 26 saat, meşru gecikmelerin toplamı: saatlik
+#     tetik granülasyonu (~1 sa), golden-hour penceresine kadar bekleme
+#     (~en kötü 14 sa) ve makinenin bir gece/bir gün kapalı kalması. Makine
+#     kapalılığı zaten `kacan_kosu`nun işi; burada onu ikinci kez alarma
+#     çevirmiyoruz, payın içine katıyoruz.
+#   - TAVAN tarafı: 78 < 104 (= 2 x 52). Yani alarm, BİRİNCİ yayın penceresi
+#     kaçtıktan sonra ama İKİNCİSİ kaçmadan önce çalıyor — gerçek bir duruşta
+#     kaybedilen yayın sayısı bir tanede kalıyor.
+YAYIN_TABANI_SN = 52 * 60 * 60          # auto_process.MIN_YAYIN_ARALIGI_SN
+YAYIN_DURGUNLUK_ESIGI_SN = int(1.5 * YAYIN_TABANI_SN)   # 78 saat
+
+
+def _proje_state(proje: str) -> dict:
+    """Bir projenin `state.json`'ı. Yoksa/bozuksa BOŞ sözlük — ÇÖKMEZ.
+
+    Bozuk JSON'u yutmak burada DOĞRU: bu bir tanı adımı ve bozuk bir state
+    zaten "bu projede hiçbir anahtar yok" demek, yani proje "bekleyen"
+    sayılır. Yön güvenli tarafta: eksik veri alarmı GECİKTİRMEZ, en fazla
+    bir projeyi fazladan bekleyen sayar.
+    """
+    try:
+        with open(os.path.join(proje, "state.json"), "r", encoding="utf-8") as f:
+            veri = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return veri if isinstance(veri, dict) else {}
+
+
+def _damga_ts(deger):
+    """`"2026-09-12T06:48:56"` -> epoch saniye. Bozuksa None (auto_process ile
+    AYNI biçim; `_last_upload_time` de `%Y-%m-%dT%H:%M:%S` kullanıyor)."""
+    if not isinstance(deger, str):
+        return None
+    try:
+        return time.mktime(time.strptime(deger, "%Y-%m-%dT%H:%M:%S"))
+    except (ValueError, OverflowError):
+        return None
+
+
+def _yayin_taramasi() -> dict:
+    """Kataloğu TEK geçişte tarar: en yeni yayın damgası + bekleyen projeler.
+
+    Kök listesi ELLE SAYILMIYOR — `uyumluluk.proje_klasorleri()` deponun TEK
+    kanonik içerik kökü kaynağı (`projects`, `dj_sets`, `derlemeler`). Elle
+    sayan her yer 2026-09-11'de `derlemeler/`i atlamıştı; aynı hatayı yedinci
+    kez yapmıyoruz (muhafız: tests/test_kok_listesi_muhafizi.py).
+
+    Dönüş: {"son_ts", "son_kaynak", "bekleyen", "proje"}.
+    """
+    import uyumluluk
+
+    son_ts = None
+    son_kaynak = None
+    bekleyen = []
+    proje = 0
+
+    for yol in uyumluluk.proje_klasorleri():
+        if not any(os.path.isfile(os.path.join(yol, a)) for a in SES_DOSYALARI):
+            continue                       # proje değil (bkz. SES_DOSYALARI)
+        proje += 1
+        state = _proje_state(yol)
+        ad = os.path.basename(yol)
+
+        if any(k not in state for k in ANA_PLATFORM_ANAHTARLARI):
+            bekleyen.append(ad)
+
+        for anahtar, deger in state.items():
+            if not anahtar.endswith(YAYIN_DAMGA_SONEKI):
+                continue
+            ts = _damga_ts(deger)
+            if ts is None:
+                continue
+            if son_ts is None or ts > son_ts:
+                son_ts, son_kaynak = ts, "%s/%s" % (ad, anahtar)
+
+    return {"son_ts": son_ts, "son_kaynak": son_kaynak,
+            "bekleyen": bekleyen, "proje": proje}
+
+
+def yayin_durgunlugu(log=print) -> dict:
+    """Bekleyen proje VARKEN yayın durdu mu? (kanalın sessizce durması)
+
+    Gerekçenin tamamı yukarıdaki sabitlerin yanında: ne ölçüldüğü, damgaların
+    neden sonekle bulunduğu, "bekleyen proje" ölçütünün neden ses dosyası
+    şartı taşıdığı ve eşiğin neden 52 saatlik yayın tabanının 1,5 katı olduğu.
+
+    BEKLEYEN PROJE ŞARTI ZORUNLU — bu kontrolün doğruluğu buna bağlı: katalog
+    tamamen bitmişse (yayınlanacak hiçbir şey kalmamışsa) sessizlik NORMALDİR
+    ve alarm YANLIŞTIR. Kullanıcı Suno kotası yüzünden yeni şarkı üretmediği
+    sürece kanal haftalarca meşru biçimde sessiz kalabilir.
+
+    YANLIŞ ALARM KAPILARI (dördü de sessiz):
+      - bekleyen proje yok -> hiçbir şey iddia etme,
+      - hiç yayın damgası yok (taze checkout) -> karşılaştırmanın bir tarafı
+        eksik, `git_senkron`'daki "origin/main okunamadı" dalıyla aynı gerekçe,
+      - damga GELECEKTE (sistem saati geri alınmış) -> ölçüm anlamsız,
+      - sessizlik eşiğin altında -> normal bekleme.
+
+    BİLDİRİM YORGUNLUĞU: `_bildir(..., "yayin_durgunlugu_bildirim_gun")` —
+    mevcut günde-bir mekanizmasının AYNISI; damga yalnızca gönderim
+    BAŞARILIYSA atılıyor.
+    """
+    try:
+        t = _yayin_taramasi()
+    except Exception as e:
+        # Taramanın KENDİSİ patlarsa sessiz kalma — bu modülün tüm gerekçesi bu.
+        log("  Yayın durgunluğu taraması çalıştırılamadı: %s" % str(e)[:150])
+        return {"durum": "calistirilamadi", "hata": str(e)[:120]}
+
+    bekleyen = t["bekleyen"]
+    s = {"durum": "tamam", "bekleyen": len(bekleyen), "proje": t["proje"]}
+
+    if not bekleyen:
+        # Katalog bitti: sessizlik normaldir. En pahalı yanlış alarm burada
+        # önleniyor, bu yüzden log'a bile satır yok.
+        s["durum"] = "bekleyen_yok"
+        return s
+
+    son = t["son_ts"]
+    if son is None:
+        s.update({"durum": "atlandi", "sebep": "yayin damgasi yok"})
+        return s
+
+    simdi = time.time()
+    sessizlik = simdi - son
+    s["sessizlik_sn"] = int(sessizlik)
+    s["son_yayin"] = t["son_kaynak"]
+
+    if sessizlik < 0:
+        s.update({"durum": "atlandi", "sebep": "damga gelecekte"})
+        log("  Yayın durgunluğu: en yeni damga gelecekte (sistem saati "
+            "değişmiş), ölçüm atlandı.")
+        return s
+
+    if sessizlik < YAYIN_DURGUNLUK_ESIGI_SN:
+        return s
+
+    s["durum"] = "durgun"
+    # Tarih biçiminde ok/süs karakteri YOK: bu modül `python saglik_kontrol.py`
+    # ile elle de çalıştırılıyor ve bu makinede `sys.stdout.encoding` cp1254
+    # (bkz. kacan_kosu'daki aynı not). Türkçenin ı/ş/ğ harfleri cp1254'te VAR,
+    # ok işareti (U+2192) YOK. Test: bu fonksiyondaki TÜM metin sabitlerinin
+    # cp1254'e kodlanabildiği `ast` ile kilitli.
+    son_metni = time.strftime("%d.%m %H:%M", time.localtime(son))
+    sure = _geri_kalma_metni(sessizlik)
+
+    log("  UYARI: yayın durgunluğu — %s hiçbir platforma yayın çıkmadı (son "
+        "damga %s, %s), ama %d proje bekliyor. Teşhis: python uyumluluk.py"
+        % (sure, son_metni, t["son_kaynak"], len(bekleyen)))
+
+    mesaj = ("Kanal %s boyunca HİÇBİR platforma yayın yapmadı (son damga: %s, %s), "
+             "ama %d proje hâlâ bekliyor.\n"
+             "Yayın tabanı 52 saat, bu uyarının eşiği %d saat — yani en az bir "
+             "yayın penceresi tamamen kaçtı, bu normal bekleme DEĞİL.\n"
+             "İlk bak: repo klasöründe  python uyumluluk.py  — tek komutluk "
+             "teşhis, kapıda takılan projeyi ADIYLA HATA olarak basar "
+             "(uyumluluk kapıları fail-closed: kapanan kapı projeyi atlar ve "
+             "geriye yalnızca bir log satırı kalır).\n"
+             "Sonra: auto_process.log içinde 'Otomatik zamanlama' ve "
+             "'uyumluluk' satırları."
+             % (sure, son_metni, t["son_kaynak"], len(bekleyen),
+                YAYIN_DURGUNLUK_ESIGI_SN // 3600))
+    s["bildirildi"] = _bildir("Yayın durdu", mesaj, "yayin_durgunlugu_bildirim_gun")
+    return s
+
+
 def kontrol_et(log=print) -> dict:
     return {
         "instagram_token": instagram_token_suresi(log),
@@ -974,6 +1228,19 @@ def kontrol_et(log=print) -> dict:
         # yani Instagram/TikTok bio linkinden cikan TEK yol yedi gun boyunca
         # bayat kaldi. Olcut dal degil, canli sayfadaki giris sayisi.
         "git_senkron": git_senkron(log),
+        # YEDINCI ADIM (2026-09-12). Yukaridaki alti adimin hicbiri "en son ne
+        # zaman bir sey YAYINLANDI" diye SORMUYOR: kacan_kosu kendi damgasina
+        # bakiyor (o damga her kosuda tazeleniyor), git_senkron yerel/canli
+        # FARKINI olcuyor (hicbir sey yayinlanmazsa iki taraf esit kalir),
+        # kalan dorduyse on kosullara bakiyor. Yani kosu yapiliyor, ortam
+        # saglikli gorunuyor ve kanal GUNLERCE sessizce durabiliyordu — ozellikle
+        # uyumluluk kapilari fail-closed yapildiktan sonra (kapanan kapi projeyi
+        # atlar, geriye yalnizca bir log satiri kalir; notify.uyar_bir_kez
+        # telefona GITMEZ).
+        # SIRA: kacan_kosu'dan ONCE, cunku o adim damgayi tazeliyor ve
+        # (beklenmedik bir sekilde patlarsa) bu adimin da atlanmasi istenen
+        # davranis — "kosunun sonuna ulasildi" iddiasi en sonda dogsun.
+        "yayin_durgunlugu": yayin_durgunlugu(log),
         # EN SONDA, bilerek: bu adim damgayi TAZELIYOR ("saatlik hattin sonuna
         # en son ne zaman ulasildi"). Yukaridaki adimlardan biri beklenmedik
         # bir sekilde patlarsa damga da atilmaz ve bir SONRAKI kosu bunu
