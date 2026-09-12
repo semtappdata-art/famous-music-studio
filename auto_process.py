@@ -863,6 +863,48 @@ def _refresh_latest_listing() -> None:
         log(f"  latest.html güncelleme HATA: {e}")
 
 
+# Supurgelerin "bu kosuda gonderi yapmadim" donuslerinin okunabilir
+# karsiligi. Anahtarlar iki modulun `durum` degerleri (facebook_backfill:
+# kapali/beklemede/tavan/bitti/tamam/kuru — ek_platform_backfill:
+# tamam / "golden-hour disinda").
+_BACKFILL_SEBEPLERI = {
+    "kapalı": "config.EK_PLATFORMLAR bayragi kapali",
+    "beklemede": "golden-hour disinda, bu kosuda gonderi yok",
+    "golden-hour disinda": "golden-hour disinda, bu kosuda gonderi yok",
+    "tavan": "gunluk tavan dolu",
+    "bitti": "gidecek aday kalmadi",
+    "tamam": "gonderilecek aday yok",
+    "kuru": "kuru kosu",
+}
+
+
+def _backfill_sebep(s: dict) -> str:
+    """Bir supurgenin bu kosuda NEDEN gonderi yapmadigini tek satira indirger.
+
+    NEDEN VAR — CLAUDE.md'nin UCUNCU sorusu ("calismadigini nasil
+    anlariz?"): iki supurge de golden-hour DISINDA hicbir sey yapmadan
+    donuyor ve loga TEK BIR satir bile dusmuyordu (facebook_backfill'de
+    ayrica "kapali"/"tavan"/"bitti" donusleri de sessizdi). Gunun 24
+    saatinin 18'i golden-hour disi, yani kosularin ucte ikisinden
+    fazlasinda "supurge calisti, isi yoktu" ile "supurge artik main()'in
+    finally blogundan hic cagrilmiyor" logda BIREBIR AYNI goruniyordu —
+    2026-09-12'de tam bu ayrimi yapabilmek icin ayri bir sorusturma gerekti.
+
+    GURULTU DENGESI (supurge saatlik kosuyor): satir kosu basina EN FAZLA
+    BIR tane ve YALNIZCA baska hicbir satir yazilmadiginda basiliyor — is
+    varken islenen/tavan/kalan satirlari zaten yeterli iz. Maliyet gunde
+    ~2 satir; sessizligin maliyeti ise bir sorusturma.
+    """
+    parca = _BACKFILL_SEBEPLERI.get(s.get("durum"), str(s.get("durum")))
+    if s.get("sebep"):
+        parca += f" — {s['sebep']}"
+    eng = s.get("engellenen") or {}
+    n = sum(len(v) for v in eng.values()) if isinstance(eng, dict) else len(eng)
+    if n:
+        parca += f"; {n} aday uyumluluk kapisinda engellendi"
+    return parca
+
+
 def _facebook_backfill() -> None:
     """Katalogda Facebook'a hic gitmemis parcalari gunlere yayarak yukler.
 
@@ -877,14 +919,23 @@ def _facebook_backfill() -> None:
     """
     try:
         from facebook_backfill import backfill
-        s = backfill(limit=1)
-        if s.get("durum") == "tamam" and s.get("islenen"):
-            for x in s["islenen"]:
-                if x.get("hata"):
-                    log(f"  Facebook geri doldurma HATA ({x['proje']}): {x['hata']}")
-                else:
-                    log(f"  Facebook geri doldurma: {x['proje']} -> {x['video_id']} "
-                        f"(kalan {s.get('kalan', '?')})")
+        # log=log SART — BAGLANTI arizasi (2026-09-12): modulun varsayilani
+        # `_stderr` ve ayni gun eklenen politika kapisinin "UYUMLULUK
+        # HATASI ... ATLANDI" satiri `notify` import edilemedigi anda oraya
+        # dusup KAYBOLUYORDU. _ek_platform_backfill ayni cagrida `log=log`
+        # geciyor; asimetri kazaydi.
+        s = backfill(limit=1, log=log)
+        for x in s.get("islenen") or []:
+            if x.get("hata"):
+                log(f"  Facebook geri doldurma HATA ({x['proje']}): {x['hata']}")
+            else:
+                log(f"  Facebook geri doldurma: {x['proje']} -> {x.get('video_id')} "
+                    f"(kalan {s.get('kalan', '?')})")
+        if not s.get("islenen"):
+            # Gonderi YAPILMAYAN kosu da iz birakmali: "kapali"/"beklemede"/
+            # "tavan"/"bitti" donuslerinin DORDU de tamamen sessizdi
+            # (bkz. _backfill_sebep).
+            log(f"  Facebook geri doldurma: {_backfill_sebep(s)}")
     except Exception as e:
         log(f"  Facebook geri doldurma HATA: {e}")
 
@@ -962,20 +1013,38 @@ def _ek_platform_backfill() -> None:
     try:
         from ek_platform_backfill import backfill
         s = backfill(log=log)
+        # `yazildi`: bu kosuda loga HERHANGI bir satir dustu mu. Dusmediyse
+        # asagida tek satirlik ozet basiliyor (bkz. _backfill_sebep).
+        yazildi = False
         for x in s.get("islenen", []):
             if x.get("hata"):
                 log(f"  {x['platform']} geri doldurma HATA ({x['proje']}): {x['hata']}")
             else:
                 log(f"  {x['platform']} geri doldurma: {x['proje']} -> {x.get('sonuc','')}")
+            yazildi = True
         # Gunluk tavan devreye girdiginde loga HICBIR iz kalmiyordu: o gun
         # "kalan" sayisi degismiyor ama sebebi gorunmuyor, yani hat calisiyor mu
         # yoksa sessizce mi durdu ayirt edilemiyordu. Bu modul tam da o "sessiz
         # durus" desenini yakalamak icin var (bkz. docstring) — tavani da yaz.
         for ad, sebep in (s.get("tavan") or {}).items():
             log(f"  {ad} geri doldurma: gunluk tavan dolu ({sebep})")
+            yazildi = True
         for ad, kalan in (s.get("kalan") or {}).items():
             if kalan:
                 log(f"  {ad}: {kalan} sarki hala eksik")
+                yazildi = True
+        # Bu dallarin satirlarini MODULUN KENDISI `log=log` ile yaziyor
+        # (bayrak kapali / kimlik dosyasi yok / boyut sinirini asan aday /
+        # politika kapisinda engellenen proje) — ozeti tekrarlamaya gerek
+        # yok.
+        if any(s.get(k) for k in ("kapali", "kimlik_yok", "atlanan",
+                                  "engellenen")):
+            yazildi = True
+        if not yazildi:
+            # En sik dal: golden-hour DISI. backfill() ilk satirinda bos
+            # islenen/tavan/kalan sozlukleriyle donuyor, yani eski kod bu
+            # kosularda loga tek bayt bile yazmiyordu.
+            log(f"  Ek platform geri doldurma: {_backfill_sebep(s)}")
     except Exception as e:
         log(f"  Ek platform geri doldurma HATA: {e}")
 
