@@ -19,12 +19,12 @@
   "youtube_views": 74,
   "youtube_likes": 1,
   "youtube_comments": 0,
-  "youtube_stats_checked_at": "2026-09-12T13:05:26",
+  "youtube_stats_checked_at": "2026-09-13T10:06:39",
   "youtube_shorts_views": 4,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-11T16:12:21",
-  "youtube_views_prev": 73,
+  "youtube_stats_prev_at": "2026-09-12T13:05:26",
+  "youtube_views_prev": 74,
   "youtube_likes_prev": 1,
   "youtube_comments_prev": 0,
   "youtube_shorts_views_prev": 4,
@@ -113,5 +113,8 @@
       "guncellendi_at": "2026-09-13T04:29:40+03:00"
     }
   ],
-  "turev_plani_surumu": 1
+  "turev_plani_surumu": 1,
+  "youtube_privacy_gercek": "public",
+  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
+  "youtube_shorts_privacy_gercek": "public"
 }

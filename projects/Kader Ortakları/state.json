@@ -16,15 +16,15 @@
   "tiktok_cover_hint": "projects/Kader Ortakları\\cover_vertical.png",
   "youtube_captions_done": true,
   "youtube_captions_synced_at": "2026-09-10T10:12:28",
-  "youtube_views": 100,
+  "youtube_views": 112,
   "youtube_likes": 1,
-  "youtube_comments": 1,
-  "youtube_stats_checked_at": "2026-09-12T13:05:26",
-  "youtube_shorts_views": 172,
+  "youtube_comments": 3,
+  "youtube_stats_checked_at": "2026-09-13T10:06:39",
+  "youtube_shorts_views": 170,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-11T16:12:21",
-  "youtube_views_prev": 86,
+  "youtube_stats_prev_at": "2026-09-12T13:05:26",
+  "youtube_views_prev": 100,
   "youtube_likes_prev": 1,
   "youtube_comments_prev": 1,
   "youtube_shorts_views_prev": 172,
@@ -39,12 +39,10 @@
     "PLIfBoPfEuEWQ"
   ],
   "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
-  "instagram_creation_id": "18094586000265431",
-  "instagram_container_created_at": "2026-09-12T22:06:42",
   "facebook_reels_id": "1094520793439943",
   "facebook_uploaded_at": "2026-09-12T22:06:55",
   "facebook_scheduled_for": "2026-09-13T12:00:00+03:00",
-  "facebook_comment_pending": true,
+  "facebook_comment_pending": false,
   "yukleme_belirsiz": {
     "telegram_message_id": {
       "platform": "Telegram",
@@ -246,5 +244,10 @@
     "aciklama_sha1": "010ce2bf20f03ce4a756dee631416d4b80b90bb0",
     "kaynak": "claude",
     "surum": 1
-  }
+  },
+  "youtube_privacy_gercek": "public",
+  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
+  "youtube_shorts_privacy_gercek": "public",
+  "instagram_media_id": "18104874346942158",
+  "instagram_uploaded_at": "2026-09-13T12:05:38"
 }

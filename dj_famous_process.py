@@ -572,6 +572,23 @@ def process_set(project_dir: str, privacy: str, schedule: bool) -> None:
     state = _load_state(project_dir)
     youtube_video_id = state.get("youtube_video_id")
 
+    # RİTİM R1 (ozgunluk_plani.md §2d, karar 4, 2026-09-13): DJ seti / derleme ile şarkı
+    # arasında kanal geneli ORTAK 48 saat (config.YAYIN_RITMI_SET_SARKI_ARA_SAAT). Bu hat
+    # eskiden tabanı HİÇ okumuyordu: set ile şarkı aynı gün çıkabiliyordu. Yalnız YENİ
+    # yayında (YouTube'a henüz çıkmamış set); karantinadaki ya da kalan platformları
+    # tamamlanan set etkilenmez. Kapı hesaplanamazsa bu koşuda YAYIN YOK (bilinmeyen tempo
+    # "uygun" sayılmaz; maliyet bir koşu gecikmesi). Koruma: tests/test_yayin_ritmi_baglanti.py.
+    if not youtube_video_id:
+        try:
+            import yayin_ritmi
+            _r_izin, _r_kalan, _r_sebep = yayin_ritmi.kanal_tabani(project_dir)
+        except Exception as e:  # noqa: BLE001
+            _r_izin, _r_sebep = False, "ritim kapısı hesaplanamadı (%s: %s)" % (
+                type(e).__name__, str(e)[:120])
+        if not _r_izin:
+            log("  " + _r_sebep + " — set bu koşuda yayınlanmıyor")
+            return
+
     if youtube_video_id:
         log("  YouTube: zaten yüklü, atlanıyor")
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
@@ -633,10 +650,16 @@ def process_set(project_dir: str, privacy: str, schedule: bool) -> None:
                 log("  Content ID taraması hâlâ bekleniyor, diğer platformlar atlanıyor")
             return
 
+    import yayin_ritmi
     if "youtube_shorts_video_id" in state:
         log("  YouTube Shorts: zaten yüklü, atlanıyor")
     elif not youtube_video_id:
         log("  YouTube Shorts atlandı: önce uzun format yüklenmeli")
+    elif not yayin_ritmi.shorts_zamani(_load_state(project_dir))[0]:
+        # RİTİM R3a (2026-09-13): Shorts uzun formattan 24 sa sonra; yüklemeyi
+        # auto_process._shorts_gecikmeli_supurge yapar (kalıp B, saatlik finally).
+        log("  YouTube Shorts: " + yayin_ritmi.shorts_zamani(_load_state(project_dir))[2]
+            + " — saatlik Shorts süpürgesi yükleyecek")
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
             from youtube_upload import upload_short as yt_upload_short

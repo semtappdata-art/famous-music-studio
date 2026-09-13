@@ -466,6 +466,14 @@ def _kural_ihlalleri(an, proje, st, baglam, simdi, ek_anlar=(), min_dakika=None)
             ihlal.append("iki TikTok gönderisi arası en az %g sa (%s: %s %s)"
                          % (aralik / SAAT, tur, ad, _iso(ts)))
             break
+    # RİTİM R3b (2026-09-13, karar 4): şarkı aynı gün en fazla N platformda (TikTok dahil).
+    try:
+        import yayin_ritmi
+        _r_izin, _r_sebep = yayin_ritmi.platform_gun_izni(st, "tiktok", an)
+    except Exception as e:                                   # noqa: BLE001
+        _r_izin, _r_sebep = False, "ritim kapısı hesaplanamadı (%s)" % type(e).__name__
+    if not _r_izin:
+        ihlal.append(_r_sebep)
     gun = _dt(an).date()
     ayni_gun = sum(1 for ts, _, _ in gonderiler if _dt(ts).date() == gun)
     if ayni_gun >= int(config.TIKTOK_KIT_GUNLUK_TAVAN):

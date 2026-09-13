@@ -1382,6 +1382,35 @@ def _tarihli_isler(t: float) -> list:
     return satirlar or ["  (tarihli iş bulunamadı)"]
 
 
+# Son hesaplanan özgünlük skoru — anlık görüntü YALNIZ başarılı gönderimde yazılır
+# (bkz. haftalik_gozden_gecirme); satır ile kayıt aynı hesabı kullansın diye burada tutulur.
+_SON_OZGUNLUK = None
+
+
+def _ozgunluk_satiri(t: float) -> str:
+    """"Özgünlük skoru: X/100 (geçen hafta Y)" ya da "ölçülemedi (<sebep>)" — sessiz atlama yok."""
+    global _SON_OZGUNLUK
+    _SON_OZGUNLUK = None
+    try:
+        import ozgunluk_skoru as OS
+        veri = OS.hesapla(simdi=t)
+        _SON_OZGUNLUK = veri
+        return OS.ozet_satiri(veri, OS.onceki_skor(veri.get("hafta") or OS.hafta_damgasi(t)))
+    except Exception as e:
+        return "Özgünlük skoru: ölçülemedi (%s: %s)" % (type(e).__name__, str(e)[:80])
+
+
+def _ozgunluk_anlik_kaydet() -> None:
+    veri = _SON_OZGUNLUK
+    if not veri or not veri.get("hafta"):
+        return
+    try:
+        import ozgunluk_skoru as OS
+        OS.anlik_kaydet(veri["hafta"], veri)
+    except Exception:
+        pass
+
+
 def _haftalik_satirlar(t: float, d: dict, saglik_fn=None) -> tuple:
     """(rapor satırları, yeni ölçüm anlık görüntüsü).
 
@@ -1425,6 +1454,15 @@ def _haftalik_satirlar(t: float, d: dict, saglik_fn=None) -> tuple:
             satirlar.append("  " + satir)
 
     satirlar.append(_saglik_satiri(saglik_fn))
+
+    # ÖZGÜNLÜK SKORU (2026-09-13, ozgunluk_plani.md §2g): kendi try'ında, BAŞLIK satırının
+    # sonuna eklenir — rapor telefonda okunuyor ve 16 satır tavanı var
+    # (tests/test_haftalik_gozden_gecirme.py::test_rapor_kisa_kaliyor).
+    try:
+        ozgunluk = _ozgunluk_satiri(t)
+    except Exception as e:
+        ozgunluk = "Özgünlük skoru: ölçülemedi (%s)" % str(e)[:80]
+    satirlar[0] += " · " + ozgunluk[:140]
 
     # ELLE İŞLEMLER (2026-09-13): son 7 günün sayısı + platform kırılımı.
     try:
@@ -1488,6 +1526,7 @@ def haftalik_gozden_gecirme(log=print, zorla: bool = False,
         if olcum:
             guncel[HAFTALIK_OLCUM_ANAHTARI] = olcum
         _kaydet(guncel, yol)
+        _ozgunluk_anlik_kaydet()
         return {"durum": "tamam", "hafta": hafta, "metin": metin}
 
     log("  Haftalık özet gönderilemedi (bildirim kanalı) — yarın tekrar denenecek.")

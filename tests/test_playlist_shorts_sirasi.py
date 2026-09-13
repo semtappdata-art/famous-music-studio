@@ -137,6 +137,10 @@ def _sahte_youtube_upload(cagrilar):
 
 def _kur(tmp_path, monkeypatch):
     """Tam bir `process_project()` koşusunu ağa çıkmadan hazırlar."""
+    # 2026-09-13 ritim R3a: bu dosya ESKİ akışı (uzun + Shorts aynı koşu) sınar; 24 sa
+    # gecikmeli süpürge tests/test_yayin_ritmi_baglanti.py'de. Şalter burada kapalı.
+    import config
+    monkeypatch.setattr(config, "YAYIN_RITMI_SHORTS_GECIKMELI", False, raising=False)
     proje = tmp_path / "projects" / "Sarki"
     proje.mkdir(parents=True)
     (proje / "meta.json").write_text(

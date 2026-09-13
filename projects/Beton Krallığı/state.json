@@ -15,18 +15,18 @@
   "tiktok_suggested_comment": "🎧 Şarkının tamamı YouTube'da: https://youtu.be/1-xofMJPVgY\n@famousmusicstudio hesabına dokun, bio'daki linkten de ulaşabilirsin 🔗",
   "youtube_captions_done": true,
   "youtube_captions_synced_at": "2026-09-08T12:34:06",
-  "youtube_views": 55,
+  "youtube_views": 57,
   "youtube_likes": 1,
   "youtube_comments": 0,
-  "youtube_stats_checked_at": "2026-09-12T13:05:26",
+  "youtube_stats_checked_at": "2026-09-13T10:06:39",
   "youtube_shorts_views": 7,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-11T16:12:21",
+  "youtube_stats_prev_at": "2026-09-12T13:05:26",
   "youtube_views_prev": 55,
   "youtube_likes_prev": 1,
   "youtube_comments_prev": 0,
-  "youtube_shorts_views_prev": 6,
+  "youtube_shorts_views_prev": 7,
   "youtube_shorts_likes_prev": 2,
   "youtube_shorts_comments_prev": 0,
   "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
@@ -116,5 +116,8 @@
       "guncellendi_at": "2026-09-13T04:29:38+03:00"
     }
   ],
-  "turev_plani_surumu": 1
+  "turev_plani_surumu": 1,
+  "youtube_privacy_gercek": "public",
+  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
+  "youtube_shorts_privacy_gercek": "public"
 }

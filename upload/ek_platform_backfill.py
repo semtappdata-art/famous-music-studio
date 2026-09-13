@@ -595,6 +595,21 @@ def backfill(limit: int = KOSU_TAVANI, dry_run: bool = False, log=print) -> dict
         for proje, varyant in eksikler:
             if len(hedefler) >= min(limit, kalan_kota):
                 break
+            # RİTİM R3b (2026-09-13, karar 4): şarkı aynı gün en fazla N platformda —
+            # geri doldurma DAHİL (11 Eyl: 2 dk'da 6 olay). Tavandaki proje kotayı
+            # tüketmez; hesaplanamazsa bu koşuda atlanır.
+            try:
+                import yayin_ritmi
+                _r_izin, _r_sebep = yayin_ritmi.platform_gun_izni(_durum(proje), bayrak)
+            except Exception as e:                # noqa: BLE001
+                _r_izin, _r_sebep = False, "ritim kapısı hesaplanamadı (%s)" % type(e).__name__
+            if not _r_izin:
+                sonuc.setdefault("ritim", {}).setdefault(ad, []).append(
+                    {"proje": os.path.basename(proje), "sebep": _r_sebep[:160]})
+                _kapi_uyar("ek_backfill_ritim:%s:%s" % (ad, os.path.abspath(proje)),
+                           "  %s geri doldurma bekliyor (%s): %s"
+                           % (ad, os.path.basename(proje), _r_sebep), log)
+                continue
             engel = politika_kapisi(proje, log)
             if engel:
                 sonuc.setdefault("engellenen", {}).setdefault(ad, []).append(

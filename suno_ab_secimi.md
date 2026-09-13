@@ -109,3 +109,57 @@ olduğu için sonuç taşınır, ama kilitli bir çift üzerinde henüz sınanma
 İkisi de kırpılmasız, doğal kapanış, hedef süre içinde. **Kulakla kontrol yapılamadı** (nakarat
 okunuşu, telaffuz, son nakaratta gitar/vokal dengesi, son 5 sn) — elle dinlenmeli.
 İndirilen WAV: 166,64 sn, 48 kHz, stereo, 16 bit; −15,3 LUFS, TP −4,3 dBTP, LRA 7,2 LU.
+
+## Kullanım (2026-09-13 sürümü) — yeni ölçütler ve gizli sekme toplayıcısı
+
+Yukarıdaki "Akış" bölümü ilk sürümü anlatıyor ve tarih kaydı olarak duruyor. Betiğin güncel
+kullanımı bu bölümde.
+
+### Neler değişti
+
+- **Toplayıcı ses iş parçacığında.** İlk sürüm örnekleri zamanlayıcıyla (40 ms'de bir) topluyordu;
+  sekme arka planda kalınca tarayıcı zamanlayıcıyı kısıtladı (B'de 14 sn'de 15 örnek). Artık önce
+  `AudioWorklet`, o olmazsa `ScriptProcessor` yedeği kuruluyor. Pencere süresi duvar saatiyle
+  değil **toplanan kare sayısıyla** ölçülüyor; atlama beklemeleri de `seeked`/`ended` olayına
+  bağlı. `kur()` hangi yöntemin kurulduğunu söylüyor.
+- **Ölçüm ~75 sn:** ilk 60 sn + parçanın %40 / %60 / %80 noktalarında 2'şer sn + son 6,5 sn.
+  İndirme kotası yine harcanmıyor.
+- **Eski alanlar aynen duruyor** (`ilk_ses_sn`, `MY_ortanca`, `MY_max`, `sustain_sn`,
+  `son_tepe_orani`); merkez/yan oranı yine 3-14 sn aralığından hesaplanıyor, yani eski
+  kayıtlarla karşılaştırılabilir.
+
+### Akış
+
+1. Suno'da iki varyant üret.
+2. Chrome'da `suno.com/create` açıkken bir varyanta tıkla (çalmaya başlasın).
+3. `suno_ab_olcum.js`'i konsola yapıştır, sonra `await kur()`.
+   Çıktıda `AudioWorklet` ya da `ScriptProcessor (yedek: ...)` yazmalı.
+4. Ölçmeden önce oynatma çubuğunda **clip id ve süreyi doğrula** (yanlış satıra tıklanıp eski
+   clip çalabiliyor).
+5. `await olc('A')`. Nakaratın geldiği saniyeyi kulakla biliyorsan `await olc('A', {nakarat_sn: 42})`;
+   ya da dinlerken nakarat başladığı an `isaretle('A')`, sonra `olc('A')`.
+6. Diğer varyanta tıkla, doğrula, `await olc('B')`.
+7. `karsilastir()`: her varyantın özeti + `varyant_farki`.
+8. **Sadece kazananı indir.**
+
+### Yeni ölçütler
+
+| Alan | Tanım | Karar kuralı |
+|---|---|---|
+| `nakarat_sn` + `nakarat_yontem` | `isaret`: kullanıcının verdiği/işaretlediği saniye. `enerji`: ilk 60 sn 0,5 sn'lik kovalara bölünür; referans = en yüksek %20 kovanın ortancası; seviyesi referansın %70'ini **ardışık 3 kova (1,5 sn)** boyunca aşan ilk kovanın başı. Sözü bilmez: "ilk tam enerji anı", bazen yüksek bir Pre-Chorus | Küçük olan önde; 45 sn'yi geçmesin |
+| `kirpilma_olay` / `_ornek` / `_en_uzun` | Kanal başına mutlak değeri ≥ −0,1 dBFS olan **en az 2 ardışık örnek** bir olay; blok sınırında dizi kopmuyor. Tek tepe örneği sayılmıyor | İki varyant arasında 2 kattan büyük fark varsa yüksek olan elenir. Akış kod çözümü tepeyi yuvarlıyor, kesin TP değil |
+| `tepe_dbfs` | Ölçülen pencerelerdeki en büyük örnek | Yalnız sıralama. Kesin TP render öncesinde `ebur128` ile ölçülüyor (`state.json` → `ses_olcum`) |
+| `crest_db` | 1 sn'lik pencerelerde 20·log10(tepe/RMS), ortanca (ilk 60 sn) | ~6 dB ve altı ezilmiş mix; 3 dB'yi aşan fark anlamlı |
+| `son_sessizlik_sn` | Son penceredeki en yüksek seviyenin %2'sini aşan son bloktan parçanın sonuna kadar geçen süre | 2 sn'den uzunsa boş kuyruk var |
+| `erken_sonme` + `erken_sonme_orani` | %80 noktasındaki seviye / %40 noktasındaki seviye | Oran 0,5'in altındaysa şarkı erken sönüyor |
+| `sure_asimi` | Süre 240 sn'yi aşıyor mu | Aşan varyant −1 puan; ikisi de aşıyorsa kısa olan önde |
+| `varyant_farki` | Ortak ölçütlerin ölçekli farkı; 1,0 = anlamlı fark: `MY_ortanca` %20 göreli, nakarat 15 sn, crest 3 dB, süre 60 sn, son sessizlik 2 sn | Hiçbiri 1'e ulaşmıyorsa `esit_dinleyerek_sec`: ölçüm kazanan **uydurmaz**, seçim kulakla yapılır |
+
+### Test
+
+Betiğin saf hesap fonksiyonları (`kirpilmaSay`, `nakaratTespit`, `crestDb`, `sonSessizlik`,
+`erkenSonme`, `varyantFarki`, `ozetle`) `module.exports` ile dışarı veriliyor ve
+`tests/test_suno_ab_olcum_js.py` Node ile sentetik verilerde sınıyor (`node --check` dahil;
+Node yoksa atlanır). Tarayıcı toplayıcısı orada koşturulamıyor; ilk gerçek kullanımda `kur()`
+çıktısındaki yöntem adı ve `olc()` çıktısındaki blok sayısı (60 sn için ~1400 blok) kontrol
+edilmeli.

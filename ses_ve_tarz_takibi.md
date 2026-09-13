@@ -67,7 +67,7 @@ YANSITMIYOR.
 | Kader Ortakları | hiphop (Pop-Hip-Hop, arabesk-vokal etkili) | 90 | **düet: erkek-erkek** — Male 1: warm smooth melancholic tenor, Male 2: raspy gritty passionate baritone |
 | Bu Gece Kazandık | pop (dance-arabesk-pop) | 118 | **düet: erkek-erkek** — Male 1: tender warm melismatic tenor (vibrato), Male 2: bright energetic nasal-edged voice |
 | Sabah Senin | rock | 78 | smoky husky low-register female vocals — düet DEĞİL |
-| Yükseliş **(ses henüz yok)** | hiphop | (yok) | smoky laid-back female vocals — düet DEĞİL |
+| Yükseliş **(ses henüz yok)** | hiphop | (yok) | clear crisp confident mid-range male rap vocals — düet DEĞİL (2026-09-13: smoky kadın vokalden çevrildi) |
 
 **Sütun işaretleri:** `(yok)` = stil etiketi VAR ama içinde BPM yazmıyor.
 `(kayıt yok)` = şarkının hiç arşivlenmiş stil etiketi yok (ilk üç şarkı +
@@ -112,6 +112,11 @@ Küllerimden Geç; bkz. CLAUDE.md "Açık/bilinen boşluklar").
   dedi — ama `Sabah Senin` zaten "smoky husky" kadın vokal. Yükseliş olduğu gibi
   üretilirse kadın vokal üst üste ikiye çıkar ve "smoky" dokusu tekrarlanır; yukarıdaki
   "Sıradaki" notuyla çelişiyor. Üretmeden önce vokal seçimi yeniden düşünülmeli.
+  **ÇÖZÜLDÜ (2026-09-13, özgünlük planı Aşama 1):** vokal tekli ERKEK'e çevrildi —
+  `clear crisp confident mid-range male rap vocals`. Gerekçe: son üç üretim E+E düet,
+  E+E düet, kadın (Sabah Senin); "Sıradaki" notu erkek ya da düet istiyor; doku
+  "clear/crisp" katalogdaki hiçbir erkek vokalde yok. Sözlere dokunulmadı; stil etiketi
+  ve gerekçe `yukselis_sozler.md`'de güncellendi, eski hâli `yukselis_sozler_eski_2026-09-13.md`.
 
 ## Yeni şarkı eklerken
 

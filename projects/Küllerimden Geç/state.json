@@ -8,27 +8,27 @@
   "instagram_uploaded_at": "2026-09-07T13:25:38",
   "youtube_video_id": "-CQ7MmUygTQ",
   "youtube_uploaded_at": "2026-09-07T13:42:00",
-  "youtube_privacy": "unlisted",
+  "youtube_privacy": "public",
   "youtube_publish_at": null,
   "youtube_playlist_id": "PLcJHfZF85FI0",
   "youtube_shorts_video_id": "jN78mJrZd3c",
   "youtube_shorts_uploaded_at": "2026-09-07T13:42:08",
-  "youtube_shorts_privacy": "unlisted",
-  "youtube_shorts_publish_at": null,
+  "youtube_shorts_privacy": "public",
+  "youtube_shorts_publish_at": "2026-09-13T13:08:38+03:00",
   "youtube_captions_done": true,
   "youtube_captions_synced_at": "2026-09-07T14:28:40",
-  "youtube_views": 182,
-  "youtube_likes": 17,
-  "youtube_comments": 7,
-  "youtube_stats_checked_at": "2026-09-12T13:05:26",
+  "youtube_views": 193,
+  "youtube_likes": 18,
+  "youtube_comments": 8,
+  "youtube_stats_checked_at": "2026-09-13T10:06:39",
   "youtube_shorts_views": 115,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-11T16:12:21",
+  "youtube_stats_prev_at": "2026-09-12T13:05:26",
   "youtube_views_prev": 182,
   "youtube_likes_prev": 17,
   "youtube_comments_prev": 7,
-  "youtube_shorts_views_prev": 112,
+  "youtube_shorts_views_prev": 115,
   "youtube_shorts_likes_prev": 2,
   "youtube_shorts_comments_prev": 0,
   "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
@@ -40,11 +40,6 @@
     "PLIfBoPfEuEWQ"
   ],
   "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
-  "youtube_gorunurluk_plani": {
-    "hedef": "public",
-    "sebep": "kullanıcı kararı 2026-09-12: 'Küllerimden Geç' (yeni görselli sürüm) asıl kayıt. Uzun format (-CQ7MmUygTQ) kullanıcı tarafından Studio'dan public yapıldı, Shorts (jN78mJrZd3c) unlisted duruyor; ikisi de public olacak.",
-    "istendi_at": "2026-09-12T22:56:32+03:00"
-  },
   "tiktok_published_at": "2026-09-09T09:31:00",
   "tiktok_published_kaynak": "TikTok 7683419315344887061 (9 Eyl 09:31, başlık ve içerik Küllerimden Geç): yayınlandı, şu an 'Sadece ben'; kullanıcı kararıyla 'Herkes' yapılacak (elle). İşaret, taslağın ikinci kopya olarak yayınlanmasını önler.",
   "turev_plani": [
@@ -225,5 +220,27 @@
       "guncellendi_at": "2026-09-13T04:29:39+03:00"
     }
   ],
-  "turev_plani_surumu": 1
+  "turev_plani_surumu": 1,
+  "youtube_privacy_gercek": "public",
+  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
+  "youtube_shorts_privacy_gercek": "public",
+  "youtube_shorts_elle_gizlilik_notu": {
+    "deger": null,
+    "zaman": "2026-09-13T13:08:39+03:00",
+    "zaman_yaklasik": false,
+    "video_id": "jN78mJrZd3c",
+    "ayrinti": "jN78mJrZd3c unlisted→public Studio'dan (API geri okuması public'i doğrulamadı: videos.update başarılıydı, hemen ardındaki videos.list geri okuması eski değeri (unlisted) döndürdü — yayılma gecikmesi; Studio 13:10'da zaten Herkese açık gösteriyordu, hak talebi/kısıtlama yok)",
+    "kaynak": "claude",
+    "kayit_id": "EI-20260913-130839-57e5",
+    "not": "Kullanıcı beyanı. `youtube_shorts_privacy` (istenen) ve `youtube_shorts_privacy_gercek` (API ölçümü) BİLEREK değiştirilmedi."
+  },
+  "yukleme_belirsiz": {
+    "telegram_message_id": {
+      "platform": "Telegram",
+      "ne": "Telegram sendVideo",
+      "istisna": "ConnectionError",
+      "zaman": "2026-09-13T18:05:20",
+      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
+    }
+  }
 }

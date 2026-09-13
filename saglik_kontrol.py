@@ -1111,13 +1111,22 @@ def ana_platform_anahtarlari() -> tuple:
     planlama modunda (`config.TIKTOK_AKIS`) TikTok anahtarı şart değil — aksi hâlde her yeni
     proje "bekleyen" sayılır ve `yayin_durgunlugu` yanlış alarm verirdi. config okunamazsa
     dörtlü. Eşdeğerlik: tests/test_yayin_durgunlugu.py, tests/test_tiktok_web.py."""
+    kume = ANA_PLATFORM_ANAHTARLARI
     try:
         import config
         if config.tiktok_web_modu():
-            return tuple(k for k in ANA_PLATFORM_ANAHTARLARI if k != "tiktok_publish_id")
+            kume = tuple(k for k in kume if k != "tiktok_publish_id")
     except Exception:                                        # noqa: BLE001
         pass
-    return ANA_PLATFORM_ANAHTARLARI
+    # RİTİM R3a (2026-09-13): Shorts 24 sa gecikmeli ve AYRI süpürgede
+    # (auto_process._shorts_gecikmeli_supurge) — şalter açıkken ana kümede değil.
+    try:
+        import yayin_ritmi
+        if yayin_ritmi.shorts_gecikmeli_mi():
+            kume = tuple(k for k in kume if k != "youtube_shorts_video_id")
+    except Exception:                                        # noqa: BLE001
+        pass
+    return kume
 
 # SES DOSYASI ŞARTI — bu kontrolün en önemli yanlış-alarm koruması.
 # `uyumluluk.proje_klasorleri()` TEK SEVİYE tarıyor ve gördüğü her klasörü

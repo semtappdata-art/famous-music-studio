@@ -6,13 +6,17 @@ Kullanım:
 """
 
 import argparse
+import hashlib
 import json
+import math
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import config
 import ffmpeg_utils
+import state_io
 import uyumluluk
 import validate_project
 from audio_highlight import find_highlight
@@ -162,6 +166,179 @@ def load_meta(project_dir: str) -> dict:
     return {}
 
 
+# state.json'daki ölçüm anahtarı: {"lufs", "tp", "lra", "olcum_at", "md5"}.
+SES_OLCUM_ALANI = "ses_olcum"
+
+
+def _ses_uyarisi(anahtar: str, mesaj: str) -> None:
+    """Satırı ÇALIŞAN betiğin log'una da düşürür (koşu başına bir kez).
+
+    NEDEN print YETMİYOR: saatlik görev `pythonw` ile koşuyor ve orada
+    `sys.stdout` None; `print` hiçbir yere gitmiyor (gorev_sarmalayici.py).
+    render.py'nin bütün print'leri zamanlanmış koşuda GÖRÜNMEZ. Limiter kararı
+    ve ölçüm arızası "çalıştı mı?" sorusunun cevabı, log'da olmalı."""
+    try:
+        import notify
+        notify.uyar_bir_kez(anahtar, mesaj)
+    except Exception:  # noqa: BLE001 — log satırı render'ı asla durdurmamalı
+        pass
+
+
+def _dosya_md5(yol: str) -> str:
+    h = hashlib.md5()
+    with open(yol, "rb") as f:
+        for parca in iter(lambda: f.read(1 << 20), b""):
+            h.update(parca)
+    return h.hexdigest()
+
+
+def _olcum_gecerli(olcum) -> bool:
+    return (isinstance(olcum, dict)
+            and all(isinstance(olcum.get(k), (int, float))
+                    and not isinstance(olcum.get(k), bool)
+                    for k in ("lufs", "tp", "lra")))
+
+
+def ses_olcumu(project_dir: str, audio_path: str) -> dict | None:
+    """Sesin loudness/true-peak ölçümü; state.json önbellekli. Başarısızsa None.
+
+    SIRA:
+      1. sesin md5'i; state.json'daki `ses_olcum.md5` aynıysa ffmpeg'e HİÇ
+         girilmeden o kayıt dönüyor (take değişmediyse tekrar ölçülmez).
+      2. değilse `ffmpeg_utils.ses_olc` (ebur128=peak=true).
+      3. state.json ZATEN VARSA ölçüm `state_io` ile yazılıyor; yazmadan hemen
+         önce state TAZE okunuyor (render dakikalar sürüyor, bu arada yükleme
+         adımları ya da paralel bir koşu başka anahtar yazmış olabilir).
+
+    state.json YOKSA OLUŞTURULMUYOR, bilerek: yeni bir projede ilk render
+    yüklemeden ÖNCE koşuyor ve `tiktok_upload`, `bluesky_upload`,
+    `facebook_upload` taramaları "state.json yoksa bu proje hiç yüklenmemiş,
+    atla" varsayımıyla çalışıyor. Yalnız `ses_olcum` içeren bir state.json o
+    varsayımı sessizce bozardı. Bedeli: ilk render'da ölçüm önbelleğe girmez,
+    yeniden render'da (birkaç saniye) tekrar ölçülür.
+
+    BOZUK state.json'ın ÜSTÜNE YAZILMIYOR (uyumluluk._durum HATA sınıfı): onu
+    `{}` sayıp yazmak `telif_araliklari` gibi kapıları silerdi. Ölçüm yine de
+    bu render'da kullanılıyor.
+
+    Hiçbir arıza render'ı DURDURMUYOR: None dönüyor, çağıran limitersiz
+    (eski davranış) sürüyor ve log'a UYARI düşüyor."""
+    ad = os.path.basename(os.path.normpath(project_dir))
+    state_yolu = os.path.join(project_dir, "state.json")
+    try:
+        md5 = _dosya_md5(audio_path)
+    except OSError as e:
+        mesaj = (f"UYARI: ses ölçümü yapılamadı ({ad}): ses okunamadı: {e} — "
+                 f"limiter kararı verilemedi, render limitersiz sürüyor")
+        print("  " + mesaj)
+        _ses_uyarisi(f"ses_olcum:{ad}", mesaj)
+        return None
+
+    durum_okunabildi = True
+    try:
+        durum = uyumluluk._durum(project_dir)
+    except Exception as e:  # noqa: BLE001 — DurumBozuk dahil
+        durum_okunabildi = False
+        durum = {}
+        print(f"  UYARI: state.json okunamadı ({type(e).__name__}); ses ölçümü bu "
+              f"render'da kullanılacak ama state'e YAZILMAYACAK")
+
+    onceki = durum.get(SES_OLCUM_ALANI)
+    if _olcum_gecerli(onceki) and onceki.get("md5") == md5:
+        print(f"  ses ölçümü (state'ten, aynı ses): {onceki['lufs']} LUFS, "
+              f"TP {onceki['tp']} dBTP, LRA {onceki['lra']} LU")
+        return onceki
+
+    try:
+        olcum = ffmpeg_utils.ses_olc(audio_path)
+    except Exception as e:  # noqa: BLE001 — OSError (ffmpeg yok) dahil
+        mesaj = (f"UYARI: ses ölçümü başarısız ({ad}): {type(e).__name__}: "
+                 f"{str(e)[:200]} — limiter kararı verilemedi, render limitersiz "
+                 f"(eski davranış) sürüyor")
+        print("  " + mesaj)
+        _ses_uyarisi(f"ses_olcum:{ad}", mesaj)
+        return None
+
+    kayit = {
+        "lufs": olcum["lufs"], "tp": olcum["tp"], "lra": olcum["lra"],
+        "olcum_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "md5": md5,
+    }
+    print(f"  ses ölçümü: {kayit['lufs']} LUFS, TP {kayit['tp']} dBTP, LRA {kayit['lra']} LU")
+    if durum_okunabildi and os.path.isfile(state_yolu):
+        try:
+            taze = uyumluluk._durum(project_dir)
+            taze[SES_OLCUM_ALANI] = kayit
+            state_io.durum_yaz(project_dir, taze)
+        except Exception as e:  # noqa: BLE001
+            print(f"  UYARI: ses ölçümü state.json'a yazılamadı: {type(e).__name__}: {e}")
+    return kayit
+
+
+def limiter_gerekli(olcum) -> bool:
+    """Ölçülen TP `config.SES_TP_ESIK_DBTP`yi AŞIYORSA (eşitse değil) True.
+    Ölçüm yoksa / geçersizse False: limiter bir iyileştirme, kapı değil."""
+    if not config.SES_LIMITER_ACIK or not isinstance(olcum, dict):
+        return False
+    tp = olcum.get("tp")
+    if isinstance(tp, bool) or not isinstance(tp, (int, float)):
+        return False
+    return tp > config.SES_TP_ESIK_DBTP
+
+
+def _gecerli_saniye(x) -> bool:
+    return (isinstance(x, (int, float)) and not isinstance(x, bool)
+            and math.isfinite(x) and x >= 0)
+
+
+def meta_highlight(meta: dict, audio_path: str | None = None):
+    """meta.json'dan Shorts kesiti: `(bas, son)` ya da None (= otomatik tespit).
+
+      * iki alan da yok                  -> None (bugünkü davranış)
+      * YALNIZ `highlight_start` (2026-09-13) -> (bas, bas + HIGHLIGHT_DURATION).
+        Nakaratın başını elle işaretlemenin en ucuz yolu; RMS penceresi bazen
+        nakaratın ortasından kesiyor (`suno_kalite_onerileri.md` §1 #9).
+        Geçersizse (negatif, sayı değil, sesin sonundan sonra) UYARI + None.
+      * YALNIZ `highlight_end`           -> UYARI + None (eski davranış aynen)
+      * ikisi de var                     -> olduğu gibi (eski davranış aynen)
+
+    OTOMATİK `highlight_start` ÖNERİSİ YOK, bilerek: sözlerdeki ilk [Chorus]'un
+    ZAMANI yerelde hiçbir yerde tutulmuyor. Tek zaman kaynağı olan altyazı
+    hizalaması (`upload/youtube_captions.py` -> `caption_align.align`)
+    YouTube'un ASR altyazısını API'den indirip geçici klasörde hizalıyor ve
+    sonucu yerelde saklamıyor; üstelik yükleme SONRASI çalışıyor, Shorts
+    render'ı ise yüklemeden ÖNCE. Tahminle yazılan bir başlangıç, RMS
+    tespitinden daha kötü olurdu.
+
+    DJ kesitleri (`dj_clips.clip_uret`) bu fonksiyonu KULLANMIYOR."""
+    bas = meta.get("highlight_start")
+    son = meta.get("highlight_end")
+    if bas is None and son is None:
+        return None
+    if son is None:
+        if not _gecerli_saniye(bas):
+            print(f"  UYARI: meta.json highlight_start geçersiz ({bas!r}) — "
+                  f"otomatik tespite geçiliyor.")
+            return None
+        if audio_path:
+            try:
+                toplam = ffmpeg_utils.get_audio_duration(audio_path)
+            except (OSError, RuntimeError):
+                toplam = None
+            if toplam is not None and bas >= toplam:
+                print(f"  UYARI: meta.json highlight_start ({bas}) sesin süresini "
+                      f"({toplam:.1f}s) aşıyor — otomatik tespite geçiliyor.")
+                return None
+        return bas, bas + config.HIGHLIGHT_DURATION
+    if bas is None:
+        print(
+            "  UYARI: meta.json'da yalnız highlight_end var; highlight_start olmadan "
+            "kullanılamaz — göz ardı edilip otomatik tespite geçiliyor."
+        )
+        return None
+    return bas, son
+
+
 def render_project(project_dir: str) -> bool:
     name = os.path.basename(os.path.normpath(project_dir))
     print(f"\n=== {name} ===")
@@ -190,6 +367,19 @@ def render_project(project_dir: str) -> bool:
     art_path = find_art(project_dir)
     print(f"  kart içeriği: {'art görseli (' + art_path + ')' if art_path else 'düz renk (art.jpg yok)'}")
 
+    # KOŞULLU TRUE-PEAK LİMİTER (2026-09-13, bkz. config.SES_LIMITER_*).
+    # Yalnız ölçülen TP eşiği AŞARSA zincire limiter giriyor; loudnorm yok.
+    # Ölçüm arızası render'ı durdurmuyor (ses_olcumu None -> limitersiz).
+    ses_olcum = ses_olcumu(project_dir, audio_path)
+    ses_limiter = limiter_gerekli(ses_olcum)
+    if ses_olcum is not None:
+        proje_adi = os.path.basename(os.path.normpath(project_dir))
+        karar = "EKLENDİ" if ses_limiter else "yok"
+        satir = (f"ses: '{proje_adi}' TP {ses_olcum['tp']} dBTP, {ses_olcum['lufs']} LUFS "
+                 f"-> limiter {karar} (eşik {config.SES_TP_ESIK_DBTP} dBTP)")
+        print("  " + satir)
+        _ses_uyarisi(f"ses_karar:{proje_adi}", satir)
+
     meta = load_meta(project_dir)
     title = meta.get("title")
     theme = meta.get("theme")
@@ -201,14 +391,8 @@ def render_project(project_dir: str) -> bool:
     output_dir = os.path.join(project_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
 
-    highlight_start = meta.get("highlight_start")
-    highlight_end = meta.get("highlight_end")
-    if (highlight_start is None) != (highlight_end is None):
-        print(
-            "  UYARI: meta.json'da highlight_start/highlight_end alanlarından sadece biri "
-            "belirtilmiş, ikisi de gerekli — göz ardı edilip otomatik tespite geçiliyor."
-        )
-        highlight_start = highlight_end = None
+    elle = meta_highlight(meta, audio_path)
+    highlight_start, highlight_end = elle if elle else (None, None)
     if highlight_start is None or highlight_end is None:
         if config.HIGHLIGHT_PLATFORMS:
             print("  highlight otomatik tespit ediliyor (en yoğun bölüm)...")
@@ -278,6 +462,7 @@ def render_project(project_dir: str) -> bool:
                 kart_goster=not (config.DJ_SAHNE_MODU and backdrop_path
                                  and not use_highlight),
                 intro_cover=intro_cover,
+                ses_limiter=ses_limiter,
             )
         except BaseException:
             # Hata/iptal durumunda yarım geçici dosyayı bırakma. Süreç
