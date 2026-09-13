@@ -1295,9 +1295,13 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   aşılmaz); saatlik hat ENGELLENMEZ. Bakış: `python upload/youtube_kota.py ozet [--json]`,
   `son`, `studio-bekleyenler`. Defter yalnız bu depodan yapılan çağrıları görür. Kotaya düşen
   ve kendini yeniden denemeyen adımlar (kapak, elle `videos.update`) Studio bekleyenlerine
-  yazılır; saatlik hatta `kosu_sonu` bağlantısı (Telegram bildirimi + kapak telafisi) HENÜZ
-  YOK — kullanıcı onayı bekliyor. Zamanlanmış tarayıcı otomasyonu YOK (YouTube ToS otomatik
-  erişim yasağı); Studio işleri kullanıcı istediğinde Claude Code'dan Chrome ile yapılır.
+  yazılır; saatlik hatta `kosu_sonu` bağlıdır (2026-09-14): `auto_process.main()`
+  finally'sinin son try'ı `youtube_kota.kosu_sonu()` — kapak telafisi + Studio Telegram
+  bildirimi + kota satırı; kotaya düşen adımlar artık "günlerce sessizce durma" desenine
+  düşmüyor (kapak telafisi sıfırlanmadan sonra en fazla `KAPAK_TELAFI_GUNLUK` tane API
+  ister, `yeterli_mi(50)` her denemede bakılır). Zamanlanmış tarayıcı otomasyonu YOK
+  (YouTube ToS otomatik erişim yasağı); Studio işleri kullanıcı istediğinde Claude
+  Code'dan Chrome ile yapılır.
 - **YouTube Studio PLANLI yükleme — `upload/youtube_studio.py`** (2026-09-13, kullanıcı kararı:
   "YouTube'da bu ve buna benzer bekleme durumlarında Chrome Studio'dan sıra bekletme yap").
   **Akış:** tempo tabanı yüzünden bekleyen, render'ı hazır şarkı Studio web'den ŞİMDİ yüklenir,

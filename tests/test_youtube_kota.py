@@ -417,10 +417,6 @@ def _auto_process_son_try():
     return kaynak, dis_try.finalbody[-1]
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "2026-09-13: auto_process.py'nin son try'ını youtube_kota.kosu_sonu'na çevirmek "
-    "(kapak telafisi + Studio Telegram bildirimi) izin sınıflandırıcısınca reddedildi "
-    "(paylaşılan dosya). Bağlanınca bu test XPASS ile KIRMIZIYA döner — işareti kaldır."))
 def test_auto_process_kosu_sonu_bagli():
     _, son = _auto_process_son_try()
     assert "kosu_sonu" in ast.unparse(son)
