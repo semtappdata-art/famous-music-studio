@@ -87,3 +87,25 @@ Bu yöntem kilitli (henüz indirilmemiş) parçalarda da çalışır, çünkü S
 parçaları da çaldırıyor — dinlemeden satın aldırmıyor. 2026-09-12 doğrulaması
 kilidi açılmış iki parça üzerinde yapıldı; çalma yolu kilit durumundan bağımsız
 olduğu için sonuç taşınır, ama kilitli bir çift üzerinde henüz sınanmadı.
+
+## 2026-09-13 — Sabah Senin yeniden üretimi (yeni sözler)
+
+- Model v6 (Weirdness 40, Style Influence 75, Variety Normal), 1 üretim, kredisiz kampanya; indirme 25 -> 24.
+- **Setinterval yöntemi gizli sekmede GEÇERSİZ çıktı** (B'de 14 sn'de 15 örnek). Ölçüm, sesin
+  iş parçacığında çalışan `ScriptProcessor` toplayıcısıyla (blok ≈43 ms, gain 0) iki varyanta da
+  aynı yöntemle yeniden yapıldı. Ölçmeden önce oynatma çubuğundaki clip id ve süre doğrulandı —
+  bir denemede yanlış satıra tıklanıp eski clip çaldı; o çalma ölçüme girmedi.
+
+| Ölçüt | A `49e09f77-09f6-4008-a68d-98f048b67c87` | B `7a77e7b9-410b-4c90-ac2a-d6d0fc7d9d78` |
+|---|---|---|
+| Süre | 166,6 sn | 193,6 sn |
+| İlk ses | 0 sn | 0,17 sn |
+| Merkez/yan ortanca / tepe | **4,18 / 11,74** | 3,46 / 6,37 |
+| Örnek tepe / kırpılan blok | −1,9 dBFS / 0 | −1,2 dBFS / 0 |
+| Sönme başı / kuyruk / son sessizlik | 164,25 / 2,39 / 0,39 sn | 191,5 / 2,10 / 0,85 sn |
+| Son tepe oranı | 0,004 | 0 |
+
+**Seçilen: A.** Vokal belirgin biçimde daha önde (ortanca +%21, tepe +%84), daha geniş tepe payı.
+İkisi de kırpılmasız, doğal kapanış, hedef süre içinde. **Kulakla kontrol yapılamadı** (nakarat
+okunuşu, telaffuz, son nakaratta gitar/vokal dengesi, son 5 sn) — elle dinlenmeli.
+İndirilen WAV: 166,64 sn, 48 kHz, stereo, 16 bit; −15,3 LUFS, TP −4,3 dBTP, LRA 7,2 LU.

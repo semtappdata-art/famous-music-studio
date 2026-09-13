@@ -132,3 +132,13 @@ Küllerimden Geç; bkz. CLAUDE.md "Açık/bilinen boşluklar").
 > bir tutarlılık uyarısı HENÜZ YOK — öneri rapor edildi, koda eklenmedi. Bunu
 > okuyan kişi/ajan: tabloyu `ls projects/` çıktısıyla karşılaştırmadan tam
 > güvenme.
+
+## 2026-09-13 — Sabah Senin yeniden üretildi
+
+Yeni sözlerle (söz yazarı ajanı) v6'da yeniden üretildi; eski ses `audio_eski_2026-09-13_varyantA.wav`
+olarak arşivlendi. Tarz aynı: rock (Turkish alternative rock ballad), 78 BPM, smoky husky
+low-register kadın vokal, düet değil. Seçilen clip `49e09f77-09f6-4008-a68d-98f048b67c87` (2:47;
+eski take 4:32). Stil tarifine eklenenler: soğuk açılış, `clear upfront Turkish lead vocal,
+punchy live drums, smooth controlled highs, concise radio-length arrangement`; Exclude
+`male vocals, autotune, electronic drums`. Önceki tarifte tutan (soğuk açılış, vokal önde, güçlü
+kapanış) korundu; tutmayan süreydi (4:32) — bu kez 2:47 / 3:14. Ölçüm ve seçim: `suno_ab_secimi.md`.
