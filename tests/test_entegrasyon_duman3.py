@@ -532,7 +532,8 @@ def test_kontrol_et_tum_adimlari_donduruyor_ve_gercek_gorev_tanimi_bozuk(
 
     assert set(sonuc) == {"instagram_token", "netlify", "gorev_tanimlari",
                           "ses_takibi", "git_senkron", "yayin_durgunlugu",
-                          "uretim_kuyrugu", "youtube_gizlilik", "kacan_kosu"}
+                          "uretim_kuyrugu", "youtube_gizlilik", "elle_islemler",
+                          "kacan_kosu"}
     # Yedinci adım: taze damga -> sessiz (yanlış alarm yok).
     assert sonuc["yayin_durgunlugu"]["durum"] == "tamam"
     # SEKİZİNCİ ADIM (2026-09-12, uretim_kuyrugu_bos) yedincinin

@@ -40,7 +40,7 @@ Yani "sessiz duruşu yakalamak için yazılmış ama kendisi çalışmayan korum
 bugün bulunan desenin en saf hali. Bu modül hepsini saatlik hatta bağlıyor.
 
 ADIM SAYISI BURADA SAYILMIYOR — tek kanonik liste `kontrol_et()`'in döndürdüğü
-sözlüktür (2026-09-12 itibarıyla SEKİZ adım). Yukarıdaki numaralı madde listesi
+sözlüktür (2026-09-13 itibarıyla ON adım; onuncusu `elle_islemler_defteri`). Yukarıdaki numaralı madde listesi
 bir TARİHÇE, bir envanter değil: adımların NEDEN var olduğunu anlatıyor ve
 bilerek eksik. Bu ayrım yazıldı çünkü metnin içinde "üç adım" / "dört adım"
 diye donup kalmış sayılar vardı ve yeni adım ekleyen kişi bağlantıyı doğru
@@ -1844,6 +1844,33 @@ def youtube_gizlilik_kaymasi(log=print) -> dict:
     return s
 
 
+def elle_islemler_defteri(log=print) -> dict:
+    """ONUNCU ADIM (2026-09-13): `elle_islemler.jsonl`de bozuk satır var mı.
+
+    Defter (`elle_islem.py`) bozuk satırı ATLAYARAK okuyor — okuma çökmesin
+    diye doğru, ama atlanan kayıt günlük rapordan, haftalık özetten ve panodan
+    SESSİZCE düşer. Bu adım o sessizliği kapatıyor: her koşuda log UYARI,
+    telefona günde en fazla bir bildirim. Ağ yok, defteri ve state'i DEĞİŞTİRMEZ.
+    Defter hiç yoksa (henüz kayıt yok) "yok" döner ve susar.
+    """
+    try:
+        import elle_islem
+        s = elle_islem.saglik_durumu()
+    except Exception as e:                                   # noqa: BLE001
+        log("  Elle işlemler defteri kontrol edilemedi: %s" % str(e)[:150])
+        return {"durum": "calistirilamadi", "hata": str(e)[:120]}
+    if s.get("durum") != "bozuk":
+        return s
+    ornek = "; ".join("satır %d: %s" % (b["satir"], b["hata"]) for b in s["bozuk"][:3])
+    mesaj = ("elle_islemler.jsonl içinde %d bozuk satır var; okuma onları atlıyor, yani "
+             "raporlar ve pano o kayıtları GÖRMÜYOR. Satırı elle düzelt. %s"
+             % (s.get("bozuk_sayisi", len(s["bozuk"])), ornek))
+    log("  UYARI " + mesaj)
+    s["bildirildi"] = _bildir("Elle işlemler defteri bozuk", mesaj,
+                              "elle_islem_defter_bildirim_gun")
+    return s
+
+
 def kontrol_et(log=print) -> dict:
     return {
         "instagram_token": instagram_token_suresi(log),
@@ -1890,6 +1917,10 @@ def kontrol_et(log=print) -> dict:
         # cekilmisti ve 4 gun gorunmedi. Ag yok, yalniz state okur (olcumu
         # youtube_stats.get_stats_batch yapiyor). SIRA: kacan_kosu'dan ONCE.
         "youtube_gizlilik": youtube_gizlilik_kaymasi(log),
+        # ONUNCU ADIM (2026-09-13). Elle islemler defteri (elle_islem.py) bozuk
+        # satiri ATLAYARAK okuyor; atlanan kayit raporlardan ve panodan sessizce
+        # duser. Ag yok, yalniz defteri okur. SIRA: kacan_kosu'dan ONCE.
+        "elle_islemler": elle_islemler_defteri(log),
         # EN SONDA, bilerek: bu adim damgayi TAZELIYOR ("saatlik hattin sonuna
         # en son ne zaman ulasildi"). Yukaridaki adimlardan biri beklenmedik
         # bir sekilde patlarsa damga da atilmaz ve bir SONRAKI kosu bunu

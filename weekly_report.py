@@ -1127,15 +1127,52 @@ def _gunluk_metin(katalog: list, anlik_projeler: dict, t: float, limit=None) -> 
     return _cp1254_guvenli("\n".join(satirlar))
 
 
-def _gunluk_mesaji(katalog: list, anlik_projeler: dict, t: float) -> str:
+def _gunluk_mesaji(katalog: list, anlik_projeler: dict, t: float,
+                   tavan: int | None = None) -> str:
     """Sınırı aşarsa her bölümün EN AZ artan satırları "... ve N tane daha"ya
-    katlanır; başlık, bölüm toplamları ve GÜNÜN TOPLAMI HER ZAMAN kalır."""
+    katlanır; başlık, bölüm toplamları ve GÜNÜN TOPLAMI HER ZAMAN kalır.
+    `tavan` verilmezse MESAJ_TAVANI (elle işlemler bölümü yer ayırırken daha
+    küçük bir tavan geçer)."""
+    tavan = MESAJ_TAVANI if tavan is None else tavan
     metin = _gunluk_metin(katalog, anlik_projeler, t)
     limit = max(len(katalog), 1)
-    while len(metin) > MESAJ_TAVANI and limit > 1:
+    while len(metin) > tavan and limit > 1:
         limit -= max(1, limit // 10)
         metin = _gunluk_metin(katalog, anlik_projeler, t, limit)
-    return metin[:MESAJ_TAVANI]
+    return metin[:tavan]
+
+
+# ELLE İŞLEMLER (2026-09-13, kullanıcı isteği: "otomasyon verilerine elle
+# yapılan tüm işlemleri de dahil et"). Kaynak `elle_islem.py` defteri + otomatik
+# doğrulamanın işaretlediği TikTok yayınları ("elle yayınlandı (API ile
+# doğrulandı)"; o yol deftere YAZMAZ). SIFIR ağ isteği: defter ve state okunur.
+ELLE_ISLEM_TAVAN = 8
+
+
+def _elle_islem_bolumu(t: float, klasorler=None) -> str:
+    """Günlük mesajın SONUNA eklenecek bölüm; son 24 saatte kayıt yoksa "".
+
+    Hata yutulmaz — çağıran yakalayıp log'a yazar (bölümsüz rapor yine gider).
+    """
+    import elle_islem
+    oz = elle_islem.ozet(gun=1, simdi=t, proje_klasorleri=klasorler)
+    if not oz["toplam"]:
+        return ""
+    satirlar = ["Son 24 saatte elle yapılanlar (%d):" % oz["toplam"]]
+    satirlar.extend(elle_islem.ozet_satirlari(oz, tavan=ELLE_ISLEM_TAVAN))
+    if oz.get("bozuk_satir"):
+        satirlar.append("  (defterde %d bozuk satır atlandı)" % oz["bozuk_satir"])
+    return _cp1254_guvenli("\n".join(satirlar))
+
+
+def _elle_islem_haftalik_satiri(t: float) -> str:
+    """Haftalık özet satırı: son 7 günde elle yapılanların sayısı + platform kırılımı."""
+    import elle_islem
+    oz = elle_islem.ozet(gun=7, simdi=t)
+    if not oz["toplam"]:
+        return "Bu hafta elle yapılanlar: 0"
+    return "Bu hafta elle yapılanlar: %d (%s)" % (oz["toplam"],
+                                                  elle_islem.platform_kirilimi(oz))
 
 
 def _bayat_metni(katalog: list, t: float, son) -> str:
@@ -1193,6 +1230,20 @@ def gunluk_izlenme_raporu(log=print, zorla: bool = False,
         gonderildi = _bildir("Günlük izlenme raporu üretilemedi", _cp1254_guvenli(mesaj),
                              GUNLUK_HATA_ANAHTARI, bugun, yol)
         return {"durum": "hata", "hata": str(e)[:150], "bildirim": gonderildi}
+
+    # ELLE İŞLEMLER bölümü (2026-09-13): taze de bayat da olsa mesajın SONUNDA;
+    # son 24 saatte kayıt yoksa bölüm HİÇ görünmez. Patlarsa rapor bölümsüz gider.
+    try:
+        bolum = _elle_islem_bolumu(t, klasorler)
+    except Exception as e:
+        bolum = ""
+        log("  " + _cp1254_guvenli("Elle işlemler bölümü eklenemedi: %s" % str(e)[:150]))
+    if bolum:
+        tavan = max(MESAJ_TAVANI - len(bolum) - 2, 500)
+        if len(metin) > tavan:
+            metin = (_gunluk_mesaji(katalog, projeler, t, tavan) if tur == "taze"
+                     else metin[:tavan])
+        metin = metin + "\n\n" + bolum
 
     if not gonder:
         for satir in metin.split("\n"):
@@ -1334,6 +1385,12 @@ def _haftalik_satirlar(t: float, d: dict, saglik_fn=None) -> tuple:
             satirlar.append("  " + satir)
 
     satirlar.append(_saglik_satiri(saglik_fn))
+
+    # ELLE İŞLEMLER (2026-09-13): son 7 günün sayısı + platform kırılımı.
+    try:
+        satirlar.append(_elle_islem_haftalik_satiri(t))
+    except Exception as e:
+        satirlar.append("Bu hafta elle yapılanlar: okunamadı (%s)" % str(e)[:60])
 
     satirlar.append("SENİN İŞİN:")
     try:

@@ -156,8 +156,30 @@ def onayla(sorgu: str, zaman: str = None) -> tuple:
         return 2, "İŞARETLENMEDİ: %s" % e
     if not yazildi:
         return 0, "ZATEN İŞARETLİ: %s" % mesaj
+    _deftere_yaz(proje, ad, kod, damga)
     return 0, "TAMAM: '%s' (%s) TikTok'ta yayınlandı olarak işaretlendi — %s." % (
         ad, kod, damga)
+
+
+def _deftere_yaz(proje: str, ad: str, kod, damga: str) -> None:
+    """Başarılı işareti elle işlemler defterine de yazar (kaynak=telegram).
+
+    State'i YUKARIDA `isaretle_yayinlandi` yazdı; defter yalnız kayıt tutar
+    (`state_yansit=False`). Defter yazımı ne sebeple patlarsa patlasın onay
+    DÜŞMEZ: işaret zaten diske indi, kullanıcıya TAMAM gider; sorun yalnız
+    stderr'e bir UYARI satırı olarak düşer (stdout Hermes'e giden yanıttır).
+    """
+    try:
+        import elle_islem
+        elle_islem.ekle(
+            "tiktok", "yayinladi",
+            "Telegram onayı: '%s' (%s) TikTok'ta yayınlandı" % (ad, kod or "kod yok"),
+            proje=os.path.basename(os.path.abspath(proje)), zaman=damga,
+            kaynak="telegram", kanit=kod or None, state_yansit=False,
+            state_etkisi="tiktok_published_at, tiktok_published_kaynak")
+    except Exception as e:                                   # noqa: BLE001
+        print("UYARI: elle işlemler defterine yazılamadı (%s: %s) — onay geçerli."
+              % (type(e).__name__, str(e)[:150]), file=sys.stderr)
 
 
 def main(argv=None) -> int:

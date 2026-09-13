@@ -631,7 +631,7 @@ def next_golden_publish_time(now: datetime | None = None) -> datetime | None:
 # bitmeden gerçek Telegram mesajı gitmesin diye. İKİ KAPI okuyor (tek sabit):
 # auto_process._tiktok_kit_sirasi() modülü hiç çağırmaz; kit_gonder_sirasi() da
 # ayrıca kontrol eder (modül başka yoldan çağrılırsa diye).
-TIKTOK_KIT_AKTIF = False
+TIKTOK_KIT_AKTIF = True
 TIKTOK_KIT_GUNLUK_TAVAN = 1        # TR takvim günü başına en fazla kit
 TIKTOK_KIT_HAFTALIK_TAVAN = 4      # son 7 gün (kayan) içinde en fazla kit
 TIKTOK_KIT_ARALIK_SAAT = 36        # iki kit arası en az (saat)
