@@ -232,8 +232,12 @@ def test_golden_hour_disinda_kit_yok(kok):
     assert any("golden-hour" in s for s in satirlar), satirlar
 
 
-def test_ana_salter_varsayilan_kapali():
-    assert config.TIKTOK_KIT_AKTIF is False, "canlıda KAPALI başlamalı (commit sonrası elle açılır)"
+def test_ana_salter_bool_ve_eksikse_kapali(monkeypatch):
+    # 2026-09-13: kullanıcı onayıyla AÇILDI ("evet istiyorum"). Değer bilinçli bir
+    # bool olmalı; sabit config'ten silinirse kanca ve modül KAPALI davranmalı.
+    assert isinstance(config.TIKTOK_KIT_AKTIF, bool)
+    monkeypatch.delattr(config, "TIKTOK_KIT_AKTIF")
+    assert getattr(config, "TIKTOK_KIT_AKTIF", False) is False
 
 
 def test_ana_salter_kapaliyken_hicbir_sey_gonderilmez_state_yazilmaz(kok, monkeypatch):

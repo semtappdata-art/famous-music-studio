@@ -54,7 +54,7 @@ audio.wav → generate_cover.py (eksikse cover/art üretir)
   bir JSON bırakıyordu — `uyumluluk._durum()` sertleştikten sonra bunun bedeli "boru hattı
   tamamen durur"a çıktı. state.json'ı elle yazan YENİ kod ekleme, bu modülü kullan.
 - `dj_tarama_kontrol.py` — DJ setleri + derlemeler için Content ID karantinası (aşağıya bkz.)
-- `saglik_kontrol.py` — sessiz duruşları yakalar; 2026-09-12 itibarıyla DOKUZ adım
+- `saglik_kontrol.py` — sessiz duruşları yakalar; 2026-09-13 itibarıyla ON adım
   (aşağıda "Testler ve otomatik sağlık izleme"); saatlik koşudan, bildirimler günde bir
 - `gorev_sarmalayici.py` — üç Görev Zamanlayıcı görevinin de GERÇEK giriş noktası
   (`pythonw.exe gorev_sarmalayici.py <betik>.py`). Bir görev çalışmadığında bakılacak İLK
@@ -1137,13 +1137,19 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   makine tamamen kapalıysa zaten hiçbir yerel script bir şey gönderemez, bu harici
   altyapısı olmayan bir kişisel otomasyonun doğal sınırı.
 
-- **`saglik_kontrol.kontrol_et()` artık DOKUZ adım** (2026-09-12). Hepsi
+- **`saglik_kontrol.kontrol_et()` artık ON adım** (2026-09-13; dokuzu 2026-09-12). Hepsi
   `auto_process.main()`'in `finally` bloğundan; YENİ zamanlayıcı görevi EKLENMEDİ.
   Dördü eski (Instagram token süresi · Netlify kimlik bilgisi · Görev Zamanlayıcı görev
-  TANIMI · ses/tarz takibi tutarlılığı), beşi bugün eklendi — beşi de "önceki adımların
-  göremediği kör nokta" olduğu için var. (Bu satır gün içinde iki kez BAYATLADI: önce
-  "yedi" yazılıp sekizinci adım anlatılmadan eklendi. Yeni adım eklerken sayıyı VE
-  aşağıdaki listeyi birlikte güncelle.)
+  TANIMI · ses/tarz takibi tutarlılığı), beşi 2026-09-12'de, onuncusu 2026-09-13'te
+  eklendi — hepsi "önceki adımların göremediği kör nokta" olduğu için var. (Bu satır gün
+  içinde iki kez BAYATLADI: önce "yedi" yazılıp sekizinci adım anlatılmadan eklendi. Yeni
+  adım eklerken sayıyı VE aşağıdaki listeyi VE `tests/test_entegrasyon_duman3.py`'deki
+  adım kümesini birlikte güncelle.)
+  - **`elle_islemler_defteri()` — ONUNCU adım, eşik yok.** `elle_islemler.jsonl` bozuk
+    satırı atlayarak okunuyor; atlanan kayıt günlük/haftalık rapordan ve panodan sessizce
+    düşerdi. Bozuk satır varsa her koşuda log UYARI + günde bir bildirim; defter yoksa
+    susar. Ağ yok, defteri değiştirmez. SIRA: `kacan_kosu`'dan önce. Ayrıntı: "Elle
+    işlemler defteri" maddesi.
   - **`kacan_kosu()` — eşik 4 saat.** Diğer adımların hepsi "koşu gerçekleşti"
     VARSAYIMININ üstüne kurulu; koşu hiç tetiklenmezse hiçbiri çalışmaz ve log'a TEK SATIR
     bile düşmez (kaçan koşunun tanımı bu: geriye hiçbir iz BIRAKMAZ). Ölçüt log DEĞİL kendi
@@ -1243,6 +1249,39 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   GİRMEZ; gerçek gizlilik (`*_privacy_gercek`) istenenin önüne geçer. Gün damgası ve
   anlık görüntü YALNIZ başarılı gönderimde. Elle: `python weekly_report.py --gunluk`
   (göndermez, yazmaz). Testler: `tests/test_gunluk_izlenme.py`.
+- **Elle işlemler defteri — `elle_islem.py` + `elle_islemler.jsonl`** (2026-09-13, kullanıcı
+  isteği: "otomasyon verilerine elle yapılan tüm işlemleri de dahil et"). **KURAL: elle bir iş
+  yaptıysan (tarayıcıdan Studio, TikTok Studio web...) ya da kullanıcı elle bir iş yaptığını
+  söylediyse DEFTERE YAZ** — yazılmayan elle iş raporlarda, panoda ve sesli asistanda YOKTUR.
+  Biçim (pano ve Hermes aynı sözleşmeyi okuyor, DEĞİŞTİRME): repo kökünde UTF-8 JSONL, satır
+  başına `id` (`EI-YYYYMMDD-HHMMSS-xxxx`), `zaman` (işlemin anı, `+03:00`), `zaman_yaklasik`,
+  `kayit_zamani`, `platform` (youtube|youtube_shorts|tiktok|instagram|facebook|telegram|bluesky|
+  suno|site|diger), `proje` (klasör adı|null), `islem` (modüldeki sabit `ISLEMLER` sözlüğü),
+  `ayrinti`, `kaynak` (telegram|pano|claude|backfill|cli), `kanit`, `state_etkisi`. Yazım kilit
+  altında TEK `os.write` (O_APPEND); `(platform, proje, islem, zaman ±10 dk)` tekrarı yazılmaz.
+  CLI: `python elle_islem.py ekle --platform instagram --proje "Küllerimden Geç" --islem
+  arsivledi --ayrinti "..." [--zaman 2026-09-13T14:30] [--yaklasik] [--kaynak claude]`;
+  `listele --gun 7 [--json]`; `ozet --gun 1 [--json]`; `sozluk`; `backfill` (KURU) /
+  `backfill --uygula` (yalnız DEFTERE yazar, state'e asla; kaynaklar salt okunur).
+  **State eşlemeleri — yalnız bu ikisi:** (1) `tiktok`+`yayinladi` → MEVCUT
+  `tiktok_publish_plan.isaretle_yayinlandi(kaynak=...)`; `build_plan` `hazir=False` ise RED,
+  ne state ne defter yazılır; taslak kaydı (`tiktok_publish_id`) yoksa yalnız defter.
+  (2) `youtube`/`youtube_shorts` + `gizlilik_degistirdi`/`liste_disi_yapti` →
+  `<onek>_elle_gizlilik_notu` NOT alanı (`deger`, `zaman`, `kayit_id`...); `*_privacy` ve
+  `*_privacy_gercek` YAZILMAZ (beyan ölçüm değildir; kayma dedektörü ölçüme bakmaya devam
+  eder). Diğer her işlem yalnız defterde. Telegram onayı (`tiktok_yayin_onayi`) başarılı
+  işarette `kaynak=telegram` satırı yazar; defter hatası onayı DÜŞÜRMEZ (stderr UYARI).
+  Otomatik doğrulama (`tiktok_yayin_dogrulama`, PUBLISH_COMPLETE) deftere YAZMAZ ama
+  özetlerde "elle yayınlandı (API ile doğrulandı)" diye görünür. Okuyanlar: günlük izlenme
+  mesajının sonunda "Son 24 saatte elle yapılanlar" (boşsa bölüm YOK, en fazla 8 satır +
+  "+N daha"), haftalık özette "Bu hafta elle yapılanlar: N (platform kırılımı)", sağlık
+  kontrolünün onuncu adımı (bozuk satır → UYARI). Hermes becerisi:
+  `.hermes/skills/elle-islem-kaydi/SKILL.md` (onay özeti gösterip tek `ekle` komutu).
+  **Test koruması:** `PYTEST_CURRENT_TEST` ortamında gerçek deftere yazma REDDEDİLİR ve gerçek
+  defter boş okunur; testler `ELLE_ISLEMLER_DEFTERI` ortam değişkeniyle ya da `yol=` ile
+  geçici dosya verir. ÜÇ SORU: yazan insan/asistan/Hermes/Telegram onayı (zamanlayıcı YOK,
+  olgunun kaynağı insan); okuyan saatlik `auto_process.main()` finally → `weekly_report` +
+  `saglik_kontrol`; çalışmadığı bozuk satır UYARISI ve `tests/test_elle_islem.py` ile görünür.
 
 ## TARİHLİ RANDEVU — 2026-10-09: ölçüm penceresi
 
