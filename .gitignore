@@ -25,6 +25,12 @@ stock_art_config.json
 *.bak.*
 
 # Render çıktıları ve büyük binary dosyalar
+# Yeniden üretilebilir eski sürüm arşivleri (ör. _eski_2026-09-13/, audio_eski_*):
+# ~48MB eski mp4/wav çöpü git'e giriyordu; hepsi klasördeki taze render ile değişti.
+projects/*/_eski_*/
+dj_sets/*/_eski_*/
+projects/*/audio_eski_*
+projects/*/audio_eski_*.*
 projects/*/output/
 projects/*/audio.wav
 projects/*/audio.mp3
