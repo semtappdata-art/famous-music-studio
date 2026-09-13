@@ -2,8 +2,6 @@
 
 Suno'nun Lyrics kutusuna aynen yapıştırılabilir.
 
-**Denetim notu (2026-09-13):** Ses değişmediği için sözler yeniden yazılmadı. Yalnız "Temiz Sözler" bloğunda iki soru cümlesine soru işareti eklendi; söylenen kelimeler aynı. Eski hâl: `bu_gece_kazandik_sozler_eski_2026-09-13.md`.
-
 > Yeni bir şarkı prompt'u yazmadan önce `ses_ve_tarz_takibi.md`'ye bak —
 > vokal cinsiyeti/dokusu art arda tekrarlanmasın.
 
@@ -102,7 +100,7 @@ Bu zaferi kimse elimizden bir daha alamayacak.
 (1. Erkek) Uzun kışlardan sonra ilk defa gülüyorum
 Bir kıvılcım düşmüş gibi göğsümün ortasında
 Kaç kere yenildiysem de bu gece hesap kapandı
-Sen mi geldin yoksa ben mi yeniden başladım?
+Sen mi geldin yoksa ben mi yeniden başladım
 
 (2. Erkek) Yıllardır ilk kez kimseye hesap vermiyorum
 Işıklar üstümde dönsün, kalbim de öyle dönsün
@@ -117,7 +115,7 @@ Her adımda çoğalıyor bu şehir, bu şarkı, biz
 Düşe düşe öğrendik ayakta durmanın yolunu
 Bu gece kazandık, bitmedi, daha yolun başındayız
 
-(1. Erkek) Belki geç kaldık biraz ama zamanı kim tutar ki?
+(1. Erkek) Belki geç kaldık biraz ama zamanı kim tutar ki
 Şimdi burdayız işte, başka bir şey istemem
 
 (2. Erkek) Trampetler dinmeden, ışıklar sönmeden

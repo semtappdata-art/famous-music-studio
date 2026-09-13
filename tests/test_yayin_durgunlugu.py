@@ -360,7 +360,7 @@ def test_fonksiyondaki_tum_metin_sabitleri_cp1254_uyumlu():
 
 # --- Sürüklenme muhafızları (kopyalanan değerler) -------------------------
 
-def test_ana_platform_anahtarlari_is_fully_done_ile_AYNI(tmp_path):
+def test_ana_platform_anahtarlari_is_fully_done_ile_AYNI(tmp_path, monkeypatch):
     """`_is_fully_done()` KOPYALANMADI; eşdeğerliği DAVRANIŞLA kanıtlanıyor.
 
     `auto_process` üretim kodundan import EDİLMİYOR (yan etkili, ağır ve ters
@@ -370,22 +370,27 @@ def test_ana_platform_anahtarlari_is_fully_done_ile_AYNI(tmp_path):
     üretir.
     """
     import auto_process as ap
+    import config
 
-    tam = tmp_path / "tam"
-    tam.mkdir()
-    (tam / "state.json").write_text(
-        json.dumps({k: "x" for k in SK.ANA_PLATFORM_ANAHTARLARI}), encoding="utf-8")
-    assert ap._is_fully_done(str(tam)) is True, (
-        "saglik_kontrol'ün dörtlüsü _is_fully_done'ı tatmin etmiyor")
+    # 2026-09-13: küme config.TIKTOK_AKIS'e duyarlı (TikTok web planlama) — İKİ modda da aynı.
+    for mod in ("api_taslak", "web_planla"):
+        monkeypatch.setattr(config, "TIKTOK_AKIS", mod)
+        kume = SK.ana_platform_anahtarlari()
+        tam = tmp_path / ("tam_" + mod)
+        tam.mkdir()
+        (tam / "state.json").write_text(
+            json.dumps({k: "x" for k in kume}), encoding="utf-8")
+        assert ap._is_fully_done(str(tam)) is True, (
+            "saglik_kontrol'ün kümesi _is_fully_done'ı tatmin etmiyor (%s)" % mod)
 
-    for eksik in SK.ANA_PLATFORM_ANAHTARLARI:
-        d = tmp_path / ("eksik_" + eksik)
-        d.mkdir()
-        (d / "state.json").write_text(
-            json.dumps({k: "x" for k in SK.ANA_PLATFORM_ANAHTARLARI if k != eksik}),
-            encoding="utf-8")
-        assert ap._is_fully_done(str(d)) is False, (
-            "%s eksikken _is_fully_done True diyor — kümeler ayrışmış" % eksik)
+        for eksik in kume:
+            d = tmp_path / ("eksik_%s_%s" % (mod, eksik))
+            d.mkdir()
+            (d / "state.json").write_text(
+                json.dumps({k: "x" for k in kume if k != eksik}),
+                encoding="utf-8")
+            assert ap._is_fully_done(str(d)) is False, (
+                "%s eksikken _is_fully_done True diyor — kümeler ayrışmış (%s)" % (eksik, mod))
 
 
 def test_esik_52_saatlik_yayin_tabaniyla_iliskili():

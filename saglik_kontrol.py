@@ -1105,6 +1105,20 @@ ANA_PLATFORM_ANAHTARLARI = (
     "instagram_media_id",
 )
 
+
+def ana_platform_anahtarlari() -> tuple:
+    """`auto_process._is_fully_done` ile AYNI mod-duyarlı küme (2026-09-13): TikTok web
+    planlama modunda (`config.TIKTOK_AKIS`) TikTok anahtarı şart değil — aksi hâlde her yeni
+    proje "bekleyen" sayılır ve `yayin_durgunlugu` yanlış alarm verirdi. config okunamazsa
+    dörtlü. Eşdeğerlik: tests/test_yayin_durgunlugu.py, tests/test_tiktok_web.py."""
+    try:
+        import config
+        if config.tiktok_web_modu():
+            return tuple(k for k in ANA_PLATFORM_ANAHTARLARI if k != "tiktok_publish_id")
+    except Exception:                                        # noqa: BLE001
+        pass
+    return ANA_PLATFORM_ANAHTARLARI
+
 # SES DOSYASI ŞARTI — bu kontrolün en önemli yanlış-alarm koruması.
 # `uyumluluk.proje_klasorleri()` TEK SEVİYE tarıyor ve gördüğü her klasörü
 # döndürüyor; bunların hepsi proje DEĞİL. Diskte bugün somut örnek var:
@@ -1188,7 +1202,7 @@ def _yayin_taramasi() -> dict:
         state = _proje_state(yol)
         ad = os.path.basename(yol)
 
-        if any(k not in state for k in ANA_PLATFORM_ANAHTARLARI):
+        if any(k not in state for k in ana_platform_anahtarlari()):
             bekleyen.append(ad)
 
         for anahtar, deger in state.items():

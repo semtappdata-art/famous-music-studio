@@ -253,13 +253,12 @@ def find_pending_sets(base: str) -> list:
             log(f"  meta.json yok — bekleyen sayılmadı, yayına girmiyor: {project_dir}")
             continue
         state = _load_state(project_dir)
-        fully_done = all(
-            key in state
-            for key in (
-                "youtube_video_id", "youtube_shorts_video_id",
-                "tiktok_publish_id", "instagram_media_id",
-            )
-        )
+        # TikTok web planlama modunda (config.TIKTOK_AKIS) TikTok API taslağı ana hattın
+        # işi değil — auto_process._is_fully_done ile aynı (tiktok_web.py, kalıp B).
+        anahtarlar = ["youtube_video_id", "youtube_shorts_video_id", "instagram_media_id"]
+        if not config.tiktok_web_modu():
+            anahtarlar.append("tiktok_publish_id")
+        fully_done = all(key in state for key in anahtarlar)
         if not fully_done:
             pending.append(project_dir)
     pending.sort(key=lambda p: (os.path.getctime(p), p))
@@ -667,6 +666,9 @@ def process_set(project_dir: str, privacy: str, schedule: bool) -> None:
 
     if "tiktok_publish_id" in state:
         log("  TikTok: zaten yüklü, atlanıyor")
+    elif config.tiktok_web_modu():
+        log("  TikTok: web planlama modu (config.TIKTOK_AKIS) — API taslağı yüklenmedi; "
+            "plan: python upload/tiktok_web.py plan-oner")
     elif os.path.isfile(os.path.join(upload_dir, "tiktok_token.json")):
         try:
             from tiktok_upload import upload_video as tt_upload

@@ -642,6 +642,26 @@ TIKTOK_KIT_HATIRLATMA_SAAT = 48    # onaysız kit için TEK hatırlatma eşiği 
 # bir tazeleniyor; 72 saat bu döngüye bir gün pay bırakıyor.
 TIKTOK_KIT_DURUM_TAZELIK_SAAT = 72
 
+# --- TikTok AKIŞI (kullanıcı kararı 2026-09-13): "TikTok'ta tüm işlemleri web'den yap" ---
+# "web_planla": Claude, KULLANICI İSTEDİĞİNDE TikTok Studio web'e yükler ve yerleşik "Planla"
+#   ile ileri bir an seçer; yayını TikTok yapar (upload/tiktok_web.py). Bu modda
+#   auto_process yeni projeye API taslağı YÜKLEMEZ ve `_is_fully_done` TikTok anahtarını
+#   şart koşmaz (TikTok işi tiktok_web'in bekleyen listesinde, kalıp B).
+# "api_taslak": eski yol (inbox taslağı + kit). GERİ ALMAK = bu tek satır.
+# Tanınmayan değer web gibi davranır (fail-closed: istenmeyen API yüklemesi yok).
+TIKTOK_AKIS = "web_planla"
+# TikTok Studio "Planla" en uzak tarih — DOĞRULANMADI, tarayıcı ajanı ekranda görecek.
+TIKTOK_WEB_PLANLA_MAX_GUN = 10
+# Öneri en az bu kadar ileride (yükleme + TikTok'un asgari planlama payı için).
+TIKTOK_WEB_PLANLA_MIN_DAKIKA = 60
+# Planlanan anı geçmiş, onaylanmamış web gönderisi için günde en fazla 1 "TikTok'ta çıktı mı?"
+TIKTOK_WEB_KONTROL_HATIRLATMA = True
+
+
+def tiktok_web_modu() -> bool:
+    """TikTok web planlama modu mu? Yalnız açıkça "api_taslak" eski yolu seçer."""
+    return globals().get("TIKTOK_AKIS") != "api_taslak"
+
 # TikTok'ta AI BEYANI NEREDE:
 #   "etiket"          = uygulamadaki "Yapay zekayla üretilen içerik" anahtarı AÇIK
 #                       (kitin ayar listesinde),

@@ -29,6 +29,7 @@ from tiktok_auth import get_access_token
 from social_text import build_caption, build_youtube_comment, resolve_language
 # Kok listesi TEK kaynaktan: bkz. uyumluluk.KOK_ADLARI'nin uzerindeki not.
 from uyumluluk import proje_klasorleri
+from tiktok_web import web_aktif
 
 API_BASE = "https://open.tiktokapis.com/v2"
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
@@ -318,6 +319,10 @@ def notify_pending_publish(project_dir: str) -> bool:
     with open(state_path, "r", encoding="utf-8") as f:
         state = json.load(f)
     if not state.get("tiktok_publish_id") or state.get("tiktok_notified"):
+        return False
+    if web_aktif(state):
+        # WEB PLANLI (tiktok_web.py, 2026-09-13): gönderiyi TikTok Studio yayınlayacak;
+        # eski taslak için "uygulamadan yayınla" demek ÇİFT GÖNDERİ davetidir.
         return False
     if state.get("tiktok_hatirlatma") == "kit":
         # Yeni yüklemenin hatırlatması YAYIN KİTİ (bkz. upload_video). Düz metin

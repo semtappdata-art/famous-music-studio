@@ -1178,6 +1178,14 @@ def _turev_bolumu(t: float, klasorler=None) -> str:
     return _cp1254_guvenli("\n".join(["Bugün/yarın türev (%d):" % adet] + satirlar))
 
 
+def _tiktok_web_bolumu(t: float, klasorler=None) -> str:
+    """Günlük mesajdaki "TikTok planlı: <proje> <an>" satırları (upload/tiktok_web.py,
+    salt okuma); planlı gönderi yoksa "". Hata yutulmaz — çağıran log'a yazar."""
+    import tiktok_web
+    satirlar = tiktok_web.rapor_satirlari(simdi=t, klasorler=klasorler)
+    return _cp1254_guvenli("\n".join(satirlar)) if satirlar else ""
+
+
 def _elle_islem_haftalik_satiri(t: float) -> str:
     """Haftalık özet satırı: son 7 günde elle yapılanların sayısı + platform kırılımı."""
     import elle_islem
@@ -1267,6 +1275,15 @@ def gunluk_izlenme_raporu(log=print, zorla: bool = False,
         log("  " + _cp1254_guvenli("Türev bölümü eklenemedi: %s" % str(e)[:150]))
     if turev:
         metin = metin + "\n\n" + turev
+
+    # TIKTOK WEB PLANI (2026-09-13, tiktok_web.py): "TikTok planlı: <proje> <an>"; boşsa yok.
+    try:
+        tt_web = _tiktok_web_bolumu(t, klasorler)
+    except Exception as e:
+        tt_web = ""
+        log("  " + _cp1254_guvenli("TikTok web bölümü eklenemedi: %s" % str(e)[:150]))
+    if tt_web:
+        metin = metin + "\n\n" + tt_web
 
     if not gonder:
         for satir in metin.split("\n"):
