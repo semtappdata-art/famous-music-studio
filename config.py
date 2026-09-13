@@ -799,3 +799,11 @@ TUREV_HATIRLATMA_AKTIF = False
 TUREV_HATIRLATMA_GUNLUK_TAVAN = 1
 # `elle_islem.py ekle --islem yayinladi` bu kadar saat içindeki türev kaydıyla eşleşir.
 TUREV_ELLE_ESLESME_SAAT = 36
+
+# --- İNSAN EMEĞİ GÖNDERİLERİ (turev_takvimi.py kanal kayıtları; TikTok LIVE planı,
+# kullanıcı kararı 2026-09-13) ---
+# "Söz Defteri" / "Kulis": projeye bağlı olmayan, elle çekilen TikTok gönderileri.
+# Şarkı kesiti tavanlarına (TIKTOK_KIT_*, TUREV_GUNLUK_TAVAN) SAYILMAZ; kendi tavanı bu.
+TUREV_INSAN_EMEGI_HAFTALIK_TAVAN = 2      # TR takvim haftası (Pzt-Paz) başına
+TUREV_INSAN_EMEGI_KAYMA_GUN = 2           # çakışmada hedef günden en fazla N gün ileri (aynı hafta)
+TUREV_KANAL_TAKVIMI = "kanal_takvimi.json"  # repo kökü; kanal geneli kayıt yeri

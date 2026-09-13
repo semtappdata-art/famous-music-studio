@@ -47,6 +47,18 @@ CLI (varsayılan KURU):
     python turev_takvimi.py takvim --gun 7 [--json]
     python turev_takvimi.py sirada [--json]
     python turev_takvimi.py iptal TRV-sabah-senin-kulis [--sebep "..."]
+    python turev_takvimi.py plan --kanal soz_defteri --hedef 2026-09-15T20:30:00+03:00 \
+        --baslik "Söz Defteri #1 — Sabah Senin" [--ilgili-proje "Sabah Senin"] [--uygula]
+
+KANAL GENELİ İNSAN EMEĞİ GÖNDERİLERİ (TikTok LIVE planı, kullanıcı kararı 2026-09-13):
+  "Söz Defteri" / "Kulis" (TikTok, elle) projeye bağlı DEĞİL -> `kanal_takvimi.json`
+  (repo kökü, `config.TUREV_KANAL_TAKVIMI`). Kurallar: TR takvim haftasında en fazla
+  `TUREV_INSAN_EMEGI_HAFTALIK_TAVAN`; şarkı kesiti tavanlarına (TIKTOK_KIT_*,
+  TUREV_GUNLUK_TAVAN) SAYILMAZ; şarkı kesitiyle (türev kesiti, TikTok web planı/yayını/
+  kiti) AYNI GÜN yok; yeni yayın ±24 sa yok; golden-hour; aynı gün ikinci insan emeği yok.
+  Kesit ÖNCELİKLİ: gönderi en fazla `TUREV_INSAN_EMEGI_KAYMA_GUN` gün ileri kayar.
+  Takvimde `olaylar`a DEĞİL `kanal_gonderileri`ne girer: tiktok_web ve hatırlatma yalnız
+  `olaylar`ı okur, yani kesit tavanını yemez ve Telegram hatırlatması gitmez.
 """
 
 import argparse
@@ -155,6 +167,22 @@ TUR_TANIMLARI = {
              aciklama="Aynı kesit dosyası TikTok'a (koşullu)"),
     ],
 }
+
+# Kanal geneli İNSAN EMEĞİ gönderileri. Proje `kulis` türü (YouTube Posts) AYNEN kalır;
+# TikTok yüzeyi kanal türü olarak burada (projeye bağlanırsa her yeni şarkı bir gönderi
+# doğurur — kaçınılan şablon desen).
+KANAL_TUR_TANIMLARI = {
+    "soz_defteri": {"ad": "Söz Defteri", "platform": "tiktok",
+                    "aciklama": "Eller + defter + kendi sesin: eski dize -> neden değişti -> "
+                                "yeni dize (30-45 sn, yüz yok)"},
+    "kulis": {"ad": "Kulis", "platform": "tiktok",
+              "aciklama": "Ekran kaydı + eller + kendi sesin: bir seçim sürecinin hikâyesi"},
+}
+# İnsan emeği gönderisiyle AYNI GÜNE düşemeyen şarkı kesiti türev türleri.
+SARKI_KESIT_TURLERI = ("tiktok_ikinci_kesit", "dj_kesit", "sarki_youtube_kesit")
+KANAL_TAKVIMI_YOLU = os.path.join(_KOK, getattr(config, "TUREV_KANAL_TAKVIMI",
+                                                "kanal_takvimi.json"))
+GERCEK_KANAL_TAKVIMI_YOLU = KANAL_TAKVIMI_YOLU
 
 
 # --------------------------------------------------------------------------
@@ -597,7 +625,231 @@ def _cakisma(aday, kayit, proje, dolu, bantlar):
     return None
 
 
-def takvim(gun=7, simdi=None, klasorler=None):
+def _tiktok_kesit_anlari(st):
+    """Projenin TikTok şarkı kesiti anları (state, salt okuma): etkin web planı
+    (`tiktok_web.planlanan_an`), `tiktok_published_at`, gönderilmiş kit."""
+    anlar = []
+    w = st.get("tiktok_web")
+    if isinstance(w, dict) and w.get("durum") in ("planlandi", "yayinlandi"):
+        anlar.append(_ts(w.get("planlanan_an")))
+    anlar.append(_ts(st.get("tiktok_published_at")))
+    anlar.append(_ts(st.get("tiktok_kit_gonderildi_at")))
+    return [a for a in anlar if a is not None]
+
+
+def _hafta_bas(ts):
+    gun = _dt(ts).date()
+    return gun - datetime.timedelta(days=gun.weekday())
+
+
+def _kanal_yolu(yol=None):
+    return KANAL_TAKVIMI_YOLU if yol is None else yol
+
+
+def _kanal_testte_gercek(yol):
+    return bool(os.environ.get("PYTEST_CURRENT_TEST")) and (
+        os.path.normcase(os.path.abspath(yol))
+        == os.path.normcase(os.path.abspath(GERCEK_KANAL_TAKVIMI_YOLU)))
+
+
+def kanal_kayitlari(yol=None):
+    """([geçerli kayıtlar], bozuk sayısı, okunamadı_mı). Dosya yok -> ([], 0, False).
+
+    Test sırasında GERÇEK dosya OKUNMAZ: canlı takvim test sonuçlarına sızmasın."""
+    yol = _kanal_yolu(yol)
+    if _kanal_testte_gercek(yol):
+        return [], 0, False
+    veri = _json_oku(yol)
+    if veri is None or not isinstance(veri.get("gonderiler", []), list):
+        return [], 0, True
+    iyi, bozuk = [], 0
+    for k in veri.get("gonderiler", []):
+        if (not isinstance(k, dict) or not k.get("id") or k.get("durum") not in DURUMLAR
+                or k.get("tur") not in KANAL_TUR_TANIMLARI
+                or _ts(k.get("hedef_an")) is None or _ts(k.get("en_gec")) is None):
+            bozuk += 1
+            continue
+        iyi.append(k)
+    return iyi, bozuk, False
+
+
+def _kanal_olay(k, an, etkin, engel=None):
+    hedef = _ts(k.get("hedef_an"))
+    return {
+        "id": k["id"], "proje": "Kanal", "proje_yolu": None, "kok": "kanal",
+        "tur": k["tur"], "tur_adi": k.get("baslik") or k.get("tur_adi") or k["tur"],
+        "platform": k.get("platform"), "yuzey": True, "elle": True, "youtube_video": False,
+        "insan_emegi": True, "sarki_kesiti_tavanina_sayilir": False,
+        "ilgili_proje": k.get("ilgili_proje"), "paket": k.get("paket"),
+        "kosul": None, "risk": k.get("risk"), "durum": k.get("durum"),
+        "etkin": etkin, "an": _iso(an), "hedef_an": k.get("hedef_an"),
+        "en_gec": k.get("en_gec"), "t0": None, "engel": engel,
+        "kaydirma_saat": round((an - hedef) / SAAT, 1) if hedef is not None else None,
+        "hatirlatildi_at": k.get("hatirlatildi_at"),
+    }
+
+
+def _kanal_cakisma(aday, kesitler, insan, bantlar):
+    """İnsan emeği gönderisi `aday` anına konabilir mi? Engel metni ya da None.
+
+    `TUREV_GUNLUK_TAVAN` ve TikTok kesit tavanlarına BİLEREK bakılmaz (tavan dışı)."""
+    gun = _dt(aday).date()
+    if any(_dt(k).date() == gun for k in kesitler):
+        return "şarkı kesitiyle aynı gün"
+    bant = float(config.TUREV_YENI_YAYIN_BANDI_SAAT) * SAAT
+    if any(abs(aday - b[0]) < bant for b in bantlar):
+        return "yeni yayın bandı"
+    if any(_dt(i).date() == gun for i in insan):
+        return "aynı gün ikinci insan emeği gönderisi"
+    hafta = _hafta_bas(aday)
+    if sum(1 for i in insan if _hafta_bas(i) == hafta) >= int(
+            config.TUREV_INSAN_EMEGI_HAFTALIK_TAVAN):
+        return "haftalık insan emeği tavanı"
+    return None
+
+
+def _kanal_takvimi(t, bit, bantlar, kesitler, yol=None):
+    """(olaylar, düşenler, bozuk, okunamadı) — kanal geneli insan emeği gönderileri."""
+    kayitlar, bozuk, okunamadi = kanal_kayitlari(yol)
+    olaylar, dusen, insan, adaylar = [], [], [], []
+    for k in kayitlar:
+        durum = k["durum"]
+        if durum == "iptal":
+            continue
+        if durum in ("yayinlandi", "onay_bekliyor"):
+            an = ((_ts((k.get("yayin") or {}).get("an")) if durum == "yayinlandi" else None)
+                  or _ts(k["hedef_an"]))
+            insan.append(an)
+            if t - GUN_SN <= an < bit:
+                olaylar.append(_kanal_olay(k, an, durum))
+            continue
+        hedef, en_gec = _ts(k["hedef_an"]), _ts(k["en_gec"])
+        if en_gec < t:
+            if hedef < bit:
+                dusen.append(_kanal_olay(k, hedef, "suresi_doldu"))
+            continue
+        adaylar.append((hedef, k["id"], k, en_gec))
+    for hedef, _kid, k, en_gec in sorted(adaylar, key=lambda a: (a[0], a[1])):
+        bas, an = max(hedef, t), None
+        for wb, ws in _pencereler(bas):
+            if ws <= bas:
+                continue
+            aday = max(bas, wb)
+            if aday > en_gec:
+                break
+            if _kanal_cakisma(aday, kesitler, insan, bantlar):
+                continue
+            an = aday
+            break
+        if an is None:
+            if hedef < bit:
+                dusen.append(_kanal_olay(k, hedef, "iptal_cakisma"))
+            continue
+        insan.append(an)
+        if an < bit:
+            olaylar.append(_kanal_olay(k, an, "planli"))
+    return olaylar, dusen, bozuk, okunamadi
+
+
+def _kanal_en_gec(hedef):
+    gun = _dt(hedef).date()
+    son = gun + datetime.timedelta(days=int(config.TUREV_INSAN_EMEGI_KAYMA_GUN))
+    pazar = _hafta_bas(hedef) + datetime.timedelta(days=6)
+    return _gun_saat(min(son, pazar), 22)
+
+
+def _kanal_yaz(yol, degistir, simdi):
+    """Kanal takvimini oku -> değiştir -> atomik yaz. Testte GERÇEK dosyaya yazma reddedilir."""
+    if _kanal_testte_gercek(yol):
+        raise TurevHatasi("test sırasında GERÇEK kanal takvimine yazma reddedildi: %s" % yol)
+    veri = _json_oku(yol)                                  # yazmadan hemen önce TAZE oku
+    if veri is None or not isinstance(veri.get("gonderiler", []), list):
+        raise TurevHatasi("kanal takvimi okunamadı/bozuk: %s" % yol)
+    veri.setdefault("aciklama", "Kanal geneli insan emeği gönderileri (turev_takvimi.py "
+                                "plan --kanal). Elle düzenleme yerine CLI kullan.")
+    veri["surum"] = SURUM
+    liste = veri.setdefault("gonderiler", [])
+    degistir(liste)
+    gecici = yol + ".tmp"
+    with open(gecici, "w", encoding="utf-8") as f:
+        f.write(json.dumps(veri, ensure_ascii=False, indent=2) + "\n")
+    os.replace(gecici, yol)
+
+
+def kanal_plan(tur, hedef, baslik, ilgili_proje=None, paket=None, simdi=None, uygula=False,
+               yol=None):
+    """Kanal geneli insan emeği gönderisi kaydı. Varsayılan KURU.
+
+    Yazım anı kuralları: tür tanımlı; hedef gelecekte ve golden-hour içinde; aynı TR
+    haftasında iptal olmayan kayıt < `TUREV_INSAN_EMEGI_HAFTALIK_TAVAN`; aynı gün ikinci
+    kayıt yok. Kesit / yeni yayın çakışması DİNAMİK: `takvim` her okumada çözer.
+    Aynı id varsa hiçbir şey yazılmaz (mevcut ezilmez)."""
+    t = time.time() if simdi is None else simdi
+    yol = _kanal_yolu(yol)
+    if tur not in KANAL_TUR_TANIMLARI:
+        raise TurevHatasi("tanımsız kanal türü: %r (geçerli: %s)"
+                          % (tur, ", ".join(sorted(KANAL_TUR_TANIMLARI))))
+    h = hedef if isinstance(hedef, (int, float)) else _ts(hedef)
+    if h is None:
+        raise TurevHatasi("hedef an okunamadı: %r" % (hedef,))
+    if h < t:
+        raise TurevHatasi("hedef an geçmişte: %s" % _iso(h))
+    if not _golden_icinde(h):
+        raise TurevHatasi("hedef an golden-hour dışında: %s" % _iso(h))
+    if not (baslik or "").strip():
+        raise TurevHatasi("--baslik boş olamaz")
+    tanim = KANAL_TUR_TANIMLARI[tur]
+    kayit = {
+        "id": "KNL-%s-%s" % (_dt(h).date().isoformat(), tur),
+        "tur": tur, "tur_adi": tanim["ad"], "baslik": baslik.strip(),
+        "platform": tanim["platform"], "kanal_geneli": True, "insan_emegi": True,
+        "sarki_kesiti_tavanina_sayilir": False, "elle": True,
+        "ilgili_proje": ilgili_proje, "paket": paket, "aciklama": tanim["aciklama"],
+        "hedef_an": _iso(h), "en_erken": _iso(h), "en_gec": _iso(_kanal_en_gec(h)),
+        "durum": "planlandi", "risk": "dusuk", "tempo_sayilir": False, "yayin": None,
+        "iptal_sebebi": None, "hatirlatildi_at": None,
+        "olusturuldu_at": _iso(t), "guncellendi_at": _iso(t),
+    }
+    sonuc = {"yol": yol, "kayit": kayit, "sebep": "", "yazildi": False}
+    kayitlar, _bozuk, okunamadi = kanal_kayitlari(yol)
+    if okunamadi:
+        raise TurevHatasi("kanal takvimi okunamadı/bozuk (fail-closed): %s" % yol)
+    if any(k["id"] == kayit["id"] for k in kayitlar):
+        sonuc["sebep"] = "zaten var: %s (dokunulmadı)" % kayit["id"]
+        return sonuc
+    etkin = [k for k in kayitlar if k["durum"] != "iptal"]
+    if any(_dt(_ts(k["hedef_an"])).date() == _dt(h).date() for k in etkin):
+        raise TurevHatasi("aynı gün ikinci insan emeği gönderisi olamaz (%s)" % _dt(h).date())
+    ayni_hafta = [k for k in etkin if _hafta_bas(_ts(k["hedef_an"])) == _hafta_bas(h)]
+    if len(ayni_hafta) >= int(config.TUREV_INSAN_EMEGI_HAFTALIK_TAVAN):
+        raise TurevHatasi("haftalık insan emeği tavanı dolu (%d/%s): %s" % (
+            len(ayni_hafta), config.TUREV_INSAN_EMEGI_HAFTALIK_TAVAN,
+            ", ".join(k["id"] for k in ayni_hafta)))
+    sonuc["sebep"] = "1 kayıt eklenecek"
+    if not uygula:
+        return sonuc
+    _kanal_yaz(yol, lambda liste: liste.append(kayit), t)
+    sonuc["yazildi"] = True
+    return sonuc
+
+
+def _kanal_iptal(kayit_id, sebep, simdi=None, yol=None):
+    t = time.time() if simdi is None else simdi
+
+    def degistir(liste):
+        for k in liste:
+            if isinstance(k, dict) and k.get("id") == kayit_id:
+                if k.get("durum") == "yayinlandi":
+                    raise TurevHatasi("yayınlanmış kayıt iptal edilemez: %s" % kayit_id)
+                k.update(durum="iptal", iptal_sebebi=sebep, guncellendi_at=_iso(t))
+                return
+        raise TurevHatasi("kayıt bulunamadı: %s" % kayit_id)
+
+    _kanal_yaz(_kanal_yolu(yol), degistir, t)
+    return {"id": kayit_id, "proje": "Kanal", "durum": "iptal"}
+
+
+def takvim(gun=7, simdi=None, klasorler=None, kanal_yolu=None):
     """Tüm katalog için çakışma çözümlü türev takvimi (SALT OKUMA, state yazmaz).
 
     JSON biçimi (pano / sesli asistan): bkz. `python turev_takvimi.py takvim --json`."""
@@ -610,10 +862,13 @@ def takvim(gun=7, simdi=None, klasorler=None):
     olaylar, durdurulan, dusen = [], [], []
     # dolu: (an, proje_yolu, yuzey, youtube_video)
     dolu = []
+    kesitler = []                  # şarkı kesiti anları: insan emeği gönderisi o güne düşmez
     for p, ad, kok, st, meta in katalog:
         klip = _ts(st.get("youtube_clip_uploaded_at"))
         if klip is not None:
             dolu.append((klip, p, True, True))
+            kesitler.append(klip)
+        kesitler.extend(_tiktok_kesit_anlari(st))
     adaylar = []
     for p, ad, kok, st, meta, k in kayitlar:
         durum = k["durum"]
@@ -622,12 +877,16 @@ def takvim(gun=7, simdi=None, klasorler=None):
         if durum == "yayinlandi":
             an = _ts((k.get("yayin") or {}).get("an")) or _ts(k["hedef_an"])
             dolu.append((an, p, bool(k.get("yuzey")), bool(k.get("youtube_video"))))
+            if k.get("tur") in SARKI_KESIT_TURLERI:
+                kesitler.append(an)
             if t - GUN_SN <= an < bit:
                 olaylar.append(_olay(p, ad, kok, k, an, "yayinlandi"))
             continue
         if durum == "onay_bekliyor":
             an = _ts(k.get("hatirlatildi_at")) or _ts(k["hedef_an"])
             dolu.append((an, p, bool(k.get("yuzey")), bool(k.get("youtube_video"))))
+            if k.get("tur") in SARKI_KESIT_TURLERI:
+                kesitler.append(an)
             olaylar.append(_olay(p, ad, kok, k, an, "onay_bekliyor"))
             continue
         hedef, en_gec = _ts(k["hedef_an"]), _ts(k["en_gec"])
@@ -663,17 +922,23 @@ def takvim(gun=7, simdi=None, klasorler=None):
                 dusen.append(_olay(p, ad, kok, k, hedef, "iptal_cakisma"))
             continue
         dolu.append((an, p, bool(k.get("yuzey")), bool(k.get("youtube_video"))))
+        if k.get("tur") in SARKI_KESIT_TURLERI:
+            kesitler.append(an)
         if an < bit:
             olaylar.append(_olay(p, ad, kok, k, an, "kosullu" if k.get("kosul") else "planli"))
 
+    kanal, kanal_dusen, kanal_bozuk, kanal_okunamadi = _kanal_takvimi(
+        t, bit, bantlar, kesitler, kanal_yolu)
     sirala = lambda x: (x["an"], x["id"])                 # noqa: E731
     return {
         "surum": SURUM,
         "uretildi_at": _iso(t),
         "aralik": {"bas": _iso(t), "bit": _iso(bit), "gun": gun},
         "olaylar": sorted(olaylar, key=sirala),
+        # İnsan emeği (kanal geneli): kesit tavanı DIŞI, bu yüzden `olaylar`dan AYRI.
+        "kanal_gonderileri": sorted(kanal, key=sirala),
         "durdurulanlar": sorted(durdurulan, key=sirala),
-        "dusenler": sorted(dusen, key=sirala),
+        "dusenler": sorted(dusen + kanal_dusen, key=sirala),
         "yeni_yayinlar": [{"proje": ad, "an": _iso(an), "tahmini": tah}
                           for an, ad, tah in sorted(bantlar)
                           if t - GUN_SN <= an < bit + GUN_SN],
@@ -685,8 +950,10 @@ def takvim(gun=7, simdi=None, klasorler=None):
             "pencere_gun": config.TUREV_PENCERE_GUN,
             "golden_hours": [list(g) for g in config.GOLDEN_HOURS],
             "hatirlatma_aktif": bool(getattr(config, "TUREV_HATIRLATMA_AKTIF", False)),
+            "insan_emegi_haftalik_tavan": config.TUREV_INSAN_EMEGI_HAFTALIK_TAVAN,
         },
-        "atlanan_kayitlar": bozuk,
+        "atlanan_kayitlar": bozuk + kanal_bozuk,
+        "kanal_takvimi_okunamadi": kanal_okunamadi,
         "okunamayan_projeler": okunamayan,
     }
 
@@ -694,7 +961,9 @@ def takvim(gun=7, simdi=None, klasorler=None):
 def sirada_ne(simdi=None, klasorler=None):
     """Sıradaki (en erken) planlı / koşullu / onay bekleyen türev olayı ya da None."""
     tk = takvim(gun=config.TUREV_PENCERE_GUN, simdi=simdi, klasorler=klasorler)
-    adaylar = [o for o in tk["olaylar"] if o["etkin"] in ("planli", "kosullu", "onay_bekliyor")]
+    adaylar = sorted([o for o in tk["olaylar"] + tk.get("kanal_gonderileri", [])
+                      if o["etkin"] in ("planli", "kosullu", "onay_bekliyor")],
+                     key=lambda x: (x["an"], x["id"]))
     return adaylar[0] if adaylar else None
 
 
@@ -712,6 +981,8 @@ def _olay_satiri(o, simdi=None):
     ek = []
     if o["elle"]:
         ek.append("senin işin")
+    if o.get("insan_emegi"):
+        ek.append("insan emeği, kesit tavanı dışı")
     if o["etkin"] == "kosullu":
         ek.append("koşullu")
     if o["etkin"] == "onay_bekliyor":
@@ -725,9 +996,10 @@ def bugun_yarin_satirlari(simdi=None, klasorler=None, tavan=4):
     t = time.time() if simdi is None else simdi
     tk = takvim(gun=2, simdi=t, klasorler=klasorler)
     gunler = {_dt(t).date(), _dt(t).date() + datetime.timedelta(days=1)}
-    secilen = [o for o in tk["olaylar"]
-               if o["etkin"] in ("planli", "kosullu", "onay_bekliyor")
-               and datetime.datetime.fromisoformat(o["an"]).date() in gunler]
+    secilen = sorted([o for o in tk["olaylar"] + tk.get("kanal_gonderileri", [])
+                      if o["etkin"] in ("planli", "kosullu", "onay_bekliyor")
+                      and datetime.datetime.fromisoformat(o["an"]).date() in gunler],
+                     key=lambda x: (x["an"], x["id"]))
     satirlar = ["  " + _olay_satiri(o, t) for o in secilen[:tavan]]
     if len(secilen) > tavan:
         satirlar.append("  +%d daha" % (len(secilen) - tavan))
@@ -860,7 +1132,10 @@ def elle_yayin_eslestir(proje, platform, zaman, kayit_id, simdi=None):
 
 
 def iptal(kayit_id, sebep="elle iptal (CLI)", klasorler=None, simdi=None):
-    """Bir türev kaydını `iptal` yapar (yayınlanmış kayıt iptal edilemez)."""
+    """Bir türev kaydını `iptal` yapar (yayınlanmış kayıt iptal edilemez).
+    `KNL-` kimlikleri kanal takviminde aranır."""
+    if str(kayit_id).startswith("KNL-"):
+        return _kanal_iptal(kayit_id, sebep, simdi=simdi)
     for p in _klasorler(klasorler):
         st = _durum_oku(p) or {}
         for k in st.get("turev_plani") or []:
@@ -973,7 +1248,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Yayın sonrası türev takvimi (Aşama 1, yayın YOK).")
     alt = ap.add_subparsers(dest="komut", required=True)
     pl = alt.add_parser("plan", help="bir projenin türev planı (varsayılan KURU)")
-    pl.add_argument("--proje", required=True)
+    pl.add_argument("--proje", default=None)
+    pl.add_argument("--kanal", default=None, metavar="TUR",
+                    help="kanal geneli insan emeği gönderisi: soz_defteri | kulis")
+    pl.add_argument("--hedef", default=None, help="--kanal ile: ISO an (TR), golden-hour içinde")
+    pl.add_argument("--baslik", default=None, help="--kanal ile: gönderi başlığı")
+    pl.add_argument("--ilgili-proje", default=None, help="--kanal ile: konu şarkısı (bilgi)")
+    pl.add_argument("--paket", default=None, help="--kanal ile: içerik paketi yolu")
+    pl.add_argument("--kanal-yolu", default=None, help=argparse.SUPPRESS)
     pl.add_argument("--uygula", action="store_true", help="state.json'a YAZ")
     pl.add_argument("--json", action="store_true")
     pl.add_argument("--simdi", default=None, help=argparse.SUPPRESS)
@@ -982,6 +1264,7 @@ def main(argv=None):
     tk.add_argument("--json", action="store_true")
     tk.add_argument("--kok", action="append", default=None, help=argparse.SUPPRESS)
     tk.add_argument("--simdi", default=None, help=argparse.SUPPRESS)
+    tk.add_argument("--kanal-yolu", default=None, help=argparse.SUPPRESS)
     sn = alt.add_parser("sirada", help="sıradaki türev")
     sn.add_argument("--json", action="store_true")
     sn.add_argument("--kok", action="append", default=None, help=argparse.SUPPRESS)
@@ -993,7 +1276,24 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     try:
+        if args.komut == "plan" and args.kanal:
+            r = kanal_plan(args.kanal, args.hedef, args.baslik, ilgili_proje=args.ilgili_proje,
+                           paket=args.paket, simdi=_simdi_arg(args.simdi), uygula=args.uygula,
+                           yol=args.kanal_yolu)
+            if args.json:
+                _json_bas(r)
+                return 0
+            k = r["kayit"]
+            print("KANAL PLANI %s" % ("UYGULANDI" if args.uygula else "KURU (hiçbir şey yazılmadı)"))
+            print("Dosya: %s" % r["yol"])
+            print("Sonuç: %s%s" % (r["sebep"], " · YAZILDI" if r["yazildi"] else ""))
+            print("  %s  %s [%s] elle, insan emeği (kesit tavanı dışı)  %s" % (
+                k["hedef_an"][:16].replace("T", " "), k["baslik"], k["platform"], k["id"]))
+            return 0
         if args.komut == "plan":
+            if not args.proje:
+                print("HATA: --proje ya da --kanal gerekli")
+                return 2
             r = plan_uret(_proje_bul(args.proje), simdi=_simdi_arg(args.simdi), uygula=args.uygula)
             if args.json:
                 _json_bas(r)
@@ -1010,7 +1310,7 @@ def main(argv=None):
             return 0
         if args.komut == "takvim":
             veri = takvim(gun=args.gun, simdi=_simdi_arg(args.simdi),
-                          klasorler=_kok_klasorleri(args.kok))
+                          klasorler=_kok_klasorleri(args.kok), kanal_yolu=args.kanal_yolu)
             if args.json:
                 _json_bas(veri)
                 return 0
@@ -1023,6 +1323,13 @@ def main(argv=None):
             print("Olaylar (%d):" % len(veri["olaylar"]))
             for o in veri["olaylar"]:
                 print("  " + _olay_satiri(o, t))
+            if veri["kanal_gonderileri"]:
+                print("Kanal gönderileri — insan emeği, kesit tavanı dışı (%d):"
+                      % len(veri["kanal_gonderileri"]))
+                for o in veri["kanal_gonderileri"]:
+                    print("  " + _olay_satiri(o, t))
+            if veri["kanal_takvimi_okunamadi"]:
+                print("UYARI: kanal takvimi okunamadı (bozuk JSON?)")
             if veri["durdurulanlar"]:
                 print("Durdurulan (%d):" % len(veri["durdurulanlar"]))
                 for o in veri["durdurulanlar"]:

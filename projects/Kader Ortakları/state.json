@@ -237,5 +237,14 @@
       "guncellendi_at": "2026-09-13T04:29:38+03:00"
     }
   ],
-  "turev_plani_surumu": 1
+  "turev_plani_surumu": 1,
+  "tiktok_web": {
+    "durum": "planlandi",
+    "planlanan_an": "2026-09-17T18:00:00+03:00",
+    "yuklendi_at": "2026-09-13T08:49:08+03:00",
+    "studio_id": null,
+    "aciklama_sha1": "010ce2bf20f03ce4a756dee631416d4b80b90bb0",
+    "kaynak": "claude",
+    "surum": 1
+  }
 }

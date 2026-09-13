@@ -229,7 +229,19 @@ def build_snippet(meta: dict) -> dict:
     }
 
 
-def build_shorts_snippet(meta: dict, full_video_id: str | None = None) -> dict:
+def tiktok_hesap_satiri() -> str:
+    """YouTube Shorts/kesit açıklamasının SON satırı: "TikTok: @famousmusicstudio"
+    (TikTok LIVE planı §3a-6, kullanıcı onayı 2026-09-13). Hesap adı TEK yerde:
+    `config.SOCIAL_HANDLES["tiktok"]`. Düz metin hesap adı, dış link DEĞİL; CLAUDE.md'deki
+    link yasağı Instagram/TikTok caption'ı içindir, YouTube açıklaması kapsam dışı.
+    `build_caption` (TikTok/IG/Telegram/Bluesky ortak) DEĞİŞMEZ; satır yalnız burada eklenir.
+    Uzun formatta EKLENMEZ: link bloğunda zaten "🎵 TikTok: <url>" var (çift satır olmasın)."""
+    handle = (config.SOCIAL_HANDLES or {}).get("tiktok")
+    return f"TikTok: @{handle}" if handle else ""
+
+
+def build_shorts_snippet(meta: dict, full_video_id: str | None = None,
+                         tiktok_satiri: bool = True) -> dict:
     """Shorts (shorts_9x16.mp4, 45sn highlight) için ayrı bir snippet — uzun format
     künyesi yerine TikTok/Instagram'la AYNI kısa-format caption'ı kullanıyor
     (social_text.build_caption: hook + hashtag'ler + etkileşim sorusu), çünkü
@@ -252,6 +264,9 @@ def build_shorts_snippet(meta: dict, full_video_id: str | None = None) -> dict:
     description = build_caption(meta)
     if full_video_id:
         description += f"\n\n🎧 Şarkının tamamı kanalımızda: https://youtu.be/{full_video_id}"
+    # YENİ yüklemelerde son satır. `fix_description` geçmiş videolar için False geçer.
+    if tiktok_satiri and tiktok_hesap_satiri():
+        description += "\n\n" + tiktok_hesap_satiri()
 
     discovery_hashtags = config.DISCOVERY_HASHTAGS_EN if resolve_language(meta) == "en" else config.DISCOVERY_HASHTAGS
     tags = genre_tags + [config.STATIC_LABEL_TEXT, "Shorts"] + [h.lstrip("#") for h in discovery_hashtags]
@@ -557,6 +572,8 @@ def build_clip_snippet(meta: dict, full_video_id: str | None, bas_sn: float) -> 
     description = kurator + "\n\n" + build_caption(meta)
     if full_video_id:
         description += "\n\n" + (tam_satir % full_video_id)
+    if tiktok_hesap_satiri():                      # yalnız yeni kesit yüklemesi çağırır
+        description += "\n\n" + tiktok_hesap_satiri()
 
     discovery_hashtags = config.DISCOVERY_HASHTAGS_EN if lang == "en" else config.DISCOVERY_HASHTAGS
     tags = genre_tags + [config.STATIC_LABEL_TEXT, "Shorts"] + [h.lstrip("#") for h in discovery_hashtags]
@@ -721,7 +738,8 @@ def fix_description(project_dir: str) -> None:
     if shorts_id:
         print("  Shorts:")
         try:
-            snippet = build_shorts_snippet(meta, video_id)
+            # Geçmiş videoya TikTok satırı EKLENMEZ (kullanıcı kararı 2026-09-13).
+            snippet = build_shorts_snippet(meta, video_id, tiktok_satiri=False)
             youtube.videos().update(part="snippet", body={"id": shorts_id, "snippet": snippet}).execute()
             print("  Açıklama: tamam")
         except Exception as e:
