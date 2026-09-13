@@ -44,5 +44,184 @@
   "tiktok_publish_status": "PUBLISH_COMPLETE",
   "tiktok_status_checked_at": "2026-09-13T02:23:10",
   "tiktok_published_at": "2026-09-13T02:23:10",
-  "tiktok_published_kaynak": "TikTok API PUBLISH_COMPLETE (kayıtlı durumdan), durum okuması 2026-09-13T02:23:10 — yaklaşık zaman; görünürlük bilinmiyor"
+  "tiktok_published_kaynak": "TikTok API PUBLISH_COMPLETE (kayıtlı durumdan), durum okuması 2026-09-13T02:23:10 — yaklaşık zaman; görünürlük bilinmiyor",
+  "turev_plani": [
+    {
+      "id": "TRV-kirik-zincir-d7_karar",
+      "tur": "d7_karar",
+      "tur_adi": "D+7 karar noktası",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-07T18:04:45+03:00",
+      "hedef_an": "2026-09-14T12:00:00+03:00",
+      "en_erken": "2026-09-14T12:00:00+03:00",
+      "en_gec": "2026-09-16T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    },
+    {
+      "id": "TRV-kirik-zincir-kulis",
+      "tur": "kulis",
+      "tur_adi": "Kulis gönderisi (nasıl yapıldı)",
+      "platform": "youtube",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-07T18:04:45+03:00",
+      "hedef_an": "2026-09-14T18:00:00+03:00",
+      "en_erken": "2026-09-14T18:00:00+03:00",
+      "en_gec": "2026-09-21T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    },
+    {
+      "id": "TRV-kirik-zincir-tg_bs_hatirlatma",
+      "tur": "tg_bs_hatirlatma",
+      "tur_adi": "Telegram + Bluesky hatırlatma",
+      "platform": "telegram",
+      "yuzey": true,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-07T18:04:45+03:00",
+      "hedef_an": "2026-09-16T12:00:00+03:00",
+      "en_erken": "2026-09-16T12:00:00+03:00",
+      "en_gec": "2026-09-23T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "dusuk_orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    },
+    {
+      "id": "TRV-kirik-zincir-tiktok_ikinci_kesit",
+      "tur": "tiktok_ikinci_kesit",
+      "tur_adi": "TikTok ikinci kesit",
+      "platform": "tiktok",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-07T18:04:45+03:00",
+      "hedef_an": "2026-09-18T18:00:00+03:00",
+      "en_erken": "2026-09-18T18:00:00+03:00",
+      "en_gec": "2026-09-28T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [
+        "output/turev_kesit_9x16.mp4"
+      ],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    },
+    {
+      "id": "TRV-kirik-zincir-derleme_adayligi",
+      "tur": "derleme_adayligi",
+      "tur_adi": "Derleme adaylığı notu",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-07T18:04:45+03:00",
+      "hedef_an": "2026-09-21T12:00:00+03:00",
+      "en_erken": "2026-09-21T12:00:00+03:00",
+      "en_gec": "2026-09-28T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1
 }

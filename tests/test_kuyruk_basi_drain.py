@@ -35,7 +35,7 @@ _FINALLY = ("_refresh_latest_listing", "_refresh_stats", "_refresh_comments",
             "_facebook_backfill", "_ek_platform_backfill", "_facebook_yorumlari",
             "_facebook_veri_erisimi", "_dj_tarama", "_saglik_kontrol",
             "_izlenme_raporu", "_haftalik_gozden_gecirme", "_gunluk_izlenme",
-            "_tiktok_yayin_dogrulama", "_tiktok_kit_sirasi")
+            "_tiktok_yayin_dogrulama", "_tiktok_kit_sirasi", "_turev_takvimi")
 
 
 def _damga(saat_once):

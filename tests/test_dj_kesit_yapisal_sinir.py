@@ -60,7 +60,8 @@ def _hazir_state(gecen_sn, kesitler=("clip_01.mp4",)):
         "youtube_shorts_uploaded_at": time.strftime(
             "%Y-%m-%dT%H:%M:%S", time.localtime(time.time() - gecen_sn)),
         "dj_tarama_temiz": True,
-        "dj_clips": [{"dosya": n, "bas": 100.0 * i, "son": 100.0 * i + 45,
+        # bas >= 400: ilk 6 dakika kuralı (config.DJ_KESIT_ILK_YASAK_SN) dışında
+        "dj_clips": [{"dosya": n, "bas": 300.0 + 100.0 * i, "son": 300.0 + 100.0 * i + 45,
                       "enerji": i}
                      for i, n in enumerate(kesitler, 1)],
     }

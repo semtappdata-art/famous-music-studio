@@ -39,5 +39,42 @@
   "tiktok_publish_status": "PUBLISH_COMPLETE",
   "tiktok_status_checked_at": "2026-09-13T02:23:10",
   "tiktok_published_at": "2026-09-13T02:23:10",
-  "tiktok_published_kaynak": "TikTok API PUBLISH_COMPLETE (kayıtlı durumdan), durum okuması 2026-09-13T02:23:10 — yaklaşık zaman; görünürlük bilinmiyor"
+  "tiktok_published_kaynak": "TikTok API PUBLISH_COMPLETE (kayıtlı durumdan), durum okuması 2026-09-13T02:23:10 — yaklaşık zaman; görünürlük bilinmiyor",
+  "turev_plani": [
+    {
+      "id": "TRV-kalbim-oynuyor-derleme_adayligi",
+      "tur": "derleme_adayligi",
+      "tur_adi": "Derleme adaylığı notu",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-01T21:49:10+03:00",
+      "hedef_an": "2026-09-21T12:00:00+03:00",
+      "en_erken": "2026-09-21T12:00:00+03:00",
+      "en_gec": "2026-09-22T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1
 }

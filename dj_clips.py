@@ -293,12 +293,66 @@ def _uygun_kesitler(set_dir, st=None):
     bölüme değmediğini iddia edemeyiz. Telifli aralık yoksa o kayıtlar normal
     şekilde yayına uygun kalıyor.
     """
+    uygun, sayac = _kesit_degerlendir(set_dir, st)
+    return uygun, sayac["telif"]
+
+
+# Sıralama bilgisi olmayan kesit seçilmediğinde `yayina_uygun_mu`nun sebep
+# metninin BAŞI. `supur` bildirimi bu önekle tanıyor (tek yer).
+SIRALAMA_EKSIK_SEBEBI = "kesitlerde enerji/izlenme sırası yok"
+
+
+def _pozitif_sayi(deger):
+    """bool olmayan, pozitif int/float -> float; değilse None."""
+    if isinstance(deger, bool) or not isinstance(deger, (int, float)):
+        return None
+    return float(deger) if deger > 0 else None
+
+
+def _siralama_anahtari(k):
+    """(kaynak önceliği, değer) ya da None.
+
+    `izlenme_sirasi` (Analytics tepe anı, Aşama 4) `enerji`nin ÖNÜNE geçer:
+    izleyicinin gerçekten izlediği an, ses enerjisinden daha güçlü bir sinyal.
+    İkisi de yoksa None -> kesit SEÇİLMEZ (2026-09-13 kullanıcı kararı; eskiden
+    dosya adı sırasına düşülüyordu ve Just Relax'te bu setin 5:32 anını, yani
+    telif riski taşıyan ilk 6 dakikayı seçiyordu)."""
+    izlenme = _pozitif_sayi(k.get("izlenme_sirasi"))
+    if izlenme is not None:
+        return (0, izlenme)
+    enerji = _pozitif_sayi(k.get("enerji"))
+    if enerji is not None:
+        return (1, enerji)
+    return None
+
+
+def _ilk_dakika_ihlali(k):
+    """Kesit setin yasaklı başlangıç bölümünden mi (ya da `bas` bilinmiyor mu)?
+
+    FAIL-CLOSED: sayıya çevrilemeyen/negatif `bas` ihlal sayılır — nereden
+    kesildiği bilinmeyen bir kesidin ilk 6 dakikanın dışında olduğunu iddia
+    edemeyiz. Eşik `config.DJ_KESIT_ILK_YASAK_SN` (çağrı anında okunur)."""
+    try:
+        bas = float(k.get("bas"))
+    except (TypeError, ValueError):
+        return True
+    if bas != bas or bas < 0:          # NaN ya da negatif
+        return True
+    return bas < float(getattr(config, "DJ_KESIT_ILK_YASAK_SN", 360))
+
+
+def _kesit_degerlendir(set_dir, st=None):
+    """(yayın sırasındaki uygun kesitler, eleme sayaçları).
+
+    Sayaçlar: telif, ilk_dakika, siralama_yok. `yayina_uygun_mu` bunlarla
+    somut bir sebep yazıyor; `supur` sıralama eksikliğini bildiriyor."""
     st = _durum_oku(set_dir) if st is None else st
     kesitler = st.get("dj_clips") or []
     telifli = st.get("telif_araliklari") or []
-    uygun, telif_elenen = [], 0
+    uygun = []
+    sayac = {"telif": 0, "ilk_dakika": 0, "siralama_yok": 0}
     for k in kesitler:
-        if k.get("hata") or not k.get("dosya"):
+        if not isinstance(k, dict) or k.get("hata") or not k.get("dosya"):
             continue
         if not os.path.isfile(os.path.join(set_dir, "output", k["dosya"])):
             continue
@@ -306,16 +360,31 @@ def _uygun_kesitler(set_dir, st=None):
             try:
                 bas, son = float(k["bas"]), float(k["son"])
             except (KeyError, TypeError, ValueError):
-                telif_elenen += 1
+                sayac["telif"] += 1
                 continue
             if telife_degiyor_mu(bas, son, telifli):
-                telif_elenen += 1
+                sayac["telif"] += 1
                 continue
+        if _ilk_dakika_ihlali(k):
+            sayac["ilk_dakika"] += 1
+            continue
+        if _siralama_anahtari(k) is None:
+            sayac["siralama_yok"] += 1
+            continue
         uygun.append(k)
-    # enerji yoksa büyük bir sayı ver: enerji bilgisi OLAN kayıtlar her zaman
-    # önce gelsin, olmayanlar aralarında dosya adına göre sıralansın.
-    uygun.sort(key=lambda k: (k.get("enerji") or 9999, k["dosya"]))
-    return uygun, telif_elenen
+    uygun.sort(key=lambda k: (_siralama_anahtari(k), k["dosya"]))
+    return uygun, sayac
+
+
+def _kesit_bekletme(st):
+    """Dolu `kesit_beklet` -> sebep metni; yoksa None. Dict olmayan dolu değer
+    de bekletme SAYILIR ("okuyamıyorum" != "yok", `yayin_beklet` ile aynı)."""
+    alan = getattr(config, "DJ_KESIT_BEKLETME_ALANI", "kesit_beklet")
+    b = (st or {}).get(alan)
+    if not b:
+        return None
+    sebep = b.get("sebep") if isinstance(b, dict) else b
+    return "kesit BEKLETİLİYOR (`%s`: %s)" % (alan, str(sebep or "sebep yazılmamış")[:200])
 
 
 def kesit_sec(set_dir, st=None):
@@ -331,9 +400,10 @@ def kesit_sec(set_dir, st=None):
          yapılmasına yol açabilirdi. Eşitlik hâlinde dosya adına göre
          sıralanıyor — aynı girdi hep aynı çıktı.
 
-    `enerji` alanı olmayan ESKİ kayıtlar (2026-09-11 öncesi üretilmiş
-    clip_*.mp4'ler) için dosya adı sırası kullanılıyor; o kayıtlarda enerji
-    bilgisi hiç tutulmamıştı ve setleri yeniden render etmek pahalı.
+    2026-09-13 (kullanıcı kararı): `enerji`/`izlenme_sirasi` alanı OLMAYAN
+    kesit artık SEÇİLMİYOR (eskiden dosya adı sırasına düşülüyordu) ve setin
+    ilk `config.DJ_KESIT_ILK_YASAK_SN` saniyesinden kesit seçilmiyor. İkisi de
+    fail-closed; ayrıntı `_kesit_degerlendir`.
     """
     uygun, _ = _uygun_kesitler(set_dir, st)
     return uygun[0] if uygun else None
@@ -415,6 +485,11 @@ def yayina_uygun_mu(set_dir, simdi=None, st=None):
 
     if st.get("youtube_clip_video_id"):
         return None, "kesit zaten yayınlanmış"
+    # KESİT BEKLETME (2026-09-13): yalnız bu yolu durdurur, uyumluluk kapısına
+    # girmez (bkz. config.DJ_KESIT_BEKLETME_ALANI). Ucuz state okuması, erken.
+    bekletme = _kesit_bekletme(st)
+    if bekletme:
+        return None, bekletme
     if not st.get("dj_clips"):
         return None, "üretilmiş kesit yok"
 
@@ -436,8 +511,18 @@ def yayina_uygun_mu(set_dir, simdi=None, st=None):
         return None, ("setin Shorts'undan bu yana %.1f gün geçti, en az %.0f gün gerekli"
                       % (gecen / 86400.0, KESIT_MIN_ARA_SN / 86400.0))
 
-    kesit = kesit_sec(set_dir, st)
+    uygun, sayac = _kesit_degerlendir(set_dir, st)
+    kesit = uygun[0] if uygun else None
     if not kesit:
+        if sayac["siralama_yok"]:
+            return None, ("%s (%d kesit) — kesit seçilmedi, fail-closed; enerji ya da "
+                          "izlenme tepe anı ölçülmeli" % (SIRALAMA_EKSIK_SEBEBI,
+                                                          sayac["siralama_yok"]))
+        if sayac["ilk_dakika"]:
+            return None, ("tüm kesitler setin ilk %d dakikasında ya da başlangıcı bilinmiyor "
+                          "(%d kesit) — telif riski, seçilmedi"
+                          % (int(getattr(config, "DJ_KESIT_ILK_YASAK_SN", 360)) // 60,
+                             sayac["ilk_dakika"]))
         return None, "diskte yayınlanabilir kesit dosyası yok"
 
     # POLİTİKA KAPISI — BİLEREK EN SONDA. Yukarıdaki kapıların hepsi saf
@@ -535,6 +620,15 @@ def kesit_yayinla(set_dir, kesit, log=print, privacy="public"):
     _gecti, _sebep = uyumluluk_kapisi(set_dir)
     if not _gecti:
         raise RuntimeError("uyumluluk kapısı kesidi durdurdu: %s" % _sebep)
+    # Aynı kemerin 2026-09-13 ekleri: bekletme, ilk 6 dakika, sıralama bilgisi.
+    _bekletme = _kesit_bekletme(st)
+    if _bekletme:
+        raise RuntimeError(_bekletme)
+    if _ilk_dakika_ihlali(kesit):
+        raise RuntimeError("kesit setin ilk %d saniyesinde ya da başlangıcı bilinmiyor"
+                           % int(getattr(config, "DJ_KESIT_ILK_YASAK_SN", 360)))
+    if _siralama_anahtari(kesit) is None:
+        raise RuntimeError(SIRALAMA_EKSIK_SEBEBI)
 
     from youtube_upload import upload_clip
 
@@ -564,8 +658,41 @@ def kesit_yayinla(set_dir, kesit, log=print, privacy="public"):
     return video_id
 
 
-def supur(base="dj_sets", log=print, dry_run=False):
+def _siralama_eksik_bildir(set_dir, log=print, gonder=None):
+    """Sıralama bilgisi yüzünden kesit seçilemeyen set için TEK bildirim.
+
+    Tekrar koruması state damgası (`kesit_siralama_bildirildi_at`): yalnız
+    gönderim BAŞARILIYSA yazılır, yoksa sonraki koşu yeniden dener. Telefona
+    giden yol `notify.send` (Telegram, yoksa ntfy); `uyar_bir_kez` log'dur, alarm
+    değil (CLAUDE.md)."""
+    if _durum_oku(set_dir).get("kesit_siralama_bildirildi_at"):
+        return False
+    ad = os.path.basename(os.path.normpath(set_dir))
+    mesaj = ("'%s' setinin kesitlerinde enerji/izlenme sırası yok. Kesit OTOMATİK "
+             "SEÇİLMEDİ (eski davranış dosya adı sırasıydı ve ilk 6 dakikaya düşebiliyordu). "
+             "Seçim için enerji ya da izlenme tepe anı ölçülmeli; istersen state.json'a "
+             "kesit_beklet yaz." % ad)
+    try:
+        if gonder is None:
+            import notify
+            gonder = notify.send
+        tamam = bool(gonder("DJ kesit seçilemedi", mesaj))
+    except Exception as e:                                   # noqa: BLE001
+        log("  DJ kesit: sıralama bildirimi HATA (%s): %s" % (ad, str(e)[:160]))
+        return False
+    if tamam:
+        _durum_yaz(set_dir, {"kesit_siralama_bildirildi_at": time.strftime("%Y-%m-%dT%H:%M:%S")})
+        log("  DJ kesit: '%s' için sıralama eksikliği bildirildi (tek sefer)" % ad)
+    else:
+        log("  DJ kesit: '%s' sıralama bildirimi gönderilemedi — sonraki koşu dener" % ad)
+    return tamam
+
+
+def supur(base="dj_sets", log=print, dry_run=False, gonder=None):
     """İkinci dalga süpürgesi: TÜM setlere bakar, EN FAZLA BİR kesit yayınlar.
+
+    `gonder(baslik, mesaj)` yalnız sıralama eksikliği bildirimi için (varsayılan
+    `notify.send`); kuru koşuda HİÇ çağrılmaz.
 
     `dj_famous_process.main()`'den çağrılıyor — `find_pending_sets()` tamamlanmış
     setleri listeden düşürdüğü için (4 ana platform bitince set artık 'pending'
@@ -596,6 +723,8 @@ def supur(base="dj_sets", log=print, dry_run=False):
         kesit, sebep = yayina_uygun_mu(set_dir)
         if not kesit:
             sonuc["atlanan"].append({"set": ad, "sebep": sebep})
+            if not dry_run and str(sebep).startswith(SIRALAMA_EKSIK_SEBEBI):
+                _siralama_eksik_bildir(set_dir, log, gonder)
             continue
         if dry_run:
             sonuc["yayinlanan"] += 1

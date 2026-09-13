@@ -46,5 +46,184 @@
     "istendi_at": "2026-09-12T22:56:32+03:00"
   },
   "tiktok_published_at": "2026-09-09T09:31:00",
-  "tiktok_published_kaynak": "TikTok 7683419315344887061 (9 Eyl 09:31, başlık ve içerik Küllerimden Geç): yayınlandı, şu an 'Sadece ben'; kullanıcı kararıyla 'Herkes' yapılacak (elle). İşaret, taslağın ikinci kopya olarak yayınlanmasını önler."
+  "tiktok_published_kaynak": "TikTok 7683419315344887061 (9 Eyl 09:31, başlık ve içerik Küllerimden Geç): yayınlandı, şu an 'Sadece ben'; kullanıcı kararıyla 'Herkes' yapılacak (elle). İşaret, taslağın ikinci kopya olarak yayınlanmasını önler.",
+  "turev_plani": [
+    {
+      "id": "TRV-kullerimden-gec-d7_karar",
+      "tur": "d7_karar",
+      "tur_adi": "D+7 karar noktası",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-07T13:42:00+03:00",
+      "hedef_an": "2026-09-14T12:00:00+03:00",
+      "en_erken": "2026-09-14T12:00:00+03:00",
+      "en_gec": "2026-09-16T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    },
+    {
+      "id": "TRV-kullerimden-gec-kulis",
+      "tur": "kulis",
+      "tur_adi": "Kulis gönderisi (nasıl yapıldı)",
+      "platform": "youtube",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-07T13:42:00+03:00",
+      "hedef_an": "2026-09-14T18:00:00+03:00",
+      "en_erken": "2026-09-14T18:00:00+03:00",
+      "en_gec": "2026-09-21T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    },
+    {
+      "id": "TRV-kullerimden-gec-tg_bs_hatirlatma",
+      "tur": "tg_bs_hatirlatma",
+      "tur_adi": "Telegram + Bluesky hatırlatma",
+      "platform": "telegram",
+      "yuzey": true,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-07T13:42:00+03:00",
+      "hedef_an": "2026-09-16T12:00:00+03:00",
+      "en_erken": "2026-09-16T12:00:00+03:00",
+      "en_gec": "2026-09-23T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "dusuk_orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    },
+    {
+      "id": "TRV-kullerimden-gec-tiktok_ikinci_kesit",
+      "tur": "tiktok_ikinci_kesit",
+      "tur_adi": "TikTok ikinci kesit",
+      "platform": "tiktok",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-07T13:42:00+03:00",
+      "hedef_an": "2026-09-18T18:00:00+03:00",
+      "en_erken": "2026-09-18T18:00:00+03:00",
+      "en_gec": "2026-09-28T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [
+        "output/turev_kesit_9x16.mp4"
+      ],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    },
+    {
+      "id": "TRV-kullerimden-gec-derleme_adayligi",
+      "tur": "derleme_adayligi",
+      "tur_adi": "Derleme adaylığı notu",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-07T13:42:00+03:00",
+      "hedef_an": "2026-09-21T12:00:00+03:00",
+      "en_erken": "2026-09-21T12:00:00+03:00",
+      "en_gec": "2026-09-28T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:39+03:00",
+      "guncellendi_at": "2026-09-13T04:29:39+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1
 }

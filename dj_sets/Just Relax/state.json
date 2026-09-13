@@ -75,5 +75,120 @@
   "tiktok_publish_status": "PUBLISH_COMPLETE",
   "tiktok_status_checked_at": "2026-09-13T02:23:10",
   "tiktok_published_at": "2026-09-13T02:23:10",
-  "tiktok_published_kaynak": "TikTok API PUBLISH_COMPLETE (kayıtlı durumdan), durum okuması 2026-09-13T02:23:10 — yaklaşık zaman; görünürlük bilinmiyor"
+  "tiktok_published_kaynak": "TikTok API PUBLISH_COMPLETE (kayıtlı durumdan), durum okuması 2026-09-13T02:23:10 — yaklaşık zaman; görünürlük bilinmiyor",
+  "kesit_beklet": {
+    "sebep": "kullanıcı kararı 2026-09-13: kesit seçimi telif riski taşıyan ilk 6 dakikaya düşüyordu; enerji/izlenme tepe anı ölçülene kadar bekletildi",
+    "istendi_at": "2026-09-13T04:05:11+03:00",
+    "kaynak": "claude"
+  },
+  "turev_plani": [
+    {
+      "id": "TRV-just-relax-d7_karar",
+      "tur": "d7_karar",
+      "tur_adi": "D+7 karar noktası",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-07T16:18:34+03:00",
+      "hedef_an": "2026-09-14T12:00:00+03:00",
+      "en_erken": "2026-09-14T12:00:00+03:00",
+      "en_gec": "2026-09-16T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:42+03:00",
+      "guncellendi_at": "2026-09-13T04:29:42+03:00"
+    },
+    {
+      "id": "TRV-just-relax-dj_kesit",
+      "tur": "dj_kesit",
+      "tur_adi": "DJ kesiti (YouTube Shorts)",
+      "platform": "youtube_shorts",
+      "yuzey": true,
+      "elle": false,
+      "youtube_video": true,
+      "t0": "2026-09-07T16:18:34+03:00",
+      "hedef_an": "2026-09-17T18:00:00+03:00",
+      "en_erken": "2026-09-17T18:00:00+03:00",
+      "en_gec": "2026-09-28T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [
+        "output/clip_*.mp4"
+      ],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "!kesit_beklet"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:42+03:00",
+      "guncellendi_at": "2026-09-13T04:29:42+03:00"
+    },
+    {
+      "id": "TRV-just-relax-tiktok_ikinci_kesit",
+      "tur": "tiktok_ikinci_kesit",
+      "tur_adi": "TikTok kesit",
+      "platform": "tiktok",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-07T16:18:34+03:00",
+      "hedef_an": "2026-09-21T18:00:00+03:00",
+      "en_erken": "2026-09-21T18:00:00+03:00",
+      "en_gec": "2026-09-28T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:42+03:00",
+      "guncellendi_at": "2026-09-13T04:29:42+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1
 }

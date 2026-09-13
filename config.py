@@ -740,3 +740,42 @@ TIKTOK_DERLEME_SORULARI = [
     "Bu listeyi hangi saatte açarsın? 🌙",
     "Sıralamayı sen yapsan ilk hangisi olurdu? 💬",
 ]
+
+# YouTube Data API ortak havuzunda (günde 10.000 birim) saatlik yayın hattının
+# bir YENİ yayını için HER ZAMAN ayrılmış kalan pay (kapak + playlist + altyazı
+# ~950 birim; `videos.insert` ayrı kovada). Toplu ELLE betikler
+# (`upload/ai_beyani_onar.py`, `upload/set_privacy.py`) `--zorla` ile bile bu
+# payı yiyemez. Saatlik hat bununla ENGELLENMEZ. Kullanan: upload/youtube_kota.py.
+YOUTUBE_KOTA_YAYIN_REZERVI = 950
+
+# --- DJ KESİT SEÇİMİ (dj_clips.py, kullanıcı kararı 2026-09-13) ---
+# `kesit_beklet` state alanı YALNIZ kesit yayınını durdurur (fail-closed: dolu her
+# değer bekletme). `yayin_beklet`'ten farkı: uyumluluk HATASI üretmez, setin diğer
+# akışlarına (geri doldurma, TikTok planı...) dokunmaz.
+DJ_KESIT_BEKLETME_ALANI = "kesit_beklet"
+# Setin ilk N saniyesinden kesit SEÇİLMEZ: City Pulse'ta telif eşleşmelerinin %65'i
+# ilk 6 dakikadaydı (dj_sets/README.md). Kural pencerenin BAŞINA bakar; `bas`
+# bilinmeyen kesit de seçilmez.
+DJ_KESIT_ILK_YASAK_SN = 6 * 60
+
+# --- TÜREV TAKVİMİ (turev_takvimi.py, Aşama 1, kullanıcı kararları 2026-09-13) ---
+# Türevler 52 saatlik yeni yayın tabanına SAYILMAZ; kendi tavanları bunlar.
+TUREV_GUNLUK_TAVAN = 1                    # TR takvim günü başına, yalnız golden-hour
+TUREV_YOUTUBE_VIDEO_HAFTALIK_TAVAN = 1    # YouTube'a video yükleyen türev, kayan 7 gün
+TUREV_YENI_YAYIN_BANDI_SAAT = 24          # yeni şarkı public anının ±N saatinde türev yok
+TUREV_AYNI_SARKI_ARA_SAAT = 48            # aynı şarkının iki türevi arası en az
+TUREV_PENCERE_GUN = 21                    # T0 + N gün sonra plan kapanır
+TUREV_PLAN_T0_SAAT = 72                   # saatlik süpürge yalnız T0'ı bu kadar yeni projeyi planlar
+TUREV_KOSU_BASINA_PLAN = 3                # süpürge koşu başına en fazla bu kadar projeye plan yazar
+# Şarkılar için YouTube'a ikinci kesit: bu tarihten ÖNCE hiçbir koşulda planlanmaz
+# (K-D Shorts kararı 09 Eki ölçümünden sonra); tarihten sonra da bayrak ister.
+TUREV_SARKI_YOUTUBE_KESIT_KAPI = "2026-10-09"
+TUREV_SARKI_YOUTUBE_KESIT_AKTIF = False
+# Kulis gönderisi: ana katalogda açık; DJ Famous (gerçek kişi) ayrı onay ister.
+TUREV_DJ_KULIS_ONAYLI = False
+# Elle türev hatırlatması (Telegram, operatör DM'i, golden-hour, günde 1, önceki
+# yanıtlanmadan yenisi yok). Canlıda KAPALI başlar; açma kararı ayrı.
+TUREV_HATIRLATMA_AKTIF = False
+TUREV_HATIRLATMA_GUNLUK_TAVAN = 1
+# `elle_islem.py ekle --islem yayinladi` bu kadar saat içindeki türev kaydıyla eşleşir.
+TUREV_ELLE_ESLESME_SAAT = 36

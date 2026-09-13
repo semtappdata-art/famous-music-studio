@@ -38,5 +38,42 @@
   "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
   "facebook_reels_id": "2104634526790087",
   "facebook_uploaded_at": "2026-09-12T13:05:38",
-  "tiktok_published_at": "2026-09-05T19:36:05"
+  "tiktok_published_at": "2026-09-05T19:36:05",
+  "turev_plani": [
+    {
+      "id": "TRV-gece-surusu-derleme_adayligi",
+      "tur": "derleme_adayligi",
+      "tur_adi": "Derleme adaylığı notu",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-01T03:46:03+03:00",
+      "hedef_an": "2026-09-21T12:00:00+03:00",
+      "en_erken": "2026-09-21T12:00:00+03:00",
+      "en_gec": "2026-09-22T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:38+03:00",
+      "guncellendi_at": "2026-09-13T04:29:38+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1
 }

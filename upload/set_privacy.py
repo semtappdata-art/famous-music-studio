@@ -46,6 +46,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from youtube_auth import get_authenticated_service
 
+# Kota defteri: modül düzeyinde (conftest yönlendirmesi yüklü modülde çalışır).
+try:
+    import youtube_kota
+except Exception:  # noqa: BLE001
+    youtube_kota = None
+
+GIZLILIKLER = ("public", "unlisted", "private")
+# videos.list (1) + videos.update (50) — resmî tablo, bkz. youtube_kota.MALIYETLER.
+VIDEO_BASINA_BIRIM = 51
+
 # Geri gönderilmemesi gereken alanlar: `uploadStatus`/`failureReason`/
 # `rejectionReason` salt-okunur, `privacyStatus` zaten aşağıda yeniden
 # yazılıyor. (`madeForKids` BİLEREK listede değil — `dj_tarama_kontrol`
@@ -106,5 +116,58 @@ def set_privacy(video_id: str, privacy: str) -> None:
     print(f"  {video_id} -> {privacy} (AI beyanı korundu)")
 
 
+def main(argv=None) -> int:
+    """`set_privacy.py VIDEO_ID [VIDEO_ID ...] GIZLILIK [--gunluk-sinir N] [--zorla]`
+
+    Eski tek videolu kullanım (`VIDEO_ID public`) aynen çalışır.
+    argparse BİLEREK yok: video kimliği '-' ile başlayabiliyor (`-CQ7MmUygTQ`)
+    ve argparse onu bayrak sanıp reddederdi.
+
+    KOTA KORUMASI (2026-09-13, `upload/youtube_kota.py`): bugünkü harcama + bu iş
+    günlük havuzun %60'ını aşacaksa HİÇBİR çağrı yapılmadan durur (çıkış 3).
+    `--gunluk-sinir N` sığan kadarını (en fazla N) yapar; `--zorla` %60'ı aşar
+    ama saatlik hattın yayın rezervini yine yiyemez.
+    """
+    argv = list(sys.argv[1:] if argv is None else argv)
+    zorla, gunluk_sinir, girdiler = False, None, []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--zorla":
+            zorla = True
+        elif a == "--gunluk-sinir" and i + 1 < len(argv):
+            gunluk_sinir = int(argv[i + 1])
+            i += 1
+        elif a.startswith("--gunluk-sinir="):
+            gunluk_sinir = int(a.split("=", 1)[1])
+        else:
+            girdiler.append(a)
+        i += 1
+    if len(girdiler) < 2 or girdiler[-1] not in GIZLILIKLER:
+        print("Kullanım: python upload/set_privacy.py VIDEO_ID [VIDEO_ID ...] "
+              "public|unlisted|private [--gunluk-sinir N] [--zorla]")
+        return 2
+    idler, gizlilik = girdiler[:-1], girdiler[-1]
+    izin = len(idler)
+    if youtube_kota is None:
+        print("UYARI: youtube_kota yüklenemedi — kota koruması DEVRE DIŞI")
+    else:
+        try:
+            karar = youtube_kota.toplu_izin(VIDEO_BASINA_BIRIM, len(idler),
+                                            gunluk_sinir=gunluk_sinir, zorla=zorla)
+        except Exception as e:  # noqa: BLE001
+            print("UYARI: kota kontrolü yapılamadı (%s) — koruma DEVRE DIŞI" % e)
+        else:
+            print(karar["mesaj"])
+            if karar["durdu"]:
+                return 3
+            izin = karar["izin"]
+    for video_id in idler[:izin]:
+        set_privacy(video_id, gizlilik)
+    if izin < len(idler):
+        print("Yapılmayan (yarın): %s" % " ".join(idler[izin:]))
+    return 0
+
+
 if __name__ == "__main__":
-    set_privacy(sys.argv[1], sys.argv[2])
+    sys.exit(main())
