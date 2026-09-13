@@ -73,6 +73,7 @@ import notify
 import state_io
 import tiktok_publish_plan as TPP
 import uyumluluk
+from tiktok_web import web_aktif
 from gizli_maskele import maskele
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -176,8 +177,9 @@ def adaylari_bul(simdi_ts: float) -> list:
     for proje in uyumluluk.proje_klasorleri():
         d = TPP._durum_oku(proje)
         pid = d.get("tiktok_publish_id")
-        if not pid or d.get("tiktok_published_at") or d.get("tiktok_status_denenmez"):
-            continue
+        if (not pid or d.get("tiktok_published_at") or d.get("tiktok_status_denenmez")
+                or web_aktif(d)):
+            continue                                 # web planlı (tiktok_web.py): sorgu yok
         sonraki = _ts(d.get("tiktok_status_sonraki_deneme"))
         if sonraki is not None and sonraki > simdi_ts:
             continue

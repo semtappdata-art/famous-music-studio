@@ -35,7 +35,8 @@ _FINALLY = ("_refresh_latest_listing", "_refresh_stats", "_refresh_comments",
             "_facebook_backfill", "_ek_platform_backfill", "_facebook_yorumlari",
             "_facebook_veri_erisimi", "_dj_tarama", "_saglik_kontrol",
             "_izlenme_raporu", "_haftalik_gozden_gecirme", "_gunluk_izlenme",
-            "_tiktok_yayin_dogrulama", "_tiktok_kit_sirasi", "_turev_takvimi")
+            "_tiktok_yayin_dogrulama", "_tiktok_kit_sirasi", "_turev_takvimi",
+            "_tiktok_web_sirasi")
 
 
 def _damga(saat_once):
@@ -113,8 +114,10 @@ def test_creation_id_yoksa_normal_secilir(kos):
 
 
 def test_baska_anahtar_da_eksikse_normal_secilir(kos):
+    # 2026-09-13: varsayılan TikTok web planlama modunda (config.TIKTOK_AKIS) TikTok
+    # anahtarı ana hattın işi değil; "başka ana anahtar" iki modda da Shorts.
     d = _geri()
-    d.pop("tiktok_publish_id")
+    d.pop("youtube_shorts_video_id")
     geri = _proje(kos.kok, "01_Geri", d)
     _proje(kos.kok, "02_Yeni")
     assert kos.calistir()["islenen"] == [geri]

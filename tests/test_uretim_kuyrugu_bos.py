@@ -177,8 +177,13 @@ def test_esigin_altinda_sessiz_kalir(ortam, saat):
 # ===========================================================================
 
 @pytest.mark.parametrize("eksik", sorted(SK.ANA_PLATFORM_ANAHTARLARI))
-def test_bekleyen_proje_varken_uzun_sessizlikte_bile_sessiz(ortam, eksik):
-    """Dört anahtarın HANGİSİ eksik olursa olsun kuyruk dolu sayılır."""
+def test_bekleyen_proje_varken_uzun_sessizlikte_bile_sessiz(ortam, eksik, monkeypatch):
+    """Dört anahtarın HANGİSİ eksik olursa olsun kuyruk dolu sayılır.
+
+    2026-09-13: küme config.TIKTOK_AKIS'e duyarlı; dört anahtarlı ölçüt api_taslak
+    modunda sınanıyor (web planlama modu: tests/test_tiktok_web.py)."""
+    import config
+    monkeypatch.setattr(config, "TIKTOK_AKIS", "api_taslak")
     _yayinlanmis(ortam, "Yayinda", saat_once=300)
     _proje(ortam, "Bekleyen", {k: "x" for k in SK.ANA_PLATFORM_ANAHTARLARI
                                if k != eksik})
@@ -292,6 +297,13 @@ def test_bekleyen_tanimi_TEK_kaynakta(ortam):
                 if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
     assert "_yayin_taramasi" in cagrilar
 
+    # 2026-09-13: ölçüt mod-duyarlı TEK yardımcıda (`ana_platform_anahtarlari`, TikTok web
+    # planlama); sabiti yalnız o okur, `_yayin_taramasi` onu çağırır.
+    tarama = next(d for d in ast.walk(agac)
+                  if isinstance(d, ast.FunctionDef) and d.name == "_yayin_taramasi")
+    assert "ana_platform_anahtarlari" in {
+        c.func.id for c in ast.walk(tarama)
+        if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
     kullananlar = set()
     for d in ast.walk(agac):
         if not isinstance(d, ast.FunctionDef):
@@ -299,7 +311,7 @@ def test_bekleyen_tanimi_TEK_kaynakta(ortam):
         for n in ast.walk(d):
             if isinstance(n, ast.Name) and n.id == "ANA_PLATFORM_ANAHTARLARI":
                 kullananlar.add(d.name)
-    assert kullananlar == {"_yayin_taramasi"}, (
+    assert kullananlar == {"ana_platform_anahtarlari"}, (
         "'bekleyen proje' ölçütü ikinci bir yere kopyalanmış: %s" % sorted(kullananlar))
 
 

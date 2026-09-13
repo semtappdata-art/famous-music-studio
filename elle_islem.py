@@ -108,6 +108,8 @@ ISLEMLER = {
     "duzenledi": "düzenledi",
     "kontrol_etti": "elle kontrol etti",
     "diger": "diğer",
+    # 2026-09-13 TikTok web planlama (upload/tiktok_web.py isaretle) — yalnız Claude/CLI yazar.
+    "planladi": "planladı",
 }
 KAYNAKLAR = ("telegram", "pano", "claude", "backfill", "cli")
 GIZLILIK_DEGERLERI = ("public", "unlisted", "private")
@@ -377,6 +379,9 @@ def _tiktok_yayin_yansit(kayit: dict, proje_yol: str):
     import tiktok_publish_plan as TPP
 
     durum = TPP._durum_oku(proje_yol)
+    import tiktok_web as TW
+    if TW.web_aktif(durum):
+        return _tiktok_web_yansit(kayit, proje_yol, TW)
     if not durum.get("tiktok_publish_id"):
         return None, ("taslak kaydı yok (tiktok_publish_id) — yalnız deftere yazıldı, "
                       "state işareti atılmadı")
@@ -405,6 +410,20 @@ def _tiktok_yayin_yansit(kayit: dict, proje_yol: str):
     if not yazildi:
         return None, mesaj
     return "tiktok_published_at, tiktok_published_kaynak", mesaj
+
+
+def _tiktok_web_yansit(kayit: dict, proje_yol: str, TW):
+    """WEB PLANI (tiktok_web.py, 2026-09-13): `yayinladi` -> `tiktok_web.yayinlandi_isaretle`
+    (mevcut `isaretle_yayinlandi` onun içinde). Red -> ElleIslemHatasi (hiçbir şey yazılmaz)."""
+    try:
+        yazildi, mesaj = TW.yayinlandi_isaretle(
+            proje_yol, kaynak="Elle işlemler defteri (%s, %s)" % (kayit["kaynak"], kayit["id"]),
+            simdi=zaman_ts(kayit.get("kayit_zamani")))
+    except TW.TiktokWebHatasi as e:
+        raise ElleIslemHatasi("İŞARETLENMEDİ: %s — kayıt yazılmadı" % e)
+    if not yazildi:
+        return None, mesaj
+    return "tiktok_web.yayinlandi, tiktok_published_at, tiktok_published_kaynak", mesaj
 
 
 def _youtube_gizlilik_notu(kayit: dict, proje_yol: str, gizlilik):

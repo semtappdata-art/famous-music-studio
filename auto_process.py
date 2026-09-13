@@ -394,15 +394,13 @@ def _is_fully_done(project_dir: str) -> bool:
     (Telegram/Bluesky 14/18 şarkı, playlist 20/20 Shorts, Instagram
     konteyneri) ve hiçbiri log'a tek satır düşürmedi."""
     state = _load_state(project_dir)
-    return all(
-        key in state
-        for key in (
-            "youtube_video_id",
-            "youtube_shorts_video_id",
-            "tiktok_publish_id",
-            "instagram_media_id",
-        )
-    )
+    # TikTok WEB PLANLAMA (2026-09-13, config.TIKTOK_AKIS="web_planla"): TikTok API taslağı
+    # artık ana hattın işi DEĞİL — gönderi TikTok Studio web'de planlanıyor ve
+    # upload/tiktok_web.py'nin bekleyen listesinde izleniyor (kalıp B). Anahtar şart
+    # kalsaydı her yeni proje sonsuza kadar pending kalır, pencere paydası sessizce
+    # büyürdü (yukarıdaki gerekçe 1). Küme: _ana_anahtarlar(); saglik_kontrol eşi:
+    # ana_platform_anahtarlari().
+    return all(key in state for key in _ana_anahtarlar())
 
 
 def _last_upload_time(project_dirs: list, keys: tuple = UPLOAD_TIMESTAMP_KEYS):
@@ -733,6 +731,13 @@ _ANA_ANAHTARLAR = ("youtube_video_id", "youtube_shorts_video_id",
                    "tiktok_publish_id", "instagram_media_id")
 
 
+def _ana_anahtarlar() -> tuple:
+    """Pahalı ana hattın anahtarları; TikTok web planlama modunda TikTok'suz üçlü."""
+    if config.tiktok_web_modu():
+        return tuple(k for k in _ANA_ANAHTARLAR if k != "tiktok_publish_id")
+    return _ANA_ANAHTARLAR
+
+
 def _yalniz_drain_bekleyenleri_ayir(project_dirs: list) -> tuple:
     """(secilebilir, yalniz_drain) — sıra korunur (2026-09-13).
 
@@ -761,7 +766,7 @@ def _yalniz_drain_bekleyenleri_ayir(project_dirs: list) -> tuple:
     for p in project_dirs:
         try:
             st = _load_state(p)
-            eksik = [k for k in _ANA_ANAHTARLAR if k not in st]
+            eksik = [k for k in _ana_anahtarlar() if k not in st]
             drain = (eksik == ["instagram_media_id"]
                      and bool(st.get("instagram_creation_id"))
                      and not _konteyner_bayat(st))
@@ -1057,6 +1062,29 @@ def _drain_golden_hour_queue(project_dirs: list) -> None:
             f"{type(e).__name__}: {str(e)[:200]}")
 
 
+def _tiktok_adimi(project_dir: str, state: dict, upload_dir: str) -> None:
+    """process_project'in TikTok adımı.
+
+    WEB PLANLAMA MODU (config.TIKTOK_AKIS="web_planla", kullanıcı kararı 2026-09-13): yeni
+    projeye API taslağı YÜKLENMEZ — gönderi TikTok Studio web'de "Planla" ile kurulur
+    (upload/tiktok_web.py plan-oner). Mevcut taslaklı projelerin bildirim dalı aynen
+    kalır (web planlıysa bildirim fonksiyonun içinde durur). "api_taslak" eski yol."""
+    if "tiktok_publish_id" in state:
+        _check_tiktok_notification(project_dir, state)
+    elif config.tiktok_web_modu():
+        log("  TikTok: web planlama modu (config.TIKTOK_AKIS) — API taslağı yüklenmedi; "
+            "plan: python upload/tiktok_web.py plan-oner")
+    elif os.path.isfile(os.path.join(upload_dir, "tiktok_token.json")):
+        try:
+            from tiktok_upload import upload_video as tt_upload
+            publish_id = tt_upload(project_dir)
+            log(f"  TikTok: tamam (taslak/inbox), publish_id={publish_id} — TikTok uygulamasından yayınla")
+        except Exception as e:
+            log(f"  TikTok HATA: {e}")
+    else:
+        log("  TikTok atlandı: upload/tiktok_token.json yok (önce tiktok_auth.py çalıştır)")
+
+
 def process_project(project_dir: str, privacy: str, schedule: bool = True) -> None:
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
 
@@ -1205,17 +1233,7 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
         except Exception as e:
             log(f"  YouTube playlist HATA: {e}")
 
-    if "tiktok_publish_id" in state:
-        _check_tiktok_notification(project_dir, state)
-    elif os.path.isfile(os.path.join(upload_dir, "tiktok_token.json")):
-        try:
-            from tiktok_upload import upload_video as tt_upload
-            publish_id = tt_upload(project_dir)
-            log(f"  TikTok: tamam (taslak/inbox), publish_id={publish_id} — TikTok uygulamasından yayınla")
-        except Exception as e:
-            log(f"  TikTok HATA: {e}")
-    else:
-        log("  TikTok atlandı: upload/tiktok_token.json yok (önce tiktok_auth.py çalıştır)")
+    _tiktok_adimi(project_dir, state, upload_dir)
 
     # SIRA ÖNEMLİ — "bekleyen konteyner" kontrolü "zaten yüklü" dalının ÖNÜNE
     # alındı. Eskiden `instagram_media_id` dalı başta olduğu için, state'te
@@ -1646,6 +1664,20 @@ def _turev_takvimi() -> None:
         log(f"  Türev takvimi HATA: {maskele(str(e))}")
 
 
+def _tiktok_web_sirasi() -> None:
+    """TikTok WEB PLANLAMA görünürlüğü (upload/tiktok_web.py) — her koşuda.
+
+    Tek "  TikTok web:" satırı; planlanan anı geçmiş, onaylanmamış gönderi için
+    golden-hour'da günde en fazla 1 "TikTok'ta çıktı mı?" (config.TIKTOK_WEB_KONTROL_HATIRLATMA).
+    Planlanan an geçti diye `yayinlandi` YAZMAZ. Kalıp B; `_is_fully_done`'a EKLENMEDİ,
+    yeni görev yok; `_turev_takvimi()` SONRASINDA. Hiçbir hata otomasyonu durdurmaz."""
+    try:
+        from tiktok_web import kontrol_hatirlatma
+        kontrol_hatirlatma(log)
+    except Exception as e:
+        log(f"  TikTok web HATA: {maskele(str(e))}")
+
+
 def _facebook_yorumlari() -> None:
     """Canliya cikmis zamanlanmis Facebook gonderilerine YouTube yorumunu ekler.
 
@@ -1858,6 +1890,7 @@ def main():
         _tiktok_yayin_dogrulama()
         _tiktok_kit_sirasi()
         _turev_takvimi()
+        _tiktok_web_sirasi()
         _release_lock()
         # YouTube kota özeti — TEK satır, finally'nin EN SONUNDA ve KENDİ try'ında:
         # defter/hesap hatası koşuyu ASLA düşürmez. Yalnız GÖRÜNÜRLÜK — saatlik hat

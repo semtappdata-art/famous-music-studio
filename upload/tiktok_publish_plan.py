@@ -369,6 +369,15 @@ def build_plan(project_dir: str) -> dict:
 # ELLE YAYIN SONRASI İŞARETLEME — hiçbir ağ çağrısı yok, tamamen yerel.
 # --------------------------------------------------------------------------
 
+def _web_kaydi_etkin(durum: dict) -> bool:
+    """Etkin `tiktok_web` kaydı var mı (upload/tiktok_web.py; import edilemezse False)."""
+    try:
+        from tiktok_web import web_aktif
+    except Exception:                                        # noqa: BLE001
+        return False
+    return web_aktif(durum)
+
+
 def isaretle_yayinlandi(project_dir: str, zaman: str = None,
                         dry_run: bool = False, kaynak: str = None) -> tuple:
     """`tiktok_published_at` yazar. `(yazildi, mesaj)` döner.
@@ -388,7 +397,9 @@ def isaretle_yayinlandi(project_dir: str, zaman: str = None,
     """
     durum = _durum_oku_kesin(project_dir)
     ad = os.path.basename(os.path.abspath(project_dir))
-    if not durum.get("tiktok_publish_id"):
+    # WEB PLANLAMA (2026-09-13): TikTok Studio web'den planlanan gönderinin API
+    # taslağı (publish_id) YOK; etkin `tiktok_web` kaydı onun yerini tutar.
+    if not durum.get("tiktok_publish_id") and not _web_kaydi_etkin(durum):
         raise IsaretlemeHatasi(
             "'%s' TikTok'a hiç yüklenmemiş (state.json'da `tiktok_publish_id` "
             "yok) — yayınlanmış olamaz. Önce: "

@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import tiktok_publish_plan as TPP
+import tiktok_web as TW
 import uyumluluk
 from tiktok_upload import _load_meta, yayin_kodu
 
@@ -130,6 +131,8 @@ def onayla(sorgu: str, zaman: str = None) -> tuple:
 
     proje, ad, durum = eslesen[0]
     kod = yayin_kodu(durum.get("tiktok_publish_id"))
+    if TW.web_aktif(durum):
+        return _web_onayla(proje, ad, zaman)
     if not durum.get("tiktok_publish_id"):
         return 2, ("İŞARETLENMEDİ: '%s' TikTok'a hiç taslak olarak yüklenmemiş "
                    "(tiktok_publish_id yok)." % ad)
@@ -159,6 +162,21 @@ def onayla(sorgu: str, zaman: str = None) -> tuple:
     _deftere_yaz(proje, ad, kod, damga)
     return 0, "TAMAM: '%s' (%s) TikTok'ta yayınlandı olarak işaretlendi — %s." % (
         ad, kod, damga)
+
+
+def _web_onayla(proje: str, ad: str, zaman: str = None) -> tuple:
+    """WEB PLANI (tiktok_web.py, 2026-09-13): planlanan anı geçmiş kaydı yayınlandı yapar.
+    An gelmediyse / plan engeli varsa işaretlemez (sebep düz metin)."""
+    damga = zaman or time.strftime("%Y-%m-%dT%H:%M:%S")
+    try:
+        yazildi, mesaj = TW.yayinlandi_isaretle(
+            proje, kaynak="%s, %s" % (KAYNAK_ETIKETI, damga), simdi=TW._ts(damga))
+    except TW.TiktokWebHatasi as e:
+        return 2, "İŞARETLENMEDİ: %s" % e
+    if not yazildi:
+        return 0, "ZATEN İŞARETLİ: %s" % mesaj
+    _deftere_yaz(proje, ad, None, damga)
+    return 0, "TAMAM: %s — %s." % (mesaj, damga)
 
 
 def _deftere_yaz(proje: str, ad: str, kod, damga: str) -> None:

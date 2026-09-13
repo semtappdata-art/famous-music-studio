@@ -94,6 +94,7 @@ from gizli_maskele import maskele
 from social_text import (ai_beyani_modu, build_tiktok_kit_caption, resolve_language,
                          tiktok_kit_turu)
 from tiktok_upload import _load_meta, yayin_kodu
+from tiktok_web import _ts as _web_ts, web_aktif
 
 _ZAMAN = "%Y-%m-%dT%H:%M:%S"
 SAAT = 3600
@@ -337,8 +338,11 @@ def _kit_kodu_guncel(d: dict) -> bool:
 
 
 def _onay_bekliyor(d: dict) -> bool:
+    # Web'de planlanan (tiktok_web.py) taslağın kiti artık onay BEKLEMEZ: gönderiyi
+    # TikTok Studio yayınlayacak; sıra tıkanmaz, 48 sa hatırlatması da gitmez.
     return (bool(d.get("tiktok_kit_gonderildi_at")) and _kit_kodu_guncel(d)
-            and not d.get("tiktok_published_at") and not d.get("tiktok_status_denenmez"))
+            and not d.get("tiktok_published_at") and not d.get("tiktok_status_denenmez")
+            and not web_aktif(d))
 
 
 def siradaki_kit_adayi(projeler, simdi: float) -> dict:
@@ -357,8 +361,8 @@ def siradaki_kit_adayi(projeler, simdi: float) -> dict:
     for proje in projeler:
         d = TPP._durum_oku(proje)
         if (not d.get("tiktok_publish_id") or d.get("tiktok_published_at")
-                or d.get("tiktok_status_denenmez")):
-            continue
+                or d.get("tiktok_status_denenmez") or web_aktif(d)):
+            continue                                  # web planlı (tiktok_web.py): kit YOK
         if d.get("tiktok_kit_gonderildi_at") and _kit_kodu_guncel(d):
             continue                                  # bu taslağın kiti zaten gitti
         ad = _ad(proje)
@@ -405,7 +409,19 @@ def siradaki_kit_adayi(projeler, simdi: float) -> dict:
 
 
 def _tempo_engeli(durumlar, t: float):
-    """Tempo kapısı; engel varsa sebep metni, yoksa None. Eşikler config'ten."""
+    """Tempo kapısı; engel varsa sebep metni, yoksa None. Eşikler config'ten.
+
+    WEB PLANLARI (tiktok_web.py, 2026-09-13) da TikTok gönderisidir: etkin bir web
+    planının anına `TIKTOK_KIT_ARALIK_SAAT`ten yakın ya da aynı TR gününde kit gitmez."""
+    aralik_web = float(config.TIKTOK_KIT_ARALIK_SAAT) * SAAT
+    for _, d in durumlar:
+        w = d.get("tiktok_web") if web_aktif(d) else None
+        an = _web_ts(w.get("planlanan_an")) if isinstance(w, dict) else None
+        if an is None:
+            continue
+        if abs(t - an) < aralik_web or _tr(an).date() == _tr(t).date():
+            return ("TikTok web planı %s — kit ile arası en az %s saat ve aynı gün değil"
+                    % (_damga(an), config.TIKTOK_KIT_ARALIK_SAAT))
     gonderimler = sorted(g for g in (_ts(d.get("tiktok_kit_gonderildi_at"))
                                      for _, d in durumlar)
                          if g is not None and g <= t)
