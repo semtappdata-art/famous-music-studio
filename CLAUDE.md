@@ -196,7 +196,10 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
     bekletilen projeyi `_auto_pace_count`'tan ÖNCE `pending`'den ayırıyor — ayırıcı olmasaydı
     `pending[:1]` her koşuda bekletilen projeyi seçer ve arkasındaki şarkıları KALICI olarak
     tıkardı. İlk vaka: `Bu Gece Kazandık` (kapak/video görselleri eski → yeni formatta yeniden
-    render + yeni YouTube yüklemesi bekliyor). Kaldırmak: render yapıldıktan sonra alanı sil.
+    render + yeni YouTube yüklemesi bekliyordu). 2026-09-13/14'te yeni görselli yeniden
+    yüklendi (`Ai9U_zFZmLI`, public 2026-09-14T09:00:00Z) ve `yayin_beklet` kaldırıldı — bu
+    örnek "bekletmeyi kaldırmanın yolu render + yeniden yüklemedir" modelini gösteriyor.
+    Kaldırmak: render yapıldıktan sonra alanı sil.
   - **Görünürlük planı:** önceden YAYINLANMIŞ bir videoyu `publishAt` ile zamanlamak MÜMKÜN
     DEĞİL (`invalidPublishAt` — alan yalnız hiç yayınlanmamış videoda kabul ediliyor). Bu
     yüzden state'e `youtube_gorunurluk_plani = {"hedef": "public", ...}` yazılır;
@@ -739,10 +742,9 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   Suno'dan bir DJ Famous setini indirip `dj_sets/<isim>/` klasörüne elle kaydederken
   bu boşluk fark edildi (`_scan_once()` → parametrik `_scan_dir(base_dir,
   trigger_script)`'e genelleştirildi, `projects/` ve `dj_sets/` için ayrı ayrı çağrılıyor).
-  **AÇIK ARIZA — 2026-09-12'de bulundu, düzeltmesi bu satır yazılırken AKIŞTA (paralel
-  ajan). Çözülmüş sayma; kapandığını `git log -- watch_projects.py` ile DOĞRULA.**
-  `watch_projects.COVER_NAMES` yalnızca `cover.jpg/jpeg/png` içeriyor — **`cover_vertical.png`
-  YOK**, oysa `generate_cover.py` kapağı İKİ oranda üretiyor (yukarıdaki kapak maddesi).
+  **ÇÖZÜLDÜ (2026-09-14, commit `6f23898`):** `watch_projects.COVER_NAMES` yalnızca
+  `cover.jpg/jpeg/png` içeriyordu — **`cover_vertical.png` YOKTU**, oysa `generate_cover.py`
+  kapağı İKİ oranda üretiyor (yukarıdaki kapak maddesi).
   Sonuç zinciri: 28 dikey kapak her dakika "sahipsiz görsel" sanılıyor → her biri
   `_is_stable()` içinde `time.sleep(3)` yiyor → tarama **84 saniye** sürüyor (ÖLÇÜLDÜ:
   `gorev_izleri/watch_projects.log`, arka arkaya "BİTTİ ... süre=84.2sn"). Tek başına
@@ -753,7 +755,8 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   kalıyor ve saatlik hat `LOCK_STALE_SECONDS` (4 saat) boyunca duruyor. En pahalı sonucu
   ise render'ın yarıda kesilmesi: `auto_process._is_rendered()` YALNIZCA dosya VARLIĞINA
   bakıyor (`os.path.isfile`), yani **yarım bir mp4'e True der** ve bir sonraki koşu o bozuk
-  videoyu render etmeden YÜKLER.
+  videoyu render etmeden YÜKLERDI. Düzeltme: `COVER_NAMES` rol-deseniyle genişletildi
+  (`PIPELINE_IMAGE_ROLES`, `watch_projects.py:102-135`); tarama ~0,2 sn'ye indi.
 - **`.ps1` dosyaları UTF-8 BOM'suz kaydedilirse Windows PowerShell 5.1'de BOZULUR**:
   `setup_task_scheduler.ps1` ilk yazıldığında BOM'suzdu — Türkçe karakterler (ı, ğ, ş,
   İ, —) ANSI kod sayfasıyla yanlış okunup parse hatalarına yol açıyordu (script hiç
@@ -915,8 +918,10 @@ için KALICI OLARAK ÖLÜ yapar; 2026-09-11'de tam olarak bu üç kez oldu.
   (gizlilik YouTube'dan okunur, okunamazsa video ATLANIR) ve bir "güvenlik kemeri" hiçbir
   videoyu `unlisted`/`private`'tan `public`'e çeviremez. Hedef listesi SABİT DEĞİL,
   `uyumluluk.proje_klasorleri()`'nden türetiliyor (bu deponun "bayatlayan sabit liste"
-  hata sınıfı). 2026-09-12 itibarıyla `upload/ai_beyani_onarim.json` YOK — yani kampanya
-  HENÜZ HİÇ ÇALIŞMADI.
+  hata sınıfı). **2026-09-14: kampanya TAMAMLANDI** — `upload/ai_beyani_onarim.json` 44
+  kayıt (22 proje × uzun+shorts), tamamı `ai_beyani_onarildi_at: 2026-09-12T21:26:56…
+  21:27:27`; `denetim_bulgulari_2026-09-12.md`: "onarılan 42, hatalı 0, KALAN 0".
+  Yeni bir elle komut ayarlandığında varsayılan KURU KOŞU davranışı AYNEN geçerli.
 - **Kilit deseni: `O_CREAT|O_EXCL` ile ATOMİK alma + nabız `log()`'un İÇİNDE**
   (`auto_process.py`; `dj_famous_process.py` aynı desen): `os.path.exists` + `open`
   ikilisi yarış durumu yaratıyordu, iki süreç aynı anda "kilit yok" görüp ikisi de devam
@@ -1378,13 +1383,13 @@ python olcum_temel_cizgi.py --karsilastir  # temel çizgi <-> yeni ölçüm
 
 ### İKİNCİ TARİH — 2026-10-11: YouTube Reporting API'yi AÇ
 
-Google Cloud Console'da tek tık, ~5 dk. **Ertelenemez**: Reporting job yalnızca
-KURULMADAN ÖNCEKİ 30 GÜNÜ geriye dolduruyor, 40 kapak 2026-09-11'de değişti ve temel çizgi
-tam o pencerede — her gecikme günü temel çizgiden BİR GÜN siliyor. 2026-09-12'de
-doğrulandı: `olcum_temel_cizgi.json` → `cekilebildi_mi = false` (403 SERVICE_DISABLED).
-Alternatif yol YOK — Analytics API `impressions`/`impressionClickThroughRate` metriklerini
-TANIMIYOR (dört ayrı denemeyle kayıtlı); yedek yalnızca Studio → Analizler → Erişim CSV'si,
-yani yukarıdaki "elle tek ek adım"ın ta kendisi.
+**KAPANDI (2026-09-12)** — Google Cloud Console'da tek tık, zaman dolduğunda bu randevu
+ARTIK GEÇERSİZ. `upload/youtube_reporting.py --durum` (salt okunur) → `Kurulu job: 2`
+(`channel_reach_combined_a1`, `channel_reach_basic_a1`), `denetim_bulgulari_2026-09-12.md`
+E-2 "Bırakıldı → Kapatıldı". Bu madde TARİHLİ RANDEVU değil — Reporting raporları 24-48
+saat gecikmeli geldiği için ÖLÇÜM 10-11 Ekim'de DEĞİL, ilk rapor dosyaları yüklendiğinde
+(olcum sistemiyle değil ayrıca). Tarih varsayılanı için CLAUDE.md "TARİHLİ RANDEVU" bölümüne
+bakma — bu kalıntı sadece ne olduğunu kaydediyor.
 
 ### 2026-09-12'de YANLIŞ ÇIKAN İKİ SAYI — tekrar kullanma
 
