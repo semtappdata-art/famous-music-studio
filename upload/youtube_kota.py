@@ -876,7 +876,9 @@ def kaynak_tespit() -> str:
         ad = os.path.splitext(os.path.basename(dosya or ""))[0] or "-c"
         if ad == "__main__":
             ad = os.path.basename(os.path.dirname(dosya)) or ad
-        pythonw = os.path.basename(sys.executable or "").lower().startswith("pythonw")
+        # Windows yolu Linux CI'da da doğru ayrılsın: hem "/" hem ters eğik çizgi ayırıcı.
+        exe = (sys.executable or "").replace(chr(92), "/").rsplit("/", 1)[-1]
+        pythonw = exe.lower().startswith("pythonw")
         if ad in ZAMANLANMIS_BETIKLER and pythonw:
             return ad
         return "elle:" + ad
