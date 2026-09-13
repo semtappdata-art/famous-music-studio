@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""YouTube Shorts / kesit açıklamasının son satırı: "TikTok: @famousmusicstudio".
+"""YouTube Shorts / kesit açıklamasının son satırı: "TikTok'ta: famousmusicstudio".
 
 Kullanıcı onayı 2026-09-13 (TikTok LIVE planı §3a-6): YENİ yüklemelerde tek satır,
 hesap adı `config.SOCIAL_HANDLES["tiktok"]`. Geçmiş videolar (`fix_description`)
@@ -22,7 +22,7 @@ import youtube_upload as YU                               # noqa: E402
 
 META = {"title": "Beni Bırakma", "theme": "pop"}
 DJ = {"title": "Just Relax", "theme": "dj"}
-SATIR = "TikTok: @famousmusicstudio"
+SATIR = "TikTok'ta: famousmusicstudio"
 
 
 def test_hesap_adi_config_sabitinden():
@@ -67,10 +67,15 @@ def test_uzun_format_ve_diger_platform_metinleri_degismez():
     assert uzun.count(config.SOCIAL_LINKS["tiktok"]) == 1         # mevcut link bloğu aynen
     for metin in (ST.build_caption(META), ST.build_caption(META, ai_beyani=True),
                   ST.build_tiktok_kit_caption(META), ST.build_caption(DJ)):
-        assert "TikTok: @" not in metin
+        assert "TikTok'ta:" not in metin
 
 
 def test_handle_yoksa_satir_yok(monkeypatch):
     monkeypatch.setattr(config, "SOCIAL_HANDLES", {"instagram": "x"})
     assert YU.tiktok_hesap_satiri() == ""
-    assert "TikTok: @" not in YU.build_shorts_snippet(META, "abc123")["description"]
+    assert "TikTok'ta:" not in YU.build_shorts_snippet(META, "abc123")["description"]
+
+
+def test_satirda_youtube_kanal_baglantisina_donusen_at_isareti_yok():
+    # youtube.com/@famousmusicstudio başka bir kanal; @ YouTube'da kanal linkine dönüşür.
+    assert "@" not in YU.tiktok_hesap_satiri()

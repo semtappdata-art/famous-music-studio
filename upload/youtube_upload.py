@@ -230,14 +230,16 @@ def build_snippet(meta: dict) -> dict:
 
 
 def tiktok_hesap_satiri() -> str:
-    """YouTube Shorts/kesit açıklamasının SON satırı: "TikTok: @famousmusicstudio"
+    """YouTube Shorts/kesit açıklamasının SON satırı: "TikTok'ta: famousmusicstudio"
     (TikTok LIVE planı §3a-6, kullanıcı onayı 2026-09-13). Hesap adı TEK yerde:
     `config.SOCIAL_HANDLES["tiktok"]`. Düz metin hesap adı, dış link DEĞİL; CLAUDE.md'deki
     link yasağı Instagram/TikTok caption'ı içindir, YouTube açıklaması kapsam dışı.
     `build_caption` (TikTok/IG/Telegram/Bluesky ortak) DEĞİŞMEZ; satır yalnız burada eklenir.
     Uzun formatta EKLENMEZ: link bloğunda zaten "🎵 TikTok: <url>" var (çift satır olmasın)."""
     handle = (config.SOCIAL_HANDLES or {}).get("tiktok")
-    return f"TikTok: @{handle}" if handle else ""
+    # "@" YOK (2026-09-13): YouTube açıklamadaki @adları YouTube kanal bağlantısına çeviriyor ve
+    # youtube.com/@famousmusicstudio BAŞKA bir kanal (UCwqTrdy6ATCWJ4vca-HJH4A). Bizimki @Famous_musics_studio.
+    return f"TikTok'ta: {handle}" if handle else ""
 
 
 def build_shorts_snippet(meta: dict, full_video_id: str | None = None,
