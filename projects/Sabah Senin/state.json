@@ -8,5 +8,13 @@
   "youtube_shorts_privacy": "public",
   "youtube_shorts_publish_at": "2026-09-13T09:00:00Z",
   "instagram_creation_id": "18094617506265431",
-  "instagram_container_created_at": "2026-09-13T02:22:57"
+  "instagram_container_created_at": "2026-09-13T02:22:57",
+  "youtube_playlists": [
+    "PLWPREmvYqOsI",
+    "PLKFBTOXunWQ0",
+    "PLIfBoPfEuEWQ"
+  ],
+  "youtube_playlist_id": "PLWPREmvYqOsI",
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
+  "youtube_playlists_kaynak": "YouTube Studio (Chrome, API kotası bitti), 2026-09-13T03:48"
 }
