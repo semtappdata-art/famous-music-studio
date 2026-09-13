@@ -2143,17 +2143,19 @@ def main():
         _tiktok_web_sirasi()
         _youtube_studio_sirasi()
         _release_lock()
-        # YouTube kota özeti — TEK satır, finally'nin EN SONUNDA ve KENDİ try'ında:
-        # defter/hesap hatası koşuyu ASLA düşürmez. Yalnız GÖRÜNÜRLÜK — saatlik hat
-        # kotayla engellenmez (koruma sadece toplu elle betiklerde). Kilit bırakıldıktan
-        # sonra log() güvenli: nabız bayrağı _release_lock()'ta zaten düştü.
-        # Defter ve gerekçe: upload/youtube_kota.py; koruma: tests/test_youtube_kota.py.
+        # YouTube kota — TEK satır + kapak telafisi + Studio Telegram bildirimi.
+        # finally'nin EN SONUNDA ve KENDİ try'ında: defter/hesap hatası koşuyu ASLA
+        # düşürmez (kosu_sonu ayrıca kendi içinde hiçbir istisna fırlatmaz). Kilit
+        # bırakıldıktan sonra log() güvenli: nabız bayrağı _release_lock()'ta zaten düştü.
+        # Kapak telafisi kota yetersizliğinde kendini bekleyenler listesine geri koyar;
+        # Studio bildirimi kapanan işleri telefona taşır (kotaya düşen adımların
+        # "günlerce sessizce durma"sını kapatır). Defter ve gerekçe: upload/youtube_kota.py.
         try:
-            from youtube_kota import saglik_satiri as _youtube_kota_satiri
-            log(_youtube_kota_satiri())
+            from youtube_kota import kosu_sonu as _youtube_kota_sonu
+            _youtube_kota_sonu(log=log)
         except Exception as e:  # noqa: BLE001
             try:
-                log(f"  YouTube kota satırı yazılamadı: {e}")
+                log(f"  YouTube kota kosu sonu adımı yazılamadı: {e}")
             except Exception:  # noqa: BLE001
                 pass
 
