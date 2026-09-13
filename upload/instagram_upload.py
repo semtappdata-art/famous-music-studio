@@ -23,6 +23,8 @@ import time
 
 import requests
 
+import httpx
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -300,44 +302,48 @@ def _upload_to_netlify(file_paths: list[str]) -> dict[str, str]:
 
     auth_headers = {"Authorization": f"Bearer {creds['token']}"}
 
-    create_resp = requests.post(
-        f"https://api.netlify.com/api/v1/sites/{creds['site_id']}/deploys",
-        headers={**auth_headers, "Content-Type": "application/json"},
-        json={"files": {f"/{name}": sha for name, sha in sha1s.items()}},
-        timeout=(10, 30),
-    )
-    create_resp.raise_for_status()
-    deploy = create_resp.json()
-    deploy_id = deploy["id"]
-
-    # Netlify aynı içeriği (aynı SHA1) daha önce görmediyse dosyayı ayrıca yükle.
-    required_shas = set(deploy.get("required") or [])
-    for name, content in contents.items():
-        if sha1s[name] in required_shas:
-            upload_resp = requests.put(
-                f"https://api.netlify.com/api/v1/deploys/{deploy_id}/files/{name}",
-                headers={**auth_headers, "Content-Type": "application/octet-stream"},
-                data=content,
-                timeout=(10, 300),
-            )
-            upload_resp.raise_for_status()
-
-    # Deploy 'ready' olana kadar bekle
-    status_resp = None
-    for _ in range(30):
-        status_resp = requests.get(
-            f"https://api.netlify.com/api/v1/deploys/{deploy_id}",
-            headers=auth_headers,
-            timeout=(10, 30),
+    # HTTP/2: makinede api.netlify.com'a HTTP/1.1 ile büyük gövde (5MB+) PUT'u
+    # soket yazma aşamasında `TimeoutError: The write operation timed out` ile
+    # kesiliyordu (requests/urllib3 HTTP/1.1 yığını). Chrome'un kullandığı HTTP/2
+    # ile aynı gövde sorunsuz geçiyor (ölçüldü: 5MB->~12sn) — bu yüzden Netlify
+    # çağrıları httpx (http2=True) üzerinden yapılıyor.
+    with httpx.Client(http2=True, timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+        create_resp = client.post(
+            f"https://api.netlify.com/api/v1/sites/{creds['site_id']}/deploys",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"files": {f"/{name}": sha for name, sha in sha1s.items()}},
         )
-        status_resp.raise_for_status()
-        if status_resp.json().get("state") == "ready":
-            break
-        time.sleep(2)
-    else:
-        raise RuntimeError("Netlify deploy zaman aşımına uğradı.")
+        create_resp.raise_for_status()
+        deploy = create_resp.json()
+        deploy_id = deploy["id"]
 
-    base_url = status_resp.json()["ssl_url"]
+        # Netlify aynı içeriği (aynı SHA1) daha önce görmediyse dosyayı ayrıca yükle.
+        required_shas = set(deploy.get("required") or [])
+        for name, content in contents.items():
+            if sha1s[name] in required_shas:
+                upload_resp = client.put(
+                    f"https://api.netlify.com/api/v1/deploys/{deploy_id}/files/{name}",
+                    headers={**auth_headers, "Content-Type": "application/octet-stream"},
+                    content=content,
+                    timeout=httpx.Timeout(300.0, connect=10.0),
+                )
+                upload_resp.raise_for_status()
+
+        # Deploy 'ready' olana kadar bekle
+        status_resp = None
+        for _ in range(30):
+            status_resp = client.get(
+                f"https://api.netlify.com/api/v1/deploys/{deploy_id}",
+                headers=auth_headers,
+            )
+            status_resp.raise_for_status()
+            if status_resp.json().get("state") == "ready":
+                break
+            time.sleep(2)
+        else:
+            raise RuntimeError("Netlify deploy zaman aşımına uğradı.")
+
+        base_url = status_resp.json()["ssl_url"]
     return {name: f"{base_url}/{name}" for name in contents}
 
 
