@@ -58,5 +58,184 @@
   "bluesky_post_cid": "bafyreihr2timmnynlmrlmirgp2faerrzmkkqesqiramzlht72viv46ulte",
   "bluesky_uploaded_at": "2026-09-12T22:07:42",
   "tiktok_publish_status": "SEND_TO_USER_INBOX",
-  "tiktok_status_checked_at": "2026-09-13T02:23:10"
+  "tiktok_status_checked_at": "2026-09-13T02:23:10",
+  "turev_plani": [
+    {
+      "id": "TRV-kader-ortaklari-d7_karar",
+      "tur": "d7_karar",
+      "tur_adi": "D+7 karar noktası",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-08T20:26:32+03:00",
+      "hedef_an": "2026-09-15T12:00:00+03:00",
+      "en_erken": "2026-09-15T12:00:00+03:00",
+      "en_gec": "2026-09-17T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:38+03:00",
+      "guncellendi_at": "2026-09-13T04:29:38+03:00"
+    },
+    {
+      "id": "TRV-kader-ortaklari-kulis",
+      "tur": "kulis",
+      "tur_adi": "Kulis gönderisi (nasıl yapıldı)",
+      "platform": "youtube",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-08T20:26:32+03:00",
+      "hedef_an": "2026-09-15T18:00:00+03:00",
+      "en_erken": "2026-09-15T18:00:00+03:00",
+      "en_gec": "2026-09-22T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:38+03:00",
+      "guncellendi_at": "2026-09-13T04:29:38+03:00"
+    },
+    {
+      "id": "TRV-kader-ortaklari-tg_bs_hatirlatma",
+      "tur": "tg_bs_hatirlatma",
+      "tur_adi": "Telegram + Bluesky hatırlatma",
+      "platform": "telegram",
+      "yuzey": true,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-08T20:26:32+03:00",
+      "hedef_an": "2026-09-17T12:00:00+03:00",
+      "en_erken": "2026-09-17T12:00:00+03:00",
+      "en_gec": "2026-09-24T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "dusuk_orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:38+03:00",
+      "guncellendi_at": "2026-09-13T04:29:38+03:00"
+    },
+    {
+      "id": "TRV-kader-ortaklari-tiktok_ikinci_kesit",
+      "tur": "tiktok_ikinci_kesit",
+      "tur_adi": "TikTok ikinci kesit",
+      "platform": "tiktok",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-08T20:26:32+03:00",
+      "hedef_an": "2026-09-19T18:00:00+03:00",
+      "en_erken": "2026-09-19T18:00:00+03:00",
+      "en_gec": "2026-09-29T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [
+        "output/turev_kesit_9x16.mp4"
+      ],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:38+03:00",
+      "guncellendi_at": "2026-09-13T04:29:38+03:00"
+    },
+    {
+      "id": "TRV-kader-ortaklari-derleme_adayligi",
+      "tur": "derleme_adayligi",
+      "tur_adi": "Derleme adaylığı notu",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-08T20:26:32+03:00",
+      "hedef_an": "2026-09-21T12:00:00+03:00",
+      "en_erken": "2026-09-21T12:00:00+03:00",
+      "en_gec": "2026-09-29T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:38+03:00",
+      "guncellendi_at": "2026-09-13T04:29:38+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1
 }

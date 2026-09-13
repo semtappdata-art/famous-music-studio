@@ -132,3 +132,10 @@ reply.txt
 # os.replace ile aninda tuketiliyor; guc kesintisi/kill sonrasi artik kalirsa
 # commit'lenmesin.
 *.json.tmp
+
+# YouTube Data API kota defteri (upload/youtube_kota.py) — makineye özgü ölçüm.
+youtube_kota_defteri.jsonl
+youtube_kota_defteri.jsonl.tmp
+# Kota bitince Studio'dan elle tamamlanacak işler (upload/youtube_kota.py).
+youtube_studio_bekleyenler.json
+youtube_studio_bekleyenler.json.tmp

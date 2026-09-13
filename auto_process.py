@@ -1628,6 +1628,24 @@ def _tiktok_kit_sirasi() -> None:
     except Exception as e:
         log(f"  TikTok yayın kiti HATA: {maskele(str(e))}")
 
+
+def _turev_takvimi() -> None:
+    """TÜREV TAKVİMİ (turev_takvimi.py, Aşama 1: salt plan + görünürlük, YAYIN YOK).
+
+    T0'ı son 72 saatte olan projelere `turev_plani` yazar, bayrakla açılan elle
+    türev hatırlatmasını dener (config.TUREV_HATIRLATMA_AKTIF, varsayılan False)
+    ve her koşuda TEK "Türev takvimi:" satırı bırakır. `_tiktok_kit_sirasi()`
+    SONRASINDA: ilk yayın ve kit işleri önce. Seçenek B (CLAUDE.md): kendi
+    tavanları olan süpürge; `_is_fully_done()`a EKLENMEDİ, yeni görev yok.
+    Import dahil hiçbir hata otomasyonu durdurmaz.
+    """
+    try:
+        import turev_takvimi
+        turev_takvimi.sirasi(log)
+    except Exception as e:
+        log(f"  Türev takvimi HATA: {maskele(str(e))}")
+
+
 def _facebook_yorumlari() -> None:
     """Canliya cikmis zamanlanmis Facebook gonderilerine YouTube yorumunu ekler.
 
@@ -1839,7 +1857,21 @@ def main():
         _gunluk_izlenme()
         _tiktok_yayin_dogrulama()
         _tiktok_kit_sirasi()
+        _turev_takvimi()
         _release_lock()
+        # YouTube kota özeti — TEK satır, finally'nin EN SONUNDA ve KENDİ try'ında:
+        # defter/hesap hatası koşuyu ASLA düşürmez. Yalnız GÖRÜNÜRLÜK — saatlik hat
+        # kotayla engellenmez (koruma sadece toplu elle betiklerde). Kilit bırakıldıktan
+        # sonra log() güvenli: nabız bayrağı _release_lock()'ta zaten düştü.
+        # Defter ve gerekçe: upload/youtube_kota.py; koruma: tests/test_youtube_kota.py.
+        try:
+            from youtube_kota import saglik_satiri as _youtube_kota_satiri
+            log(_youtube_kota_satiri())
+        except Exception as e:  # noqa: BLE001
+            try:
+                log(f"  YouTube kota satırı yazılamadı: {e}")
+            except Exception:  # noqa: BLE001
+                pass
 
 
 if __name__ == "__main__":

@@ -678,8 +678,9 @@ def dj_base(tmp_path):
                               "youtube_shorts_uploaded_at": "2026-09-01T10:00:00"})
     _set(kok, "Uygun Set", {"youtube_shorts_video_id": "uy1", "dj_tarama_temiz": True,
                             "youtube_shorts_uploaded_at": uc_gun_once,
-                            "dj_clips": [{"dosya": "clip_01.mp4", "bas": 10.0, "son": 55.0, "enerji": 2},
-                                         {"dosya": "clip_02.mp4", "bas": 100.0, "son": 145.0, "enerji": 1}]},
+                            # bas >= 360: ilk 6 dakika kuralı (2026-09-13) dışında
+                            "dj_clips": [{"dosya": "clip_01.mp4", "bas": 410.0, "son": 455.0, "enerji": 2},
+                                         {"dosya": "clip_02.mp4", "bas": 500.0, "son": 545.0, "enerji": 1}]},
          kesit_dosyalari=("clip_01.mp4", "clip_02.mp4"))
     return kok
 

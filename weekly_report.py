@@ -1165,6 +1165,19 @@ def _elle_islem_bolumu(t: float, klasorler=None) -> str:
     return _cp1254_guvenli("\n".join(satirlar))
 
 
+def _turev_bolumu(t: float, klasorler=None) -> str:
+    """Günlük mesajın sonundaki "Bugün/yarın türev" bölümü; boşsa "".
+
+    Kaynak `turev_takvimi.bugun_yarin_satirlari` (salt okuma, ağ yok). Hata
+    yutulmaz — çağıran yakalayıp log'a yazar."""
+    import turev_takvimi
+    satirlar = turev_takvimi.bugun_yarin_satirlari(simdi=t, klasorler=klasorler)
+    if not satirlar:
+        return ""
+    adet = sum(1 for s in satirlar if not s.strip().startswith("+"))
+    return _cp1254_guvenli("\n".join(["Bugün/yarın türev (%d):" % adet] + satirlar))
+
+
 def _elle_islem_haftalik_satiri(t: float) -> str:
     """Haftalık özet satırı: son 7 günde elle yapılanların sayısı + platform kırılımı."""
     import elle_islem
@@ -1244,6 +1257,16 @@ def gunluk_izlenme_raporu(log=print, zorla: bool = False,
             metin = (_gunluk_mesaji(katalog, projeler, t, tavan) if tur == "taze"
                      else metin[:tavan])
         metin = metin + "\n\n" + bolum
+
+    # TÜREV bölümü (2026-09-13, turev_takvimi Aşama 1): bugün/yarın planlı türev
+    # yoksa HİÇ görünmez; patlarsa rapor bölümsüz gider.
+    try:
+        turev = _turev_bolumu(t, klasorler)
+    except Exception as e:
+        turev = ""
+        log("  " + _cp1254_guvenli("Türev bölümü eklenemedi: %s" % str(e)[:150]))
+    if turev:
+        metin = metin + "\n\n" + turev
 
     if not gonder:
         for satir in metin.split("\n"):

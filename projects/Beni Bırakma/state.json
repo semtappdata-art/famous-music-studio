@@ -52,5 +52,42 @@
   ],
   "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
   "tiktok_published_at": "2026-09-06T18:00:00",
-  "tiktok_published_kaynak": "TikTok 7682100132795518228 (6 Eyl 18:00): başlığı 'Yeniden Doğacağım' ama İÇERİĞİ Beni Bırakma (kart görseli + kayan yazı ile doğrulandı, 2026-09-12 gece). Önceki 12:00 değeri başlığa dayanıyordu."
+  "tiktok_published_kaynak": "TikTok 7682100132795518228 (6 Eyl 18:00): başlığı 'Yeniden Doğacağım' ama İÇERİĞİ Beni Bırakma (kart görseli + kayan yazı ile doğrulandı, 2026-09-12 gece). Önceki 12:00 değeri başlığa dayanıyordu.",
+  "turev_plani": [
+    {
+      "id": "TRV-beni-birakma-derleme_adayligi",
+      "tur": "derleme_adayligi",
+      "tur_adi": "Derleme adaylığı notu",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-08-31T06:46:27+03:00",
+      "hedef_an": "2026-09-21T12:00:00+03:00",
+      "en_erken": "2026-09-21T12:00:00+03:00",
+      "en_gec": "2026-09-21T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:37+03:00",
+      "guncellendi_at": "2026-09-13T04:29:37+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1
 }

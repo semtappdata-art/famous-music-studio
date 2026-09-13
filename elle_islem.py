@@ -438,10 +438,32 @@ def _state_yansit(kayit: dict, proje_yol, gizlilik):
         return None, ""
     p, i = kayit["platform"], kayit["islem"]
     if p == "tiktok" and i == "yayinladi":
-        return _tiktok_yayin_yansit(kayit, proje_yol)
+        etkisi, mesaj = _tiktok_yayin_yansit(kayit, proje_yol)
+        # Ana taslak ZATEN işaretliyse bu yayın bir türev olabilir (türev kancası).
+        if etkisi is None and mesaj.startswith("state zaten işaretli"):
+            return _turev_yansit(kayit, proje_yol, mesaj)
+        return etkisi, mesaj
     if p in ("youtube", "youtube_shorts") and i in ("gizlilik_degistirdi", "liste_disi_yapti"):
         return _youtube_gizlilik_notu(kayit, proje_yol, gizlilik)
+    if i == "yayinladi":
+        return _turev_yansit(kayit, proje_yol, "")
     return None, ""
+
+
+def _turev_yansit(kayit: dict, proje_yol: str, onceki_mesaj: str):
+    """TÜREV TAKVİMİ kancası (2026-09-13): `yayinladi` -> `turev_takvimi.elle_yayin_eslestir`.
+
+    Eşleşme proje + platform + `config.TUREV_ELLE_ESLESME_SAAT` içindeki
+    `planlandi`/`onay_bekliyor` türev kaydı; tek aday `yayinlandi` olur, birden
+    fazla aday işaretlenmez ve mesajda raporlanır. VARSAYILAN-GÜVENLİ: türev
+    tarafındaki her hata yalnız mesaja düşer, defter kaydını DÜŞÜRMEZ."""
+    try:
+        import turev_takvimi
+        etkisi, mesaj = turev_takvimi.elle_yayin_eslestir(
+            proje_yol, kayit["platform"], kayit["zaman"], kayit["id"])
+    except Exception as e:                                   # noqa: BLE001
+        etkisi, mesaj = None, "türev eşleşmesi yapılamadı (%s)" % type(e).__name__
+    return etkisi, " — ".join(m for m in (onceki_mesaj, mesaj) if m)
 
 
 def ekle(platform, islem, ayrinti, proje=None, zaman=None, kaynak="cli", kanit=None,

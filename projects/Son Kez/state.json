@@ -40,5 +40,116 @@
     "PLKFBTOXunWQ0",
     "PLIfBoPfEuEWQ"
   ],
-  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ"
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
+  "turev_plani": [
+    {
+      "id": "TRV-son-kez-tg_bs_hatirlatma",
+      "tur": "tg_bs_hatirlatma",
+      "tur_adi": "Telegram + Bluesky hatırlatma",
+      "platform": "telegram",
+      "yuzey": true,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-05T12:00:00+03:00",
+      "hedef_an": "2026-09-14T12:00:00+03:00",
+      "en_erken": "2026-09-14T12:00:00+03:00",
+      "en_gec": "2026-09-21T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "dusuk_orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:41+03:00",
+      "guncellendi_at": "2026-09-13T04:29:41+03:00"
+    },
+    {
+      "id": "TRV-son-kez-tiktok_ikinci_kesit",
+      "tur": "tiktok_ikinci_kesit",
+      "tur_adi": "TikTok ikinci kesit",
+      "platform": "tiktok",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-05T12:00:00+03:00",
+      "hedef_an": "2026-09-16T18:00:00+03:00",
+      "en_erken": "2026-09-16T18:00:00+03:00",
+      "en_gec": "2026-09-26T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [
+        "output/turev_kesit_9x16.mp4"
+      ],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:41+03:00",
+      "guncellendi_at": "2026-09-13T04:29:41+03:00"
+    },
+    {
+      "id": "TRV-son-kez-derleme_adayligi",
+      "tur": "derleme_adayligi",
+      "tur_adi": "Derleme adaylığı notu",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-05T12:00:00+03:00",
+      "hedef_an": "2026-09-21T12:00:00+03:00",
+      "en_erken": "2026-09-21T12:00:00+03:00",
+      "en_gec": "2026-09-26T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:41+03:00",
+      "guncellendi_at": "2026-09-13T04:29:41+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1
 }

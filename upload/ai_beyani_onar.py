@@ -146,6 +146,14 @@ import uyumluluk
 from gizli_maskele import maskele, maskele_istisna
 from youtube_auth import get_authenticated_service
 
+# Kota defteri (upload/youtube_kota.py) modül DÜZEYİNDE yükleniyor: testlerde
+# `tests/conftest.py` defter yolunu ancak yüklü modülde geçici klasöre çekebiliyor.
+# Yüklenemezse koruma devre dışı kalır ama SESSİZ değil (main() log'a yazar).
+try:
+    import youtube_kota
+except Exception:  # noqa: BLE001
+    youtube_kota = None
+
 # Kendi log dosyası — `auto_process.log`'a YAZILMIYOR: `watch_projects.py`'nin
 # nabız gözcüsü (`_heartbeat_check`) makine arızasını o dosyanın mtime'ından
 # anlıyor. Elle çalıştırılan bir onarım betiğinin oraya yazması, ölmüş bir
@@ -443,6 +451,43 @@ def onar(youtube=None, limit: int = VARSAYILAN_LIMIT, uygula: bool = False,
     return ozet
 
 
+def _kota_korumasi(limit: int, uygula: bool, proje: str = None,
+                   gunluk_sinir: int = None, zorla: bool = False):
+    """Toplu işin TAHMİNİ maliyetini bugünkü harcamayla karşılaştırır.
+
+    Bugünkü harcama + bu iş, günlük havuzun %60'ını aşacaksa betik HİÇBİR API
+    çağrısı yapmadan durur ("Bugün en fazla N öğe; kalanlar yarın").
+    `--gunluk-sinir N`: sığan kadarıyla en fazla N video yapılır. `--zorla`:
+    %60 eşiği kalkar ama saatlik hattın yayın rezervi
+    (`config.YOUTUBE_KOTA_YAYIN_REZERVI`) YİNE yenmez.
+    2026-09-13 gecesi havuz bittiğinde bu betiğin ~2.142 birimi tek kayıtlı
+    harcamaydı; ayrıntı `upload/youtube_kota.py`.
+
+    Döner: bu koşuda kullanılacak limit, ya da None (DUR).
+    """
+    if youtube_kota is None:
+        log("UYARI: youtube_kota yüklenemedi — kota koruması DEVRE DIŞI")
+        return limit
+    try:
+        durum = _durum_oku()
+        bekleyen = [h for h in hedef_videolar(None, proje)
+                    if not onarildi_mi(durum, h["video_id"])]
+        adet = min(max(0, limit), len(bekleyen))
+        if adet == 0:
+            return limit
+        birim = VIDEO_BASINA_BIRIM if uygula else LIST_BIRIMI
+        karar = youtube_kota.toplu_izin(birim, adet, gunluk_sinir=gunluk_sinir,
+                                        zorla=zorla)
+    except Exception as e:                      # noqa: BLE001
+        log("UYARI: kota kontrolü yapılamadı (%s) — koruma DEVRE DIŞI"
+            % maskele_istisna(e))
+        return limit
+    log("  " + karar["mesaj"])
+    if karar["durdu"]:
+        return None
+    return karar["izin"]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="Geçmişte silinmiş zorunlu AI beyanını geri yazar. "
@@ -456,6 +501,10 @@ def main(argv=None) -> int:
                          % VARSAYILAN_LIMIT)
     ap.add_argument("--proje", default=None,
                     help="Sadece adı bu metni içeren projeler")
+    ap.add_argument("--gunluk-sinir", type=int, default=None,
+                    help="Kota koruması: bugün en fazla N video (sığan kadarı)")
+    ap.add_argument("--zorla", action="store_true",
+                    help="Kota korumasının %%60 eşiğini aş (yayın rezervi yine korunur)")
     args = ap.parse_args(argv)
 
     # İkisi de verilmişse GÜVENLİ olan kazanır.
@@ -463,7 +512,11 @@ def main(argv=None) -> int:
     if args.uygula and args.dry_run:
         log("UYARI: --uygula ve --dry-run birlikte verildi; KURU KOŞU yapılıyor.")
 
-    ozet = onar(limit=args.limit, uygula=uygula, proje=args.proje)
+    limit = _kota_korumasi(args.limit, uygula, args.proje,
+                           gunluk_sinir=args.gunluk_sinir, zorla=args.zorla)
+    if limit is None:
+        return 3
+    ozet = onar(limit=limit, uygula=uygula, proje=args.proje)
     if not uygula:
         log("Hiçbir şey yazılmadı. Gerçek onarım için: --uygula")
     return 0

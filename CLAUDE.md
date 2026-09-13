@@ -1282,6 +1282,41 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   geçici dosya verir. ÜÇ SORU: yazan insan/asistan/Hermes/Telegram onayı (zamanlayıcı YOK,
   olgunun kaynağı insan); okuyan saatlik `auto_process.main()` finally → `weekly_report` +
   `saglik_kontrol`; çalışmadığı bozuk satır UYARISI ve `tests/test_elle_islem.py` ile görünür.
+- **YouTube kota defteri — `upload/youtube_kota.py`** (2026-09-13; 12→13 Eylül gecesi ortak
+  havuzun ~7.800 birimi kayıtsız bitti, kapak/playlist düştü). Her Data API çağrısı
+  `youtube_auth`'taki `requestBuilder` ile `youtube_kota_defteri.jsonl`'a düşer; elle çalışan
+  betik `elle:<betik>` olarak görünür. Toplu elle işler (`ai_beyani_onar`, `set_privacy`)
+  havuzun %60'ında durur (`--gunluk-sinir`, `--zorla`; `config.YOUTUBE_KOTA_YAYIN_REZERVI`=950
+  aşılmaz); saatlik hat ENGELLENMEZ. Bakış: `python upload/youtube_kota.py ozet [--json]`,
+  `son`, `studio-bekleyenler`. Defter yalnız bu depodan yapılan çağrıları görür. Kotaya düşen
+  ve kendini yeniden denemeyen adımlar (kapak, elle `videos.update`) Studio bekleyenlerine
+  yazılır; saatlik hatta `kosu_sonu` bağlantısı (Telegram bildirimi + kapak telafisi) HENÜZ
+  YOK — kullanıcı onayı bekliyor. Zamanlanmış tarayıcı otomasyonu YOK (YouTube ToS otomatik
+  erişim yasağı); Studio işleri kullanıcı istediğinde Claude Code'dan Chrome ile yapılır.
+- **Türev takvimi — `turev_takvimi.py`, Aşama 1: salt plan + görünürlük, YAYIN YOK** (2026-09-13,
+  plan: `yayin_sonrasi_takvim_plani.md`). Proje `state.json`'ında `turev_plani` listesi (+
+  `turev_plani_surumu`); `plan_uret` deterministik, yalnız EKSİK id'leri ekler, mevcut kaydı
+  ezmez; `takvim()` state YAZMAZ, çakışmayı türetir. Kurallar `config.TUREV_*`: türevler 52 sa
+  tabanına SAYILMAZ; günde 1 yüzey türevi (golden-hour), YouTube'a video yükleyen türev kayan
+  7 günde 1 (`youtube_clip_uploaded_at` ortak sayaç), yeni yayın ±24 sa bandı, aynı şarkı ≥48
+  sa, pencere T0+21 gün, şarkı YouTube kesiti 2026-10-09 öncesi YOK (+ bayrak), DJ kulisi
+  `TUREV_DJ_KULIS_ONAYLI`. `yayin_beklet`/`kopya_notu`/telif/Content ID engeli/gerçek gizlilik
+  public değil → tüm türevler durur; `kesit_beklet` yalnız `dj_kesit`. Elle hatırlatma
+  `config.TUREV_HATIRLATMA_AKTIF` (varsayılan **False**): golden-hour, günde 1, önceki yanıtlanmadan
+  yenisi yok, `uyumluluk` fail-closed. `elle_islem ekle --islem yayinladi` → proje + platform + 36
+  sa içindeki tek `planlandi`/`onay_bekliyor` kayıt `yayinlandi`; çoklu adayda işaretlemez.
+  ÜÇ SORU: `auto_process.main()` finally → `_turev_takvimi()` (`_tiktok_kit_sirasi` sonrası,
+  `_is_fully_done`'a EKLENMEDİ); saatlik görev; her koşuda tek "  Türev takvimi:" log satırı +
+  günlük raporda "Bugün/yarın türev" (boşsa yok). Pano/sesli asistan: `python turev_takvimi.py
+  takvim --gun 7 --json`. Koruma: `tests/test_turev_takvimi.py`.
+- **Just Relax DJ kesiti BEKLETİLDİ — `kesit_beklet` (kullanıcı kararı 2026-09-13).** Bugünkü
+  kod 18 Eyl DJ koşusunda enerji alanı olmayan kesitlerden dosya adı sırasıyla `clip_01`'i
+  (setin 5:32'si, telif eşleşmelerinin toplandığı ilk 6 dk) yükleyecekti. `dj_clips` artık:
+  `kesit_beklet` dolu → kesit yok (uyumluluk HATASI üretmez, `yayin_beklet`'in aksine setin başka
+  akışlarına dokunmaz); setin ilk `config.DJ_KESIT_ILK_YASAK_SN` (360) saniyesinden ya da `bas`'ı
+  bilinmeyen kesit seçilmez; `enerji`/`izlenme_sirasi` yoksa seçilmez ve TEK bildirim gider
+  (`kesit_siralama_bildirildi_at`). Kaldırmak: enerji/izlenme tepe anı ölçülüp alan silinince.
+  Koruma: `tests/test_dj_kesit_bekletme.py`.
 
 ## TARİHLİ RANDEVU — 2026-10-09: ölçüm penceresi
 

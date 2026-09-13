@@ -91,9 +91,10 @@ def test_kesit_sec_en_yuksek_enerjiyi_seciyor(tmp_path):
 
 def test_kesit_sec_hatali_ve_diskte_olmayan_kesitleri_atliyor(tmp_path):
     st = {"dj_clips": [
-        {"dosya": "clip_01.mp4", "enerji": 1, "hata": "render patladı"},
-        {"dosya": "clip_02.mp4", "enerji": 2},          # diskte YOK
-        {"dosya": "clip_03.mp4", "enerji": 3},
+        # `bas` 2026-09-13'ten beri ZORUNLU (bilinmeyen başlangıç = ilk 6 dk sayılır)
+        {"dosya": "clip_01.mp4", "bas": 900.0, "enerji": 1, "hata": "render patladı"},
+        {"dosya": "clip_02.mp4", "bas": 1500.0, "enerji": 2},          # diskte YOK
+        {"dosya": "clip_03.mp4", "bas": 2100.0, "enerji": 3},
     ]}
     set_dir = _set_kur(tmp_path, state=st, kesit_dosyalari=("clip_01.mp4", "clip_03.mp4"))
     assert dj_clips.kesit_sec(set_dir)["dosya"] == "clip_03.mp4"
