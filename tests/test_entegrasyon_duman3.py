@@ -494,7 +494,13 @@ def saglik(tmp_path, monkeypatch):
     monkeypatch.setattr(SK, "_gorev_tanimlarini_oku",
                         lambda: [dict(k) for k in GERCEK_GOREV_TANIMI_2026_09_12])
     if os.name != "nt":
-        monkeypatch.setattr(os, "name", "nt")   # gorev_tanimlari'nin Windows kapısı
+        # gorev_tanimlari'nin Windows kapısı: GERÇEK `os.name`e DOKUNMA (Linux CI'da
+        # global "nt", saglik_kontrol'ün ilk kez import ettiği modüllerde (yayin_ritmi,
+        # auto_process) pathlib/tempfile'ı WindowsPath'e düşürüp INTERNALERROR üretti,
+        # 2026-09-13 CI). test_saglik_gorev_tanimi ile aynı yöntem: yalnız SK.os.
+        import types as _types
+        monkeypatch.setattr(SK, "os", _types.SimpleNamespace(
+            name="nt", path=os.path, environ=os.environ, getenv=os.getenv))
 
     # Ses takibi: tmp katalogda iki proje, tabloda yalnızca biri -> UYARI.
     kok = tmp_path / "projects"
