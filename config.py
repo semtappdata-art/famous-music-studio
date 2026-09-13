@@ -768,6 +768,12 @@ TIKTOK_DERLEME_SORULARI = [
 # payı yiyemez. Saatlik hat bununla ENGELLENMEZ. Kullanan: upload/youtube_kota.py.
 YOUTUBE_KOTA_YAYIN_REZERVI = 950
 
+# --- YouTube STUDIO PLANLI YÜKLEME (upload/youtube_studio.py, kullanıcı kararı 2026-09-13) ---
+# Tempo tabanı yüzünden bekleyen, render'ı hazır şarkı için saatlik koşuda günde EN FAZLA 1
+# Telegram satırı ("Studio'dan <an>'a planlanabilir"). Tarayıcı otomasyonu YOK (YouTube ToS);
+# işi kullanıcı başlatınca Claude Code Chrome'dan yapar. False = yalnız log satırı.
+YOUTUBE_STUDIO_PLAN_BILDIRIM = True
+
 # --- DJ KESİT SEÇİMİ (dj_clips.py, kullanıcı kararı 2026-09-13) ---
 # `kesit_beklet` state alanı YALNIZ kesit yayınını durdurur (fail-closed: dolu her
 # değer bekletme). `yayin_beklet`'ten farkı: uyumluluk HATASI üretmez, setin diğer
@@ -807,3 +813,127 @@ TUREV_ELLE_ESLESME_SAAT = 36
 TUREV_INSAN_EMEGI_HAFTALIK_TAVAN = 2      # TR takvim haftası (Pzt-Paz) başına
 TUREV_INSAN_EMEGI_KAYMA_GUN = 2           # çakışmada hedef günden en fazla N gün ileri (aynı hafta)
 TUREV_KANAL_TAKVIMI = "kanal_takvimi.json"  # repo kökü; kanal geneli kayıt yeri
+# YouTube Topluluk sürümü (soz_defteri_topluluk / kulis_topluluk): bağlı TikTok kaydının
+# ÇÖZÜLMÜŞ anından en az bu kadar saat sonra; tavan dışı, elle (Topluluk API'si yok).
+TUREV_TOPLULUK_TIKTOK_SONRASI_SAAT = 24
+
+# --- YAYIN RİTMİ (ozgunluk_plani.md §2d, onaylanan karar 4, 2026-09-13) — okuyan: yayin_ritmi.py
+# R1: DJ seti / derleme ile şarkı arasında kanal geneli ORTAK taban (şarkı↔şarkı 52 sa
+# tabanı auto_process.MIN_YAYIN_ARALIGI_SN'de kalır).
+YAYIN_RITMI_SET_SARKI_ARA_SAAT = 48
+# R3a: YouTube Shorts uzun formatın public anından N saat sonra, AYRI süpürgede
+# (auto_process._shorts_gecikmeli_supurge). Şalter kapalıyken eski akış (uzun + Shorts
+# aynı koşu). Canlıya 2026-09-13 11:35 sonrası (o günkü iki yükleme eski akışla bitti).
+YAYIN_RITMI_SHORTS_GECIKME_SAAT = 24
+YAYIN_RITMI_SHORTS_GECIKMELI = True
+# R3b: bir şarkı aynı TR takvim gününde en fazla N platformda — geri doldurmalar, TikTok
+# web planı, Instagram drain ve Telegram/Bluesky DAHİL. 0 = kapalı.
+YAYIN_RITMI_SARKI_GUNLUK_PLATFORM_TAVANI = 2
+# R2 (yalnız ÖLÇÜM, ozgunluk_skoru): aynı platformda iki farklı şarkı arası en az N saat.
+YAYIN_RITMI_PLATFORM_MIN_ARA_SAAT = 6
+
+# --- ÖZGÜN METİN (§2c/§2e, kararlar 2-3) — okuyan: ozgun_metin.py
+# Hikâye paragrafı (`meta.hikaye`, 2-4 cümle) + "neden bu şarkı" (`meta.neden_bu_sarki`, 1
+# cümle): bu tarihten önce eksikse UYARI, bu tarihten itibaren yeni şarkıda HATA (yayın durur).
+HIKAYE_KAPISI_TARIHI = "2026-09-21"
+# YouTube başlık kalıbı rotasyonu: yalnız YENİ yüklemede seçilir (state `youtube_baslik_kalibi`),
+# ardışık iki yeni yayında aynı kalıp yok, "Sözleri" hepsinde; eski videolar K1'de kalır.
+YOUTUBE_BASLIK_ROTASYONU_AKTIF = True
+YOUTUBE_BASLIK_KALIPLARI = (
+    {"id": "K1", "sablon": "{title} (Sözleri) | Türkçe {tur} Şarkısı"},
+    {"id": "K2", "sablon": "{title} — Sözleri | Famous Music Studio"},
+    # K3 yalnız meta.json'da `baslik_eki` (şarkıya özgü 2-4 kelime) varsa aday.
+    {"id": "K3", "sablon": "{title} (Sözleri) · {baslik_eki}", "gerekli": "baslik_eki"},
+)
+
+
+# --- Ses: render öncesi koşullu true-peak limiter (2026-09-13) ---------------
+# `suno_kalite_onerileri.md` §1 #8 ve §5. Suno çıktıları zaten -12,9 … -14,8
+# LUFS; genel loudnorm/normalizasyon BİLEREK YOK. Tek risk true peak: AAC 192k
+# kodlaması tepeyi taşırabiliyor. render.render_project() sesi ffmpeg
+# `ebur128=peak=true` ile ölçüp `state.json` -> `ses_olcum`a yazıyor (aynı md5
+# için tekrar ölçmüyor); TP bu eşiği AŞARSA render zincirine YALNIZ limiter
+# giriyor. Ölçüm başarısızsa render durmuyor, limitersiz sürüyor, log'a UYARI.
+SES_LIMITER_ACIK = True
+SES_TP_ESIK_DBTP = -1.0          # ölçülen TP bunu AŞARSA (> , eşit değil) limiter
+# NEDEN 4x aşırı örneklemeli alimiter ve NEDEN -2,0 dBFS (-1,5 değil): katalogun
+# sınırdaki gerçek dosyalarında, AAC 192k SONRASI TP ölçüldü (2026-09-13):
+#   Küllerimden Geç (kaynak -0,5): limitersiz -0,7 | düz alimiter -1,5 -> -0,3 (!)
+#                                  | 4x alimiter -1,5 -> -1,0 | 4x alimiter -2,0 -> -1,6
+#   Sokaklar Beni Tanır (-0,7):    limitersiz -0,9 | düz -1,5 -> -1,3 | 4x -2,0 -> -1,3
+# Düz (48 kHz) alimiter yalnız ÖRNEK tepesini görüyor; örnekler arası tepe ve
+# kırpmanın eklediği üst frekans AAC'den sonra TP'yi KÖTÜLEŞTİRDİ. 192 kHz'de
+# sınırlamak örnekler arası tepeyi de yakalıyor. I ve LRA üç dosyada da 0,0
+# değişti. İki geçişli loudnorm (linear, TP=-1,5) da eşdeğer olurdu ama ikinci
+# bir ölçüm geçişi + `measured_*` parametre taşıma demek; bu daha basit.
+SES_LIMITER_TAVAN_DBFS = -2.0
+SES_LIMITER_ASIRI_ORNEKLEME = 192000
+SES_LIMITER_CIKIS_HZ = 48000
+
+# --- Suno stil tarifi: mix / vokal / düzenleme ifadeleri havuzu (2026-09-13) --
+# `suno_kalite_onerileri.md` §2 ve §7: mix cümlesi her şarkıya birebir
+# kopyalanırsa bütün katalogda aynı dizi tekrarlanır (şablon izi, "inauthentic
+# content" riski). Seçim `suno_stil.py --proje "<ad>"` ile: proje adının
+# sha1'inden DETERMİNİSTİK, her şarkıda farklı alt küme ve sıra.
+# KURALLAR (tests/test_suno_stil.py kilitli): sanatçı adı, "Suno" ya da AI
+# vurgusu YOK; yalnız küçük harf ASCII; `wide vocal` YOK (vokal merkezde
+# kalmalı, A/B betiğinin merkez/yan ölçütünü bozar). Suno'nun bu ifadelere
+# tepkisi resmî olarak belgelenmiş değil [YAYGIN].
+# DJ setleri kapsam dışı: onların tarifi `SET_STILLERI` içinde.
+STIL_MIX_ADET = 3
+STIL_IFADE_HAVUZU = {
+    "pop": {
+        "mix": ["polished radio mix", "smooth controlled highs", "punchy tight drums",
+                "modern mastered sound", "warm balanced low end", "clean glossy synths"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "crisp vocal consonants", "natural vocal presence with light reverb"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "quick hook within the first verse", "dynamic lift into the chorus"],
+    },
+    "rock": {
+        "mix": ["wide stereo guitars", "live drum kit", "no harsh cymbals",
+                "warm analog mix", "punchy tight drums", "controlled guitar distortion"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "vocal sits above the guitars", "dry intimate vocal in the verses"],
+        "duzenleme": ["concise radio-length arrangement", "no long guitar solos",
+                      "short instrumental intro", "dynamic build into the final chorus"],
+    },
+    "elektronik": {
+        "mix": ["smooth controlled highs", "tight sidechained low end", "clean punchy kick",
+                "wide stereo synth pads", "modern mastered sound", "no harsh hi-hats"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "airy but centered vocal", "crisp vocal consonants"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "short build before the drop", "vocal hook returns after the drop"],
+    },
+    "akustik": {
+        "mix": ["warm analog mix", "natural room ambience", "smooth controlled highs",
+                "close-miked acoustic guitar", "gentle dynamic range", "soft rounded low end"],
+        "vokal": ["dry intimate vocal", "intelligible turkish diction",
+                  "clear upfront lead vocal", "breath and texture kept natural"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "sparse verses, fuller chorus", "gentle build into the last chorus"],
+    },
+    "hiphop": {
+        "mix": ["punchy tight drums", "deep clean 808", "modern mastered sound",
+                "smooth controlled highs", "crisp snare", "uncluttered low mids"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "dry upfront rap delivery", "crisp vocal consonants"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "hook arrives early", "beat switch kept short"],
+    },
+    "arabesk": {
+        "mix": ["warm analog mix", "lush strings in the background", "smooth controlled highs",
+                "clear darbuka groove", "no harsh cymbals", "reverb kept on strings, not vocal"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "expressive but controlled vibrato", "dry intimate vocal in the verses"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "short string intro", "emotional lift into the chorus"],
+    },
+}
+
+# Görünürlük planı geri okuma yarışı (2026-09-13, Küllerimden Geç Shorts): videos.update
+# 200 döndü ama hemen ardından okunan status ESKİ değeri verdi (YouTube yayılma gecikmesi)
+# → sahte HATA + 3 sa retry. Geri okuma DENEME kez, arada BEKLEME sn.
+GORUNURLUK_GERI_OKUMA_DENEME = 2
+GORUNURLUK_GERI_OKUMA_BEKLEME_SN = 5

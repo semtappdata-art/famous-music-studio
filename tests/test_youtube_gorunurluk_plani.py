@@ -409,3 +409,41 @@ def test_tempo_sayilir_false_uzun_format_anini_ayri_alana_yazar_taban_baslamaz(o
     assert "youtube_public_ani_tempo_disi" not in ap.YENI_YAYIN_PUBLIC_ANI_KEYS
     yeni = _proje(ortam.kok, "Sabah Senin", {})
     assert ap._auto_pace_count([yeni], [p, yeni], 1) == 1
+
+
+class _GecikmeliYouTube(_SahteYouTube):
+    """update 200 döner ama ilk geri okuma ESKİ değeri verir (yayılma gecikmesi):
+    canlı vaka 2026-09-13 12:06, Küllerimden Geç Shorts jN78mJrZd3c."""
+
+    def __init__(self, gizlilik, gecikme_okuma=1):
+        super().__init__(gizlilik)
+        self.bekleyen = {}
+        self.gecikme_okuma = gecikme_okuma
+
+    def execute(self):
+        tur, veri = self._is
+        if tur == "update":
+            self.bekleyen[veri["id"]] = veri["status"]["privacyStatus"]
+            self.guncellemeler.append(veri)
+            return veri
+        # list: gecikme dolana kadar eski değer (sayaç super().execute'ta artar)
+        if self.listeler + 1 > 1 + self.gecikme_okuma:
+            self.gizlilik.update(self.bekleyen)
+        return super().execute()
+
+
+def test_geri_okuma_gecikirse_ikinci_denemede_dogrulanir(monkeypatch):
+    uykular = []
+    monkeypatch.setattr(ap.time, "sleep", uykular.append)
+    yt = _GecikmeliYouTube({"s": "unlisted"}, gecikme_okuma=1)
+    assert ap._gorunurlugu_youtubeda_uygula(yt, ["s"], "public") == ["s"]
+    assert uykular == [ap.config.GORUNURLUK_GERI_OKUMA_BEKLEME_SN]
+    assert yt.listeler == 3          # önce + 2 geri okuma
+
+
+def test_geri_okuma_iki_denemede_de_tutmazsa_hata(monkeypatch):
+    monkeypatch.setattr(ap.time, "sleep", lambda s: None)
+    yt = _GecikmeliYouTube({"s": "unlisted"}, gecikme_okuma=5)
+    with pytest.raises(RuntimeError, match="geri okuma hedefi"):
+        ap._gorunurlugu_youtubeda_uygula(yt, ["s"], "public")
+    assert yt.listeler == 1 + ap.config.GORUNURLUK_GERI_OKUMA_DENEME

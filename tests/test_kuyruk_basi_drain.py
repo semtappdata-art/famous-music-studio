@@ -113,7 +113,11 @@ def test_creation_id_yoksa_normal_secilir(kos):
     assert kos.calistir()["islenen"] == [geri]
 
 
-def test_baska_anahtar_da_eksikse_normal_secilir(kos):
+def test_baska_anahtar_da_eksikse_normal_secilir(kos, monkeypatch):
+    # 2026-09-13 ritim R3a: Shorts 24 sa gecikmeli modda ana anahtar DEĞİL (ayrı süpürge);
+    # "başka ana anahtar" senaryosu eski akışta sınanıyor.
+    import config
+    monkeypatch.setattr(config, "YAYIN_RITMI_SHORTS_GECIKMELI", False, raising=False)
     # 2026-09-13: varsayılan TikTok web planlama modunda (config.TIKTOK_AKIS) TikTok
     # anahtarı ana hattın işi değil; "başka ana anahtar" iki modda da Shorts.
     d = _geri()

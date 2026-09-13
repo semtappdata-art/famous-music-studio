@@ -184,6 +184,8 @@ def test_bekleyen_proje_varken_uzun_sessizlikte_bile_sessiz(ortam, eksik, monkey
     modunda sınanıyor (web planlama modu: tests/test_tiktok_web.py)."""
     import config
     monkeypatch.setattr(config, "TIKTOK_AKIS", "api_taslak")
+    # 2026-09-13 ritim R3a: Shorts gecikmeli modda kümeden düşer; dörtlü eski akışta.
+    monkeypatch.setattr(config, "YAYIN_RITMI_SHORTS_GECIKMELI", False, raising=False)
     _yayinlanmis(ortam, "Yayinda", saat_once=300)
     _proje(ortam, "Bekleyen", {k: "x" for k in SK.ANA_PLATFORM_ANAHTARLARI
                                if k != eksik})

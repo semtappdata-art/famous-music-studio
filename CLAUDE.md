@@ -1293,6 +1293,40 @@ Baseline (ilk kapsamlı) denetimler yapıldı, bulguların çoğu düzeltildi
   yazılır; saatlik hatta `kosu_sonu` bağlantısı (Telegram bildirimi + kapak telafisi) HENÜZ
   YOK — kullanıcı onayı bekliyor. Zamanlanmış tarayıcı otomasyonu YOK (YouTube ToS otomatik
   erişim yasağı); Studio işleri kullanıcı istediğinde Claude Code'dan Chrome ile yapılır.
+- **YouTube Studio PLANLI yükleme — `upload/youtube_studio.py`** (2026-09-13, kullanıcı kararı:
+  "YouTube'da bu ve buna benzer bekleme durumlarında Chrome Studio'dan sıra bekletme yap").
+  **Akış:** tempo tabanı yüzünden bekleyen, render'ı hazır şarkı Studio web'den ŞİMDİ yüklenir,
+  **Gizli + "Planla"** ile tempo kurallarının izin verdiği EN ERKEN public anına kurulur; YouTube
+  videoyu o an kendisi açar (makine kapalı olsa da; `videos.insert` kotası harcanmaz). **Tempo
+  EZİLMEZ — yalnız YÜKLEME anı öne alınır**, public an tempoya tabidir. Komutlar: `plan-oner
+  [--gun 10] [--json]` (52 sa şarkı tabanı + 48 sa set/derleme + golden-hour + aynı gün tek
+  YouTube yayını; Shorts `yayin_ritmi` R3a şalteri açıksa +24 sa, değilse aynı an), `paket
+  --proje X [--uzun-id ID] [--json]` (metinler `build_snippet`/`build_shorts_snippet`
+  ÇAĞRILARAK, kopya değil; ≤2 MB JPEG kapak; playlist adları `youtube_playlists.
+  beklenen_anahtarlar`'dan; açıklama sha1; "Suno"/"yapay zeka" denetimi), `isaretle --proje X
+  --video-id ID [--shorts-id ID] --an ISO --sha1 S [--playlistler-eklendi]` (kural dışı an
+  REDDEDİLİR; `state_io` ile `youtube_video_id`/`youtube_publish_at`/`youtube_uploaded_at`/
+  `youtube_studio_planli={an, kaynak:"YouTube Studio (Chrome)", sha1}` + Shorts alanları;
+  deftere `planladi`), `durum`. **Tempo düzeltmesi:** `youtube_studio_planli` olan projede
+  `auto_process._last_upload_time`/`_son_yeni_yayin_ani` YÜKLEME damgasını SAYMAZ, yalnız
+  `youtube_publish_at` (public an) sayılır — Studio'dan bugün yüklenip 2 gün sonraya planlanan
+  video ne 52 sa tabanını ne günlük pencereyi yükleme anından başlatır; public anından 52 sa
+  engeller. `_studio_planli_bekleyenleri_ayir`: public anı gelmemiş Studio projesi kuyrukta
+  seçilmez; `process_project` public öncesi Instagram/TikTok/Facebook adımına GEÇMEZ;
+  Telegram/Bluesky (`ek_platform_backfill._public_ani`) ve `facebook_backfill` gelecekteki
+  `publish_at`'i aday saymaz; TikTok web planı public sonrası (`turev_takvimi.t0_bul`).
+  Altyazı (`youtube_captions`) planlı private videoda da çalışır (ASR gelince). Playlist:
+  Studio'da eklendiyse `--playlistler-eklendi`, yoksa API senkronu (`process_project`) sonra
+  tamamlar. **Bildirim (kalıp B):** `main()` finally → `_youtube_studio_sirasi()` →
+  `plan_bildirimi`; aday varsa günde 1 Telegram satırı ("Studio'dan <an>'a planlanabilir.
+  Claude Code'da 'YouTube Studio'dan planla' yaz"), `config.YOUTUBE_STUDIO_PLAN_BILDIRIM`
+  (varsayılan True). **Tarayıcı adımları:** Studio → Oluştur → Video yükle → Ayrıntılar
+  (başlık, açıklama, küçük resim, oynatma listeleri, kitle "çocuklara özel değil") → Daha
+  fazla göster (etiketler, dil, kategori Müzik, "Değiştirilmiş içerik: Evet") → Video öğeleri
+  (atla) → Kontroller → Görünürlük: Planla (tarih, saat, GMT+03:00) → Planla; sonra
+  `isaretle`. Kalıcı onay: kullanıcı işi başlatınca yapılır, her seferinde ayrıca sorulmaz.
+  **ToS:** zamanlanmış tarayıcı otomasyonu YOK (YouTube otomatik erişim yasağı); modül tarayıcı
+  açmaz, API çağırmaz. Testler: `tests/test_youtube_studio.py`; `_is_fully_done`'a EKLENMEDİ.
 - **Türev takvimi — `turev_takvimi.py`, Aşama 1: salt plan + görünürlük, YAYIN YOK** (2026-09-13,
   plan: `yayin_sonrasi_takvim_plani.md`). Proje `state.json`'ında `turev_plani` listesi (+
   `turev_plani_surumu`); `plan_uret` deterministik, yalnız EKSİK id'leri ekler, mevcut kaydı

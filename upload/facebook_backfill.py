@@ -107,6 +107,18 @@ def eksik_projeler():
             continue                      # telif eşleşmesi — yeniden yayınlama
         if st.get("youtube_privacy") in ("unlisted", "private"):
             continue                      # liste dışı/kopya
+        # PUBLIC ANI GELECEKTE -> aday DEĞİL (2026-09-13, YouTube Studio planlı yükleme):
+        # video Studio'dan ŞİMDİ yüklenip ileri tarihe planlanmış olabilir (private +
+        # Planla); YouTube'da henüz görünmeyen bir şarkıyı Facebook'a çıkarmak sızıntı.
+        # `ek_platform_backfill._public_ani` ile aynı kapı.
+        _yayin_ani = str(st.get("youtube_publish_at") or "")
+        if _yayin_ani:
+            try:
+                from datetime import datetime as _dt, timezone as _tz
+                if _dt.fromisoformat(_yayin_ani.replace("Z", "+00:00")) > _dt.now(_tz.utc):
+                    continue              # publishAt bekliyor
+            except ValueError:
+                pass                      # okunamayan damga eski davranış (aday)
         video = os.path.join(klasor, "output", "shorts_9x16.mp4")
         if not os.path.isfile(video):
             continue
@@ -253,9 +265,24 @@ def backfill(limit=1, dry_run=False, ignore_golden=False, log=_stderr):
     # `facebook_uploaded_at` damgalarını, yani GERÇEKLEŞEN gönderileri sayıyor.
     hedefler = []
     engellenen = []
+    ritim = []
     for klasor in eksik:
         if len(hedefler) >= min(limit, kalan_kota):
             break
+        # RİTİM R3b (2026-09-13, karar 4): şarkı aynı gün en fazla N platformda
+        # (config.YAYIN_RITMI_SARKI_GUNLUK_PLATFORM_TAVANI). Geri doldurma DAHİL. Tavandaki
+        # şarkı kotayı tüketmez, sıradakine bakılır; hesaplanamazsa bu koşuda atlanır.
+        try:
+            import yayin_ritmi
+            _r_izin, _r_sebep = yayin_ritmi.platform_gun_izni(_durum(klasor), "facebook")
+        except Exception as e:            # noqa: BLE001
+            _r_izin, _r_sebep = False, "ritim kapısı hesaplanamadı (%s)" % type(e).__name__
+        if not _r_izin:
+            ritim.append({"proje": os.path.basename(klasor), "sebep": _r_sebep[:160]})
+            _kapi_uyar("fb_backfill_ritim:%s" % os.path.abspath(klasor),
+                       "  %s: Facebook geri doldurma bekliyor — %s"
+                       % (os.path.basename(klasor), _r_sebep), log)
+            continue
         engel = politika_kapisi(klasor, log)
         if engel:
             engellenen.append({"proje": os.path.basename(klasor),
@@ -266,6 +293,8 @@ def backfill(limit=1, dry_run=False, ignore_golden=False, log=_stderr):
     sonuc = {"durum": "tamam", "kalan": len(eksik), "islenen": []}
     if engellenen:
         sonuc["engellenen"] = engellenen
+    if ritim:
+        sonuc["ritim"] = ritim
 
     if dry_run:
         sonuc["durum"] = "kuru"

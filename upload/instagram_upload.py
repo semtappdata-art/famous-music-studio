@@ -57,6 +57,21 @@ SEBEP_BAYAT_TEMIZLENDI = "bayat_temizlendi"
 SEBEP_SURESI_DOLDU = "suresi_doldu"
 SEBEP_ISLENIYOR = "isleniyor"
 SEBEP_GOLDEN_HOUR = "golden_hour_bekleniyor"
+SEBEP_RITIM = "ritim_tavani_bekleniyor"
+
+
+def _konteyner_yarina_dayanir(state: dict) -> bool:
+    """Konteyner ertesi TR gününün ilk golden-hour başlangıcında hâlâ taze mi (23 sa kapısı).
+    Yaşı bilinmiyorsa False (bekletmek gönderiyi düşürebilir)."""
+    import datetime as _dt
+    yas = _konteyner_yasi_sn(state)
+    if yas is None:
+        return False
+    simdi = _dt.datetime.now(config.TR_TZ)
+    yarin = simdi.date() + _dt.timedelta(days=1)
+    hedef = _dt.datetime(yarin.year, yarin.month, yarin.day, config.GOLDEN_HOURS[0][0],
+                         tzinfo=config.TR_TZ)
+    return yas + (hedef - simdi).total_seconds() < KONTEYNER_OMRU_SN
 
 # HTTP 5xx + gövdede `is_transient: true` için DAR yeniden deneme penceresi.
 # Bekleme listesi TEK kaynak: deneme sayısı ondan türüyor, ikisi birbirinden
@@ -587,6 +602,24 @@ def try_publish_pending(project_dir: str, sebep_out: dict | None = None) -> str 
         print(f"  Instagram: konteyner hazır (creation_id={creation_id}), golden-hour penceresi bekleniyor")
         _sebep_yaz(sebep_out, SEBEP_GOLDEN_HOUR)
         return None
+
+    # RİTİM R3b (2026-09-13, karar 4): şarkı aynı gün en fazla N platformda. Konteyner
+    # ZATEN oluşturulmuş: tavan doluysa YALNIZ konteyner ertesi günün ilk golden-hour'una
+    # kadar bayatlamayacaksa beklenir; bayatlayacaksa yayınlanır ve sebep basılır —
+    # bekletip bayatlatmak gönderiyi sessizce düşürürdü (yeniden paylaşım elle). Tavanın
+    # asıl uygulandığı yer konteyner OLUŞTURMA anı (auto_process.process_project).
+    try:
+        import yayin_ritmi
+        _r_izin, _r_sebep = yayin_ritmi.platform_gun_izni(state, "instagram")
+    except Exception as e:                                   # noqa: BLE001
+        _r_izin, _r_sebep = True, ""
+        print(f"  Instagram: ritim kapısı hesaplanamadı ({type(e).__name__}), yayına devam")
+    if not _r_izin:
+        if _konteyner_yarina_dayanir(state):
+            print(f"  Instagram: {_r_sebep} — konteyner yarının golden-hour'una kadar bekliyor")
+            _sebep_yaz(sebep_out, SEBEP_RITIM)
+            return None
+        print(f"  Instagram: {_r_sebep} — ama konteyner o zamana kadar bayatlar, yayınlanıyor")
 
     print(f"  Instagram: golden-hour penceresi, yayınlanıyor (creation_id={creation_id})")
     media_id = _publish_container(ig_user_id, access_token, creation_id, project_dir)

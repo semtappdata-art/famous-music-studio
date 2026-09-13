@@ -158,3 +158,19 @@ tonu + basit bir görsel) izole bir klip üzerinde dene, ana pipeline'a onaylanm
   hızlandırılması **bilinçli olarak yapılmadı** — iki kademeli bir önbellek ikinci nesil
   sıkıştırma kaybı getirir ve gerçek kullanım akışında (şarkı başına tek render) faydası yoktur.
   Her render her zaman orijinal kaynak dosyalardan yapılır — kalite kaybı birikmez.
+
+## Suno stil tarifi, ses limiter'ı ve Shorts başlangıcı (2026-09-13)
+
+- **Mix/vokal/düzenleme ifadeleri havuzdan seçilir, elle kopyalanmaz.** Stil tarifini yazmadan önce:
+  `python suno_stil.py --proje "<şarkı adı>"` (proje klasörü yoksa `--tur pop|rock|elektronik|akustik|hiphop|arabesk`,
+  makine okunur çıktı için `--json`). Çıkan `cumle`yi stil tarifinin mix/master satırına koy
+  (`suno_kalite_onerileri.md` §2 şablonu). Seçim proje adının sha1'inden deterministik: aynı şarkı hep aynı
+  ifadeleri alır, farklı şarkılar farklı alt küme ve sıra. Havuz `config.STIL_IFADE_HAVUZU`; sanatçı adı,
+  "Suno" ya da AI vurgusu ekleme (`tests/test_suno_stil.py`). DJ setleri kapsam dışı (`SET_STILLERI`).
+- **Render öncesi koşullu true-peak limiter.** `render.render_project` sesi `ebur128=peak=true` ile ölçüp
+  (state.json varsa `ses_olcum`a yazar, aynı md5'te tekrar ölçmez) TP −1,0 dBTP'yi AŞARSA ses çıkışına
+  yalnız 4x aşırı örneklemeli `alimiter` (−2,0 dBFS, `level=false`) ekler. loudnorm YOK. Ölçüm başarısızsa
+  render sürer, log'a UYARI düşer. Ayarlar `config.SES_*`.
+- **Shorts kesiti nakaratın başından:** `meta.json`'a yalnız `"highlight_start": <sn>` yazmak yeter; kesit
+  oradan `HIGHLIGHT_DURATION` (45 sn) sürer. Yazılmazsa eski RMS tespiti. Otomatik değer yok (yerelde
+  nakarat zamanı tutulmuyor). DJ kesitleri (`dj_clips`) bundan etkilenmez.

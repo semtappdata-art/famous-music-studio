@@ -56,9 +56,10 @@ def load_meta(project_dir: str) -> dict:
 # social_text OAuth bağımlılığı çekmemeli). Aynı adlarla içe aktarılıyor:
 # `youtube_playlists` ve testler `from youtube_upload import ...` ile alıyor.
 from social_text import _derleme_temalari, _derleme_tur_bilgisi  # noqa: E402,F401
+import ozgun_metin  # noqa: E402  (repo kökü; hikâye paragrafı + başlık kalıbı)
 
 
-def build_snippet(meta: dict) -> dict:
+def build_snippet(meta: dict, baslik_kalibi: str | None = None) -> dict:
     """Uzun format (youtube_16x9.mp4) açıklaması. Dil resolve_language() ile
     belirlenir (stile göre otomatik, meta.json'daki "language" öncelikli) —
     DJ Famous ("dj" teması, "en") gibi İngilizce projelerde de doğru dilde
@@ -163,7 +164,10 @@ def build_snippet(meta: dict) -> dict:
             video_title = f"{title} | {_sayi}Türkçe {derleme_tur} Derlemesi"
             lyrics_tags = []
         else:
-            video_title = f"{title} (Sözleri) | Türkçe {theme['label']} Şarkısı"
+            # BAŞLIK KALIBI ROTASYONU (2026-09-13, karar 2): kalıplar config.YOUTUBE_BASLIK_KALIPLARI,
+            # "Sözleri" hepsinde. `baslik_kalibi` None → K1 = bugünkü başlık bayt bayt
+            # (geçmiş videolar `fix_description`ta kalıp kaydı yoksa K1'de kalır).
+            video_title = ozgun_metin.baslik_uret(meta, baslik_kalibi, theme["label"])
             lyrics_tags = [f"{title} sözleri", "sözleri", "lyrics"]
 
     if derleme:
@@ -198,8 +202,14 @@ def build_snippet(meta: dict) -> dict:
     _alinti = sozlerden_alinti(meta)
     alinti = ("\n\n" + _alinti) if _alinti else ""
 
+    # HİKÂYE PARAGRAFI (2026-09-13, karar 3): meta["hikaye"], hook'tan sonra ve link
+    # bloğundan önce; yalnız uzun formatta. Alan yoksa ya da yasak ifade taşıyorsa
+    # (ozgun_metin.YASAK_RE) açıklama bayt bayt eskisi. Kapı: uyumluluk → ozgun_metin.kapi_kontrol.
+    _hikaye = ozgun_metin.aciklama_paragrafi(meta)
+    hikaye = ("\n\n" + _hikaye) if _hikaye else ""
+
     description = (
-        f"{hook}\n\n{title} | {config.STATIC_LABEL_TEXT}{kurator}{bolumler}{alinti}\n\n"
+        f"{hook}\n\n{title} | {config.STATIC_LABEL_TEXT}{kurator}{bolumler}{alinti}{hikaye}\n\n"
         f"{follow_line}\n\n"
         f"📷 Instagram: {links['instagram']}\n"
         f"🎵 TikTok: {links['tiktok']}\n"
@@ -463,7 +473,14 @@ def _compute_publish_at(privacy: str, schedule: bool) -> str | None:
 def upload_video(project_dir: str, privacy: str, schedule: bool = True) -> str:
     video_path = os.path.join(project_dir, "output", "youtube_16x9.mp4")
     meta = load_meta(project_dir)
-    snippet = build_snippet(meta)
+    # BAŞLIK KALIBI yalnız YENİ yüklemede seçilir (karar 2): önceki yeni yayının kalıbından
+    # farklı, deterministik; state'e yazılır ki fix_description aynı kalıbı kullansın.
+    kalip = None
+    if ozgun_metin.rotasyon_aktif() and not meta.get("derleme") \
+            and meta.get("theme") != "dj":
+        kalip = ozgun_metin.kalip_sec(
+            meta, ozgun_metin.onceki_kalip(uyumluluk.proje_klasorleri(), haric=project_dir))
+    snippet = build_snippet(meta, baslik_kalibi=kalip)
 
     publish_at = _compute_publish_at(privacy, schedule)
     video_id = _upload(video_path, snippet, privacy, publish_at=publish_at)
@@ -477,12 +494,15 @@ def upload_video(project_dir: str, privacy: str, schedule: bool = True) -> str:
         # sadece uyarıyoruz. Video YouTube'un otomatik seçtiği kareyle kalır.
         print(f"  Thumbnail HATA: {e}")
 
-    _update_state(project_dir, {
+    alanlar = {
         "youtube_video_id": video_id,
         "youtube_uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "youtube_privacy": privacy,
         "youtube_publish_at": publish_at,
-    })
+    }
+    if kalip:
+        alanlar["youtube_baslik_kalibi"] = kalip
+    _update_state(project_dir, alanlar)
     return video_id
 
 
@@ -734,7 +754,8 @@ def fix_description(project_dir: str) -> None:
 
     if video_id:
         print("  uzun format:")
-        snippet = build_snippet(meta)
+        # Kalıp kaydı olmayan (eski) video K1'de kalır — geçmiş başlıklara dokunulmaz.
+        snippet = build_snippet(meta, baslik_kalibi=state.get("youtube_baslik_kalibi"))
         youtube.videos().update(part="snippet", body={"id": video_id, "snippet": snippet}).execute()
         print("  Açıklama: tamam")
     if shorts_id:

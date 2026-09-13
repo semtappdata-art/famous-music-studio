@@ -14,18 +14,18 @@
   "tiktok_suggested_comment": "🎧 Şarkının tamamı YouTube'da: https://youtu.be/8ixjisC6Ato\n@famousmusicstudio hesabına dokun, bio'daki linkten de ulaşabilirsin 🔗",
   "tiktok_cover_hint": "projects\\Beni Bırakma\\cover_vertical.png",
   "youtube_playlist_id": "PLamU8IEtNO2k",
-  "youtube_views": 121,
+  "youtube_views": 126,
   "youtube_likes": 8,
   "youtube_comments": 0,
-  "youtube_stats_checked_at": "2026-09-12T13:05:26",
-  "youtube_shorts_views": 52,
+  "youtube_stats_checked_at": "2026-09-13T10:06:39",
+  "youtube_shorts_views": 53,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-11T16:12:21",
-  "youtube_views_prev": 119,
+  "youtube_stats_prev_at": "2026-09-12T13:05:26",
+  "youtube_views_prev": 121,
   "youtube_likes_prev": 8,
   "youtube_comments_prev": 0,
-  "youtube_shorts_views_prev": 51,
+  "youtube_shorts_views_prev": 52,
   "youtube_shorts_likes_prev": 2,
   "youtube_shorts_comments_prev": 0,
   "youtube_captions_done": true,
@@ -89,5 +89,8 @@
       "guncellendi_at": "2026-09-13T04:29:37+03:00"
     }
   ],
-  "turev_plani_surumu": 1
+  "turev_plani_surumu": 1,
+  "youtube_privacy_gercek": "public",
+  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
+  "youtube_shorts_privacy_gercek": "public"
 }

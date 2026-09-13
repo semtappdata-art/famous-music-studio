@@ -16,6 +16,7 @@ karta çözülüyor; ayrıca sesin başındaki dijital sessizlik kırpılıyor. 
 ölçüm config.INTRO_KAPAK / config.INTRO_SESSIZLIK_KIRP yorumlarında.
 """
 
+import math
 import os
 import subprocess
 
@@ -37,6 +38,58 @@ def get_audio_duration(audio_path: str) -> float:
         return float(result.stdout.strip())
     except ValueError:
         raise RuntimeError(f"ffprobe geçersiz süre döndürdü: {result.stdout!r}")
+
+
+def limiter_filtresi() -> str:
+    """Koşullu true-peak limiter'ın `-af` zinciri (bkz. config.SES_LIMITER_*).
+
+    4x aşırı örneklemede alimiter: düz 48 kHz alimiter yalnız ÖRNEK tepesini
+    görüyor ve katalogda AAC sonrası TP'yi KÖTÜLEŞTİRDİ (Küllerimden Geç
+    -0,7 -> -0,3); ölçümler config.py yorumunda. `level=false` otomatik
+    kazancı kapatıyor (loudness DEĞİŞMEMELİ), `latency=true` lookahead
+    gecikmesini telafi ediyor (altyazı/görüntü senkronu kaymasın).
+    loudnorm/dynaudnorm BİLEREK YOK."""
+    tavan = 10 ** (config.SES_LIMITER_TAVAN_DBFS / 20)
+    return (f"aresample={config.SES_LIMITER_ASIRI_ORNEKLEME},"
+            f"alimiter=limit={tavan:.6f}:level=false:latency=true,"
+            f"aresample={config.SES_LIMITER_CIKIS_HZ}")
+
+
+def ses_olc(audio_path: str) -> dict:
+    """ffmpeg `ebur128=peak=true` ile `{"lufs", "tp", "lra"}` ölçer.
+
+    Yalnız son `Summary:` bloğu okunuyor: ebur128 ondan önce her 100 ms'de
+    `I:`/`LRA:` içeren ara satırlar basıyor, onları okumak yanlış sayı verirdi.
+    ffmpeg hata dönerse, özet yoksa ya da değer sonlu değilse (tamamen sessiz
+    dosyada TP `-inf`) RuntimeError; ffmpeg HİÇ çalıştırılamazsa OSError aynen
+    yükseliyor. İkisini de çağıran (render.ses_olcumu) yakalayıp render'ı
+    DURDURMADAN UYARI basıyor."""
+    cmd = [
+        "ffmpeg", "-hide_banner", "-nostats", "-i", audio_path,
+        "-af", "ebur128=peak=true", "-f", "null", "-",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if result.returncode != 0:
+        raise RuntimeError(f"ebur128 ölçümü başarısız: {(result.stderr or '')[-300:]}")
+    stderr = result.stderr or ""
+    bas = stderr.rfind("Summary:")
+    if bas < 0:
+        raise RuntimeError("ebur128 çıktısında Summary bloğu yok")
+    degerler = {}
+    for satir in stderr[bas:].splitlines():
+        parca = satir.strip().split()
+        if len(parca) < 2 or parca[0] not in ("I:", "LRA:", "Peak:") or parca[0] in degerler:
+            continue
+        try:
+            degerler[parca[0]] = float(parca[1])
+        except ValueError:
+            raise RuntimeError(f"ebur128 değeri okunamadı: {satir.strip()!r}")
+    eksik = [k for k in ("I:", "LRA:", "Peak:") if k not in degerler]
+    if eksik:
+        raise RuntimeError(f"ebur128 özetinde eksik alan: {eksik}")
+    if not all(math.isfinite(v) for v in degerler.values()):
+        raise RuntimeError(f"ebur128 sonlu olmayan değer döndü: {degerler}")
+    return {"lufs": degerler["I:"], "tp": degerler["Peak:"], "lra": degerler["LRA:"]}
 
 
 def bastaki_sessizlik(audio_path: str) -> float:
@@ -475,6 +528,7 @@ def render_video(
     hud_path: str | None = None,
     kart_goster: bool = True,
     intro_cover: str | None = None,
+    ses_limiter: bool = False,
 ) -> None:
     """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
     kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için.
@@ -489,7 +543,10 @@ def render_video(
     intro_cover verilirse video AÇILIŞTA o görselle (projenin cover.png'si, yani
     birebir YouTube küçük resmi) tam ekran başlayıp karta çözülür — gerekçesi ve
     süreleri config.INTRO_KAPAK'ta. Çok kısa parçalarda (süre < 2× açılış)
-    kendiliğinden atlanır."""
+    kendiliğinden atlanır.
+    ses_limiter=True ise ses çıkışına YALNIZ limiter_filtresi() eklenir (karar
+    render.render_project'te, ölçülen TP'ye göre). Varsayılan False: DJ
+    kesitleri (dj_clips) ve diğer bütün çağıranlar eskisi gibi filtresiz."""
     full_duration = get_audio_duration(audio_path)
     if start_time is not None and end_time is not None:
         duration = min(end_time, full_duration) - start_time
@@ -562,6 +619,7 @@ def render_video(
         "-filter_complex", filter_complex,
         "-map", "[vfinal]",
         "-map", "0:a",
+        *(["-af", limiter_filtresi()] if ses_limiter else []),
         "-t", f"{duration:.3f}",
         "-c:v", config.VIDEO_CODEC,
         "-preset", config.PRESET,

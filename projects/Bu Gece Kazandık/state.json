@@ -1,8 +1,4 @@
 {
-  "yayin_beklet": {
-    "sebep": "kullanıcı: kapak ve video görselleri eski; yeni formatta yeniden render bekliyor (2026-09-12) — render yapılana ve bu alan kaldırılana kadar yayına çıkmaz",
-    "istendi_at": "2026-09-12T22:56:32+03:00"
-  },
   "arsiv_eski_yukleme_2026_09_08": {
     "youtube_video_id": "LWGZGtw6UCY",
     "youtube_uploaded_at": "2026-09-08T21:19:34",

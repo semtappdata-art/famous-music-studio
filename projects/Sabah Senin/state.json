@@ -1,8 +1,4 @@
 {
-  "yayin_beklet": {
-    "sebep": "kullanıcı kararı 2026-09-13: Sabah Senin baştan yapılacak (yeni Suno üretimi); eski sürüm yayınlanmayacak",
-    "istendi_at": "2026-09-13T04:53:18+03:00"
-  },
   "arsiv_eski_take_2026_09_13": {
     "youtube_video_id": "Ozn9WnPgdfk",
     "youtube_uploaded_at": "2026-09-13T02:22:17",
@@ -331,5 +327,50 @@
       "not": "Kullanıcı beyanı. `youtube_shorts_privacy` (istenen) ve `youtube_shorts_privacy_gercek` (API ölçümü) BİLEREK değiştirilmedi."
     },
     "_not": "2026-09-13: yeni Suno sesi (clip 49e09f77) ile sıfırlama öncesi eski take alanları; hiçbir okuyucu bu sözlüğü okumaz"
-  }
+  },
+  "youtube_video_id": "WCH57G1BA2Y",
+  "youtube_uploaded_at": "2026-09-13T10:05:31",
+  "youtube_privacy": "public",
+  "youtube_publish_at": "2026-09-13T09:00:00Z",
+  "youtube_playlists": [
+    "PLWPREmvYqOsI",
+    "PLKFBTOXunWQ0",
+    "PLIfBoPfEuEWQ"
+  ],
+  "youtube_playlist_id": "PLWPREmvYqOsI",
+  "youtube_shorts_video_id": "uKzklSTknBs",
+  "youtube_shorts_uploaded_at": "2026-09-13T10:05:42",
+  "youtube_shorts_privacy": "public",
+  "youtube_shorts_publish_at": "2026-09-13T09:00:00Z",
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
+  "facebook_reels_id": "2608126599704567",
+  "facebook_uploaded_at": "2026-09-13T10:06:37",
+  "facebook_scheduled_for": "2026-09-13T12:00:00+03:00",
+  "facebook_comment_pending": false,
+  "youtube_views": 0,
+  "youtube_likes": 0,
+  "youtube_comments": 0,
+  "youtube_privacy_gercek": "private",
+  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
+  "youtube_shorts_views": 0,
+  "youtube_shorts_likes": 0,
+  "youtube_shorts_comments": 0,
+  "youtube_shorts_privacy_gercek": "private",
+  "youtube_stats_checked_at": "2026-09-13T10:06:39",
+  "youtube_captions_done": true,
+  "youtube_captions_synced_at": "2026-09-13T11:05:20",
+  "instagram_media_id": "17905532229325506",
+  "instagram_uploaded_at": "2026-09-13T12:05:58",
+  "yukleme_belirsiz": {
+    "telegram_message_id": {
+      "platform": "Telegram",
+      "ne": "Telegram sendVideo",
+      "istisna": "ConnectionError",
+      "zaman": "2026-09-13T12:06:37",
+      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
+    }
+  },
+  "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mvfamby5332o",
+  "bluesky_post_cid": "bafyreidgeh73nwlu6tt2rlz32mskw4nvgvdiw3qik6cub2ftcigpdxofce",
+  "bluesky_uploaded_at": "2026-09-13T12:07:10"
 }

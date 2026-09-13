@@ -497,6 +497,16 @@ def kontrol(proje: str, asama: str = "render") -> tuple:
         hatalar.append("meta.json'da ai_beyani=False — kanalın tamamı AI üretimi, "
                        "beyan kapatılamaz")
 
+    # --- 4b. Hikâye paragrafı + "neden bu şarkı" notu (2026-09-13, karar 3) ----
+    # Yalnız ana katalogdaki YENİ şarkı, yalnız "yukleme". `config.HIKAYE_KAPISI_TARIHI`
+    # öncesi UYARI, sonrası HATA (bu kapı zaten fail-closed: yayın durur, `yayin_beklet`
+    # gibi ayrı bir mekanizma gerekmedi). Kurallar ve yasak regex: ozgun_metin.py.
+    if asama == "yukleme":
+        import ozgun_metin
+        _hh, _hu = ozgun_metin.kapi_kontrol(proje, meta, durum)
+        hatalar.extend(_hh)
+        uyarilar.extend(_hu)
+
     # --- 5. Yükleme öncesi: günlük yığılma ---------------------------------
     if asama == "yukleme":
         import time
