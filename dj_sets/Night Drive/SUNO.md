@@ -37,6 +37,15 @@ uzatılıyor → **12-16 parça**.
 Kapanışın sönümlenerek bitmesi önemli: `merge_dj_set_segments.py` parçaları
 crossfade ile birleştiriyor, sert biten bir son parça birleşimde tıkırdıyor.
 
+**Geçiş kuralı (2026-09-14 — bu sete özgü DEĞİL, bundan sonraki TÜM setlerde
+geçerli):** merge parçaları artık KESİNTİSİZ biliyor. Kenar sessizliği (Suno
+parçalarında baş/kuyrukta ölçülür) her parçadan kırpılıyor, geçiş eğrisi linear
+değil equal-power (`qsin`), yani crossfade iki parçanın GERÇEK müziği içinde ve
+ortada dip olmadan kayıyor. İlk parça müzikle açılır, son parçanın kuyruğu
+korunur (sönümlenerek bitiş). `--crossfade` elle verilse de en kısa parçanın
+yarısını aşamaz. Eğri/sessizlik ölçümü/log detayı: `merge_dj_set_segments.py`
+docstring'i + `tests/test_merge_dj_segments_kesintisiz.py`.
+
 ## Dosya adlandırma — ZORUNLU
 
 İndirilen parçalar `_segments/` altına, **adının sonunda sıra numarasıyla**:
