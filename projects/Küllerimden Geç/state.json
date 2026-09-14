@@ -17,17 +17,17 @@
   "youtube_shorts_publish_at": "2026-09-13T13:08:38+03:00",
   "youtube_captions_done": true,
   "youtube_captions_synced_at": "2026-09-07T14:28:40",
-  "youtube_views": 193,
+  "youtube_views": 208,
   "youtube_likes": 18,
   "youtube_comments": 8,
-  "youtube_stats_checked_at": "2026-09-13T10:06:39",
-  "youtube_shorts_views": 115,
+  "youtube_stats_checked_at": "2026-09-14T07:05:11",
+  "youtube_shorts_views": 119,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-12T13:05:26",
-  "youtube_views_prev": 182,
-  "youtube_likes_prev": 17,
-  "youtube_comments_prev": 7,
+  "youtube_stats_prev_at": "2026-09-13T10:06:39",
+  "youtube_views_prev": 193,
+  "youtube_likes_prev": 18,
+  "youtube_comments_prev": 8,
   "youtube_shorts_views_prev": 115,
   "youtube_shorts_likes_prev": 2,
   "youtube_shorts_comments_prev": 0,
@@ -222,7 +222,7 @@
   ],
   "turev_plani_surumu": 1,
   "youtube_privacy_gercek": "public",
-  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
+  "youtube_privacy_gercek_at": "2026-09-14T07:05:11",
   "youtube_shorts_privacy_gercek": "public",
   "youtube_shorts_elle_gizlilik_notu": {
     "deger": null,
@@ -233,14 +233,5 @@
     "kaynak": "claude",
     "kayit_id": "EI-20260913-130839-57e5",
     "not": "Kullanıcı beyanı. `youtube_shorts_privacy` (istenen) ve `youtube_shorts_privacy_gercek` (API ölçümü) BİLEREK değiştirilmedi."
-  },
-  "yukleme_belirsiz": {
-    "telegram_message_id": {
-      "platform": "Telegram",
-      "ne": "Telegram sendVideo",
-      "istisna": "ConnectionError",
-      "zaman": "2026-09-13T18:05:20",
-      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
-    }
   }
 }

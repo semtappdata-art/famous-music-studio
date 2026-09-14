@@ -261,13 +261,22 @@ Bu beş soru belirli yuvalarda sorulur; **arada sorulmaz.**
 ayda 4-5 indirme; kota 20-60. Ay sonunda kotanın yarısından fazlası boşsa K-B'ye bak.
 Kotanın %70'i tükendiyse kalan haftalarda Salı boş geçer, Perşembe kutusu büyür.
 
-**K-B · Night Drive seti ne zaman indirilir? → Ayın 1. Pazartesi'si, ÜÇ koşul birden.**
-12 indirme = kotanın %20-60'ı, karşılığı **tek** video. İndirme başına izlenme süresi
-şarkıda 84,5 dk, sette 43-57 dk — kota başına şarkı önde; setin tek avantajı **video
-sayısı**. Koşullar: (1) City Pulse itirazı Studio'dan elle kapatıldı, (2) yeni kota dönemi
-başladı, (3) kotanın en az 20'si boşta. İndirilirse **12 parça, 16 değil** (45-60 dk tavan)
-ve adlandırma `_segments/Night Drive 1.wav … 12.wav` — `merge_dj_set_segments.py` sırayı
-**sadece** bu numaradan okuyor.
+**K-B · Night Drive seti + iki yeni set ne zaman işlenir? → Kullanıcı segmentsiz.**
+> **GÜNCELLEME (2026-09-14):** Night Drive ONAYLANDI. Kullanıcı segmentleri Suno'da
+> kendisi üretecek `_segments/Night Drive N.wav` olarak indirecek. Eski üç koşul
+> (City Pulse itirazı/kota dönemi/kota boşluğu) artık geçerli değil.
+> Üç set hazır bekliyor:
+> - **Night Drive** (techno_chill, 124 bpm) — `_segments/` bekleniyor, Suno tarifi hazır
+> - **Sunrise Session** (organic_morning, 118 bpm) — `meta.json`+`SUNO.md`+`SET_STILLERI`
+>   hazır, `_segments/` bekleniyor. Kanaldaki İLK gündüz/aydınlık seti.
+> - **Peak District** (progressive_node, 126 bpm) — `meta.json`+`SUNO.md`+`SET_STILLERI`
+>   hazır, `_segments/` bekleniyor. Kanaldaki en yüksek enerjili set.
+>
+> 12-16 parça/45-60 dk hedefi üçü için de geçerli. Kota uyarısı: her set Suno
+> indirme kotasının %20-60'ını tüketir; setlerin hepsini aynı ayda indirmek
+> kota aşımı riski taşır. Kapak/videolar Arda'nın fotoğraf referanslarıyla
+> üretilecek sahnelerden (`dj_sets/_arda/`); o adım gelene kadar Pexels
+> `art_query` geçici görsel olarak çalışır.
 
 **K-C · Derleme #2 yapılsın mı? → Ayın 3. Pazartesi'si, koşullu.** Derleme Suno kotasına
 **hiç dokunmuyor** ve küratörlük katmanı "toplu üretilmiş" riskini **azaltan** tek

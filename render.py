@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import config
 import ffmpeg_utils
+import gorsel_dil
 import state_io
 import uyumluluk
 import validate_project
@@ -25,6 +26,9 @@ COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
 COVER_VERTICAL_NAMES = ["cover_vertical.jpg", "cover_vertical.jpeg", "cover_vertical.png"]
 ART_NAMES = ["art.jpg", "art.jpeg", "art.png"]
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
+
+# --- Görsel Dil Parametre Önbelleği (gorsel_dil.py) ---
+GORS_DIL_OLCUM_ALANI = "gorsel_dil_olcum"
 
 # Render çıktısı ÖNCE bu sonekle yazılıyor, ffmpeg 0 ile döndükten SONRA
 # os.replace ile nihai adına taşınıyor (bkz. render_one). state_io.py'deki
@@ -164,6 +168,74 @@ def load_meta(project_dir: str) -> dict:
         with open(meta_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
+
+
+def _gorsel_dil_parametreleri(project_dir: str, audio_path: str, art_path: str,
+                              meta: dict) -> dict | None:
+    """Görsel dil parametrelerini hesaplar; None ise bayrak kapalı ya da ölçülemedi.
+
+    measure_bpm state.json'da önbellekli (audio md5'li): tekrar render'larda
+    librosa yüklemesi yapılmaz. Backdrop path dahil DEĞİL — her platform için
+    çözünürlük ayrı olduğu için render_one içinde üretiliyor."""
+    if not config.GORSEL_DIL_AKTIF:
+        return None
+
+    audio_md5 = None
+    try:
+        audio_md5 = _dosya_md5(audio_path)
+    except OSError:
+        pass
+
+    durum = {}
+    try:
+        durum = uyumluluk._durum(project_dir)
+    except Exception:  # noqa: BLE001
+        pass
+
+    onceki = durum.get(GORS_DIL_OLCUM_ALANI)
+    if (isinstance(onceki, dict)
+            and onceki.get("md5") == audio_md5
+            and isinstance(onceki.get("bpm"), (int, float))):
+        bpm = float(onceki["bpm"])
+        sure = float(onceki.get("sure", 0))
+    else:
+        try:
+            bpm, sure = gorsel_dil.measure_bpm(audio_path)
+        except Exception as e:
+            print(f"  UYARI: görsel dil BPM ölçümü başarısız: {type(e).__name__}: {e}")
+            return None
+        # State'i tazele
+        try:
+            taze = uyumluluk._durum(project_dir)
+            taze[GORS_DIL_OLCUM_ALANI] = {
+                "bpm": bpm, "sure": sure,
+                "md5": audio_md5,
+                "olcum_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            }
+            state_io.durum_yaz(project_dir, taze)
+        except Exception:  # noqa: BLE001
+            pass
+
+    title = meta.get("title") or os.path.basename(project_dir)
+    theme_key = meta.get("theme", config.DEFAULT_THEME)
+    theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
+    accent = tuple(theme["accent"])
+
+    import gorsel_dil as _gd
+    seed = _gd._song_hash(title)
+    nabiz_expr, nabiz_hz, flash_per_sn = _gd.nabiz_ifadesi(bpm)
+    mood = _gd.mood_olc(title)
+    grain = _gd.doku_filtresi(seed ^ 0xA55A)
+    grade = _gd.derecelendirme_filtresi(mood, accent)
+
+    if flash_per_sn >= 3:
+        print(f"  UYARI: görsel dil flash hızı fotoepilepsi eşiğini aşıyor: "
+              f"{flash_per_sn:.2f}/sn (sinif={_gd.enerji_sinifi(bpm)})")
+
+    return {
+        "nabiz_expr": nabiz_expr, "grain": grain, "grade": grade,
+        "seed": seed, "accent": accent, "bpm": bpm,
+    }
 
 
 # state.json'daki ölçüm anahtarı: {"lufs", "tp", "lra", "olcum_at", "md5"}.
@@ -367,6 +439,16 @@ def render_project(project_dir: str) -> bool:
     art_path = find_art(project_dir)
     print(f"  kart içeriği: {'art görseli (' + art_path + ')' if art_path else 'düz renk (art.jpg yok)'}")
 
+    meta = load_meta(project_dir)
+    title = meta.get("title")
+    theme = meta.get("theme")
+
+    # GÖRSEL DİL — şarkıdan türetilen nabız/doku/derecelendirme parametreleri.
+    # Backdrop burada DEĞİL, render_one içinde her platform için ayrı üretiliyor.
+    dil_base = _gorsel_dil_parametreleri(project_dir, audio_path, art_path or "", meta)
+    if dil_base is not None:
+        print(f"  görsel dil: aktif (BPM {dil_base['bpm']:.1f}, nabız dahil)")
+
     # KOŞULLU TRUE-PEAK LİMİTER (2026-09-13, bkz. config.SES_LIMITER_*).
     # Yalnız ölçülen TP eşiği AŞARSA zincire limiter giriyor; loudnorm yok.
     # Ölçüm arızası render'ı durdurmuyor (ses_olcumu None -> limitersiz).
@@ -380,9 +462,6 @@ def render_project(project_dir: str) -> bool:
         print("  " + satir)
         _ses_uyarisi(f"ses_karar:{proje_adi}", satir)
 
-    meta = load_meta(project_dir)
-    title = meta.get("title")
-    theme = meta.get("theme")
     # DJ Famous gibi özel içerikler için kayan yazının içeriğini override eder
     # (ör. "DJ Famous  •  Hafta 1 Seti  •  #DJFamous ...") — sabit alt satır
     # ("Famous Music Studio") HER ZAMAN aynı kalır, bundan etkilenmez.
@@ -450,6 +529,18 @@ def render_project(project_dir: str) -> bool:
         intro_cover = (find_intro_cover(project_dir, width, height)
                        if platform_key in config.INTRO_KAPAK_PLATFORMLAR else None)
         try:
+            # Görsel dil backdrop: her platform için çözünürlüğü ayrı, cache key ayrı.
+            # backdrop.mp4 KULLANILAN projede (DJ sahne modu) huzmeli yok sayılır
+            # — render_video `use_backdrop_video` dalında öncelik videodadır.
+            render_dil = dict(dil_base) if dil_base else None
+            if render_dil and art_path:
+                try:
+                    render_dil["backdrop"] = gorsel_dil.huzmeli_backdrop_uret(
+                        art_path, width, height, dil_base["seed"],
+                        cache_dir=output_dir)
+                except Exception as e:
+                    print(f"  UYARI: huzmeli backdrop üretilemedi: {e}")
+                    render_dil = None
             ffmpeg_utils.render_video(
                 art_path, audio_path, tmp_path, width, height, title, theme,
                 marquee_override=marquee_override,
@@ -457,12 +548,11 @@ def render_project(project_dir: str) -> bool:
                 end_time=highlight_end if use_highlight else None,
                 backdrop_video=None if use_highlight else backdrop_path,
                 hud_path=None if use_highlight else _hud(width, height),
-                # Sahne modu sadece uzun formatta: 45 saniyelik dikey
-                # kesitte kart hâlâ doğru iş - kapak kimliğini o taşıyor.
                 kart_goster=not (config.DJ_SAHNE_MODU and backdrop_path
                                  and not use_highlight),
                 intro_cover=intro_cover,
                 ses_limiter=ses_limiter,
+                dil_params=render_dil,
             )
         except BaseException:
             # Hata/iptal durumunda yarım geçici dosyayı bırakma. Süreç

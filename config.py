@@ -57,6 +57,39 @@ THEMES = {
 }
 DEFAULT_THEME = "hiphop"  # meta.json'da "theme" belirtilmezse kullanılır
 
+# --- ŞARKIDAN TÜRETİLEN GÖRSEL DİL (gorsel_dil.py) ---
+# "Aynı iskelet, şarkıdan türetilen parametreler" tasarım sistemi (2026-09-15
+# tasarım kararı, bkz. gorsel_dil.py docstring'i). KAPALIYSA boru hattı mevcut
+# görsel üretimiyle birebir aynı çalışır — bu bayrak yalnızca kabul edilen
+# kapsamda tek şarkıyla (Bu Gece Kazandık) prototip göstermek için açılır.
+# (TIKTOK_KIT_AKTIF deseniyle aynı: kapalıyken hiçbir yeni kod çalışmaz.)
+# 2026-09-15: kullanıcı üç konsept prototipinden SPLIT'i seçti → bayrak açıldı
+# ve kapak konsepti splite sabitlendi.
+GORSEL_DIL_AKTIF = True
+GORSEL_DIL_KAPAK_KONSEPT = "split"
+
+# Tema başına sinematik derecelendirme (grade) zinciri — gorsel_dil.
+# derecelendirme_filtresi'nin tema accent çarpanlarına SAHNEsiz hâli değil:
+# bunlar yalnızca tema accent'ine göre sabit kontrast/saturation ayarı.
+# (derecelendirme_filtresi mood'a göre zaten ayarlanıyor; bu sözlük herhangi
+# bir tema için varsayılanın ötesinde ek bir ağırlık istendiğinde kullanılır.)
+TEMA_GRADE = {
+    "pop": {"contrast": 1.06, "saturation": 1.08},
+    "rock": {"contrast": 1.10, "saturation": 0.92},
+    "elektronik": {"contrast": 1.05, "saturation": 1.10},
+    "akustik": {"contrast": 1.03, "saturation": 0.98},
+    "hiphop": {"contrast": 1.08, "saturation": 1.00},
+    "arabesk": {"contrast": 1.06, "saturation": 0.94},
+    "dj": {"contrast": 1.06, "saturation": 1.06},
+}
+
+# Nabız sınıf bütçeleri (saniye başına flash < 3 = fotoepilepsi güvenli):
+#   sakin    (<85 BPM):  her 2. vuruşta  %12    nabız
+#   orta     (85-110):   her vuruşta     %20    nabız
+#   enerjik  (>=110):    her 4. vuruşta  %30    nabız
+# (detay: gorsel_dil.NABIZ_SINIFLARI — bu sabiti DEĞİŞTİRME, modül okuyor)
+NABIZ_BUDGET = 0.20  # orta sınıf varsayılanı (yukarıdaki sözlükle senkron)
+
 # --- Kart tasarımı: Spotify "Now Playing" stili — tam ekran değil, ekranın büyük
 # kısmını kaplayan ("orta alan") yuvarlak köşeli albüm kartı + kartın kendi görselinden
 # (art.jpg) türetilmiş, hareketli (pan+hue) bir backdrop + altında kayan başlık +
@@ -459,6 +492,40 @@ SET_STILLERI = {
             "particles dark blue slow motion",
         ],
         "suno_stil": "melodic techno, hypnotic arpeggio, deep sub bass, airy pads, no vocals, 124 bpm, late night drive",
+    },
+    "organic_morning": {
+        # 2026-09-14 eklendi (kullanıcı onayıyla). Kanaldaki İLK aydınlık/gündüz
+        # seti: mevcut üç setin tamamı (lounge/deep house + gece-üretimli) gece
+        # temalı. "sunrise/morning/organic house" aramaları ayrı bir kitledir;
+        # deep_house'tan BPM ve prodüksiyon (dünya perküsyonu, marimba) ile,
+        # techno_chill'den tamamen farklı mood'la ayrılıyor. Düşük-orta BPM
+        # organik tını, vokalsiz (arka plan/çalışma aramalarına açık).
+        "label": "Organic House",
+        "etiketler": ["Organic House", "Sunrise Mix", "Balearic House", "Morning Music"],
+        "video_sorgulari": [
+            "sunrise over ocean golden light slow",
+            "palm tree shadows warm morning terrace",
+            "sun rays through leaves bokeh",
+            "calm sea waves golden hour aerial",
+        ],
+        "suno_stil": "organic house, warm analog synth, gentle marimba melody, soft latin percussion, no vocals, 118 bpm, sunrise terrace, uplifting calm",
+    },
+    "progressive_node": {
+        # 2026-09-14 eklendi (kullanıcı onayıyla). Kanaldaki en yüksek enerjili
+        # set: mevcut setler "sakinlik/hipnoz" bandında, bu ise varış noktası
+        # (peak-time club). techno_chill'den BPM (126 vs 124), sürükleyici kick
+        # ve "workout/drive/peak" arama kitlesiyle ayrılıyor. Vokalsiz.
+        # NOT: prodüksiyon "ağırlığı" kasıtlı olarak diğer setlerden yüksek —
+        # enerji çeşitliliği kataloğun açık ihtiyacı (muzik-produksiyon ajani).
+        "label": "Progressive House",
+        "etiketler": ["Progressive House", "Peak Time House", "Driving House", "Club Mix"],
+        "video_sorgulari": [
+            "dark club crowd silhouettes laser beams",
+            "dj booth hands lights dark party",
+            "concert stage lights beams crowd night",
+            "neon tunnel light streaks fast motion",
+        ],
+        "suno_stil": "melodic progressive house, driving kick, hypnotic lead synth, layered atmosphere, no vocals, 126 bpm, peak time club, forward motion",
     },
 }
 

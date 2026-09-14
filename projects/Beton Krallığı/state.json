@@ -18,12 +18,12 @@
   "youtube_views": 57,
   "youtube_likes": 1,
   "youtube_comments": 0,
-  "youtube_stats_checked_at": "2026-09-13T10:06:39",
+  "youtube_stats_checked_at": "2026-09-14T07:05:11",
   "youtube_shorts_views": 7,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-12T13:05:26",
-  "youtube_views_prev": 55,
+  "youtube_stats_prev_at": "2026-09-13T10:06:39",
+  "youtube_views_prev": 57,
   "youtube_likes_prev": 1,
   "youtube_comments_prev": 0,
   "youtube_shorts_views_prev": 7,
@@ -118,6 +118,8 @@
   ],
   "turev_plani_surumu": 1,
   "youtube_privacy_gercek": "public",
-  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
-  "youtube_shorts_privacy_gercek": "public"
+  "youtube_privacy_gercek_at": "2026-09-14T07:05:11",
+  "youtube_shorts_privacy_gercek": "public",
+  "facebook_reels_id": "2228809127967628",
+  "facebook_uploaded_at": "2026-09-14T13:05:19"
 }

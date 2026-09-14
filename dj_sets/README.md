@@ -95,14 +95,23 @@ YouTube etiketleri ve kendi stok video sorguları devreye giriyor
 
 Tanımlı stiller:
 
-| `set_style` | Hedef arama tarafı | Vokal |
-|---|---|---|
-| `deep_house` | lounge / relax / chillout | vokal chop'lar |
-| `techno_chill` | focus / work / night drive | yok (enstrümantal) |
+| `set_style` | Hedef arama tarafı | Vokal | BPM |
+|---|---|---|---|
+| `deep_house` | lounge / relax / chillout | vokal chop'lar | 120 |
+| `techno_chill` | focus / work / night drive | yok (enstrümantal) | 124 |
+| `organic_morning` | sunrise / morning / balearic | yok (enstrümantal) | 118 |
+| `progressive_node` | peak time / workout / driving | yok (enstrümantal) | 126 |
+
+`organic_morning` (2026-09-14): kanaldaki **ilk gündüz/aydınlık seti** —
+mevcut üç setin tamamı gece temalı. Marimba + latin perküsyon + warm analog,
+118 bpm. `progressive_node` (2026-09-14): kanalın **en yüksek enerjili** seti
+— sakin/hipnotik bandın dışına çıkıyor. Driving kick + hypnotic lead, 126 bpm.
 
 Yeni bir stil eklemek = `config.SET_STILLERI`'ye bir girdi (label, etiketler,
 video_sorgulari, suno_stil). Her setin klasöründe, o stile göre yazılmış bir
 `SUNO.md` üretim tarifi bulunur (örnek: `dj_sets/Night Drive/SUNO.md`).
+Testler parametrik olduğu için (`tests/test_social_text_hashtag.py`) yeni stil
+eklemek test paketini bozmaz.
 
 ## Arka plan videosu — `backdrop.mp4`
 

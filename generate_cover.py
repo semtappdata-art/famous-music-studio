@@ -708,7 +708,18 @@ def generate(project_dir: str) -> None:
         ):
             if not missing:
                 continue
-            if is_photo:
+            if config.GORSEL_DIL_AKTIF:
+                # ŞARKIDAN TÜRETİLEN GÖRSEL DİL (gorsel_dil.py): kullanıcının
+                # seçtiği kapak konsepti (split — diyagonal degradé bölünme).
+                # GORSEL_DIL_KAPAK_KONSEPT'e bak, konseptler gorsel_dil.kapak_uret'te.
+                import gorsel_dil
+                gorsel_dil.kapak_uret(
+                    bg_path, out_path, title,
+                    accent=tuple(theme["accent"]),
+                    out_w=out_w, out_h=out_h,
+                    konsept=config.GORSEL_DIL_KAPAK_KONSEPT,
+                )
+            elif is_photo:
                 # DJ set stili: başlık üstteki boş alana yaslı, altında ince
                 # logo/marka satırı — fotoğrafın kendisi kompozisyonun asıl
                 # unsuru kalıyor (karakter portresinde ayrıca büst siluetiyle
