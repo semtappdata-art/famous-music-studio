@@ -47,6 +47,45 @@ def clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+class LyricsNotReady(RuntimeError):
+    """Söz dosyası var ama "## Temiz Sözler" bölümü henüz YAZILMAMIŞ.
+
+    Gerçek bir arızadan (bozuk dosya, eksik ASR vs.) ayrı tutuluyor: bu durum
+    insanın sözleri tamamlamasını bekleyen normal bir iş, her koşuda "HATA"
+    olarak raporlanınca durum panelinde kalıcı bir alarma dönüşüyordu.
+    """
+
+
+class LyricsMismatch(RuntimeError):
+    """ASR ile sözler dosyası BİRBİRİNİ TUTMUYOR — muhtemelen YANLIŞ şarkının
+    sözleri eşleşti.
+
+    NEDEN AYRI BİR KAPI VAR: `align()` eskiden yalnızca eşleşme SIFIR olduğunda
+    hata atıyordu. Ama iki farklı Türkçe şarkı bile ortak kelimeler ("bir",
+    "beni", "gece") yüzünden hiçbir zaman sıfırda kalmıyor — bu katalogda
+    ölçüldü: YANLIŞ eşlenmiş 19 şarkının en yüksek "eşleşme" oranı 0,146,
+    DOĞRU eşlenmişlerin en düşüğü (gerçekçi %25 ASR bozulmasıyla) 0,303.
+    Yani aradaki boşluk geniş ve sessiz yanlış yayın tam ortasından geçiyordu:
+    başka bir şarkının sözleri, aradeğerle uydurulmuş zamanlarla videoya
+    yazılırdı — izleyici görür, biz görmeyiz.
+    """
+
+
+def lyrics_marked_incomplete(md_content: str) -> bool:
+    """Söz dosyası kendini "eksik" diye işaretlemiş mi.
+
+    Bu projede eksik dosyalar başlıklarında açıkça belirtiliyor, ör.:
+        ## Sözler (ekran görüntülerinden yakalanan parçalar — EKSİK, tamamlanmalı)
+    """
+    for satir in md_content.splitlines():
+        if not satir.lstrip().startswith("#"):
+            continue
+        d = satir.lower()
+        if "eksik" in d or "tamamlanmalı" in d or "tam olmayabilir" in d:
+            return True
+    return False
+
+
 def extract_clean_lyrics(md_content: str):
     """`*_sozler.md`'deki "## Temiz Sözler" bölümünü (köşeli parantez
     etiketsiz, doğrudan kullanılabilir sürüm) çeker — bkz. CLAUDE.md'deki
@@ -55,6 +94,38 @@ def extract_clean_lyrics(md_content: str):
     if not match:
         return None
     return match.group(1).strip()
+
+
+class TemizSozlerYok(RuntimeError):
+    """Söz dosyası kendini "eksik" diye işaretlememiş ama "## Temiz Sözler"
+    bölümü yok (ya da boş). RuntimeError alt sınıfı: eskiden düz RuntimeError
+    atılıyordu, çağıranların "gerçek arıza" yorumu değişmesin diye."""
+
+
+def temiz_sozleri_oku(lyrics_md_path: str) -> str:
+    """Sözler dosyasının hizalamada kullanılacak "Temiz Sözler" metni.
+
+    TEK OKUYUCU: hem `align()` hem `upload/youtube_captions.py`'nin API'den
+    ÖNCEKİ yerel ön kontrolü bunu çağırıyor. NEDEN: bu kontrol eskiden yalnız
+    `align()` içindeydi, `align()` ise `captions.list` + `download` (~250 birim)
+    HARCANDIKTAN sonra çalışıyor — bölümü eksik tek bir dosya, koşu başına tek
+    olan altyazı API hakkını her koşuda yiyordu (Sofraya Gelmedin, 08-10 Eylül,
+    33 ardışık HATA). Ön kontrol ayrı bir ayrıştırıcıyla yazılsaydı iki kural
+    zamanla sapardı: ön kontrol "geçer" der, `align()` API harcandıktan sonra
+    yine patlar.
+
+    Atar: LyricsNotReady (dosya kendini eksik işaretlemiş), TemizSozlerYok
+    (işaretsiz ama bölüm yok), OSError/UnicodeDecodeError (okunamadı)."""
+    with open(lyrics_md_path, encoding="utf-8") as f:
+        md = f.read()
+    lyrics = extract_clean_lyrics(md)
+    if not lyrics:
+        if lyrics_marked_incomplete(md):
+            raise LyricsNotReady(
+                f"{lyrics_md_path}: sözler henüz tamamlanmamış "
+                "(dosya kendini 'eksik' olarak işaretlemiş).")
+        raise TemizSozlerYok(f"{lyrics_md_path}: '## Temiz Sözler' bölümü bulunamadı.")
+    return lyrics
 
 
 def split_into_cues(lyrics: str):
@@ -71,8 +142,20 @@ def split_into_cues(lyrics: str):
     return cues
 
 
+# Türkçe büyük harf tuzağı: Python'un genel `str.lower()`'ı "İ"yi TEK bir
+# harfe değil, "i" + U+0307 (birleşen nokta) ÇİFTİNE çeviriyor, "I"yı da "ı"
+# yerine "i" yapıyor. ASR çıktısı küçük harf yazdığı için gerçek sözlerdeki
+# "İçimde" ASR'nin "içimde"siyle ASLA eşleşmiyordu — eşleşmeyen her kelime
+# aradeğere düşüyor, yani zamanı komşularından TAHMİN ediliyor. Katalogda
+# ölçüldü: 19 sözler dosyasında 14 kelime (9 şarkı) tam bu yüzden kaybediliyordu
+# ("İçimde taş kesilir gece" gibi SATIR BAŞI kelimeler — hizalamanın en çok
+# çapaya ihtiyaç duyduğu yer). Türkçe doğru eşleme İ->i, I->ı; `lower()`'dan
+# ÖNCE uygulanıyor.
+_TR_KUCUK = str.maketrans({"İ": "i", "I": "ı"})
+
+
 def _norm_word(w: str) -> str:
-    return re.sub(r"[^\wçğıöşüÇĞİÖŞÜ]", "", w).lower()
+    return re.sub(r"[^\wçğıöşüÇĞİÖŞÜ]", "", w.translate(_TR_KUCUK)).lower()
 
 
 def format_srt(cues) -> str:
@@ -108,7 +191,28 @@ def _build_word_time_list(asr_cues):
     return out
 
 
+# ASR ile sözlerin GERÇEKTEN aynı şarkıya ait sayılması için gereken en düşük
+# kelime eşleşme oranı. Katalogda ölçüldü (19 sözler dosyası, tam çapraz):
+#   - YANLIŞ şarkı eşlendiğinde (kusursuz ASR ile bile) en yüksek oran 0,146
+#   - DOĞRU şarkıda, gerçekçi %25 ASR bozulmasıyla en düşük oran 0,303
+# 0,25 bu iki bulutun ORTASINDA duruyor. Yanılma yönü de bilinçli: eşik yanlış
+# yere düşerse altyazı YAYINLANMAZ (log'a düşer, insan bakar) — tersi, başka
+# bir şarkının sözlerinin sessizce yayınlanması olurdu.
+MIN_ESLESME_ORANI = 0.25
+
 MIN_CUE_DUR = 0.15  # bundan kısa bir cue neredeyse kesin bir hizalama hatası
+
+
+def esleme_istatistigi(asr_norm, real_norm):
+    """(eşleşen_bloklar, eşleşen_kelime_sayısı, oran) döner.
+
+    `align()` ile testlerin/denetimlerin AYNI sayıyı görmesi için tek noktada:
+    "oran" gerçek sözlerin kaç kelimesinin ASR'de bir karşılık bulduğunu
+    söylüyor — geri kalanı ARADEĞERLE (komşulardan tahminle) zaman alıyor."""
+    sm = difflib.SequenceMatcher(None, asr_norm, real_norm, autojunk=False)
+    blocks = sm.get_matching_blocks()
+    eslesen = sum(b.size for b in blocks)
+    return blocks, eslesen, (eslesen / len(real_norm) if real_norm else 0.0)
 
 
 def _merge_degenerate_cues(cues):
@@ -136,7 +240,8 @@ def _merge_degenerate_cues(cues):
     return [tuple(c) for c in out]
 
 
-def align(asr_srt_path: str, lyrics_md_path: str, video_duration: float):
+def align(asr_srt_path: str, lyrics_md_path: str, video_duration: float,
+          min_esleme_orani: float = MIN_ESLESME_ORANI):
     """ASR SRT dosyası + gerçek sözler (.md) -> [(start, end, text), ...].
 
     difflib.SequenceMatcher ile ASR'nin normalize kelime dizisi ve gerçek
@@ -153,10 +258,7 @@ def align(asr_srt_path: str, lyrics_md_path: str, video_duration: float):
     asr_words = _build_word_time_list(asr_cues)
     asr_norm = [w[0] for w in asr_words]
 
-    md = open(lyrics_md_path, encoding="utf-8").read()
-    lyrics = extract_clean_lyrics(md)
-    if not lyrics:
-        raise RuntimeError(f"{lyrics_md_path}: '## Temiz Sözler' bölümü bulunamadı.")
+    lyrics = temiz_sozleri_oku(lyrics_md_path)
     real_cues = split_into_cues(lyrics)
 
     real_words = []  # (norm, original, cue_idx)
@@ -165,8 +267,19 @@ def align(asr_srt_path: str, lyrics_md_path: str, video_duration: float):
             real_words.append((_norm_word(w), w, ci))
     real_norm = [w[0] for w in real_words]
 
-    sm = difflib.SequenceMatcher(None, asr_norm, real_norm, autojunk=False)
-    blocks = sm.get_matching_blocks()
+    blocks, eslesen, oran = esleme_istatistigi(asr_norm, real_norm)
+    # YANLIŞ ŞARKI KAPISI — bu fonksiyonun tek sessiz-yanlış-yayın riski burası.
+    # `stock_art.find_lyrics_file()` bulanık (ön-ek/difflib) eşleşme yapıyor;
+    # yanlış bir dosya seçildiğinde eşleşme SIFIR olmuyor (ortak Türkçe
+    # kelimeler) ve eski kod sessizce devam edip BAŞKA bir şarkının sözlerini
+    # aradeğerle uydurulmuş zamanlarla yayınlıyordu. Bkz. LyricsMismatch.
+    if oran < min_esleme_orani:
+        raise LyricsMismatch(
+            f"{lyrics_md_path}: ASR ile sözler uyuşmuyor — gerçek sözlerin "
+            f"{len(real_words)} kelimesinden yalnızca {eslesen}'i ASR'de "
+            f"bulundu (oran {oran:.3f} < {min_esleme_orani:.2f}). "
+            "Muhtemelen YANLIŞ şarkının sözler dosyası eşleşti; altyazı "
+            "yayınlanmadı.")
 
     real_time = [None] * len(real_words)
     for asr_start, real_start, size in blocks:
@@ -176,7 +289,9 @@ def align(asr_srt_path: str, lyrics_md_path: str, video_duration: float):
     n = len(real_time)
     known_idx = [i for i, t in enumerate(real_time) if t is not None]
     if not known_idx:
-        raise RuntimeError(
+        # Pratikte ERİŞİLMEZ (oran kapısı sıfır eşleşmeyi zaten yakalar) ama
+        # kapı `min_esleme_orani=0` ile kapatılabildiği için duruyor.
+        raise LyricsMismatch(
             "Hiç eşleşen kelime bulunamadı — sözler dosyası/ASR alakasız olabilir."
         )
     last_asr_time = asr_words[-1][2] if asr_words else 0.0

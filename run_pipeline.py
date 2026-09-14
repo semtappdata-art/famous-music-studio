@@ -1,9 +1,9 @@
 """Tek komutla render + YouTube upload zinciri.
 
 Kullanım:
-    python run_pipeline.py --project "projects/beni bırakma"
-    python run_pipeline.py --project "projects/beni bırakma" --privacy public
-    python run_pipeline.py --project "projects/beni bırakma" --skip-upload
+    python run_pipeline.py --project "projects/Beni Bırakma"
+    python run_pipeline.py --project "projects/Beni Bırakma" --privacy public
+    python run_pipeline.py --project "projects/Beni Bırakma" --skip-upload
 
 Adımlar: render.py (config.PLATFORMS'taki tüm platformlar) -> upload/youtube_upload.py (youtube_16x9.mp4).
 Upload adımı, upload/token.json henüz yoksa (OAuth consent flow tamamlanmadıysa)

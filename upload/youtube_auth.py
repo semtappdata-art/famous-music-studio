@@ -25,6 +25,22 @@ CLIENT_SECRETS_PATH = os.path.join(UPLOAD_DIR, "client_secrets.json")
 TOKEN_PATH = os.path.join(UPLOAD_DIR, "token.json")
 
 
+def _istek_sinifi():
+    """Data API isteklerini kota defterine yazan sınıf (`youtube_kota`).
+
+    Merkezi yakalama TEK nokta burası: depodaki bütün YouTube Data API
+    istemcileri bu fonksiyondan doğuyor. Defter modülü yüklenemezse DÜZ
+    `HttpRequest` — kimlik doğrulama ve yükleme ASLA bu yüzden düşmez."""
+    try:
+        import youtube_kota
+        if youtube_kota.KotaliHttpRequest is not None:
+            return youtube_kota.KotaliHttpRequest
+    except Exception:  # noqa: BLE001
+        pass
+    from googleapiclient.http import HttpRequest
+    return HttpRequest
+
+
 def get_authenticated_service():
     """Yetkilendirilmiş bir YouTube API client'ı döner. token.json varsa ve
     geçerliyse onu kullanır, süresi dolmuşsa yeniler, hiç yoksa tarayıcıda
@@ -49,7 +65,7 @@ def get_authenticated_service():
         with open(TOKEN_PATH, "w", encoding="utf-8") as f:
             f.write(creds.to_json())
 
-    return build("youtube", "v3", credentials=creds)
+    return build("youtube", "v3", credentials=creds, requestBuilder=_istek_sinifi())
 
 
 if __name__ == "__main__":

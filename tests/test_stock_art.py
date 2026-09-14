@@ -147,14 +147,14 @@ def test_returns_none_when_neither_has_a_query():
 # --- fetch_art: her hata yolunda False, asla istisna ---
 
 def test_no_api_key_returns_false(monkeypatch, tmp_path):
-    monkeypatch.setattr(stock_art, "_load_api_key", lambda: None)
+    monkeypatch.setattr(stock_art, "_load_api_key", lambda *_: None)
     out = str(tmp_path / "art.jpg")
     assert stock_art.fetch_art("Bir Şarkı", "neon city", out) is False
     assert not os.path.exists(out)
 
 
 def test_network_error_returns_false(monkeypatch, tmp_path):
-    monkeypatch.setattr(stock_art, "_load_api_key", lambda: "key")
+    monkeypatch.setattr(stock_art, "_load_api_key", lambda *_: "key")
 
     def boom(*args, **kwargs):
         raise requests.ConnectionError("ağ yok")
@@ -164,7 +164,7 @@ def test_network_error_returns_false(monkeypatch, tmp_path):
 
 
 def test_empty_result_set_returns_false(monkeypatch, tmp_path):
-    monkeypatch.setattr(stock_art, "_load_api_key", lambda: "key")
+    monkeypatch.setattr(stock_art, "_load_api_key", lambda *_: "key")
     monkeypatch.setattr(stock_art.requests, "get", lambda *a, **k: _FakeResponse({"photos": []}))
     assert stock_art.fetch_art("Bir Şarkı", "hiç sonuç yok", str(tmp_path / "art.jpg")) is False
 
@@ -172,19 +172,27 @@ def test_empty_result_set_returns_false(monkeypatch, tmp_path):
 def test_failed_download_leaves_no_partial_file(monkeypatch, tmp_path):
     """İndirme yarıda kalırsa dosya SİLİNMELİ — yoksa bir sonraki koşu onu
     'art zaten var' sanıp bozuk bir görselle render eder."""
-    monkeypatch.setattr(stock_art, "_load_api_key", lambda: "key")
+    monkeypatch.setattr(stock_art, "_load_api_key", lambda *_: "key")
     out = str(tmp_path / "art.jpg")
 
     calls = {"n": 0}
 
     def fake_get(url, **kwargs):
+        # Akış iki kaynaklı (2026-09-10'da Pixabay eklendi): Pexels araması ->
+        # Pexels indirmesi -> (başarısızsa) Pixabay araması. Sahte fonksiyon
+        # ARAMA ile İNDİRME'yi ayırmak zorunda; ayırmayan önceki sürüm Pixabay
+        # ARAMASINDA da yarım dosya yazıyordu ve testi kendi yazdığı dosyayla
+        # düşürüyordu. Gerçek kodda arama isteği çıktı dosyasına asla yazmaz.
         calls["n"] += 1
+        if url.endswith("photo.jpg"):
+            # görselin kendisi; yarım dosya bırakıp patlat
+            with open(out, "wb") as f:
+                f.write(b"yarim")
+            raise requests.ConnectionError("indirme koptu")
         if calls["n"] == 1:
             return _FakeResponse({"photos": [{"src": {"large2x": "http://x/photo.jpg"}}]})
-        # ikinci çağrı = görselin kendisi; yarım dosya bırakıp patlat
-        with open(out, "wb") as f:
-            f.write(b"yarim")
-        raise requests.ConnectionError("indirme koptu")
+        # Pixabay araması: sonuç yok -> fetch_art False dönmeli
+        return _FakeResponse({"hits": []})
 
     monkeypatch.setattr(stock_art.requests, "get", fake_get)
     assert stock_art.fetch_art("Bir Şarkı", "neon city", out) is False
@@ -196,7 +204,7 @@ def test_failed_download_leaves_no_partial_file(monkeypatch, tmp_path):
 def test_same_title_always_picks_the_same_photo(monkeypatch, tmp_path):
     """Aynı şarkı yeniden işlenince kapağı değişmemeli (projenin genelindeki
     deterministik üretim ilkesi)."""
-    monkeypatch.setattr(stock_art, "_load_api_key", lambda: "key")
+    monkeypatch.setattr(stock_art, "_load_api_key", lambda *_: "key")
     photos = [{"src": {"large2x": f"http://x/{i}.jpg"}} for i in range(15)]
     picked = []
 
@@ -215,7 +223,7 @@ def test_same_title_always_picks_the_same_photo(monkeypatch, tmp_path):
 
 
 def test_different_titles_can_pick_different_photos(monkeypatch, tmp_path):
-    monkeypatch.setattr(stock_art, "_load_api_key", lambda: "key")
+    monkeypatch.setattr(stock_art, "_load_api_key", lambda *_: "key")
     photos = [{"src": {"large2x": f"http://x/{i}.jpg"}} for i in range(15)]
     picked = []
 
