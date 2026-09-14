@@ -37,46 +37,148 @@
     padding: 4vh 1rem calc(4vh + env(safe-area-inset-bottom, 0px));
   }
 
-  main { max-width: 28rem; width: 100%; margin: 0 auto; }
+  main { max-width: 60rem; width: 100%; margin: 0 auto; }
+
+  /* Marka bloğu: logo + ad + slogan. Logo ortada, altın hale — ana
+     sayfadaki (index.html) aynı kimlik diliyle. */
+  .kimlik { text-align: center; margin-bottom: 0.8rem; }
+
+  .logo-wrap {
+    position: relative;
+    width: clamp(72px, 16vw, 96px);
+    margin: 0 auto 0.85rem;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow:
+      0 0 22px 5px rgba(230, 193, 126, 0.4),
+      0 0 60px 12px rgba(201, 161, 90, 0.25);
+  }
+
+  .logo {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: brightness(1.15) saturate(1.3) contrast(1.1);
+  }
 
   h1 {
     font-family: Georgia, "Times New Roman", serif;
     font-weight: 600;
-    font-size: clamp(1.8rem, 6vw, 2.4rem);
-    margin: 0 0 0.4rem;
+    font-size: clamp(1.45rem, 4.5vw, 1.8rem);
+    margin: 0 0 0.2rem;
     color: var(--gold-bright);
-    text-align: center;
   }
 
   .alt {
-    margin: 0 0 1.6rem;
+    margin: 0 0 0.2rem;
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
     color: var(--text-dim);
   }
 
   h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     font-size: 0.8rem;
-    letter-spacing: 0.08em;
+    font-weight: 500;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
     color: var(--text-dim);
-    margin: 1.8rem 0 0.7rem;
+    margin: 1.9rem 0 0.8rem;
+  }
+  /* Bölüm başlığının iki yanında ince altın çizgi — düz metinden
+     ayrıştırıyor. (Yalnız içerik bölümleri; takip başlığı ortalanır.) */
+  h2::before, h2::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border) 30%, var(--border) 70%, transparent);
   }
 
   ul { list-style: none; margin: 0; padding: 0; }
 
-  li + li { margin-top: 0.5rem; }
+  /* Arama motoru: kutu + bölüm filtre çipleri. Satır içi script — dış
+     istek YOK (ağ kapalıyken sayfa tam çalışır, filtre çalışmaz sadece).
+     Hızlı izleyiciye basit tutuldu: ad eşleşmesi + bölüm filtresi. */
+  .arama { margin: 0 0 1.4rem; }
+  .arama label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  #fms-ara {
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  #fms-ara::placeholder { color: rgba(168, 155, 132, 0.6); }
+  #fms-ara:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-color: var(--gold); }
+  .filtre-cubugu { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem; }
+  .filtre {
+    border: 1px solid var(--border);
+    background: var(--kart);
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    min-height: 38px;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
+  .filtre.aktif { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.10); }
+  .filtre:active { border-color: var(--gold); color: var(--gold-bright); }
+  @media (hover: hover) {
+    .filtre:hover { border-color: var(--gold); color: var(--gold-bright); }
+  }
+  .filtre:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .arama-bos { margin-top: 1.1rem; text-align: center; color: var(--text-dim); }
+  li[hidden] { display: none; }
 
-  a {
-    display: flex;
-    align-items: center;
+  /* Üst düzen: DJ setleri + derlemeler YAN YANA iki blok (.blok); her blok
+     kendi içinde AŞAĞI kayan kart ızgarası. */
+  .ikili {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
+    align-items: start;
+  }
+  .ikili > .blok { min-width: 0; }
+  .ikili .blok h2::before, .ikili .blok h2::after { display: none; }
+
+  /* Hizmetler: kart ızgarası. Küçük resim üstte, başlık altta.
+     AŞAĞI akar (yatay kayma YOK — kullanıcı kararı 2026-09-14).
+     `auto-fill + minmax`: geniş ekranda satıra kaç kart sığarsa
+     o kadar sütun; dar/mobilde 3-4 kart. Sayfayı etkili kullanır. */
+  .eserler {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.6rem;
+  }
+  .eserler.genis { grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
+
+  .eserler a {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
     /* 56 px: parmakla güvenli dokunma hedefi. Eski sürümde satır
        yüksekliği ~43 px'e düşebiliyordu. */
     min-height: 56px;
-    padding: 0.5rem 0.75rem;
+    padding: 0;
     border: 1px solid var(--border);
     border-radius: 12px;
+    overflow: hidden;
     background: var(--kart);
     color: var(--text);
     text-decoration: none;
@@ -85,71 +187,164 @@
     -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
   }
 
-  a img {
+  .eserler a:hover { color: inherit; }
+
+  .eserler a img {
     flex: 0 0 auto;
-    width: 88px;
-    height: 50px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
     object-fit: cover;
-    border-radius: 8px;
-    /* Görsel hiç yüklenmezse (ağ yok / i.ytimg engelli) satır
-       kaymasın diye yer baştan ayrılmış ve kutu koyu kalıyor. */
+    /* Görsel hiç yüklenmezse (ağ yok / i.ytimg engelli) kart
+       kaymasın diye yer baştan ayrılmış. */
     background: var(--bg-alt);
   }
 
-  a span { overflow-wrap: anywhere; }
-
-  /* Dokunmatikte :hover yok — geri bildirim :active ile veriliyor. */
-  a:active { border-color: var(--gold); background: rgba(201, 161, 90, 0.10); }
-
-  @media (hover: hover) {
-    a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); }
+  .eserler a span {
+    /* Sabit 2 satır + ellipsis: uzun Türkçe adlar 2 satıra sarıyor ve
+       aynı sıradaki kartlar farklı yükseklikte kalıyordu (taraklı ızgara).
+       Clamp metni satır sayısına kilitler; min-height iki satırın yerini
+       baştan ayırır ki kısa adlar o sırayı kısaltmasın. (Ajan önerisi.) */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(2 * 1.3rem + 1.1rem);
+    padding: 0.55rem 0.5rem;
+    text-align: center;
   }
 
-  a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  /* Dokunmatikte :hover yok — geri bildirim :active ile veriliyor. */
+  .eserler a:active { border-color: var(--gold); background: rgba(201, 161, 90, 0.10); }
+
+  @media (hover: hover) {
+    .eserler a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); }
+  }
+
+  .eserler a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* Filtre/arama bir bölümü BÜSBÜTÜN boşalttığında başlığı da gizle —
+     boş h2 + boş ızgara ekranda düzensizlik gibi duruyor. JS `hidden`
+     atıyor; soldaki kural onu gerçekten kaldırıyor. */
+  h2[hidden], ul[hidden] { display: none; }
+
+  /* Mobil: DJ/derleme blokları yan yana ~140px'e daralıyordu — kartlar
+     okunamaz hale geliyordu. Dar ekranda blokları TEK sütuna yığıyoruz;
+     masaüstünde (sayfa zaten geniş) iki sütun korunuyor. (Ajan önerisi.) */
+  @media (max-width: 40rem) {
+    .ikili { grid-template-columns: 1fr; }
+  }
+  .ikili[hidden] { display: none; }
 
   /* "Bizi takip et": şarkı satırlarıyla aynı kart dili, iki sütun ızgara. */
   .takip h2 { text-align: center; }
+  .takip h2::before, .takip h2::after { display: none; }
   .takip-liste { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
   .takip-liste li + li { margin-top: 0; }
-  .takip-liste a { gap: 0.6rem; }
+  .takip-liste a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 56px;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--kart);
+    color: var(--text);
+    text-decoration: none;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
   .takip-liste svg { flex: 0 0 auto; width: 22px; height: 22px; color: var(--gold-bright); }
   /* Tek sayıda platformda son öğe yarım kalmasın, tam satırı kaplasın. */
   .takip-liste li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .takip-liste a:active { border-color: var(--gold); background: rgba(201, 161, 90, 0.10); }
+  @media (hover: hover) {
+    .takip-liste a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); }
+  }
+  .takip-liste a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  footer {
+    margin-top: 2.6rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: rgba(168, 155, 132, 0.55);
+    letter-spacing: 0.03em;
+  }
+
+  /* Giriş animasyonu — yalnız hareket azaltma KAPALIYSa. */
+  @media (prefers-reduced-motion: no-preference) {
+    .kimlik { animation: yukari 0.55s ease-out both; }
+    li { animation: yukari 0.45s ease-out both; }
+    li:nth-child(2) { animation-delay: 0.04s; }
+    li:nth-child(3) { animation-delay: 0.08s; }
+    li:nth-child(4) { animation-delay: 0.12s; }
+    li:nth-child(5) { animation-delay: 0.16s; }
+    li:nth-child(6) { animation-delay: 0.20s; }
+    li:nth-child(7) { animation-delay: 0.24s; }
+    li:nth-child(8) { animation-delay: 0.28s; }
+  }
+
+  @keyframes yukari {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1>Famous Music Studio</h1>
-  <p class="alt">Dinlemek için dokun — hepsi YouTube'da.</p>
+  <header class="kimlik">
+    <div class="logo-wrap">
+      <img class="logo" src="assets/logo.png" alt="Famous Music Studio logosu">
+    </div>
+    <h1>Famous Music Studio</h1>
+    <p class="alt">Dinlemek için dokun — hepsi YouTube'da.</p>
+  </header>
+  <div class="arama" role="search">
+    <label for="fms-ara">Ara / filtrele</label>
+    <input id="fms-ara" type="search" placeholder="Şarkı adı yaz…" autocomplete="off" spellcheck="false">
+    <div class="filtre-cubugu" role="group" aria-label="Bölüm filtresi">
+      <button type="button" class="filtre aktif" data-bolum="">Tümü</button>
+      <button type="button" class="filtre" data-bolum="sarkilar">Şarkılar</button>
+      <button type="button" class="filtre" data-bolum="dj">DJ Setleri</button>
+      <button type="button" class="filtre" data-bolum="derlemeler">Derlemeler</button>
+    </div>
+    <p class="arama-bos" hidden>Sonuç bulunamadı.</p>
+  </div>
   <h2>Şarkılar</h2>
-  <ul>
-    <li><a href="https://youtu.be/WCH57G1BA2Y"><img src="https://i.ytimg.com/vi/WCH57G1BA2Y/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sabah Senin</span></a></li>
-    <li><a href="https://youtu.be/htVtV-JIIjw"><img src="https://i.ytimg.com/vi/htVtV-JIIjw/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kader Ortakları</span></a></li>
-    <li><a href="https://youtu.be/FIkTi_SEI9w"><img src="https://i.ytimg.com/vi/FIkTi_SEI9w/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kırık Zincir</span></a></li>
-    <li><a href="https://youtu.be/-CQ7MmUygTQ"><img src="https://i.ytimg.com/vi/-CQ7MmUygTQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Küllerimden Geç</span></a></li>
-    <li><a href="https://youtu.be/kyE-TvW0WQ4"><img src="https://i.ytimg.com/vi/kyE-TvW0WQ4/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sokaklar Beni Tanır</span></a></li>
-    <li><a href="https://youtu.be/NMFMXdUPBT8"><img src="https://i.ytimg.com/vi/NMFMXdUPBT8/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kumdan Denize</span></a></li>
-    <li><a href="https://youtu.be/9qgIU8vcYZY"><img src="https://i.ytimg.com/vi/9qgIU8vcYZY/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sofraya Gelmedin</span></a></li>
-    <li><a href="https://youtu.be/0ePR5BUUFoQ"><img src="https://i.ytimg.com/vi/0ePR5BUUFoQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Yürek Yarası</span></a></li>
-    <li><a href="https://youtu.be/X3xRBwjUaEQ"><img src="https://i.ytimg.com/vi/X3xRBwjUaEQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Yeraltı</span></a></li>
-    <li><a href="https://youtu.be/Y8tlsFFP6kg"><img src="https://i.ytimg.com/vi/Y8tlsFFP6kg/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sessiz Mektup</span></a></li>
-    <li><a href="https://youtu.be/sTXz-7V1fzc"><img src="https://i.ytimg.com/vi/sTXz-7V1fzc/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Son Kez</span></a></li>
-    <li><a href="https://youtu.be/yUA9LXMlD9k"><img src="https://i.ytimg.com/vi/yUA9LXMlD9k/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Bir Bahar Daha</span></a></li>
-    <li><a href="https://youtu.be/1-xofMJPVgY"><img src="https://i.ytimg.com/vi/1-xofMJPVgY/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Beton Krallığı</span></a></li>
-    <li><a href="https://youtu.be/vcZHfvpOrpc"><img src="https://i.ytimg.com/vi/vcZHfvpOrpc/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sabaha Kadar</span></a></li>
-    <li><a href="https://youtu.be/SUd_Ss-kKgU"><img src="https://i.ytimg.com/vi/SUd_Ss-kKgU/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kalbim Oynuyor</span></a></li>
-    <li><a href="https://youtu.be/7gyLv84KxTk"><img src="https://i.ytimg.com/vi/7gyLv84KxTk/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Gece Sürüşü</span></a></li>
-    <li><a href="https://youtu.be/8ixjisC6Ato"><img src="https://i.ytimg.com/vi/8ixjisC6Ato/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Beni Bırakma</span></a></li>
+  <ul class="eserler genis" data-bolum="sarkilar">
+    <li data-ad="Sabah Senin"><a href="https://youtu.be/WCH57G1BA2Y"><img src="https://i.ytimg.com/vi/WCH57G1BA2Y/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sabah Senin</span></a></li>
+    <li data-ad="Kader Ortakları"><a href="https://youtu.be/htVtV-JIIjw"><img src="https://i.ytimg.com/vi/htVtV-JIIjw/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kader Ortakları</span></a></li>
+    <li data-ad="Kırık Zincir"><a href="https://youtu.be/FIkTi_SEI9w"><img src="https://i.ytimg.com/vi/FIkTi_SEI9w/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kırık Zincir</span></a></li>
+    <li data-ad="Küllerimden Geç"><a href="https://youtu.be/-CQ7MmUygTQ"><img src="https://i.ytimg.com/vi/-CQ7MmUygTQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Küllerimden Geç</span></a></li>
+    <li data-ad="Sokaklar Beni Tanır"><a href="https://youtu.be/kyE-TvW0WQ4"><img src="https://i.ytimg.com/vi/kyE-TvW0WQ4/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sokaklar Beni Tanır</span></a></li>
+    <li data-ad="Kumdan Denize"><a href="https://youtu.be/NMFMXdUPBT8"><img src="https://i.ytimg.com/vi/NMFMXdUPBT8/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kumdan Denize</span></a></li>
+    <li data-ad="Sofraya Gelmedin"><a href="https://youtu.be/9qgIU8vcYZY"><img src="https://i.ytimg.com/vi/9qgIU8vcYZY/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sofraya Gelmedin</span></a></li>
+    <li data-ad="Yürek Yarası"><a href="https://youtu.be/0ePR5BUUFoQ"><img src="https://i.ytimg.com/vi/0ePR5BUUFoQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Yürek Yarası</span></a></li>
+    <li data-ad="Yeraltı"><a href="https://youtu.be/X3xRBwjUaEQ"><img src="https://i.ytimg.com/vi/X3xRBwjUaEQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Yeraltı</span></a></li>
+    <li data-ad="Sessiz Mektup"><a href="https://youtu.be/Y8tlsFFP6kg"><img src="https://i.ytimg.com/vi/Y8tlsFFP6kg/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sessiz Mektup</span></a></li>
+    <li data-ad="Son Kez"><a href="https://youtu.be/sTXz-7V1fzc"><img src="https://i.ytimg.com/vi/sTXz-7V1fzc/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Son Kez</span></a></li>
+    <li data-ad="Bir Bahar Daha"><a href="https://youtu.be/yUA9LXMlD9k"><img src="https://i.ytimg.com/vi/yUA9LXMlD9k/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Bir Bahar Daha</span></a></li>
+    <li data-ad="Beton Krallığı"><a href="https://youtu.be/1-xofMJPVgY"><img src="https://i.ytimg.com/vi/1-xofMJPVgY/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Beton Krallığı</span></a></li>
+    <li data-ad="Sabaha Kadar"><a href="https://youtu.be/vcZHfvpOrpc"><img src="https://i.ytimg.com/vi/vcZHfvpOrpc/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sabaha Kadar</span></a></li>
+    <li data-ad="Kalbim Oynuyor"><a href="https://youtu.be/SUd_Ss-kKgU"><img src="https://i.ytimg.com/vi/SUd_Ss-kKgU/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kalbim Oynuyor</span></a></li>
+    <li data-ad="Gece Sürüşü"><a href="https://youtu.be/7gyLv84KxTk"><img src="https://i.ytimg.com/vi/7gyLv84KxTk/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Gece Sürüşü</span></a></li>
+    <li data-ad="Beni Bırakma"><a href="https://youtu.be/8ixjisC6Ato"><img src="https://i.ytimg.com/vi/8ixjisC6Ato/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Beni Bırakma</span></a></li>
   </ul>
+  <div class="ikili">
+    <section class="blok">
   <h2>DJ Famous Setleri</h2>
-  <ul>
-    <li><a href="https://youtu.be/wo2xZBU6VjU"><img src="https://i.ytimg.com/vi/wo2xZBU6VjU/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Just Relax</span></a></li>
-    <li><a href="https://youtu.be/ph_qlIpHx_A"><img src="https://i.ytimg.com/vi/ph_qlIpHx_A/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>City Pulse Set</span></a></li>
+  <ul class="eserler" data-bolum="dj">
+    <li data-ad="Just Relax"><a href="https://youtu.be/wo2xZBU6VjU"><img src="https://i.ytimg.com/vi/wo2xZBU6VjU/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Just Relax</span></a></li>
+    <li data-ad="City Pulse Set"><a href="https://youtu.be/ph_qlIpHx_A"><img src="https://i.ytimg.com/vi/ph_qlIpHx_A/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>City Pulse Set</span></a></li>
   </ul>
+    </section>
+    <section class="blok">
   <h2>Derlemeler</h2>
-  <ul>
-    <li><a href="https://youtu.be/O2VGj5SUz30"><img src="https://i.ytimg.com/vi/O2VGj5SUz30/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Gece Seansı Vol. 1</span></a></li>
+  <ul class="eserler" data-bolum="derlemeler">
+    <li data-ad="Gece Seansı Vol. 1"><a href="https://youtu.be/O2VGj5SUz30"><img src="https://i.ytimg.com/vi/O2VGj5SUz30/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Gece Seansı Vol. 1</span></a></li>
   </ul>
+    </section>
+  </div>
 
   <section class="takip" aria-labelledby="takip-baslik">
     <h2 id="takip-baslik">Bizi takip et</h2>
@@ -162,6 +357,67 @@
       <li><a class="takip-bluesky" href="https://bsky.app/profile/famousmusicstudio.bsky.social" target="_blank" rel="noopener" aria-label="Famous Music Studio Bluesky (yeni sekmede açılır)"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8Z"/></svg><span>Bluesky</span></a></li>
     </ul>
   </section>
+  <footer>
+    &copy; 2026 Famous Music Studio &middot; Söz ve m&uuml;zik: Famous Music Studio
+  </footer>
 </main>
+<script>
+(function () {
+  var kutu = document.getElementById("fms-ara");
+  var listeler = document.querySelectorAll(".eserler");
+  var bolum = "";
+  var bos = document.querySelector(".arama-bos");
+  function norm(s) { return (s || "").toLocaleLowerCase("tr").trim(); }
+  function onlari_gizle(ul, gizle) {
+    // Bir bölümün TÜM kartları filtreden düştüyse h2'sini de gizle.
+    var h2 = ul.previousElementSibling;
+    if (h2 && h2.tagName && h2.tagName.toLowerCase() === "h2") h2.hidden = gizle;
+    ul.hidden = gizle;
+  }
+  function guncelle() {
+    var terim = norm(kutu ? kutu.value : "");
+    var gosterilen = 0;
+    for (var i = 0; i < listeler.length; i++) {
+      var ul = listeler[i];
+      var ulBolum = ul.getAttribute("data-bolum") || "";
+      var kartlar = ul.querySelectorAll("li");
+      var ulGosterilen = 0;
+      for (var j = 0; j < kartlar.length; j++) {
+        var li = kartlar[j];
+        var gor = true;
+        if (bolum && ulBolum !== bolum) gor = false;
+        if (gor && terim && norm(li.getAttribute("data-ad")).indexOf(terim) === -1) gor = false;
+        li.hidden = !gor;
+        if (gor) gosterilen += 1;
+        if (gor) ulGosterilen += 1;
+      }
+      onlari_gizle(ul, ulGosterilen === 0);
+      // İkili blok (DJ+derlemeler): İKİ bölüm de boşaldıysa bloğu yok say.
+      // ul -> section.blok -> div.ikili zinciri üzerinden bulunuyor;
+      // parentNode TEK seviye olduğu için section'dan çıkılıyor.
+      var blok = ul.parentNode && ul.parentNode.parentNode;
+      if (blok && blok.classList.contains("ikili")) {
+        var hepsiBos = true;
+        var blokUlleri = blok.querySelectorAll("ul.eserler");
+        for (var k = 0; k < blokUlleri.length; k++) {
+          if (!blokUlleri[k].hidden) hepsiBos = false;
+        }
+        blok.hidden = hepsiBos;
+      }
+    }
+    if (bos) bos.hidden = gosterilen !== 0;
+  }
+  if (kutu) kutu.addEventListener("input", guncelle);
+  var cips = document.querySelectorAll(".filtre");
+  for (var k = 0; k < cips.length; k++) {
+    cips[k].addEventListener("click", function () {
+      for (var t = 0; t < cips.length; t++) cips[t].classList.remove("aktif");
+      this.classList.add("aktif");
+      bolum = this.getAttribute("data-bolum") || "";
+      guncelle();
+    });
+  }
+})();
+</script>
 </body>
 </html>

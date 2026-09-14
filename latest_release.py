@@ -141,17 +141,20 @@ def _collect(base: str) -> list[tuple[str, str, str]]:
     return rows
 
 
-def _section(heading: str, rows: list[tuple[str, str, str]]) -> str:
+def _section(heading: str, rows: list[tuple[str, str, str]], liste_class: str = "eserler",
+             bolum: str = "") -> str:
     if not rows:
         return ""
     items = "\n".join(
-        '    <li><a href="https://youtu.be/{vid}">'
+        '    <li data-ad="{ad}"><a href="https://youtu.be/{vid}">'
         '<img src="https://i.ytimg.com/vi/{vid}/mqdefault.jpg" alt="" '
         'width="88" height="50" loading="lazy" decoding="async">'
         "<span>{ad}</span></a></li>".format(vid=video_id, ad=html.escape(title))
         for _, title, video_id in rows
     )
-    return "  <h2>{}</h2>\n  <ul>\n{}\n  </ul>\n".format(html.escape(heading), items)
+    data_bolum = ' data-bolum="{}"'.format(html.escape(bolum)) if bolum else ""
+    return '  <h2>{}</h2>\n  <ul class="{}"{}>\n{}\n  </ul>\n'.format(
+        html.escape(heading), liste_class, data_bolum, items)
 
 
 # --- "Bizi takip et" bölümü: TEK KAYNAK -----------------------------------
@@ -291,46 +294,148 @@ _TEMPLATE = """<!DOCTYPE html>
     padding: 4vh 1rem calc(4vh + env(safe-area-inset-bottom, 0px));
   }
 
-  main { max-width: 28rem; width: 100%; margin: 0 auto; }
+  main { max-width: 60rem; width: 100%; margin: 0 auto; }
+
+  /* Marka bloğu: logo + ad + slogan. Logo ortada, altın hale — ana
+     sayfadaki (index.html) aynı kimlik diliyle. */
+  .kimlik { text-align: center; margin-bottom: 0.8rem; }
+
+  .logo-wrap {
+    position: relative;
+    width: clamp(72px, 16vw, 96px);
+    margin: 0 auto 0.85rem;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow:
+      0 0 22px 5px rgba(230, 193, 126, 0.4),
+      0 0 60px 12px rgba(201, 161, 90, 0.25);
+  }
+
+  .logo {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: brightness(1.15) saturate(1.3) contrast(1.1);
+  }
 
   h1 {
     font-family: Georgia, "Times New Roman", serif;
     font-weight: 600;
-    font-size: clamp(1.8rem, 6vw, 2.4rem);
-    margin: 0 0 0.4rem;
+    font-size: clamp(1.45rem, 4.5vw, 1.8rem);
+    margin: 0 0 0.2rem;
     color: var(--gold-bright);
-    text-align: center;
   }
 
   .alt {
-    margin: 0 0 1.6rem;
+    margin: 0 0 0.2rem;
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
     color: var(--text-dim);
   }
 
   h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     font-size: 0.8rem;
-    letter-spacing: 0.08em;
+    font-weight: 500;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
     color: var(--text-dim);
-    margin: 1.8rem 0 0.7rem;
+    margin: 1.9rem 0 0.8rem;
+  }
+  /* Bölüm başlığının iki yanında ince altın çizgi — düz metinden
+     ayrıştırıyor. (Yalnız içerik bölümleri; takip başlığı ortalanır.) */
+  h2::before, h2::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border) 30%, var(--border) 70%, transparent);
   }
 
   ul { list-style: none; margin: 0; padding: 0; }
 
-  li + li { margin-top: 0.5rem; }
+  /* Arama motoru: kutu + bölüm filtre çipleri. Satır içi script — dış
+     istek YOK (ağ kapalıyken sayfa tam çalışır, filtre çalışmaz sadece).
+     Hızlı izleyiciye basit tutuldu: ad eşleşmesi + bölüm filtresi. */
+  .arama { margin: 0 0 1.4rem; }
+  .arama label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  #fms-ara {
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  #fms-ara::placeholder { color: rgba(168, 155, 132, 0.6); }
+  #fms-ara:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-color: var(--gold); }
+  .filtre-cubugu { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem; }
+  .filtre {
+    border: 1px solid var(--border);
+    background: var(--kart);
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    min-height: 38px;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
+  .filtre.aktif { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.10); }
+  .filtre:active { border-color: var(--gold); color: var(--gold-bright); }
+  @media (hover: hover) {
+    .filtre:hover { border-color: var(--gold); color: var(--gold-bright); }
+  }
+  .filtre:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .arama-bos { margin-top: 1.1rem; text-align: center; color: var(--text-dim); }
+  li[hidden] { display: none; }
 
-  a {
-    display: flex;
-    align-items: center;
+  /* Üst düzen: DJ setleri + derlemeler YAN YANA iki blok (.blok); her blok
+     kendi içinde AŞAĞI kayan kart ızgarası. */
+  .ikili {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
+    align-items: start;
+  }
+  .ikili > .blok { min-width: 0; }
+  .ikili .blok h2::before, .ikili .blok h2::after { display: none; }
+
+  /* Hizmetler: kart ızgarası. Küçük resim üstte, başlık altta.
+     AŞAĞI akar (yatay kayma YOK — kullanıcı kararı 2026-09-14).
+     `auto-fill + minmax`: geniş ekranda satıra kaç kart sığarsa
+     o kadar sütun; dar/mobilde 3-4 kart. Sayfayı etkili kullanır. */
+  .eserler {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.6rem;
+  }
+  .eserler.genis { grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
+
+  .eserler a {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
     /* 56 px: parmakla güvenli dokunma hedefi. Eski sürümde satır
        yüksekliği ~43 px'e düşebiliyordu. */
     min-height: 56px;
-    padding: 0.5rem 0.75rem;
+    padding: 0;
     border: 1px solid var(--border);
     border-radius: 12px;
+    overflow: hidden;
     background: var(--kart);
     color: var(--text);
     text-decoration: none;
@@ -339,50 +444,200 @@ _TEMPLATE = """<!DOCTYPE html>
     -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
   }
 
-  a img {
+  .eserler a:hover { color: inherit; }
+
+  .eserler a img {
     flex: 0 0 auto;
-    width: 88px;
-    height: 50px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
     object-fit: cover;
-    border-radius: 8px;
-    /* Görsel hiç yüklenmezse (ağ yok / i.ytimg engelli) satır
-       kaymasın diye yer baştan ayrılmış ve kutu koyu kalıyor. */
+    /* Görsel hiç yüklenmezse (ağ yok / i.ytimg engelli) kart
+       kaymasın diye yer baştan ayrılmış. */
     background: var(--bg-alt);
   }
 
-  a span { overflow-wrap: anywhere; }
-
-  /* Dokunmatikte :hover yok — geri bildirim :active ile veriliyor. */
-  a:active { border-color: var(--gold); background: rgba(201, 161, 90, 0.10); }
-
-  @media (hover: hover) {
-    a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); }
+  .eserler a span {
+    /* Sabit 2 satır + ellipsis: uzun Türkçe adlar 2 satıra sarıyor ve
+       aynı sıradaki kartlar farklı yükseklikte kalıyordu (taraklı ızgara).
+       Clamp metni satır sayısına kilitler; min-height iki satırın yerini
+       baştan ayırır ki kısa adlar o sırayı kısaltmasın. (Ajan önerisi.) */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(2 * 1.3rem + 1.1rem);
+    padding: 0.55rem 0.5rem;
+    text-align: center;
   }
 
-  a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  /* Dokunmatikte :hover yok — geri bildirim :active ile veriliyor. */
+  .eserler a:active { border-color: var(--gold); background: rgba(201, 161, 90, 0.10); }
+
+  @media (hover: hover) {
+    .eserler a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); }
+  }
+
+  .eserler a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* Filtre/arama bir bölümü BÜSBÜTÜN boşalttığında başlığı da gizle —
+     boş h2 + boş ızgara ekranda düzensizlik gibi duruyor. JS `hidden`
+     atıyor; soldaki kural onu gerçekten kaldırıyor. */
+  h2[hidden], ul[hidden] { display: none; }
+
+  /* Mobil: DJ/derleme blokları yan yana ~140px'e daralıyordu — kartlar
+     okunamaz hale geliyordu. Dar ekranda blokları TEK sütuna yığıyoruz;
+     masaüstünde (sayfa zaten geniş) iki sütun korunuyor. (Ajan önerisi.) */
+  @media (max-width: 40rem) {
+    .ikili { grid-template-columns: 1fr; }
+  }
+  .ikili[hidden] { display: none; }
 
   /* "Bizi takip et": şarkı satırlarıyla aynı kart dili, iki sütun ızgara. */
   .takip h2 { text-align: center; }
+  .takip h2::before, .takip h2::after { display: none; }
   .takip-liste { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
   .takip-liste li + li { margin-top: 0; }
-  .takip-liste a { gap: 0.6rem; }
+  .takip-liste a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 56px;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--kart);
+    color: var(--text);
+    text-decoration: none;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
   .takip-liste svg { flex: 0 0 auto; width: 22px; height: 22px; color: var(--gold-bright); }
   /* Tek sayıda platformda son öğe yarım kalmasın, tam satırı kaplasın. */
   .takip-liste li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .takip-liste a:active { border-color: var(--gold); background: rgba(201, 161, 90, 0.10); }
+  @media (hover: hover) {
+    .takip-liste a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); }
+  }
+  .takip-liste a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  footer {
+    margin-top: 2.6rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: rgba(168, 155, 132, 0.55);
+    letter-spacing: 0.03em;
+  }
+
+  /* Giriş animasyonu — yalnız hareket azaltma KAPALIYSa. */
+  @media (prefers-reduced-motion: no-preference) {
+    .kimlik { animation: yukari 0.55s ease-out both; }
+    li { animation: yukari 0.45s ease-out both; }
+    li:nth-child(2) { animation-delay: 0.04s; }
+    li:nth-child(3) { animation-delay: 0.08s; }
+    li:nth-child(4) { animation-delay: 0.12s; }
+    li:nth-child(5) { animation-delay: 0.16s; }
+    li:nth-child(6) { animation-delay: 0.20s; }
+    li:nth-child(7) { animation-delay: 0.24s; }
+    li:nth-child(8) { animation-delay: 0.28s; }
+  }
+
+  @keyframes yukari {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1>Famous Music Studio</h1>
-  <p class="alt">Dinlemek için dokun — hepsi YouTube'da.</p>
+  <header class="kimlik">
+    <div class="logo-wrap">
+      <img class="logo" src="assets/logo.png" alt="Famous Music Studio logosu">
+    </div>
+    <h1>Famous Music Studio</h1>
+    <p class="alt">Dinlemek için dokun — hepsi YouTube'da.</p>
+  </header>
+  <div class="arama" role="search">
+    <label for="fms-ara">Ara / filtrele</label>
+    <input id="fms-ara" type="search" placeholder="Şarkı adı yaz…" autocomplete="off" spellcheck="false">
+    <div class="filtre-cubugu" role="group" aria-label="Bölüm filtresi">
+      <button type="button" class="filtre aktif" data-bolum="">Tümü</button>
+      <button type="button" class="filtre" data-bolum="sarkilar">Şarkılar</button>
+      <button type="button" class="filtre" data-bolum="dj">DJ Setleri</button>
+      <button type="button" class="filtre" data-bolum="derlemeler">Derlemeler</button>
+    </div>
+    <p class="arama-bos" hidden>Sonuç bulunamadı.</p>
+  </div>
 <!--BOLUMLER-->
 <!--TAKIP-->
+  <footer>
+    &copy; 2026 Famous Music Studio &middot; Söz ve m&uuml;zik: Famous Music Studio
+  </footer>
 </main>
+<script>
+(function () {
+  var kutu = document.getElementById("fms-ara");
+  var listeler = document.querySelectorAll(".eserler");
+  var bolum = "";
+  var bos = document.querySelector(".arama-bos");
+  function norm(s) { return (s || "").toLocaleLowerCase("tr").trim(); }
+  function onlari_gizle(ul, gizle) {
+    // Bir bölümün TÜM kartları filtreden düştüyse h2'sini de gizle.
+    var h2 = ul.previousElementSibling;
+    if (h2 && h2.tagName && h2.tagName.toLowerCase() === "h2") h2.hidden = gizle;
+    ul.hidden = gizle;
+  }
+  function guncelle() {
+    var terim = norm(kutu ? kutu.value : "");
+    var gosterilen = 0;
+    for (var i = 0; i < listeler.length; i++) {
+      var ul = listeler[i];
+      var ulBolum = ul.getAttribute("data-bolum") || "";
+      var kartlar = ul.querySelectorAll("li");
+      var ulGosterilen = 0;
+      for (var j = 0; j < kartlar.length; j++) {
+        var li = kartlar[j];
+        var gor = true;
+        if (bolum && ulBolum !== bolum) gor = false;
+        if (gor && terim && norm(li.getAttribute("data-ad")).indexOf(terim) === -1) gor = false;
+        li.hidden = !gor;
+        if (gor) gosterilen += 1;
+        if (gor) ulGosterilen += 1;
+      }
+      onlari_gizle(ul, ulGosterilen === 0);
+      // İkili blok (DJ+derlemeler): İKİ bölüm de boşaldıysa bloğu yok say.
+      // ul -> section.blok -> div.ikili zinciri üzerinden bulunuyor;
+      // parentNode TEK seviye olduğu için section'dan çıkılıyor.
+      var blok = ul.parentNode && ul.parentNode.parentNode;
+      if (blok && blok.classList.contains("ikili")) {
+        var hepsiBos = true;
+        var blokUlleri = blok.querySelectorAll("ul.eserler");
+        for (var k = 0; k < blokUlleri.length; k++) {
+          if (!blokUlleri[k].hidden) hepsiBos = false;
+        }
+        blok.hidden = hepsiBos;
+      }
+    }
+    if (bos) bos.hidden = gosterilen !== 0;
+  }
+  if (kutu) kutu.addEventListener("input", guncelle);
+  var cips = document.querySelectorAll(".filtre");
+  for (var k = 0; k < cips.length; k++) {
+    cips[k].addEventListener("click", function () {
+      for (var t = 0; t < cips.length; t++) cips[t].classList.remove("aktif");
+      this.classList.add("aktif");
+      bolum = this.getAttribute("data-bolum") || "";
+      guncelle();
+    });
+  }
+})();
+</script>
 </body>
 </html>
 """
 
-_BOS_DURUM = '  <p class="alt">Yayındaki şarkılar birazdan burada olacak.</p>\n'
+_BOS_DURUM = ('  <section class="bos">\n'
+              '    <p class="alt">Yayındaki şarkılar birazdan burada olacak.</p>\n'
+              '  </section>\n')
 
 
 def regenerate() -> int:
@@ -390,13 +645,39 @@ def regenerate() -> int:
 
     Dönen sayı çağıran için zorunlu değil (auto_process yok sayıyor) ama
     testlerin ve elle bir kontrolün "kaç giriş var" sorusunu ağ/HTML
-    ayrıştırma olmadan cevaplamasını sağlıyor."""
+    ayrıştırma olmadan cevaplamasını sağlıyor.
+
+    Düzen: DJ Famous setleri + derlemeler üstte YAN YANA (ikili blok),
+    şarkılar altta tek geniş yatay kayar şerit — kullanıcı kararı
+    (2026-09-14): katalog büyüyünce sayfa sınırsız uzamasın."""
     bolumler = ""
     adet = 0
+
+    # Ana içerik EN ÜSTTE: şarkılar — geniş ızgara, AŞAĞI doğru akar.
+    # (2026-09-14 ajan önerisi: bio linkine "en son şarkılar" için gelen
+    # izleyici ilk ekranda ASIL kataloğu görmeli, yan işleri değil.)
+    sarkilar = _collect("projects")
+    adet += len(sarkilar)
+    bolumler += _section("Şarkılar", sarkilar, "eserler genis", "sarkilar")
+
+    # Alt: DJ setleri + derlemeler YAN YANA iki blok; her biri kartların
+    # AŞAĞI aktığı normal ızgara (yatay kayma YOK — kullanıcı kararı).
+    # Her bölüm kendi "blok"una sarılıyor — `.ikili`'nin grid'inde başlık
+    # ve listesi AYNI hücre sütununda kalsın diye (ayrı item olurlarsa
+    # başlık bir sütuna, listesi diğerine düşer).
+    ust = ""
     for kok, baslik in KOKLER:
+        if kok == "projects":
+            continue
         satirlar = _collect(kok)
         adet += len(satirlar)
-        bolumler += _section(baslik, satirlar)
+        bolum = "dj" if kok == "dj_sets" else "derlemeler"
+        parca = _section(baslik, satirlar, "eserler", bolum)
+        if parca:
+            ust += "    <section class=\"blok\">\n%s    </section>\n" % parca
+    if ust:
+        bolumler += "  <div class=\"ikili\">\n%s  </div>\n" % ust
+
     rendered = _TEMPLATE.replace(_YER_TUTUCU, bolumler or _BOS_DURUM)
     rendered = rendered.replace(_TAKIP_YER_TUTUCU, takip_bolumu_html().rstrip(_LF))
     os.makedirs(DOCS_DIR, exist_ok=True)

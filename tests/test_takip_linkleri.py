@@ -100,8 +100,9 @@ def test_uretilen_latest_html(tmp_path, monkeypatch):
     metin = (tmp_path / "docs" / "latest.html").read_text(encoding="utf-8")
     _denetle(metin)
     assert "<!--TAKIP-->" not in metin
-    # Dış istek yok: ikonlar satır içi.
-    assert "<script" not in metin and "cdn" not in metin.lower()
+    # Dış istek yok: ikonlar satır içi. Satır içi arama script'i (<script>)
+    # dış kaynak değil — yasak harici script (src) içindir.
+    assert "<script src=" not in metin and "cdn" not in metin.lower()
 
 
 @pytest.mark.parametrize("ad", ["index.html", "latest.html"])
