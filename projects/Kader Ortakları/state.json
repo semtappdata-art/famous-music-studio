@@ -16,18 +16,18 @@
   "tiktok_cover_hint": "projects/Kader Ortakları\\cover_vertical.png",
   "youtube_captions_done": true,
   "youtube_captions_synced_at": "2026-09-10T10:12:28",
-  "youtube_views": 112,
+  "youtube_views": 117,
   "youtube_likes": 1,
   "youtube_comments": 3,
-  "youtube_stats_checked_at": "2026-09-13T10:06:39",
-  "youtube_shorts_views": 170,
+  "youtube_stats_checked_at": "2026-09-14T07:05:11",
+  "youtube_shorts_views": 177,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-12T13:05:26",
-  "youtube_views_prev": 100,
+  "youtube_stats_prev_at": "2026-09-13T10:06:39",
+  "youtube_views_prev": 112,
   "youtube_likes_prev": 1,
-  "youtube_comments_prev": 1,
-  "youtube_shorts_views_prev": 172,
+  "youtube_comments_prev": 3,
+  "youtube_shorts_views_prev": 170,
   "youtube_shorts_likes_prev": 2,
   "youtube_shorts_comments_prev": 0,
   "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
@@ -43,15 +43,6 @@
   "facebook_uploaded_at": "2026-09-12T22:06:55",
   "facebook_scheduled_for": "2026-09-13T12:00:00+03:00",
   "facebook_comment_pending": false,
-  "yukleme_belirsiz": {
-    "telegram_message_id": {
-      "platform": "Telegram",
-      "ne": "Telegram sendVideo",
-      "istisna": "ConnectionError",
-      "zaman": "2026-09-12T22:07:08",
-      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
-    }
-  },
   "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mvdrp7ntz226",
   "bluesky_post_cid": "bafyreihr2timmnynlmrlmirgp2faerrzmkkqesqiramzlht72viv46ulte",
   "bluesky_uploaded_at": "2026-09-12T22:07:42",
@@ -246,8 +237,17 @@
     "surum": 1
   },
   "youtube_privacy_gercek": "public",
-  "youtube_privacy_gercek_at": "2026-09-13T10:06:39",
+  "youtube_privacy_gercek_at": "2026-09-14T07:05:11",
   "youtube_shorts_privacy_gercek": "public",
   "instagram_media_id": "18104874346942158",
-  "instagram_uploaded_at": "2026-09-13T12:05:38"
+  "instagram_uploaded_at": "2026-09-13T12:05:38",
+  "yukleme_belirsiz": {
+    "telegram_message_id": {
+      "platform": "Telegram",
+      "ne": "Telegram sendVideo",
+      "istisna": "ConnectionError",
+      "zaman": "2026-09-14T13:05:35",
+      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
+    }
+  }
 }

@@ -84,9 +84,19 @@ abonelik telefonda olduğu için diskten DOĞRULANAMIYOR.
 
 ---
 
-### A3. `dj_sets/Night Drive` parçalarını Suno'dan indir — DJ hattı boşta dönüyor
+### A3. `dj_sets/Night Drive` parçalarını Suno'dan indir — **ONAYLANDI (2026-09-14)**
 
-**Ne yapılacak** `dj_sets/Night Drive/_segments/` klasörü **tamamen boş**.
+> **GÜNCELLEME (2026-09-14):** Kullanıcı seti ONAYLADI ve segmentleri kendisi
+> üretecek. Kapak/video görselleri, onaylanan plan gereği Arda'nın fotoğraf
+> referanslarıyla üretilecek sahnelerden gelecek (`dj_sets/_arda/`); o sahne
+> üretim adımı yapılana kadar Suno tarafı tamamlanır, geçici görsel olarak
+> Pexels `art_query` çalışır. Aynı oturumda İKİ YENİ SET onaylandı ve hazırlandı
+> (Suno tarafı bitti, audio bekleniyor): **Sunrise Session** (`organic_morning`)
+> ve **Peak District** (`progressive_node`) — ikisinin de `meta.json` +
+> `SUNO.md` + `config.SET_STILLERI` kayıtları var. Kullanıcı bu setlerin de
+> parçalarını Suno'dan üretebilir (üçü de `_segments/<Set Adı> N.wav` deseni).
+
+**Ne yapılacak** `dj_sets/Night Drive/_segments/` klasörü ilk onaylı set.
 `SUNO.md`'ye göre **12-16 parça** gerekiyor (hedef ~45-60 dakika, Extend
 zinciriyle). Suno stil satırı `SUNO.md`'de hazır, kopyala-yapıştır.
 

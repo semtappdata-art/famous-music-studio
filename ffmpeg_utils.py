@@ -306,6 +306,7 @@ def _build_filter_complex(
     hud_index: int | None = None,
     kart_goster: bool = True,
     intro_index: int | None = None,
+    dil_params: dict | None = None,
 ) -> str:
     fps = config.FPS
     bg_pan_w, bg_pan_h = _panned_size(width, height)
@@ -378,6 +379,23 @@ def _build_filter_complex(
             f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}',"
             f"hue=h='{hue_shift}'[canvas]"
         )
+
+    # GÖRSEL DİL (gorsel_dil.py, dil_params verildiğinde): nabız + doku + derecelendirme
+    # yalnızca ARKA PLAN tuvaline uygulanır — kart içi art.jpg'ye ASLA dokunulmaz
+    # (kural 2). Açık değilken zincir üretimdekiyle birebir aynıdır.
+    if dil_params:
+        nabiz_expr = dil_params.get("nabiz_expr")
+        grain = dil_params.get("grain")
+        grade = dil_params.get("grade")
+        if canvas.endswith("[canvas]"):
+            canvas = canvas[:-len("[canvas]")]
+            if nabiz_expr:
+                canvas += f",eq=brightness='{nabiz_expr}':eval=frame"
+            if grain:
+                canvas += f",{grain}"
+            if grade:
+                canvas += f",{grade}"
+            canvas += "[canvas]"
 
     # "Famous Music Studio" logosu sadece platform thumbnail'inde (cover.jpg) kullanılıyor —
     # video içindeki kartta GÖSTERİLMİYOR. art_path verilmişse o görsel kare kırpılıp
@@ -529,6 +547,7 @@ def render_video(
     kart_goster: bool = True,
     intro_cover: str | None = None,
     ses_limiter: bool = False,
+    dil_params: dict | None = None,
 ) -> None:
     """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
     kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için.
@@ -566,6 +585,11 @@ def render_video(
     use_backdrop_video = bool(backdrop_video) and os.path.isfile(backdrop_video)
     if use_backdrop_video:
         canvas_path = backdrop_video
+    elif dil_params and dil_params.get("backdrop") and has_art:
+        # GÖRSEL DİL: çağıran huzmeli arka planı (gorsel_dil.huzmeli_backdrop_uret)
+        # kendisi üretip path olarak veriyor — aşağıdaki PNG dalı (pan/hue) aynen
+        # üzerinde çalışır. Panned boyutta olduğu için pan payı korunur.
+        canvas_path = dil_params["backdrop"]
     else:
         canvas_path = ensure_art_backdrop(art_path, width, height) if has_art else ensure_vignette(width, height, theme_key)
     # Sahne modunda art.jpg hiç OKUNMUYOR: kart çizilmiyor, arka plan da
@@ -594,7 +618,7 @@ def render_video(
         intro_index = None
     filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key,
                                            marquee_override, use_backdrop_video, hud_index,
-                                           kart_goster, intro_index)
+                                           kart_goster, intro_index, dil_params)
 
     audio_input = ["-ss", f"{start_time:.3f}"] if start_time is not None else []
     cmd = [

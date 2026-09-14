@@ -63,5 +63,48 @@
       "kayit_id": "EI-20260913-083713-6c5d",
       "not": "Kullanıcı beyanı. `youtube_shorts_privacy` (istenen) ve `youtube_shorts_privacy_gercek` (API ölçümü) BİLEREK değiştirilmedi."
     }
-  }
+  },
+  "youtube_video_id": "Ai9U_zFZmLI",
+  "youtube_uploaded_at": "2026-09-13T23:34:53",
+  "youtube_privacy": "public",
+  "youtube_publish_at": "2026-09-14T09:00:00Z",
+  "youtube_baslik_kalibi": "K2",
+  "youtube_playlists": [
+    "PLKsOiTu3OtV8",
+    "PLKFBTOXunWQ0",
+    "PLIfBoPfEuEWQ"
+  ],
+  "youtube_playlist_id": "PLKsOiTu3OtV8",
+  "facebook_reels_id": "1740822033881070",
+  "facebook_uploaded_at": "2026-09-13T23:35:17",
+  "facebook_scheduled_for": "2026-09-14T12:00:00+03:00",
+  "facebook_comment_pending": false,
+  "youtube_views": 0,
+  "youtube_likes": 0,
+  "youtube_comments": 0,
+  "youtube_privacy_gercek": "private",
+  "youtube_privacy_gercek_at": "2026-09-13T23:35:18",
+  "youtube_stats_checked_at": "2026-09-13T23:35:18",
+  "youtube_captions_done": true,
+  "youtube_captions_synced_at": "2026-09-14T00:05:13",
+  "gorsel_dil_olcum": {
+    "bpm": 107.666015625,
+    "sure": 189.5201814058957,
+    "md5": "606de3394ddff87d06a44a8d95555b2f",
+    "olcum_at": "2026-09-14T11:58:37"
+  },
+  "ses_olcum": {
+    "lufs": -13.7,
+    "tp": -2.3,
+    "lra": 2.4,
+    "olcum_at": "2026-09-14T11:58:39",
+    "md5": "606de3394ddff87d06a44a8d95555b2f"
+  },
+  "instagram_media_id": "18023674280911567",
+  "instagram_uploaded_at": "2026-09-14T12:05:49",
+  "youtube_shorts_video_id": "fA7YHtPFqvk",
+  "youtube_shorts_uploaded_at": "2026-09-14T14:39:14",
+  "youtube_shorts_privacy": "public",
+  "youtube_shorts_publish_at": null,
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ"
 }
