@@ -36,7 +36,9 @@ uzatılıyor → **12-16 parça**.
 | 14-16 | Kapanış | Marimba tek başına, sönümlenerek biter |
 
 Kapanışın sönümlenerek bitmesi önemli: `merge_dj_set_segments.py` parçaları
-crossfade ile birleştiriyor, sert biten bir son parça birleşimde tıkırdıyor.
+geçişleri KESİNTİSİZ biliyor (kenar sessizlik kırpma + equal-power `qsin`
+eğri, ortada dip yok). İlk parça müzikle açılır, son parçanın kuyruğu
+korunur (sönümlenerek bitiş). Detay: `merge_dj_set_segments.py` docstring'i.
 
 ## Dosya adlandırma — ZORUNLU
 
