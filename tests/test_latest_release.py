@@ -186,11 +186,13 @@ def test_bos_katalogda_sayfa_yine_de_uretilir(sahte_repo):
 
 def test_dis_yazi_tipi_bagimliligi_yok(sahte_repo):
     """Sayfa Instagram/TikTok içi tarayıcıda açılıyor — render-bloklayan
-    dış stylesheet ilk boyamayı geciktiriyordu."""
+    dış stylesheet ilk boyamayı geciktiriyordu. Satır içi arama script'i
+    (`<script>...`) dış istek DEĞİL — yasak harici kaynaklar (src) içindir."""
     latest_release.regenerate()
     h = _html(sahte_repo)
     assert "fonts.googleapis.com" not in h
-    assert "<script" not in h
+    assert "<script src=" not in h
+    assert "<script>" in h
 
 
 def test_mobil_temel_gereksinimler(sahte_repo):
