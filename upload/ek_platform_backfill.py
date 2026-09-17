@@ -527,8 +527,9 @@ def politika_kapisi(klasor: str, log=print) -> str:
 def backfill(limit: int = KOSU_TAVANI, dry_run: bool = False, log=print) -> dict:
     sonuc = {"durum": "tamam", "islenen": [], "kalan": {}, "tavan": {}}
     _KAPI_ONBELLEGI.clear()               # bu koşunun kendi kararları (yukarı bkz.)
-    if config.next_golden_publish_time() is not None:
-        # Golden-hour DIŞINDA hiçbir şey yapma — facebook_backfill ile aynı kural.
+    telafi = config.backfill_telafi_aktif()
+    if config.next_golden_publish_time() is not None and not telafi:
+        # Golden-hour DIŞINDA hiçbir şey yapma — telafi penceresi kapalıysa.
         sonuc["durum"] = "golden-hour disinda"
         return sonuc
 
@@ -558,10 +559,12 @@ def backfill(limit: int = KOSU_TAVANI, dry_run: bool = False, log=print) -> dict
         # başına sınır tek başına yetmiyor (bkz. modül docstring'i). Sayaç
         # platformun BÜTÜN damga anahtarlarını ve ÜÇ KÖKÜ birden kapsıyor.
         yapildi = bugun_yuklenen(_damga_anahtarlari(platform))
-        kalan_kota = GUNLUK_TAVAN - yapildi
+        tavan = (config.BACKFILL_TELAFI_TAVANLARI.get(bayrak, GUNLUK_TAVAN)
+                 if telafi else GUNLUK_TAVAN)
+        kalan_kota = tavan - yapildi
         if kalan_kota <= 0:
-            sonuc["tavan"][ad] = "bugün %d gönderi yapıldı (tavan %d)" % (
-                yapildi, GUNLUK_TAVAN)
+            sonuc["tavan"][ad] = "bugün %d gönderi yapıldı (tavan %d%s)" % (
+                yapildi, tavan, ", telafi" if telafi else "")
             sonuc["kalan"][ad] = len(adaylar(platform))
             continue
 

@@ -42,8 +42,10 @@ def _katalog(tmp_path, monkeypatch, damga=None, videolar=("youtube_16x9.mp4",
     base = str(tmp_path / "projects")
     os.makedirs(base)
     monkeypatch.setattr(E, "BASE", base)
-    # Golden-hour kapısı bu testlerin konusu değil; hep "içerideyiz".
+    # Golden-hour kapısı ve geçici telafi penceresi bu testlerin konusu değil;
+    # eski normal davranışı sabitle.
     monkeypatch.setattr(config, "next_golden_publish_time", lambda *a, **k: None)
+    monkeypatch.setattr(config, "backfill_telafi_aktif", lambda *a, **k: False)
     # Kimlik dosyaları: CI'da (ve temiz bir checkout'ta) gerçekten yok, sahte
     # bir UPLOAD_DIR ile ikisi de var sayılıyor.
     sahte_upload = str(tmp_path / "upload")

@@ -391,6 +391,15 @@ ENGAGEMENT_QUESTIONS = [
 # bulanık art.jpg arka planına döner — hiçbir şey bozulmaz.
 DJ_ARKA_PLAN_VIDEO = True
 
+# DJ Famous sahnesi: Arda'nın tişörtlü buz-mağarası görsellerinden oluşan
+# 45 saniyelik backdrop, uzun DJ setlerinde Pexels yerine kullanılır.
+# Kapalıysa mevcut stok-video akışı aynen devam eder.
+DJ_ARDA_GORSELLERI = True
+DJ_ARDA_BACKDROP = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "dj_sets", "_arda", "preview", "arda_tshirt_slideshow_45s.mp4",
+)
+
 # DJ setlerinde sci-fi HUD kaplaması (bkz. dj_hud.py). Arka plan videosuyla
 # aynı kapsam: YALNIZCA dj_sets/ ve yalnızca uzun formatta. Dikey 45 saniyelik
 # kesitte köşe ayraçları kadrajı daraltıyor, orada kapalı.
@@ -661,6 +670,19 @@ EK_PLATFORMLAR = {
 
 GOLDEN_HOURS = [(12, 14), (18, 22)]  # (başlangıç, bitiş) — TR yerel saat, [başlangıç, bitiş)
 TR_TZ = timezone(timedelta(hours=3))
+
+# 2026-09-16 → 2026-09-20: mevcut geri doldurma kuyruğunu pazar gecesine
+# kadar eritmek için geçici telafi penceresi. Yalnız daha önce public olmuş,
+# eksik platform kayıtları için kullanılır; yeni yayınların golden-hour ve
+# tempo kuralları değişmez. Süre dolunca normal kapılar kendiliğinden döner.
+BACKFILL_TELAFI_BITIS = datetime(2026, 9, 21, 0, 0, tzinfo=TR_TZ)
+BACKFILL_TELAFI_TAVANLARI = {"telegram": 3, "bluesky": 3, "facebook": 2}
+
+
+def backfill_telafi_aktif(now: datetime | None = None) -> bool:
+    """Pazar gecesine kadarki eski geri doldurma telafi penceresi açık mı?"""
+    now = (now or datetime.now(TR_TZ)).astimezone(TR_TZ)
+    return now < BACKFILL_TELAFI_BITIS
 
 
 def next_golden_publish_time(now: datetime | None = None) -> datetime | None:

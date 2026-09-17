@@ -240,14 +240,18 @@ def backfill(limit=1, dry_run=False, ignore_golden=False, log=_stderr):
     if not config.EK_PLATFORMLAR.get("facebook"):
         return {"durum": "kapalı", "sebep": "config.EK_PLATFORMLAR['facebook'] False"}
 
+    telafi = config.backfill_telafi_aktif()
     golden_disi = config.next_golden_publish_time() is not None
-    if golden_disi and not ignore_golden:
+    if golden_disi and not ignore_golden and not telafi:
         return {"durum": "beklemede", "sebep": "golden-hour dışındayız"}
 
     yapildi = bugun_yuklenen()
-    kalan_kota = GUNLUK_TAVAN - yapildi
+    tavan = (config.BACKFILL_TELAFI_TAVANLARI.get("facebook", GUNLUK_TAVAN)
+             if telafi else GUNLUK_TAVAN)
+    kalan_kota = tavan - yapildi
     if kalan_kota <= 0:
-        return {"durum": "tavan", "sebep": "bugün %d gönderi yapıldı" % yapildi}
+        return {"durum": "tavan", "sebep": "bugün %d gönderi yapıldı (tavan %d%s)" % (
+            yapildi, tavan, ", telafi" if telafi else "")}
 
     eksik = eksik_projeler()
     if not eksik:
