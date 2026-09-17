@@ -126,6 +126,7 @@ def _ek_kur(tmp_path, monkeypatch):
     kokler = _katalog(tmp_path)
     monkeypatch.setattr(E, "BASE", _kok_demeti(kokler))
     monkeypatch.setattr(config, "next_golden_publish_time", lambda *a, **k: None)
+    monkeypatch.setattr(config, "backfill_telafi_aktif", lambda *a, **k: False)
     monkeypatch.setattr(config, "EK_PLATFORMLAR",
                         {"facebook": True, "telegram": True, "bluesky": True})
     # Kimlik dosyaları GERÇEK upload/ klasörüne BAKMASIN (orada gerçek token'lar

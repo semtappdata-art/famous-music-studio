@@ -163,3 +163,37 @@ Betiğin saf hesap fonksiyonları (`kirpilmaSay`, `nakaratTespit`, `crestDb`, `s
 Node yoksa atlanır). Tarayıcı toplayıcısı orada koşturulamıyor; ilk gerçek kullanımda `kur()`
 çıktısındaki yöntem adı ve `olc()` çıktısındaki blok sayısı (60 sn için ~1400 blok) kontrol
 edilmeli.
+
+## İndirme akışı (2026-09-14 — CDP ile create sayfasından WAV)
+
+Ölçüm bitti, kazanan seçildi (Night Drive ölçümünde **v1 / 3:29**). Sıradaki adım indirme.
+İlk denemede indirme arayüzü bulunamadı (kartların üzerinde Download butonu YOK) ve yanlış
+yerde arandı. Çalışan yol şu — konumlar o günkü görünüme aittir, HER ADIMDA taze koordinat
+çekilip doğrulanmalı (önceki oturumdaki `suno_hover.py`/`suno_modal_tara.py` kalıbı):
+
+1. `suno.com/create` sayfasında her clip kartının sağında, **hover'da görünen** üç nokta:
+   `button[aria-label="More options"]` (o günkü düzende ~x=1163). Tıkla.
+2. Açılan menüde **Download** öğesi (buton metni tam `Download`, o günkü ~x=1043 y=372). Tıkla.
+3. Açılan **format dialogunda** (yalnız burası): `M4A`, `MP3`, `WAV`, `MP4 video asset`
+   listelenir + altta `Manage` ve `Download`. **Önce `WAV` öğesini seç** (üzerine tıkla;
+   MP3'e YALNIZCA pratik yoksa dokunma), **SONRA** dialogun kendi **`Download`** butonuna tıkla.
+   → Şifre/onay yok; tarayıcının normal indirme akışı başlar.
+4. Dosyalar `%USERPROFILE%\Downloads`'a iner: `Midnight Arpeggio.wav` (~40 MB, gerçek WAV;
+   ~4,9 MB olan MP3'tür) ve `Midnight Arpeggio.mp3`. İstenen WAV'ı `_segments/Night Drive 1.wav`
+   yap.
+5. Doğrulama: `ffprobe` → `format_name=wav`, `duration=208.92` (3:29 = v1). Bu süre, kart
+   etiketi 3:29'la uyuşur; bir önceki denemede MP3 208.92 aynı süreyi verdi — süre eşleşmesi
+   "doğru kart indirildi"nin kanıtı. 2026-09-14 itibarıyla kota indirme öncesi ~24 idi; bir
+   indirme = bir kota.
+
+**Tuzaklar (yaşadık):**
+- Clip kartlarında indirme butonu YOK — menü (`More options`) içinde ve format dialogunda.
+- WAV butonunun `aria-checked`/veri durumu yok; "seçtikten sonra dialogun Download'una bas"
+   Adım 3'teki iki tıklık sırası kritik — WAV'ı seçmeden Download'a basarsan varsayılan
+   (MP3/önceki seçim) iner.
+- İlk koordinat yakalama `.clip-row` üzerinden (hover sonrası düğümler DOM'a giriyor).
+- CDP'den `Browser.getDownloadBehavior` sayfa session'ında yok (-32601); indirme başlatılınca
+   tarayıcı varsayılan Downloads klasörüne iner, biz `glob` ile yeni dosyayı izleriz.
+
+Bu akış yalnız kazanan için geçerli ve yukarıdaki kota kuralına tabidir — set başına 12-16
+indirme bütçeyi tek başına harcar, her parçada kartı doğrulamadan indirme.

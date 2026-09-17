@@ -487,10 +487,19 @@ def process_set(project_dir: str, privacy: str, schedule: bool) -> None:
         # arka planına düşülüyor; seti yayınlamamak için bir sebep değil.
         if config.DJ_ARKA_PLAN_VIDEO:
             try:
-                import stock_video
-                log("  arka plan videosu hazırlanıyor (stok klipler)...")
-                yol = stock_video.set_icin_arka_plan(project_dir)
-                log(f"  arka plan: {yol or 'üretilemedi, art.jpg arka planına düşülüyor'}")
+                import shutil
+                arda_backdrop = getattr(config, "DJ_ARDA_BACKDROP", "")
+                if (getattr(config, "DJ_ARDA_GORSELLERI", False)
+                        and arda_backdrop
+                        and os.path.isfile(arda_backdrop)):
+                    hedef = os.path.join(project_dir, "backdrop.mp4")
+                    shutil.copy2(arda_backdrop, hedef)
+                    log(f"  arka plan: Arda görsel döngüsü ({hedef})")
+                else:
+                    import stock_video
+                    log("  arka plan videosu hazırlanıyor (stok klipler)...")
+                    yol = stock_video.set_icin_arka_plan(project_dir)
+                    log(f"  arka plan: {yol or 'üretilemedi, art.jpg arka planına düşülüyor'}")
             except Exception as e:
                 log(f"  arka plan videosu HATA (görmezden geliniyor): {e}")
 
