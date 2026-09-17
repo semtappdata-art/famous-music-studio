@@ -18,18 +18,18 @@
   "youtube_playlist_id": "PLBgc_mrlH_1Q",
   "youtube_captions_done": true,
   "youtube_captions_synced_at": "2026-09-10T09:12:17",
-  "youtube_views": 47,
+  "youtube_views": 58,
   "youtube_likes": 2,
   "youtube_comments": 2,
-  "youtube_stats_checked_at": "2026-09-14T07:05:11",
+  "youtube_stats_checked_at": "2026-09-17T12:33:40",
   "youtube_shorts_views": 11,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-13T10:06:39",
-  "youtube_views_prev": 42,
+  "youtube_stats_prev_at": "2026-09-16T04:05:12",
+  "youtube_views_prev": 52,
   "youtube_likes_prev": 2,
   "youtube_comments_prev": 2,
-  "youtube_shorts_views_prev": 5,
+  "youtube_shorts_views_prev": 11,
   "youtube_shorts_likes_prev": 2,
   "youtube_shorts_comments_prev": 0,
   "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
@@ -42,7 +42,7 @@
   ],
   "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
   "tiktok_publish_status": "SEND_TO_USER_INBOX",
-  "tiktok_status_checked_at": "2026-09-14T00:05:21",
+  "tiktok_status_checked_at": "2026-09-17T12:34:41",
   "turev_plani": [
     {
       "id": "TRV-kumdan-denize-tg_bs_hatirlatma",
@@ -155,8 +155,20 @@
   ],
   "turev_plani_surumu": 1,
   "youtube_privacy_gercek": "public",
-  "youtube_privacy_gercek_at": "2026-09-14T07:05:11",
+  "youtube_privacy_gercek_at": "2026-09-17T12:33:40",
   "youtube_shorts_privacy_gercek": "public",
   "tiktok_kit_gonderildi_at": "2026-09-13T12:07:33",
-  "tiktok_kit_kodu": "TD4F5"
+  "tiktok_kit_kodu": "TD4F5",
+  "tiktok_kit_hatirlatildi_at": "2026-09-15T12:22:45",
+  "yukleme_belirsiz": {
+    "telegram_message_id": {
+      "platform": "Telegram",
+      "ne": "Telegram sendVideo",
+      "istisna": "ConnectionError",
+      "zaman": "2026-09-16T17:05:21",
+      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
+    }
+  },
+  "facebook_reels_id": "2875942039451243",
+  "facebook_uploaded_at": "2026-09-17T12:33:52"
 }

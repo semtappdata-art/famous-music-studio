@@ -18,15 +18,15 @@
   "youtube_captions_synced_at": "2026-09-08T10:12:16",
   "instagram_media_id": "17883323088620144",
   "instagram_uploaded_at": "2026-09-08T12:12:39",
-  "youtube_views": 327,
+  "youtube_views": 333,
   "youtube_likes": 4,
   "youtube_comments": 2,
-  "youtube_stats_checked_at": "2026-09-14T07:05:11",
+  "youtube_stats_checked_at": "2026-09-17T12:33:40",
   "youtube_shorts_views": 18,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-13T10:06:39",
-  "youtube_views_prev": 325,
+  "youtube_stats_prev_at": "2026-09-16T04:05:12",
+  "youtube_views_prev": 331,
   "youtube_likes_prev": 4,
   "youtube_comments_prev": 2,
   "youtube_shorts_views_prev": 18,
@@ -155,6 +155,20 @@
   "tiktok_published_at": "2026-09-05T03:29:00",
   "tiktok_published_kaynak": "Elle işlemler defteri (claude, EI-20260913-082514-d566)",
   "youtube_privacy_gercek": "public",
-  "youtube_privacy_gercek_at": "2026-09-14T07:05:11",
-  "youtube_shorts_privacy_gercek": "public"
+  "youtube_privacy_gercek_at": "2026-09-17T12:33:40",
+  "youtube_shorts_privacy_gercek": "public",
+  "facebook_reels_id": "2507647603088815",
+  "facebook_uploaded_at": "2026-09-15T13:06:30",
+  "yukleme_belirsiz": {
+    "telegram_message_id": {
+      "platform": "Telegram",
+      "ne": "Telegram sendVideo",
+      "istisna": "ConnectionError",
+      "zaman": "2026-09-16T14:12:10",
+      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
+    }
+  },
+  "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mvpj3wzy7y2o",
+  "bluesky_post_cid": "bafyreiev2wmtynfvzj4qj7qr667d5wrg4agi6sr3qzlrqvlvy66zlv3nxm",
+  "bluesky_uploaded_at": "2026-09-17T14:05:43"
 }

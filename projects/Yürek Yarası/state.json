@@ -18,15 +18,15 @@
   "youtube_captions_synced_at": "2026-09-08T14:12:17",
   "instagram_media_id": "18120500110913086",
   "instagram_uploaded_at": "2026-09-10T18:12:33",
-  "youtube_views": 235,
+  "youtube_views": 238,
   "youtube_likes": 4,
   "youtube_comments": 1,
-  "youtube_stats_checked_at": "2026-09-14T07:05:11",
+  "youtube_stats_checked_at": "2026-09-17T12:33:40",
   "youtube_shorts_views": 112,
   "youtube_shorts_likes": 2,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-13T10:06:39",
-  "youtube_views_prev": 235,
+  "youtube_stats_prev_at": "2026-09-16T04:05:12",
+  "youtube_views_prev": 238,
   "youtube_likes_prev": 4,
   "youtube_comments_prev": 1,
   "youtube_shorts_views_prev": 112,
@@ -155,6 +155,17 @@
   "tiktok_published_at": "2026-09-05T03:33:00",
   "tiktok_published_kaynak": "Elle işlemler defteri (claude, EI-20260913-082513-dfd0)",
   "youtube_privacy_gercek": "public",
-  "youtube_privacy_gercek_at": "2026-09-14T07:05:11",
-  "youtube_shorts_privacy_gercek": "public"
+  "youtube_privacy_gercek_at": "2026-09-17T12:33:40",
+  "youtube_shorts_privacy_gercek": "public",
+  "facebook_reels_id": "1397218012566076",
+  "facebook_uploaded_at": "2026-09-16T13:05:20",
+  "yukleme_belirsiz": {
+    "telegram_message_id": {
+      "platform": "Telegram",
+      "ne": "Telegram sendVideo",
+      "istisna": "ConnectionError",
+      "zaman": "2026-09-16T16:05:30",
+      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
+    }
+  }
 }
