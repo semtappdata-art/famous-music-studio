@@ -18,13 +18,13 @@
   "instagram_container_created_at": "2026-09-07T16:21:22",
   "instagram_media_id": "18104801272948974",
   "instagram_uploaded_at": "2026-09-07T18:58:47",
-  "youtube_views": 179,
+  "youtube_views": 228,
   "youtube_likes": 6,
   "youtube_comments": 2,
-  "youtube_shorts_views": 96,
+  "youtube_shorts_views": 98,
   "youtube_shorts_likes": 4,
   "youtube_shorts_comments": 0,
-  "youtube_stats_checked_at": "2026-09-14T07:05:11",
+  "youtube_stats_checked_at": "2026-09-17T12:33:40",
   "dj_clips": [
     {
       "dosya": "clip_01.mp4",
@@ -58,13 +58,13 @@
   "facebook_comment_pending": false,
   "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
   "youtube_thumbnail_kapak_surumu": "v2_buyuk_baslik",
-  "youtube_views_prev": 149,
+  "youtube_views_prev": 210,
   "youtube_likes_prev": 6,
   "youtube_comments_prev": 2,
-  "youtube_shorts_views_prev": 88,
-  "youtube_shorts_likes_prev": 3,
+  "youtube_shorts_views_prev": 98,
+  "youtube_shorts_likes_prev": 4,
   "youtube_shorts_comments_prev": 0,
-  "youtube_stats_prev_at": "2026-09-13T10:06:39",
+  "youtube_stats_prev_at": "2026-09-16T04:05:12",
   "youtube_playlists": [
     "PLV3ve3aiAwU4",
     "PLIfBoPfEuEWQ"
@@ -192,6 +192,6 @@
   ],
   "turev_plani_surumu": 1,
   "youtube_privacy_gercek": "public",
-  "youtube_privacy_gercek_at": "2026-09-14T07:05:11",
+  "youtube_privacy_gercek_at": "2026-09-17T12:33:40",
   "youtube_shorts_privacy_gercek": "public"
 }

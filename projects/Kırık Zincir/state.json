@@ -18,18 +18,18 @@
   "instagram_uploaded_at": "2026-09-07T18:06:15",
   "youtube_captions_done": true,
   "youtube_captions_synced_at": "2026-09-07T18:11:20",
-  "youtube_views": 27,
+  "youtube_views": 28,
   "youtube_likes": 2,
   "youtube_comments": 0,
-  "youtube_stats_checked_at": "2026-09-14T07:05:11",
-  "youtube_shorts_views": 80,
+  "youtube_stats_checked_at": "2026-09-17T12:33:40",
+  "youtube_shorts_views": 81,
   "youtube_shorts_likes": 1,
   "youtube_shorts_comments": 0,
-  "youtube_stats_prev_at": "2026-09-13T10:06:39",
-  "youtube_views_prev": 25,
+  "youtube_stats_prev_at": "2026-09-16T04:05:12",
+  "youtube_views_prev": 28,
   "youtube_likes_prev": 2,
   "youtube_comments_prev": 0,
-  "youtube_shorts_views_prev": 76,
+  "youtube_shorts_views_prev": 81,
   "youtube_shorts_likes_prev": 1,
   "youtube_shorts_comments_prev": 0,
   "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
@@ -225,9 +225,18 @@
   ],
   "turev_plani_surumu": 1,
   "youtube_privacy_gercek": "public",
-  "youtube_privacy_gercek_at": "2026-09-14T07:05:11",
+  "youtube_privacy_gercek_at": "2026-09-17T12:33:40",
   "youtube_shorts_privacy_gercek": "public",
   "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mvhr46ewuq2x",
   "bluesky_post_cid": "bafyreidxeyoibwfr3zdecevjzcagxnhjxjixvpr6xiyvvapf5qmxnur6se",
-  "bluesky_uploaded_at": "2026-09-14T12:07:42"
+  "bluesky_uploaded_at": "2026-09-14T12:07:42",
+  "yukleme_belirsiz": {
+    "telegram_message_id": {
+      "platform": "Telegram",
+      "ne": "Telegram sendVideo",
+      "istisna": "ConnectionError",
+      "zaman": "2026-09-16T20:05:23",
+      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
+    }
+  }
 }
