@@ -9,8 +9,14 @@ _build_filter_complex'teki pan_x/pan_y/hue_shift). Kartın altında kayan künye
 statik durur (zoom yok, sadece backdrop hareketli) — waveform/eşitleyici çubuğu YOK
 (önceki bir tasarımda vardı, kaldırıldı). Sadece kart alanı + backdrop işlenir,
 kenarlar arka planla dolar (düz siyah değil).
+
+AÇILIŞ (2026-09-11 eklendi): uzun formatta video bu kompozisyonla DEĞİL, projenin
+cover.png'siyle (birebir YouTube küçük resmi) tam ekran başlıyor ve ~2,4 saniyede
+karta çözülüyor; ayrıca sesin başındaki dijital sessizlik kırpılıyor. Gerekçe ve
+ölçüm config.INTRO_KAPAK / config.INTRO_SESSIZLIK_KIRP yorumlarında.
 """
 
+import math
 import os
 import subprocess
 
@@ -25,13 +31,110 @@ def get_audio_duration(audio_path: str) -> float:
         "-of", "default=noprint_wrappers=1:nokey=1",
         audio_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise RuntimeError(f"ffprobe süre okuyamadı: {result.stderr.strip()}")
     try:
         return float(result.stdout.strip())
     except ValueError:
         raise RuntimeError(f"ffprobe geçersiz süre döndürdü: {result.stdout!r}")
+
+
+def limiter_filtresi() -> str:
+    """Koşullu true-peak limiter'ın `-af` zinciri (bkz. config.SES_LIMITER_*).
+
+    4x aşırı örneklemede alimiter: düz 48 kHz alimiter yalnız ÖRNEK tepesini
+    görüyor ve katalogda AAC sonrası TP'yi KÖTÜLEŞTİRDİ (Küllerimden Geç
+    -0,7 -> -0,3); ölçümler config.py yorumunda. `level=false` otomatik
+    kazancı kapatıyor (loudness DEĞİŞMEMELİ), `latency=true` lookahead
+    gecikmesini telafi ediyor (altyazı/görüntü senkronu kaymasın).
+    loudnorm/dynaudnorm BİLEREK YOK."""
+    tavan = 10 ** (config.SES_LIMITER_TAVAN_DBFS / 20)
+    return (f"aresample={config.SES_LIMITER_ASIRI_ORNEKLEME},"
+            f"alimiter=limit={tavan:.6f}:level=false:latency=true,"
+            f"aresample={config.SES_LIMITER_CIKIS_HZ}")
+
+
+def ses_olc(audio_path: str) -> dict:
+    """ffmpeg `ebur128=peak=true` ile `{"lufs", "tp", "lra"}` ölçer.
+
+    Yalnız son `Summary:` bloğu okunuyor: ebur128 ondan önce her 100 ms'de
+    `I:`/`LRA:` içeren ara satırlar basıyor, onları okumak yanlış sayı verirdi.
+    ffmpeg hata dönerse, özet yoksa ya da değer sonlu değilse (tamamen sessiz
+    dosyada TP `-inf`) RuntimeError; ffmpeg HİÇ çalıştırılamazsa OSError aynen
+    yükseliyor. İkisini de çağıran (render.ses_olcumu) yakalayıp render'ı
+    DURDURMADAN UYARI basıyor."""
+    cmd = [
+        "ffmpeg", "-hide_banner", "-nostats", "-i", audio_path,
+        "-af", "ebur128=peak=true", "-f", "null", "-",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if result.returncode != 0:
+        raise RuntimeError(f"ebur128 ölçümü başarısız: {(result.stderr or '')[-300:]}")
+    stderr = result.stderr or ""
+    bas = stderr.rfind("Summary:")
+    if bas < 0:
+        raise RuntimeError("ebur128 çıktısında Summary bloğu yok")
+    degerler = {}
+    for satir in stderr[bas:].splitlines():
+        parca = satir.strip().split()
+        if len(parca) < 2 or parca[0] not in ("I:", "LRA:", "Peak:") or parca[0] in degerler:
+            continue
+        try:
+            degerler[parca[0]] = float(parca[1])
+        except ValueError:
+            raise RuntimeError(f"ebur128 değeri okunamadı: {satir.strip()!r}")
+    eksik = [k for k in ("I:", "LRA:", "Peak:") if k not in degerler]
+    if eksik:
+        raise RuntimeError(f"ebur128 özetinde eksik alan: {eksik}")
+    if not all(math.isfinite(v) for v in degerler.values()):
+        raise RuntimeError(f"ebur128 sonlu olmayan değer döndü: {degerler}")
+    return {"lufs": degerler["I:"], "tp": degerler["Peak:"], "lra": degerler["LRA:"]}
+
+
+def bastaki_sessizlik(audio_path: str) -> float:
+    """Ses dosyasının BAŞINDAKİ dijital sessizliğin süresini (saniye) döndürür.
+
+    NEDEN: Suno çıktıları başta sessizlikle geliyor (18 projede ölçüldü: 0,15-2,65
+    sn, medyan ~1,1 sn). Render bunu aynen kopyaladığı için video ilk saniyesinde
+    hem donmuş hem sessiz başlıyordu. Bulunamazsa / ffmpeg hata verirse 0.0 döner
+    (kırpma yapılmaz) — bu fonksiyonun bir arızası şarkıyı ASLA kesmemeli.
+    Dönen değer config.INTRO_SESSIZLIK_MAKS ile tavanlanmıştır."""
+    cmd = [
+        "ffmpeg", "-hide_banner", "-nostats", "-i", audio_path,
+        "-af", f"silencedetect=noise={config.INTRO_SESSIZLIK_ESIGI}:d=0.05",
+        "-f", "null", "-",
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except OSError:
+        return 0.0
+    if result.returncode != 0:
+        return 0.0
+
+    # silencedetect stderr'e şu çiftleri basar:
+    #   silence_start: 0
+    #   silence_end: 1.10525 | silence_duration: 1.10525
+    # Bizi SADECE 0'dan (ya da ona çok yakından) başlayan ilk blok ilgilendiriyor;
+    # şarkının ortasındaki duraklamalar kırpılacak bir şey değil.
+    basta = False
+    for line in result.stderr.splitlines():
+        if "silence_start:" in line:
+            try:
+                start = float(line.split("silence_start:")[1].split("|")[0].strip())
+            except (ValueError, IndexError):
+                return 0.0
+            if start > 0.05:
+                return 0.0  # ilk sessizlik başta değil → kırpacak bir şey yok
+            basta = True
+        elif basta and "silence_end:" in line:
+            try:
+                end = float(line.split("silence_end:")[1].split("|")[0].strip())
+            except (ValueError, IndexError):
+                return 0.0
+            kirp = end - config.INTRO_SESSIZLIK_PAY
+            return max(0.0, min(kirp, config.INTRO_SESSIZLIK_MAKS))
+    return 0.0
 
 
 def _escape_drawtext(text: str) -> str:
@@ -68,7 +171,7 @@ def ensure_card_mask() -> str:
             "-frames:v", "1", "-update", "1",
             mask_path,
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
         if result.returncode != 0:
             raise RuntimeError(f"Kart maskesi üretilemedi: {result.stderr[-1000:]}")
 
@@ -106,12 +209,22 @@ def ensure_art_backdrop(art_path: str, width: int, height: int) -> str:
             f"scale={bg_w}:{bg_h}:force_original_aspect_ratio=increase,"
             f"crop={bg_w}:{bg_h},"
             f"gblur=sigma={sigma},"
-            f"eq=brightness=-0.12:saturation=1.15"
+            # Eskiden sabit eq=brightness=-0.12 kullanılıyordu — bu, koyu/gece
+            # temalı art.jpg'lerde (Pexels stok fotoğrafları çoğunlukla gece/
+            # yağmur/atmosfer imgeleri, bkz. stock_art.py) güçlü blur'la
+            # birleşince arka planı neredeyse tamamen siyaha çöktürüyordu
+            # (kullanıcı geri bildirimi: "kapak arkası çok koyu oluyor").
+            # Artık pozitif bir brightness + siyahları belirgin şekilde
+            # kaldıran bir curves eğrisi kullanılıyor — arka plan kasıtlı
+            # olarak KARTIN kendisinden (art.jpg, ham hâli) daha AÇIK tonda
+            # duruyor (kullanıcı isteği: "arka fon kapaktan açık tonda olsun")
+            # — kart öne çıkıyor, arka plan geride/loş bir hale bürünüyor.
+            f"eq=brightness=0.08:saturation=1.2,curves=all='0/0.12 0.5/0.68 1/1'"
         ),
         "-frames:v", "1", "-update", "1",
         backdrop_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise RuntimeError(f"Kart arka planı (blur) üretilemedi: {result.stderr[-1000:]}")
     return backdrop_path
@@ -178,7 +291,7 @@ def ensure_vignette(width: int, height: int, theme_key: str) -> str:
         "-frames:v", "1", "-update", "1",
         path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise RuntimeError(f"Arka plan üretilemedi: {result.stderr[-1000:]}")
     return path
@@ -189,6 +302,11 @@ def ensure_vignette(width: int, height: int, theme_key: str) -> str:
 def _build_filter_complex(
     width: int, height: int, duration: float, title: str | None, has_art: bool,
     theme_key: str, marquee_override: str | None = None,
+    backdrop_video: bool = False,
+    hud_index: int | None = None,
+    kart_goster: bool = True,
+    intro_index: int | None = None,
+    dil_params: dict | None = None,
 ) -> str:
     fps = config.FPS
     bg_pan_w, bg_pan_h = _panned_size(width, height)
@@ -215,8 +333,14 @@ def _build_filter_complex(
     card_y = max(0, (height - total_h) // 2)
     card_x = (width - card_size) // 2
 
-    marquee_y = card_y + card_size + bar_thick + marquee_gap
-    label_y = marquee_y + marquee_strip_h + label_gap
+    if kart_goster:
+        marquee_y = card_y + card_size + bar_thick + marquee_gap
+        label_y = marquee_y + marquee_strip_h + label_gap
+    else:
+        # Kart yokken yazılar dikey ortada asılı kalırdı; sahne modunda
+        # alt şeride iniyorlar - kadrajın ortası görüntüye bırakılıyor.
+        label_y = height - int(height * 0.085)
+        marquee_y = label_y - label_gap - marquee_strip_h
 
     # Arka plan: art.jpg varsa onun bulanıklaştırılmış hâli (ensure_art_backdrop),
     # yoksa (kart art.jpg'siz düz renge düştüğünde) sabit vignette fallback'i
@@ -235,10 +359,43 @@ def _build_filter_complex(
     pan_x = f"{pan_x_range:.1f}+{pan_x_range:.1f}*sin(t*{config.BACKDROP_PAN_SPEED_X})"
     pan_y = f"{pan_y_range:.1f}+{pan_y_range:.1f}*cos(t*{config.BACKDROP_PAN_SPEED_Y})"
     hue_shift = f"{config.BACKDROP_HUE_AMPLITUDE_DEG}*sin(t*{config.BACKDROP_HUE_SPEED})"
-    canvas = (
-        f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}',"
-        f"hue=h='{hue_shift}'[canvas]"
-    )
+    if backdrop_video:
+        # DJ setlerinde arka plan statik bir PNG değil, stok kliplerden kurulmuş
+        # gerçek bir video (bkz. stock_video.arka_plan_kur). Kendi hareketi
+        # olduğu için pan/hue UYGULANMIYOR: üstüne bir de kayan crop penceresi
+        # ve ton salınımı eklemek görüntüyü yorucu hale getiriyor. Video
+        # _panned_size kadar büyük de değil (1920x1080), o yüzden crop yerine
+        # scale+crop ile hedef çerçeveye oturtuluyor.
+        # Bulanıklık ve siyah kaldırma BURADA DEĞİL, backdrop.mp4 üretilirken
+        # bir kez uygulanıyor (stock_video.arka_plan_kur). Sebep: gblur her
+        # karede çalışıyor ve 80 dakikalık bir sette render'a ~%30 ekliyordu;
+        # arka plan zaten tek seferlik bir dosya, orada pişirmek bedava.
+        canvas = (
+            f"[2:v]fps={fps},scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},setsar=1[canvas]"
+        )
+    else:
+        canvas = (
+            f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}',"
+            f"hue=h='{hue_shift}'[canvas]"
+        )
+
+    # GÖRSEL DİL (gorsel_dil.py, dil_params verildiğinde): nabız + doku + derecelendirme
+    # yalnızca ARKA PLAN tuvaline uygulanır — kart içi art.jpg'ye ASLA dokunulmaz
+    # (kural 2). Açık değilken zincir üretimdekiyle birebir aynıdır.
+    if dil_params:
+        nabiz_expr = dil_params.get("nabiz_expr")
+        grain = dil_params.get("grain")
+        grade = dil_params.get("grade")
+        if canvas.endswith("[canvas]"):
+            canvas = canvas[:-len("[canvas]")]
+            if nabiz_expr:
+                canvas += f",eq=brightness='{nabiz_expr}':eval=frame"
+            if grain:
+                canvas += f",{grain}"
+            if grade:
+                canvas += f",{grade}"
+            canvas += "[canvas]"
 
     # "Famous Music Studio" logosu sadece platform thumbnail'inde (cover.jpg) kullanılıyor —
     # video içindeki kartta GÖSTERİLMİYOR. art_path verilmişse o görsel kare kırpılıp
@@ -256,11 +413,18 @@ def _build_filter_complex(
     mask_scaled = f"[1:v]scale={card_size}:{card_size}[mask_s]"
     card = "[card_raw][mask_s]alphamerge[card]"
 
-    parts = [
-        canvas, card_raw, mask_scaled, card,
-        f"[canvas][card]overlay={card_x}:{card_y}[bg2]",
-    ]
-    pre_label = "bg2"
+    if kart_goster:
+        parts = [
+            canvas, card_raw, mask_scaled, card,
+            f"[canvas][card]overlay={card_x}:{card_y}[bg2]",
+        ]
+        pre_label = "bg2"
+    else:
+        # SAHNE MODU: kart yok, görüntünün kendisi kadraj (config.DJ_SAHNE_MODU).
+        # card_raw/mask zinciri hiç kurulmuyor - kurulup gizlenseydi her karede
+        # boşuna ölçeklenip alphamerge edilirdi.
+        parts = [canvas]
+        pre_label = "canvas"
 
     if title:
         # Künye yazısı (şarkı adı + müzik türü, tekrarlı) kartın ALTINDA, kart
@@ -285,6 +449,17 @@ def _build_filter_complex(
         # Kayan yazının GÖRÜNÜR penceresi artık kart genişliği değil, alttaki sabit
         # "Famous Music Studio" satırıyla aynı genişlikte (ikisi aynı fontta/boyutta
         # olduğu için karakter sayısına göre piksel genişliği kabaca tahmin ediliyor).
+        # Yazi golgesi SADECE video arka planda. Sabit gorsel arka plan her
+        # zaman koyu (kaynak art.jpg koyu bir kapak) ve beyaz yazi orada zaten
+        # net okunuyor - oraya golge eklemek gereksiz bir gorsel degisiklik
+        # olurdu. Video havuzunda ise parlak klipler var (altin bokeh, gun
+        # batimi) ve white@0.95 yazi onlarin uzerinde kayboluyordu; egrinin
+        # tepesini bastirmak yetmedi cunku sorun arka planin parlakligi degil,
+        # yazi ile zemin arasinda kontrast olmamasi.
+        golge = (f":shadowcolor={config.FONT_SHADOW_COLOR}"
+                 f":shadowx={config.FONT_SHADOW_OFFSET}"
+                 f":shadowy={config.FONT_SHADOW_OFFSET}") if backdrop_video else ""
+
         label_width_est = int(len(config.STATIC_LABEL_TEXT) * label_fontsize * config.FONT_CHAR_WIDTH_RATIO)
         marquee_w = min(card_size, max(1, label_width_est))
         marquee_x = card_x + (card_size - marquee_w) // 2
@@ -292,7 +467,7 @@ def _build_filter_complex(
         parts.append(
             f"color=c=black@0.0:s={marquee_w}x{marquee_strip_h}:d={duration:.3f}:rate={fps},format=rgba,"
             f"drawtext=fontfile={rel_font}:text='{marquee_text}':"
-            f"fontcolor={config.FONT_COLOR}:fontsize={fontsize}:"
+            f"fontcolor={config.FONT_COLOR}:fontsize={fontsize}{golge}:"
             f"x='w-mod(t*{speed}\\,(w+text_w))':y=0[marquee_strip]"
         )
         parts.append(f"[{pre_label}][marquee_strip]overlay={marquee_x}:{marquee_y}[bgm]")
@@ -303,7 +478,7 @@ def _build_filter_complex(
         label_escaped = _escape_drawtext(config.STATIC_LABEL_TEXT)
         parts.append(
             f"[{pre_label}]drawtext=fontfile={rel_font}:text='{label_escaped}':"
-            f"fontcolor={config.FONT_COLOR}:fontsize={label_fontsize}:"
+            f"fontcolor={config.FONT_COLOR}:fontsize={label_fontsize}{golge}:"
             f"x=(w-text_w)/2:y={label_y}[bglabel]"
         )
         pre_label = "bglabel"
@@ -317,7 +492,41 @@ def _build_filter_complex(
     bar_expr = f"{empty}+{filled - empty}*lt(X\\,W*T/{duration:.3f})"
     parts.append(f"color=c=black:s={bar_w}x{pbar_h}:d={duration:.3f}:rate={fps}[barbg]")
     parts.append(f"[barbg]geq=r='{bar_expr}':g='{bar_expr}':b='{bar_expr}'[bar]")
-    parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[vfinal]")
+    # Açılış katmanı varsa nihai çıktı bir adım sonra kuruluyor; kompozisyon
+    # buraya kadar [vpre] olarak toplanıyor.
+    son_etiket = "vpre" if intro_index is not None else "vfinal"
+    if hud_index is None:
+        parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[{son_etiket}]")
+    else:
+        parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[vbar]")
+        # HUD opak SİYAH üzerine çizilmiş bir PNG (bkz. dj_hud modül notu:
+        # drawbox şeffaf zeminde alfaya yazmıyor). `screen` modunda siyah
+        # hiçbir şey katmıyor, parlak çizgiler ekleniyor — hem şeffaflık
+        # sorununu çözüyor hem HUD'a parıltı veriyor.
+        # blend RGB uzayında çalışmalı: yuv420p'de kanal başına harmanlama
+        # renk kaymasına yol açıyor, o yüzden gbrp'ye geçip geri dönülüyor.
+        parts.append(f"[vbar]format=gbrp[vb_rgb]")
+        parts.append(f"[{hud_index}:v]scale={width}:{height},format=gbrp[hud_rgb]")
+        parts.append(
+            f"[vb_rgb][hud_rgb]blend=all_mode=screen,format=yuv420p[{son_etiket}]")
+
+    if intro_index is not None:
+        # AÇILIŞ: projenin kendi cover.png'si (birebir YouTube küçük resmi) tam
+        # ekran, sonra karta çözülüyor. Gerekçe config.INTRO_KAPAK'ta yazılı.
+        # `trim` ŞART: girdi `-loop 1` ile sonsuz bir akış; çözülme bittikten
+        # sonra dalın bitmesi lazım — `eof_action=pass` sayesinde ondan sonrası
+        # ana akış olarak devam ediyor ve kalan dakikalarda bu katman için
+        # tek bir kare bile işlenmiyor (render maliyeti ~sıfır).
+        toplam = config.INTRO_KAPAK_BEKLEME + config.INTRO_KAPAK_COZULME
+        parts.append(
+            f"[{intro_index}:v]fps={fps},"
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},setsar=1,format=rgba,"
+            f"trim=0:{toplam:.3f},setpts=PTS-STARTPTS,"
+            f"fade=t=out:st={config.INTRO_KAPAK_BEKLEME:.3f}:"
+            f"d={config.INTRO_KAPAK_COZULME:.3f}:alpha=1[intro]"
+        )
+        parts.append(f"[{son_etiket}][intro]overlay=0:0:eof_action=pass[vfinal]")
 
     return ";".join(parts)
 
@@ -333,37 +542,108 @@ def render_video(
     start_time: float | None = None,
     end_time: float | None = None,
     marquee_override: str | None = None,
+    backdrop_video: str | None = None,
+    hud_path: str | None = None,
+    kart_goster: bool = True,
+    intro_cover: str | None = None,
+    ses_limiter: bool = False,
+    dil_params: dict | None = None,
 ) -> None:
     """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
     kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için.
     marquee_override verilmezse kayan yazı title + tema/tür etiketlerinden
     oluşur (ana katalog); verilirse (ör. DJ Famous için "DJ Famous  •  Hafta 1
     Seti  •  #DJFamous ...") kayan yazı olarak AYNEN kullanılır — sabit alt
-    satır ("Famous Music Studio") HER ZAMAN aynı kalır, bundan etkilenmez."""
+    satır ("Famous Music Studio") HER ZAMAN aynı kalır, bundan etkilenmez.
+    backdrop_video verilirse arka plan bulanık art.jpg yerine O VİDEO olur
+    (`-stream_loop -1` ile süre boyunca döngüye alınır); kart, künye ve marka
+    satırı aynen üstünde kalır. Uzun DJ setlerinde tek bir sabit görselin
+    sıkıcı olmaması için — kısa formatlarda kullanılmıyor.
+    intro_cover verilirse video AÇILIŞTA o görselle (projenin cover.png'si, yani
+    birebir YouTube küçük resmi) tam ekran başlayıp karta çözülür — gerekçesi ve
+    süreleri config.INTRO_KAPAK'ta. Çok kısa parçalarda (süre < 2× açılış)
+    kendiliğinden atlanır.
+    ses_limiter=True ise ses çıkışına YALNIZ limiter_filtresi() eklenir (karar
+    render.render_project'te, ölçülen TP'ye göre). Varsayılan False: DJ
+    kesitleri (dj_clips) ve diğer bütün çağıranlar eskisi gibi filtresiz."""
     full_duration = get_audio_duration(audio_path)
     if start_time is not None and end_time is not None:
         duration = min(end_time, full_duration) - start_time
     else:
-        duration = full_duration
+        # Baştaki dijital sessizliği kırp (bkz. config.INTRO_SESSIZLIK_KIRP):
+        # ilk saniyede ekran zaten donuk, bir de ses yoksa o saniye tamamen boş
+        # geçiyor. Shorts bu yola HİÇ girmiyor — orada start_time/end_time zaten
+        # highlight kırpmasından geliyor.
+        if config.INTRO_SESSIZLIK_KIRP and start_time is None:
+            kirpilan = bastaki_sessizlik(audio_path)
+            if kirpilan > 0:
+                start_time = kirpilan
+        duration = full_duration - (start_time or 0.0)
     theme_key = get_theme_key(theme)
     mask_path = ensure_card_mask()
     has_art = bool(art_path)
-    canvas_path = ensure_art_backdrop(art_path, width, height) if has_art else ensure_vignette(width, height, theme_key)
-    filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key, marquee_override)
+    use_backdrop_video = bool(backdrop_video) and os.path.isfile(backdrop_video)
+    if use_backdrop_video:
+        canvas_path = backdrop_video
+    elif dil_params and dil_params.get("backdrop") and has_art:
+        # GÖRSEL DİL: çağıran huzmeli arka planı (gorsel_dil.huzmeli_backdrop_uret)
+        # kendisi üretip path olarak veriyor — aşağıdaki PNG dalı (pan/hue) aynen
+        # üzerinde çalışır. Panned boyutta olduğu için pan payı korunur.
+        canvas_path = dil_params["backdrop"]
+    else:
+        canvas_path = ensure_art_backdrop(art_path, width, height) if has_art else ensure_vignette(width, height, theme_key)
+    # Sahne modunda art.jpg hiç OKUNMUYOR: kart çizilmiyor, arka plan da
+    # videodan geliyor. Girdiyi açık bırakmak HUD'un indeksini kaydırırdı.
+    if not kart_goster:
+        has_art = False
+    use_hud = bool(hud_path) and os.path.isfile(hud_path)
+    # HUD girdi indeksi: 0=ses, 1=maske, 2=tuval, (3=art varsa). Sıra
+    # aşağıdaki cmd kurulumuyla BİREBİR aynı olmalı - yanlış indeks sessizce
+    # yanlış akışı harmanlar.
+    hud_index = (4 if has_art else 3) if use_hud else None
+    # Açılış kapağı girdisi EN SONA ekleniyor — araya girseydi hud_index'i
+    # kaydırırdı (yukarıdaki nota bak: yanlış indeks sessizce yanlış akışı harmanlar).
+    # Çok kısa parçalarda açılış atlanıyor: 2,4 saniyelik bir kapak, 6 saniyelik
+    # bir videonun yarısı demek olurdu (testlerde/sentetik seslerde olan tam bu).
+    intro_toplam = config.INTRO_KAPAK_BEKLEME + config.INTRO_KAPAK_COZULME
+    use_intro = (
+        config.INTRO_KAPAK
+        and bool(intro_cover)
+        and os.path.isfile(intro_cover)
+        and duration >= intro_toplam * 2
+    )
+    if use_intro:
+        intro_index = (hud_index + 1) if hud_index is not None else (4 if has_art else 3)
+    else:
+        intro_index = None
+    filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key,
+                                           marquee_override, use_backdrop_video, hud_index,
+                                           kart_goster, intro_index, dil_params)
 
     audio_input = ["-ss", f"{start_time:.3f}"] if start_time is not None else []
     cmd = [
         "ffmpeg", "-y",
         *audio_input, "-i", audio_path,
         "-loop", "1", "-i", mask_path,
-        "-loop", "1", "-i", canvas_path,
     ]
+    # Sabit PNG için `-loop 1`, video arka plan için `-stream_loop -1`:
+    # ikincisi dosyayı baştan sona tekrar tekrar çalar, `-t` ile setin süresine
+    # kırpılır. `-loop 1` bir videoda ilk kareyi dondururdu (asıl tuzak bu).
+    if use_backdrop_video:
+        cmd += ["-stream_loop", "-1", "-i", canvas_path]
+    else:
+        cmd += ["-loop", "1", "-i", canvas_path]
     if has_art:
         cmd += ["-loop", "1", "-i", art_path]
+    if use_hud:
+        cmd += ["-loop", "1", "-i", hud_path]
+    if use_intro:
+        cmd += ["-loop", "1", "-i", intro_cover]
     cmd += [
         "-filter_complex", filter_complex,
         "-map", "[vfinal]",
         "-map", "0:a",
+        *(["-af", limiter_filtresi()] if ses_limiter else []),
         "-t", f"{duration:.3f}",
         "-c:v", config.VIDEO_CODEC,
         "-preset", config.PRESET,
@@ -375,6 +655,6 @@ def render_video(
         output_path,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise RuntimeError(f"ffmpeg render hatası ({output_path}):\n{result.stderr[-2000:]}")

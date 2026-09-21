@@ -1,0 +1,39 @@
+{
+  "gorsel_dil_olcum": {
+    "bpm": 129.19921875,
+    "sure": 1504.0140136054422,
+    "md5": "517b3529d560f9ccd360a5c49a1b5544",
+    "olcum_at": "2026-09-15T10:04:02"
+  },
+  "ses_olcum": {
+    "lufs": -14.6,
+    "tp": 0.0,
+    "lra": 5.7,
+    "olcum_at": "2026-09-15T10:04:18",
+    "md5": "517b3529d560f9ccd360a5c49a1b5544"
+  },
+  "dj_clips": [
+    {
+      "dosya": "clip_01.mp4",
+      "bas": 159.24,
+      "son": 204.24,
+      "enerji": 3,
+      "bayt": 3100833
+    },
+    {
+      "dosya": "clip_02.mp4",
+      "bas": 1102.0,
+      "son": 1147.0,
+      "enerji": 2,
+      "bayt": 3086912
+    },
+    {
+      "dosya": "clip_03.mp4",
+      "bas": 1436.5,
+      "son": 1481.5,
+      "enerji": 1,
+      "bayt": 3100541
+    }
+  ],
+  "dj_clips_uretildi": "2026-09-15T13:33:07"
+}

@@ -77,7 +77,7 @@ def _draw_silhouette(bg_path: str, out_path: str, accent: tuple[int, int, int]) 
         "-frames:v", "1", "-update", "1",
         out_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise RuntimeError(f"Siluet çizilemedi: {result.stderr[-1000:]}")
 
@@ -103,7 +103,7 @@ def _draw_monogram(bg_path: str, out_path: str, initials: str, accent: tuple[int
         "-frames:v", "1", "-update", "1",
         out_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise RuntimeError(f"Monogram yazılamadı: {result.stderr[-1000:]}")
 

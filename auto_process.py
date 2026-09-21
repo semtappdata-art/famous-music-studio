@@ -57,49 +57,239 @@ for _stream in (sys.stdout, sys.stderr):
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload"))
 
+import config
 import generate_cover
 import render as render_module
 import latest_release
+import yayin_ritmi  # ritim kuralları R1/R3a/R3b (ozgunluk_plani.md §2d, 2026-09-13)
 from log_rotate import trim_log
+# Merkezi maskeleyici — log'a yazılan HER metin buradan geçiyor (bkz. log()).
+# NEDEN import burada: çağrı noktalarına dağıtılmış bir maskeleme, yarın
+# eklenecek yeni bir log satırının yine sızdırması demekti.
+from gizli_maskele import maskele
 from git_sync import auto_pull, push_path
 
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
 RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4"]
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_process.log")
 LOCK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".auto_process.lock")
-LOCK_STALE_SECONDS = 2 * 60 * 60  # 2 saat — normal bir render+upload'dan çok daha uzun
+# KİLİT BAYATLIK EŞİĞİ — 2 saatten 4 saate çıkarıldı.
+# NEDEN DEĞİŞTİ: eskiden kilidin mtime'ı koşu boyunca HİÇ tazelenmiyordu, yani
+# bu sabit "bir koşu en fazla ne kadar sürer" sorusuna cevap vermek zorundaydı —
+# ve yanlış cevaplıyordu: bugün tek bir render 74 dakika sürdü, üstüne 266 MB'lık
+# bir YouTube yüklemesi binince 2 saat rahatça aşılıyor. Aşıldığında bir sonraki
+# saatlik tetik kilidi "bayat" sayıp AYNI projeyi paralel yüklemeye başlıyordu —
+# kilidin var olma gerekçesinin tam tersi.
+# NEDEN 4 SAAT (8 değil): artık log() her satırda kilidi tazeliyor (nabız), bu
+# yüzden eşik "koşu ne kadar sürer"i değil "süreç GERÇEKTEN öldü mü"yü ölçüyor.
+# Ölçülmesi gereken tek şey İKİ LOG SATIRI ARASINDAKİ en uzun sessizlik: burada
+# bu, tek bir render (bugünkü en uzun ölçüm 74 dk) ya da tek bir platform
+# yüklemesi — 4 saat bunun ~3 katı, rahat bir marj.
+# NEDEN dj_famous_process'teki 8 saat DEĞİL: oradaki setler ~1 saatlik ses
+# içeriyor (tek bir render doğal olarak çok daha uzun), ana katalog 3-5 dakikalık
+# şarkılar. Ayrıca ölü bir koşunun kilidi burada 4 saat boyunca hattı tıkıyor ve
+# watch_projects.py'nin nabız gözcüsü bunu YAKALAYAMIYOR: kilide takılan koşu
+# yine de her saat bir log satırı yazıyor, yani auto_process.log'un mtime'ı taze
+# görünüyor. Kurtarma tek başına bu eşiğe kaldığı için cömertlik pahalı.
+LOCK_STALE_SECONDS = 4 * 60 * 60
 DAILY_WINDOW_SECONDS = 24 * 60 * 60
+# YENİ bir şarkı yayını için EN AZ bu kadar ara bırakılır.
+# NEDEN: DAILY_WINDOW_SECONDS'ın penceresi 24 saat olduğu için, bir günde 7 dosya
+# `projects/` altına düşerse yedisi de AYNI GÜN yayınlanıyordu
+# (gap = 24/7 ≈ 3,4 saat). Haftalık sayı doğru çıkıyor ama günlük desen
+# YouTube'un "inauthentic content" (toplu üretilmiş, tekrarlayıcı içerik)
+# tarifinin ta kendisi — kanalın en büyük tekil riski bu.
+# 52 SAAT NEREDEN GELİYOR: hedef haftada 3-4 şarkı; 3 şarkı/hafta = 7*24/3 = 56
+# saat eder. Tam 56 yazılmıyor çünkü koşu saatlik ve golden-hour zamanlaması her
+# turda yayını ~1 saat ileri kaydırıyor; 56'da yayın günü haftadan haftaya
+# sürüklenirdi. 52 = 56 eksi bu sürüklenme payı.
+MIN_YAYIN_ARALIGI_SN = 52 * 60 * 60
 UPLOAD_TIMESTAMP_KEYS = (
     "youtube_uploaded_at", "youtube_shorts_uploaded_at",
     "tiktok_uploaded_at", "instagram_uploaded_at",
 )
+# 52 saatlik YENİ YAYIN tabanı SADECE bu damgadan ölçülür — yukarıdaki geniş
+# listeden DEĞİL. NEDEN (2026-09-12'de ölçüldü): muafiyet yarım uygulanmıştı.
+# `_auto_pace_count` geri doldurma projesinin KENDİSİNİ tabandan muaf tutuyordu,
+# ama tabanın ÖLÇÜLDÜĞÜ saat hâlâ `instagram_uploaded_at` dahil her damgayı
+# sayıyordu. `instagram_upload._publish_container` o damgayı hem yeni yayında
+# HEM `try_publish_pending()` ile yapılan geri doldurma tamamlamasında yazıyor —
+# yani her geri doldurma, sıradaki YENİ şarkının 52 saatlik sayacını sıfırdan
+# başlatıyordu. CLAUDE.md'nin sözü ("geri doldurma kanalın yükleme desenini
+# ETKİLEMEZ") ancak bu ayrımla tutuyor.
+# Ölçülen bedeli: son gerçek yeni yayın 2026-09-08 21:19 iken taban 2026-09-12
+# 13:05'teki bir Instagram geri doldurmasından sayılıyordu; hedef haftada 3-4
+# şarkıyken gerçekleşen 1 şarkı/haftaya doğru gidiyordu.
+# NEDEN `youtube_uploaded_at`: yeni bir şarkı HER ZAMAN önce YouTube'a çıkıyor
+# (diğer platformlar ondan türüyor), yani "kanal en son ne zaman YENİ bir şey
+# yayınladı" sorusunun tek doğal çapası bu.
+YENI_YAYIN_TIMESTAMP_KEYS = ("youtube_uploaded_at",)
+# ...VE videonun PUBLIC OLDUĞU an (2026-09-12). Yeni yayın anı =
+# max(youtube_uploaded_at, youtube_publish_at) — bkz. `_son_yeni_yayin_ani`.
+# NEDEN: bir video yüklendiği andan GEÇ public olabilir — zamanlanmış yayın
+# (private + publishAt) ya da sonradan public'e alınan bir video. Taban yalnız
+# yükleme damgasından ölçülseydi, eski tarihli ama bugün public olan bir şarkının
+# arkasından yeni şarkı AYNI GÜN çıkabilirdi. İzleyicinin gördüğü yayın deseni
+# YÜKLEME değil PUBLIC anıdır.
+# SOMUT VAKA (2026-09-12): `Bu Gece Kazandık` 8 Eylül'de public yüklendi, sonra
+# kayıtsız şekilde unlisted'a çekildi. Yeniden public'e zamanlama DENENDİ ama
+# YouTube `invalidPublishAt` ile reddetti — publishAt yalnız HİÇ yayınlanmamış
+# videoda kabul ediliyor. Yani önceden yayınlanmış bir video için bu alanı elle
+# (gerçek public anıyla) yazmak gerekir; `upload/set_privacy.py` state'e yazmaz.
+# Biçim farklı (UTC "...Z", `youtube_upload._compute_publish_at`) — o yüzden
+# `_last_upload_time`'ın yerel-saat ayrıştırıcısına VERİLMİYOR. Günlük pencere
+# (`UPLOAD_TIMESTAMP_KEYS`) bunu SAYMAZ: o "en son ne zaman bir şey paylaştık"
+# sorusu, değişmedi.
+YENI_YAYIN_PUBLIC_ANI_KEYS = ("youtube_publish_at",)
+
+# YouTube GÖRÜNÜRLÜK PLANI (2026-09-12) — bkz. `_youtube_gorunurluk_planlarini_uygula`.
+GORUNURLUK_PLANI_ALANI = "youtube_gorunurluk_plani"
+# Pencere başına tek proje kuralının okuduğu damga (TR yerel, tz'li ISO).
+GORUNURLUK_UYGULANDI_ALANI = "youtube_gorunurluk_uygulandi_at"
+# Hata sonrası aynı projeye yeni `videos.update` harcamadan önce beklenen süre.
+# Saatlik koşuda 1 saat = her koşuda deneme olurdu (kalıcı bir hata her koşu
+# 50+ birim yakardı); 3 saat öğlen penceresine (12-14) bir, akşam penceresine
+# (18-22) en fazla iki deneme bırakıyor.
+GORUNURLUK_TEKRAR_BEKLEME_SN = 3 * 3600
+# Plan `tempo_sayilir: False` ile verildiyse UZUN formatın gerçek public anı
+# (UTC "...Z") `youtube_publish_at` yerine BURAYA yazılır. `_son_yeni_yayin_ani`
+# bu alanı OKUMAZ (YENI_YAYIN_PUBLIC_ANI_KEYS'te yok) — yani o geçiş 52 saatlik
+# tabanı başlatmaz. Varsayılan True: gerçek bir unlisted -> public uzun format
+# geçişi izleyici için YENİ yayındır ve tempoya sayılmaya DEVAM eder (2026-09-13).
+GORUNURLUK_TEMPO_ALANI = "tempo_sayilir"
+TEMPO_DISI_PUBLIC_ANI_ALANI = "youtube_public_ani_tempo_disi"
+
+# YouTube STUDIO PLANLI YÜKLEME (2026-09-13, upload/youtube_studio.py; `youtube_studio.ALAN`
+# aynası, eşitlik testle kilitli). Kullanıcı kararı: tempo yüzünden bekleyen video Studio'dan
+# ŞİMDİ yüklenir, Gizli + "Planla" ile tempo kuralının izin verdiği public anına kurulur.
+# TEMPO DÜZELTMESİ: bu alanı taşıyan projede `youtube_uploaded_at` (ve Shorts'unki) tempo
+# için SAYILMAZ — yükleme anı izleyiciye görünen bir şey değildir; yalnız PUBLIC anı
+# (`youtube_publish_at`, okunamazsa kayıttaki `an`) sayılır. Sayılsaydı: (a) işaret public
+# anından SONRA atıldığında `max(yükleme, public)` tabanı yükleme anından yeniden başlatıp
+# sıradaki şarkıyı haksız bekletirdi; (b) 2 gün sonraya planlanmış bir yükleme günlük
+# pencereyi bugünden başlatıp geri doldurmaları tıkardı. Public anı GELECEKTEYSE günlük
+# pencere için hiçbir şey paylaşılmamış sayılır (taban yine o andan 52 sa bekletir).
+STUDIO_PLAN_ALANI = "youtube_studio_planli"
+
+
+def _studio_public_ani(state: dict):
+    """Studio planlı projede tempo'nun okuduğu tek an (epoch) ya da None.
+    `youtube_publish_at` (tz'li ISO), okunamazsa `youtube_studio_planli.an`."""
+    from datetime import datetime
+    kayit = (state or {}).get(STUDIO_PLAN_ALANI)
+    adaylar = [state.get("youtube_publish_at")]
+    if isinstance(kayit, dict):
+        adaylar.append(kayit.get("an"))
+    for deger in adaylar:
+        if not isinstance(deger, str) or not deger:
+            continue
+        try:
+            an = datetime.fromisoformat(deger.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if an.tzinfo is not None:
+            return an.timestamp()
+    return None
+
+
+def _studio_public_oncesi(state: dict) -> bool:
+    """Studio planlı ve public anı henüz gelmemiş (ya da bilinmiyor) mu — diğer
+    platformların (Instagram/TikTok/Facebook/Telegram/Bluesky) kapısı."""
+    if STUDIO_PLAN_ALANI not in (state or {}):
+        return False
+    an = _studio_public_ani(state)
+    return an is None or an > time.time()
+
+
+# Kilit BİZDE mi? Sadece kendi kilidimizin mtime'ını tazelemek için (bkz. log()).
+# Kaybeden süreç de log() çağırıyor; bayrak olmasaydı RAKİBİN kilidini tazeler,
+# gerçekten bayat bir kilidin hiç eskimemesine yol açardı. (dj_famous_process.py
+# ile aynı desen — iki script'te iki farklı kilit tasarımı olmasın.)
+_KILIT_BIZDE = False
 
 
 def log(msg: str) -> None:
-    line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
+    # 1) MASKELEME — yazmadan ÖNCE. Bir ağ hatasının mesajı tam istek URL'sini
+    #    (dolayısıyla sorgu dizesindeki access_token'ı) içerebiliyor;
+    #    2026-09-04'te dj_famous_process.log'a gerçek bir Instagram token'ı
+    #    böyle düştü. Bu dosyada ~20 yerde `log(f"... HATA: {e}")` var —
+    #    maskelemeyi o 20 çağrıya tek tek dağıtmak, yarın eklenecek 21.
+    #    çağrının yine sızdırması demekti; tek nokta, unutulamaz.
+    #    (watch_projects.py ve log_rotate.py ile aynı desen.)
+    line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {maskele(msg)}"
     print(line)
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(line + "\n")
+    # 2) KİLİT NABZI — yazmadan SONRA, her çağrıda. Kilidin mtime'ı koşu boyunca
+    #    tazeleniyor, böylece uzun bir koşu kendi kilidini "bayat" gösterip bir
+    #    sonraki saatlik tetiğin AYNI projeyi paralel yüklemesine yol açmıyor.
+    #    NEDEN BURADA: tazelemeyi "her platform yüklemesinden sonra" gibi bir
+    #    listeye bağlamak, yeni bir adım eklendiğinde güncellenmeyi unutulacak
+    #    bir liste demekti. log() bu script'in TEK doğal darboğazı: her anlamlı
+    #    adım zaten bir satır basıyor, yani nabız adım listesiyle kendiliğinden
+    #    güncel kalıyor. Maliyeti bir utime çağrısı — log zaten dosya açıp
+    #    yazıyor, ölçülebilir ek yük yok.
+    #    SINIR: iki log satırı arasındaki tek bir uzun işlem (bir render, bir
+    #    yükleme) yine tazelenmeden geçiyor; LOCK_STALE_SECONDS bu yüzden hâlâ
+    #    o en uzun tek adımın birkaç katı tutuluyor.
+    if _KILIT_BIZDE:
+        try:
+            os.utime(LOCK_PATH, None)
+        except OSError:
+            pass
 
 
 def _acquire_lock() -> bool:
-    """İki auto_process.py çalıştırması aynı anda çakışırsa (örn. çakışan Görev
-    Zamanlayıcı tetikleyicileri, ya da elle + zamanlanmış çalıştırma çakışması) ikisi
-    de AYNI en eski projeyi seçip aynı videoyu iki kez yükleyebilir — bu basit dosya
-    kilidi ikinci çalıştırmayı erken çıkışa yönlendirir. Kilit dosyası LOCK_STALE_SECONDS'
-    tan eskiyse (önceki çalıştırma çökmüş/kilidini bırakmamış olabilir) yok sayılır."""
-    if os.path.isfile(LOCK_PATH):
-        age = time.time() - os.path.getmtime(LOCK_PATH)
+    """Kilidi ATOMİK olarak alır; alamazsa False döner.
+
+    İki auto_process.py çalıştırması aynı anda çakışırsa (örn. çakışan Görev
+    Zamanlayıcı tetikleyicileri, ya da elle + zamanlanmış çalıştırma çakışması)
+    ikisi de AYNI en eski projeyi seçip aynı videoyu iki kez yükleyebilir.
+
+    `O_CREAT | O_EXCL`: dosya zaten varsa işletim sistemi FileExistsError
+    fırlatıyor, yani "önce bak, sonra yarat" arasındaki pencere KAPANIYOR.
+    Eski sürüm `os.path.isfile()` ile bakıp ayrı bir `open(..., "w")` ile
+    yaratıyordu — iki süreç aynı anda "kilit yok" görüp ikisi de devam
+    edebilirdi. Pencere teorik değil: watch_projects.py bu script'i DAKİKADA
+    BİR, Görev Zamanlayıcı ayrıca saatlik tetikliyor.
+
+    Kilit dosyası LOCK_STALE_SECONDS'tan eskiyse (önceki çalıştırma çökmüş,
+    kilidini bırakmamış olabilir) devralınıyor — ama devralma da ikinci bir
+    O_EXCL ile korunuyor, yoksa bayat kilidi iki süreç birden devralabilirdi.
+    """
+    global _KILIT_BIZDE
+    try:
+        fd = os.open(LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            age = time.time() - os.path.getmtime(LOCK_PATH)
+        except OSError:
+            # Kilit tam aramızda kayboldu (sahibi bitirdi) — bu koşuda
+            # uğraşmıyoruz, bir sonraki tetik alır. Yanlış sahiplenmektense
+            # bir koşu kaçırmak ucuz.
+            return False
         if age < LOCK_STALE_SECONDS:
             return False
         log(f"  Eski kilit dosyası bulundu ({age:.0f}s) — önceki çalıştırma muhtemelen "
             f"yarıda kalmış, yok sayılıp devam ediliyor.")
-    with open(LOCK_PATH, "w", encoding="utf-8") as f:
+        try:
+            os.remove(LOCK_PATH)
+            fd = os.open(LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except OSError:
+            # Bayat kilidi başka bir süreç bizden önce devraldı (yarış) —
+            # ikimiz birden devam edersek kilidin anlamı kalmaz.
+            return False
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
+    _KILIT_BIZDE = True
     return True
 
 
 def _release_lock() -> None:
+    global _KILIT_BIZDE
+    # Bayrak ÖNCE düşüyor: aradaki bir log() satırı silinmiş kilidi yeniden
+    # yaratmasın diye (os.utime yaratmaz ama sıralama niyeti açık kalsın).
+    _KILIT_BIZDE = False
     if os.path.isfile(LOCK_PATH):
         os.remove(LOCK_PATH)
 
@@ -109,8 +299,29 @@ def _has_any(project_dir: str, names: list) -> bool:
 
 
 def _is_rendered(project_dir: str) -> bool:
+    """Render çıktıları hazır mı — dosya VAR mı değil, dosya BÜTÜN mü.
+
+    NEDEN `os.path.isfile` YETMİYOR (2026-09-12): ffmpeg `-y` ile doğrudan
+    nihai dosyaya yazdığı sürece yarıda kesilen bir render (süreç öldürülür,
+    elektrik gider, pil biter, `ExecutionTimeLimit` dolar,
+    `MAX_PARALLEL_RENDERS=2` ile ikinci render çakılır) diskte "yarım ama VAR"
+    bir .mp4 bırakıyordu. `isfile` buna True diyor, bir sonraki koşu render'ı
+    ATLIYOR ve BOZUK videoyu altı platforma yüklüyor — log'da yalnızca "Zaten
+    render edilmiş" yazdığı için arıza SESSİZ. Tetikleyicilerden biri
+    (izleyicinin 5 dakikada süreci öldürmesi) `watch_projects.py`'de
+    kapatıldı, ama SEBEP orada değil BURADAYDI.
+
+    Ölçüt `render_module.video_butun_mu()`'da (0 bayt kapısı + ffprobe süre
+    doğrulaması + ffprobe yoksa zarif düşüş); gerekçesi, maliyet ölçümü ve
+    "neden önbellek YOK" o docstring'de. Fonksiyon `render.py`'de duruyor
+    çünkü `dj_famous_process.py` de aynı ölçütü kullanıyor ve iki dosyaya
+    kopyalanan mantık bu deponun belgelenmiş hata sınıfı.
+
+    `all()` kısa devre yapıyor: ilk bozuk çıktıda ikinci ffprobe hiç koşmuyor.
+    """
     output_dir = os.path.join(project_dir, "output")
-    return all(os.path.isfile(os.path.join(output_dir, n)) for n in RENDER_OUTPUTS)
+    return all(render_module.video_butun_mu(os.path.join(output_dir, n), log)
+               for n in RENDER_OUTPUTS)
 
 
 def _load_state(project_dir: str) -> dict:
@@ -159,27 +370,104 @@ def _is_fully_done(project_dir: str) -> bool:
     `*_sozler.md` dosyası olan projelerde set olabiliyor (bkz.
     youtube_captions.py) — kataloğun çoğunluğunda böyle bir dosya yok, yani
     bunu buraya eklemek o projelerin `_auto_pace_count()`'un kademeleme
-    aritmetiğinde SONSUZA KADAR "pending" kalmasına yol açardı."""
+    aritmetiğinde SONSUZA KADAR "pending" kalmasına yol açardı.
+
+    ────────────────────────────────────────────────────────────────────
+    YENİ BİR PLATFORM EKLERKEN — BURAYA EKLEME. (2026-09-11'de bu tasarım
+    bir kez daha gözden geçirildi ve BİLEREK KORUNDU; aşağısı o kararın
+    gerekçesi, dördüncü kez aynı arızayı üretmemek için.)
+
+    BU FONKSİYON "her şey bitti mi" sorusuna CEVAP VERMİYOR. Tek cevapladığı
+    soru şu: **bu proje için PAHALI ANA HATTI (render + YouTube uzun/Shorts +
+    TikTok + Instagram) tekrar çalıştırmalı mıyız?** Adı yanıltıcı, anlamı dar.
+    Dördü de dolduğunda proje `pending`den düşer ve bir daha `process_project()`
+    görmez — bu DOĞRU davranış, çünkü o dördü tekrar çalıştırılamaz/tekrar
+    çalıştırılmamalı işler.
+
+    NEDEN BURAYA PLATFORM EKLENMİYOR — iki ayrı gerekçe, ikisi de yeterli:
+
+      1. BAYRAK/ÖN KOŞUL KAPALIYKEN LİSTE HİÇ BOŞALMAZ. Facebook/Telegram/
+         Bluesky opt-in (`config.EK_PLATFORMLAR`); token yoksa, bayrak
+         kapalıysa ya da dosya boyutu sınırı aşıyorsa o anahtar ASLA
+         dolmayacak. O zaman TÜM katalog sonsuza kadar `pending` görünür ve
+         `_auto_pace_count()`'un `DAILY_WINDOW_SECONDS / len(pending)`
+         bölümü küçülmeyen bir paydaya bölünür: 18 proje → 1,3 saatlik
+         "gerekli ara", yani günlük pencere freni pratikte YOK olur. Geriye
+         tek fren olarak 52 saatlik taban kalır, ondan da geri doldurmalar
+         MUAF — sonuç: yayın temposu sessizce bozulur. Aynı gerekçe
+         `youtube_captions_done` için de geçerli (yukarıdaki paragraf).
+      2. HER EK PLATFORMUN KENDİ ZAMANLAMA KISITI VAR ve bu tek bir bool'a
+         sığmaz: Instagram konteyneri 24 saatte EXPIRED oluyor, TikTok
+         yayını ELLE yapılıyor (API "yayınlandı mı" demiyor), Content ID
+         karantinası 2 saat, Facebook/Telegram/Bluesky'da GÜNLÜK TAVAN +
+         golden-hour kapısı var. Bunlar "bitti/bitmedi" değil, "şu an sırası
+         geldi mi" soruları — `pending` listesi bu soruyu taşıyamaz.
+
+    YANİ DÖRT SÜPÜRGE (`facebook_backfill`, `ek_platform_backfill`,
+    `_drain_golden_hour_queue`, `dj_tarama_kontrol`) bu
+    (Beşinci bir süpürge daha var — `dj_clips.supur` — ama o BU dosyadan
+    DEĞİL, haftalık `dj_famous_process.main()`'den çağrılıyor; kesitlerin
+    küresel temposu zaten 7 gün olduğu için saatlik koşuya bağlamanın
+    kazancı yok. Burada "beş süpürge" yazmak 2026-09-11'de bir kez yapıldı
+    ve YALANDI: `auto_process` `dj_clips`'i hiç import etmiyor. Yalan
+    söyleyen yorum, hiç yorum olmamasından kötüdür.)
+
+    tanımın ETRAFINDAN DOLAŞMA DEĞİL, (2)'nin doğrudan sonucudur: her birinin
+    kendi tempo kapısı var ve hepsi `pending`den BAĞIMSIZ çalışmak ZORUNDA.
+    Asıl hata hiçbir zaman "tanım dar" olması değildi; hata, yeni bir platform
+    işinin `pending`e (yani `process_project()`'e) BAĞLANMASIYDI.
+
+    KURAL — yeni bir platform/adım eklerken şu ikisinden BİRİNİ seç, üçüncü
+    bir seçenek YOK:
+
+      A) Ucuz, idempotent, dış kota/tavanı olmayan bir TAMAMLAMA işiyse →
+         `_drain_golden_hour_queue()` içine koy. O fonksiyon `pending` değil
+         **`ready`** (tüm katalog) ile çağrılıyor — `_is_fully_done()`'dan
+         geçmiş projeleri de kapsayan TEK yer burası.
+      B) Kendi hız sınırı / API kotası / günlük tavanı varsa → AYRI bir
+         süpürge modülü yaz ve `main()`'in `finally` bloğundan çağır
+         (desen: `upload/facebook_backfill.py`, iki kapı = golden-hour +
+         günlük tavan). `finally`, "iş olsun olmasın her koşuda" çalışır.
+
+    TEST: yeni adımın `pending`den bağımsız olduğunu gösteren bir test yaz
+    (desen: `tests/test_playlist_shorts_sirasi.py`). "`process_project()`
+    içinden çağrılıyor ve başka hiçbir yerden" = platform kataloğun büyük
+    kısmı için KALICI OLARAK ÖLÜ demektir; 2026-09-11'de bu üç kez oldu
+    (Telegram/Bluesky 14/18 şarkı, playlist 20/20 Shorts, Instagram
+    konteyneri) ve hiçbiri log'a tek satır düşürmedi."""
     state = _load_state(project_dir)
-    return all(
-        key in state
-        for key in (
-            "youtube_video_id",
-            "youtube_shorts_video_id",
-            "tiktok_publish_id",
-            "instagram_media_id",
-        )
-    )
+    # TikTok WEB PLANLAMA (2026-09-13, config.TIKTOK_AKIS="web_planla"): TikTok API taslağı
+    # artık ana hattın işi DEĞİL — gönderi TikTok Studio web'de planlanıyor ve
+    # upload/tiktok_web.py'nin bekleyen listesinde izleniyor (kalıp B). Anahtar şart
+    # kalsaydı her yeni proje sonsuza kadar pending kalır, pencere paydası sessizce
+    # büyürdü (yukarıdaki gerekçe 1). Küme: _ana_anahtarlar(); saglik_kontrol eşi:
+    # ana_platform_anahtarlari().
+    return all(key in state for key in _ana_anahtarlar())
 
 
-def _last_upload_time(project_dirs: list) -> float | None:
-    """Tüm projelerin state.json'larına bakıp en son yükleme zaman damgasını
-    (hangi platform olursa olsun) bulur — otomatik zamanlamanın referans
-    noktası: 'en son ne zaman bir şey paylaştık'. Hiç yükleme yoksa None."""
+def _last_upload_time(project_dirs: list, keys: tuple = UPLOAD_TIMESTAMP_KEYS):
+    """Projelerin state.json'larındaki en son yükleme zaman damgasını bulur.
+
+    `keys` HANGİ SORUYU sorduğunu belirler ve iki farklı soru var:
+      - varsayılan `UPLOAD_TIMESTAMP_KEYS` -> "en son ne zaman bir şey
+        PAYLAŞTIK" (günlük pencere bölüşümü bunu sorar; geri doldurma da
+        paylaşımdır, sayılmalı)
+      - `YENI_YAYIN_TIMESTAMP_KEYS` -> "en son ne zaman YENİ bir şarkı
+        yayınladık" (52 saatlik taban bunu sorar; geri doldurma sayılmamalı)
+    Hiç damga yoksa None."""
     latest = None
     for project_dir in project_dirs:
         state = _load_state(project_dir)
-        for key in UPLOAD_TIMESTAMP_KEYS:
+        # Studio planlı proje: YouTube damgaları yerine public anı (geçmişse) — bkz.
+        # STUDIO_PLAN_ALANI. Gelecekteyse YouTube tarafında henüz paylaşım yok.
+        studio = STUDIO_PLAN_ALANI in state
+        if studio:
+            an = _studio_public_ani(state)
+            if an is not None and an <= time.time() and (latest is None or an > latest):
+                latest = an
+        for key in keys:
+            if studio and key.startswith("youtube_"):
+                continue
             ts = state.get(key)
             if not ts:
                 continue
@@ -192,26 +480,140 @@ def _last_upload_time(project_dirs: list) -> float | None:
     return latest
 
 
-def _auto_pace_count(pending: list, ready: list) -> int:
+def _son_yeni_yayin_ani(project_dirs: list):
+    """52 saatlik taban için "en son YENİ şarkı ne zaman izleyiciye çıktı".
+
+    Proje başına yayın anı = max(yükleme anı, public olma anı): zamanlanmış
+    (private + publishAt) bir video yüklendiği an değil, public olduğu an
+    çıkmış sayılır. Public anı GELECEKTEYSE dönen değer de gelecekte olur;
+    `_auto_pace_count` bunu "o andan itibaren 52 saat" olarak bekletir.
+    Okunamayan publish_at yok sayılır (yükleme anı yine sayılır) — tabanı
+    ne kısaltır ne de kalıcı olarak kilitler. Hiç damga yoksa None."""
+    from datetime import datetime
+
+    latest = _last_upload_time(project_dirs, YENI_YAYIN_TIMESTAMP_KEYS)
+    for project_dir in project_dirs:
+        state = _load_state(project_dir)
+        if STUDIO_PLAN_ALANI in state:
+            # Yalnız public anı (publish_at ya da kayıttaki an) — bkz. STUDIO_PLAN_ALANI.
+            an = _studio_public_ani(state)
+            if an is not None and (latest is None or an > latest):
+                latest = an
+            continue
+        for key in YENI_YAYIN_PUBLIC_ANI_KEYS:
+            deger = state.get(key)
+            if not isinstance(deger, str) or not deger:
+                continue
+            try:
+                an = datetime.fromisoformat(deger.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if an.tzinfo is None:
+                continue          # saat dilimsiz publish_at yazan kod yok; tahmin etme
+            t = an.timestamp()
+            if latest is None or t > latest:
+                latest = t
+    return latest
+
+
+def _auto_pace_count(pending: list, ready: list, count: int = 1,
+                     pencere_paydasi: int | None = None) -> int:
     """--count elle verilmediğinde kaç proje işleneceğini OTOMATİK belirler:
     bekleyen proje sayısına göre 24 saati eşit aralıklara böler (ör. 9 proje
     bekliyorsa ~2.7 saatte bir 1 tane, 2 proje bekliyorsa 12 saatte bir 1 tane)
     ve son yüklemeden bu hesaplanan aralık kadar süre geçtiyse 1, geçmediyse
     0 döner. Kaç dosya beklediği önemli değil — Görev Zamanlayıcı'nın kendisi
     sık çalıştığı sürece (ör. saatte bir) script kendi kendine "sırası geldi
-    mi" diye karar verir, gün içine dengeli yayılır."""
+    mi" diye karar verir, gün içine dengeli yayılır.
+
+    Buna ek olarak YENİ yayınlar için MIN_YAYIN_ARALIGI_SN'lik bir TABAN var:
+    24 saati bekleyen sayısına bölmek tek başına bir günde 7 yayına izin
+    veriyordu (bkz. sabitin yanındaki not).
+
+    `count` = bu koşuda EN FAZLA kaç proje serbest bırakılacağı (main()'deki
+    `batch = pending[:count]` ile BİREBİR aynı dilim). Fonksiyon 0 ya da
+    `count` döner; varsayılan 1 olduğu için bugünkü davranış değişmiyor.
+
+    `pencere_paydasi` (2026-09-13): günlük pencerenin bölüneceği sayı; verilmezse
+    `len(pending)`. main() artık `pending` olarak yalnız SEÇİLEBİLİR projeleri
+    veriyor (yalnız IG golden-hour'u bekleyenler `_yalniz_drain_bekleyenleri_ayir`
+    ile ayrıldı) ama paydayı bugünkü gibi TÜM pending sayısıyla geçiyor — sıra
+    düzeltmesi tempo aritmetiğini değiştirmesin."""
     if not pending:
         return 0
-    required_gap = DAILY_WINDOW_SECONDS / len(pending)
+    # Taban SADECE sırada GERÇEKTEN yeni bir yayın varsa uygulanır.
+    # NEDEN: pending listesinde YouTube'a çoktan çıkmış ama Instagram'ı (ya da
+    # TikTok'u) eksik kalmış "geri doldurma" projeleri de var (2026-09-11'de
+    # 3 tane). Onlar yeni bir yayın değil, yarım kalmış bir işin tamamlanması;
+    # kanalın yükleme desenini etkilemezler. 52 saatlik tabana takılırlarsa
+    # Instagram geri doldurması günlerce sürer.
+    #
+    # AYIRT ETME — ÖLÇÜT BATCH'İN TAMAMI, `pending[0]` DEĞİL (2026-09-11'de
+    # düzeltildi). Eski hâli `"youtube_video_id" not in _load_state(pending[0])`
+    # idi ve SADECE sıranın ilkine bakıyordu. Muafiyet "bu koşuda yeni bir şarkı
+    # YAYINLANMIYOR" demek zorunda; `count > 1` olduğu anda ilk sıradaki bir
+    # geri doldurma projesi, ARKASINDAKİ yeni şarkıya da muafiyet kazandırıyor
+    # ve 52 saatlik taban SESSİZCE atlanıyordu — tam olarak bugünkü kuyrukta
+    # (3 geri doldurma + sonra gelecek yeni şarkı) oluşacak dizilim. Dilim
+    # main()'deki `batch = pending[:count]` ile aynı; batch'te TEK BİR yeni
+    # yayın varsa taban uygulanır (any), sırası önemli değil.
+    batch = pending[:count] or pending[:1]   # count<=0 gelirse bile en az bir projeye bak
+    yeni_yayin = any("youtube_video_id" not in _load_state(p) for p in batch)
+
+    # İKİ AYRI SAAT — aynı `last` ile ölçmek muafiyeti sessizce deliyordu
+    # (bkz. YENI_YAYIN_TIMESTAMP_KEYS'in yanındaki not).
+    #   pencere: "en son ne zaman bir şey paylaştık" -> TÜM damgalar
+    #   taban  : "en son ne zaman YENİ şarkı çıktı"  -> yalnız youtube_uploaded_at
+    simdi = time.time()
     last = _last_upload_time(ready)
     if last is None:
-        return 1  # hiç yükleme yapılmamış, hemen başla
-    elapsed = time.time() - last
-    if elapsed >= required_gap:
-        return 1
-    remaining_h = (required_gap - elapsed) / 3600
-    log(f"  Otomatik zamanlama: {len(pending)} proje bekliyor, sıradaki için "
-        f"~{remaining_h:.1f} saat daha var (henüz erken, bu koşuda atlanıyor).")
+        return count  # hiç yükleme yapılmamış, hemen başla
+
+    pencere_gap = DAILY_WINDOW_SECONDS / (pencere_paydasi or len(pending))
+    pencere_kalan = pencere_gap - (simdi - last)
+
+    taban_kalan = 0.0
+    set_kalan = 0.0
+    if yeni_yayin:
+        # Yükleme anı İLE public olma anının GEÇ olanı (bkz. _son_yeni_yayin_ani).
+        son_yeni = _son_yeni_yayin_ani(ready)
+        if son_yeni is not None:
+            taban_kalan = MIN_YAYIN_ARALIGI_SN - (simdi - son_yeni)
+        # RİTİM R1 (2026-09-13, karar 4): set/derleme ile şarkı arası kanal geneli 48 sa
+        # (config.YAYIN_RITMI_SET_SARKI_ARA_SAAT) — `ready` yalnız `projects/`ı görür, bu
+        # yüzden set tarafı yayin_ritmi'den (tüm kökler) okunur. Hesaplanamazsa bu koşuda
+        # yeni yayın yok ("bilmiyorum" ≠ "uygun"; maliyet bir koşu gecikmesi).
+        try:
+            _izin, _kalan, _sebep = yayin_ritmi.kanal_tabani(batch[0], simdi=simdi, tur="sarki")
+            if not _izin:
+                set_kalan = max(_kalan, 1.0)
+        except Exception as e:  # noqa: BLE001
+            log(f"  ritim kapısı hesaplanamadı ({type(e).__name__}: {str(e)[:120]}) — "
+                f"bu koşuda yeni yayın yok")
+            set_kalan = 3600.0
+    if set_kalan > taban_kalan:
+        taban_kalan = set_kalan
+
+    if pencere_kalan <= 0 and taban_kalan <= 0:
+        return count
+
+    # Hangi kural daha uzun bekletiyorsa logda O görünsün.
+    if taban_kalan >= pencere_kalan:
+        remaining_h = taban_kalan / 3600
+        required_gap = (yayin_ritmi.set_sarki_ara_sn() if set_kalan >= taban_kalan
+                        else float(MIN_YAYIN_ARALIGI_SN))
+        yeni_yayin = True
+    else:
+        remaining_h = pencere_kalan / 3600
+        required_gap = pencere_gap
+        yeni_yayin = False
+    # Beklemenin hangi kuraldan geldiğini logda ayırt et: sonraki oturum
+    # "neden 2 gündür hiçbir şey çıkmıyor" diye sorduğunda cevap logda olsun.
+    sebep = ("set/derleme ↔ şarkı tabanı" if (yeni_yayin and set_kalan >= taban_kalan)
+             else "yeni yayın tabanı" if yeni_yayin else "günlük pencere bölüşümü")
+    log(f"  Otomatik zamanlama: {pencere_paydasi or len(pending)} proje bekliyor, sıradaki için "
+        f"~{remaining_h:.1f} saat daha var (henüz erken, bu koşuda atlanıyor; "
+        f"kural: {sebep}, gerekli ara ~{required_gap / 3600:.1f} saat).")
     return 0
 
 
@@ -223,12 +625,55 @@ def _log_instagram_result(media_id: str | None) -> None:
 
 
 def _check_instagram_pending(project_dir: str) -> None:
-    """state.json'da media_id'siz bir instagram_creation_id varsa (konteyner
+    """state.json'da bekleyen bir instagram_creation_id varsa (konteyner
     oluşturulmuş ama golden-hour beklemede) kontrol eder — hazırsa ve şu an
-    golden-hour ise yayınlar."""
+    golden-hour ise yayınlar.
+
+    Zaten yayınlanmış (instagram_media_id dolu) bir projede de çağrılır:
+    kararı try_publish_pending() veriyor, konteyner son yayından yeni değilse
+    (ya da damgalar eksikse) kendisi çıkıyor — bkz. çağrı noktalarındaki not.
+
+    LOG SATIRI SEBEP KODUNDAN TÜRÜYOR, "None"dan DEĞİL. Eskiden buradaki her
+    None "konteyner hazır, golden-hour penceresi bekleniyor" diye loglanıyordu;
+    o satır her koşuda 13 kez basılıyor ama gerçekte bekleyen TEK proje vardı —
+    yayınlanmış projelerdeki bayat creation_id kayıtları yüzünden. "Ayırt
+    etmenin ucuz yolu: temizlik yapıldıysa creation_id state'ten kalkmış olur"
+    diye bir tahmin de denendi, ama o SADECE temizlenen dalı yakalıyordu;
+    "zaten yayınlanmış, bekleyen yok" dalı yine yanlış satırı basıyordu.
+    Artık sebebi try_publish_pending()'in KENDİSİ bildiriyor (sebep_out)."""
     try:
+        from instagram_upload import (
+            SEBEP_BAYAT_TEMIZLENDI,
+            SEBEP_GOLDEN_HOUR,
+            SEBEP_ISLENIYOR,
+            SEBEP_SURESI_DOLDU,
+            SEBEP_ZATEN_YAYINLANMIS,
+        )
         from instagram_upload import try_publish_pending as ig_try_publish
-        _log_instagram_result(ig_try_publish(project_dir))
+        sebep: dict = {}
+        media_id = ig_try_publish(project_dir, sebep_out=sebep)
+        if media_id:
+            _log_instagram_result(media_id)
+            return
+        kod = sebep.get("kod")
+        if kod in (SEBEP_BAYAT_TEMIZLENDI, SEBEP_SURESI_DOLDU):
+            ek = "24 saatlik ömrünü aşmış (bayat)" if kod == SEBEP_BAYAT_TEMIZLENDI \
+                else "süresi dolmuş (EXPIRED)"
+            log(f"  Instagram: bekleyen konteyner {ek}, kaydı temizlendi — "
+                "yeniden paylaşım için elle çalıştır (bkz. konsol çıktısı)")
+        elif kod == SEBEP_ZATEN_YAYINLANMIS:
+            # Gönderi zaten yayında ve state'teki konteyner o yayından ESKİ:
+            # bekleyen bir iş YOK. Burada "golden-hour bekleniyor" yazmak
+            # tam da yukarıdaki yanlış okumanın kaynağıydı.
+            log("  Instagram: zaten yayınlanmış, bekleyen konteyner yok")
+        elif kod == SEBEP_ISLENIYOR:
+            log("  Instagram: konteyner hâlâ işleniyor, bir sonraki kontrolde tekrar denenecek")
+        elif kod == SEBEP_GOLDEN_HOUR:
+            # SADECE burada — gerçekten hazır, gerçekten bekleyen konteyner.
+            _log_instagram_result(None)
+        # SEBEP_BEKLEYEN_YOK: state'te creation_id yok. Çağıran zaten
+        # "instagram_creation_id" in state diye bakıyor, yani buraya normalde
+        # hiç gelinmez (yarış durumu olursa da sessiz geçmek doğru).
     except Exception as e:
         log(f"  Instagram HATA: {e}")
 
@@ -236,6 +681,10 @@ def _check_instagram_pending(project_dir: str) -> None:
 def _check_tiktok_notification(project_dir: str, state: dict) -> None:
     """state.json'da tiktok_publish_id var (zaten yüklü) ama henüz bildirim
     gönderilmediyse, golden-hour'daysak telefona bildirim gönderir."""
+    if state.get("tiktok_hatirlatma") == "kit":
+        # Yeni yüklemenin hatırlatması YAYIN KİTİ (_tiktok_kit_sirasi, her koşuda
+        # kendi özet satırını basıyor) — burada proje başına ikinci satır yok.
+        return
     if state.get("tiktok_notified"):
         log("  TikTok: zaten yüklü, atlanıyor")
         return
@@ -244,6 +693,15 @@ def _check_tiktok_notification(project_dir: str, state: dict) -> None:
         if tt_notify(project_dir):
             log("  TikTok: bildirim gönderildi (golden-hour) — uygulamadan yayınla")
         else:
+            # notify_pending_publish() False dönmesinin İKİ sebebi var ve
+            # eskiden ikisi de aynı (yanıltıcı) satırı basıyordu: (a) gerçekten
+            # golden-hour dışındayız, (b) bildirim kanalı hiç kurulu değil.
+            # (b) durumunda sebep golden-hour DEĞİL ve 17 bekleyen projede bu
+            # satır her koşuda 17 kez yanlış bilgi basıyordu — tiktok_upload.py
+            # o durumu zaten koşu başına TEK satır olarak logluyor.
+            import notify
+            if not notify.is_configured():
+                return
             log("  TikTok: zaten yüklü, bildirim golden-hour penceresi bekleniyor")
     except Exception as e:
         log(f"  TikTok bildirim HATA: {e}")
@@ -253,16 +711,41 @@ def _check_youtube_captions(project_dir: str, state: dict) -> bool:
     """state.json'da youtube_video_id var ama youtube_captions_done yoksa
     (gerçek sözlerle hizalanmış altyazı henüz yayınlanmadıysa) dener —
     sözler dosyası yoksa ya da YouTube'un ASR'si henüz hazır değilse
-    sessizce atlar/bir sonraki koşuya bırakır (bkz. youtube_captions.py).
+    atlar/bir sonraki koşuya bırakır (bkz. youtube_captions.py).
+
     Döner: bu çağrı GERÇEKTEN bir YouTube API isteği yaptı mı (True) yoksa
-    yerel kontrollerle (video yok/sözler dosyası yok/zaten yapılmış/cooldown
-    içinde) mi sessizce çıktı (False) — çağıran taraf bunu, tek bir koşuda
+    yerel kontrollerle mi çıktı (False) — çağıran taraf bunu, tek bir koşuda
     kaç projenin API'ye gerçekten dokunduğunu (kota tüketimini) sınırlamak
-    için kullanır (bkz. _drain_golden_hour_queue)."""
+    için kullanır (bkz. _drain_golden_hour_queue).
+
+    False dönen YEREL dallar: zaten yapılmış / video henüz YouTube'da yok /
+    `upload/token.json` yok / doğrulanmış sözler dosyası yok / önceki koşuda
+    sözler UYUŞMADI ve 24 saatlik soğuma penceresi sürüyor
+    (`youtube_captions.UYUSMAZLIK_BEKLEME_SN`, damga state.json'daki
+    `youtube_captions_uyusmazlik_at`).
+
+    DOCSTRING DÜZELTMESİ (2026-09-11): burada eskiden "cooldown içinde" ve
+    "SESSİZCE çıktı" yazıyordu; ikisi de KARŞILIKSIZDI — kodda hiçbir yerde
+    cooldown yoktu ve o dallar log'a tek satır bile bırakmıyordu. Bugün
+    ikisi de gerçek oldu: uyuşmazlık soğuma penceresi eklendi ve yerel
+    dalların hepsi sebebini yazıyor. Tek SESSİZ dal kaldı — "video henüz
+    YouTube'a çıkmamış"; her bekleyen proje için her koşuda satır basmak
+    gürültü olurdu (bkz. youtube_captions.sync_captions'ın docstring'i)."""
     if state.get("youtube_captions_done") or not state.get("youtube_video_id"):
         return False
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
     if not os.path.isfile(os.path.join(upload_dir, "token.json")):
+        # SESSİZ DEĞİL: yetki dosyası yoksa altyazı hattı KATALOĞUN TAMAMI için
+        # ölüdür ve tek belirtisi "hiçbir videoda düzeltilmiş altyazı yok"
+        # olurdu (bkz. CLAUDE.md: "sessizce False dönen bir koruma, OLMAYAN
+        # korumadan KÖTÜDÜR"). Proje başına DEĞİL koşu başına tek satır —
+        # sebep tek, 18 proje için 18 kez yazmak log'u gürültüye boğardı.
+        import notify
+        notify.uyar_bir_kez(
+            "youtube_captions_token_yok",
+            "  YouTube altyazı atlandı: upload/token.json yok — bu koşuda "
+            "HİÇBİR projenin altyazısı senkronize edilmeyecek "
+            "(yetkilendirme: python upload/youtube_auth.py).")
         return False
     try:
         from youtube_captions import sync_captions as yt_sync_captions
@@ -277,8 +760,359 @@ def _check_youtube_captions(project_dir: str, state: dict) -> bool:
         # dokunmaz — kota tüketimine saymıyoruz.
         return False
     except Exception as e:
+        # Tamamlanmamış söz dosyası arıza DEĞİL: insanın sözleri yazmasını
+        # bekliyor. "HATA" olarak loglanınca durum panelinde asla kaybolmayan
+        # bir alarma dönüşüyor ve gerçek arızaların yanında gürültü yapıyordu.
+        from caption_align import LyricsNotReady
+        if isinstance(e, LyricsNotReady):
+            log(f"  YouTube altyazı atlandı: {e}")
+            return False
         log(f"  YouTube altyazı HATA: {e}")
         return True
+
+
+def _yayin_bekletiliyor(state: dict) -> bool:
+    """state'te dolu bir `uyumluluk.BEKLETME_ALANI` var mı (kural uyumluluk'ta)."""
+    import uyumluluk
+    return bool((state or {}).get(uyumluluk.BEKLETME_ALANI))
+
+
+def _bekletme_sebebi(state: dict) -> str:
+    import uyumluluk
+    b = (state or {}).get(uyumluluk.BEKLETME_ALANI)
+    sebep = b.get("sebep") if isinstance(b, dict) else b
+    return str(sebep or "sebep yazılmamış")[:160]
+
+
+def _bekletilenleri_ayir(project_dirs: list) -> tuple:
+    """(kalan, bekletilen) — sıra korunur.
+
+    Okunamayan state BEKLETME SAYILMAZ, `kalan`da kalır: bu ayırıcı kapının
+    YERİNE geçmez. Öyle bir projeyi `process_project`e bırakır; orada
+    `uyumluluk` (bozuk state.json = HATA) yayını zaten durdurur.
+    Koruma: tests/test_yayin_bekletme.py."""
+    kalan, bekletilen = [], []
+    for p in project_dirs:
+        try:
+            bekle = _yayin_bekletiliyor(_load_state(p))
+        except (OSError, ValueError):
+            bekle = False
+        (bekletilen if bekle else kalan).append(p)
+    return kalan, bekletilen
+
+
+_ANA_ANAHTARLAR = ("youtube_video_id", "youtube_shorts_video_id",
+                   "tiktok_publish_id", "instagram_media_id")
+
+
+def _ana_anahtarlar() -> tuple:
+    """Pahalı ana hattın anahtarları; TikTok web planlama modunda TikTok'suz üçlü.
+
+    SHORTS (2026-09-13, ritim R3a, config.YAYIN_RITMI_SHORTS_GECIKMELI): Shorts artık
+    uzun formattan 24 sa SONRA, AYRI süpürgede yükleniyor (`_shorts_gecikmeli_supurge`,
+    kalıp B). Anahtar bu kümede KALSAYDI proje 24 sa boyunca `pending`de kalır, `batch =
+    secilebilir[:1]` her koşuda onu seçer (process_project Shorts'u atlar, başka iş yok) ve
+    arkadaki yeni şarkı tıkanırdı — `_yalniz_drain_bekleyenleri_ayir`in çözdüğü arızanın
+    birebir eşi. PENCERE PAYDASI: eskiden uzun + Shorts + IG aynı koşuda dolup proje o koşuda
+    `pending`den düşüyordu; şimdi uzun + IG aynı koşuda doluyor, yani payda aynı koşuda aynı
+    miktar küçülüyor — kademeleme aritmetiği DEĞİŞMEDİ. Shorts'un kendi kapıları süpürgede
+    (24 sa, uyumluluk, koşu başına 1). saglik_kontrol.ana_platform_anahtarlari eşi."""
+    kume = _ANA_ANAHTARLAR
+    if config.tiktok_web_modu():
+        kume = tuple(k for k in kume if k != "tiktok_publish_id")
+    if yayin_ritmi.shorts_gecikmeli_mi():
+        kume = tuple(k for k in kume if k != "youtube_shorts_video_id")
+    return kume
+
+
+def _yalniz_drain_bekleyenleri_ayir(project_dirs: list) -> tuple:
+    """(secilebilir, yalniz_drain) — sıra korunur (2026-09-13).
+
+    NEDEN: `batch = pending[:count]` kuyruğun başındaki projeyi seçer. Proje
+    yalnız Instagram konteynerinin golden-hour yayınını bekliyorsa
+    `process_project` onun için hiçbir şey yapamaz (yayını golden-hour'da
+    `_drain_golden_hour_queue` yapıyor, `ready` ile gezerek) — ama seçildiği
+    koşuda arkadaki YENİ şarkı işlenemez. Log'dan sayıldı: Son Kez 28,
+    Sessiz Mektup 34, Yeraltı 11 kez yalnız bunun için seçildi.
+
+    ÖLÇÜT (üçü BİRLİKTE): dört ana anahtardan YALNIZ `instagram_media_id`
+    eksik; `instagram_creation_id` VAR; konteyner BAYAT DEĞİL
+    (`instagram_upload._konteyner_bayat` — aynı 23 saatlik kapı, kopya yok).
+    Bayat konteyner normal seçilir: onu temizleyen yol `process_project`.
+
+    Okunamayan state ya da `instagram_upload` import edilemezse proje
+    SEÇİLEBİLİR kalır (bugünkü davranış) — ayırıcı bir kapı değil, sıra
+    düzeltmesi; "bilmiyorum" durumunda eski yola düşer.
+    Günlük pencere paydası bu ayırmadan ETKİLENMEZ (bkz. main()).
+    Koruma: tests/test_kuyruk_basi_drain.py."""
+    try:
+        from instagram_upload import _konteyner_bayat
+    except Exception:  # noqa: BLE001
+        return list(project_dirs), []
+    secilebilir, yalniz_drain = [], []
+    for p in project_dirs:
+        try:
+            st = _load_state(p)
+            eksik = [k for k in _ana_anahtarlar() if k not in st]
+            drain = (eksik == ["instagram_media_id"]
+                     and bool(st.get("instagram_creation_id"))
+                     and not _konteyner_bayat(st))
+        except (OSError, ValueError, TypeError):
+            drain = False
+        (yalniz_drain if drain else secilebilir).append(p)
+    return secilebilir, yalniz_drain
+
+
+def _studio_planli_bekleyenleri_ayir(project_dirs: list) -> tuple:
+    """(secilebilir, studio_bekleyen) — sıra korunur (2026-09-13).
+
+    Studio'dan yüklenip ileri tarihe planlanmış (`STUDIO_PLAN_ALANI`) ve public anı
+    HENÜZ GELMEMİŞ proje `process_project` için seçilmez: YouTube adımı zaten
+    atlanır, diğer platformlar public öncesi gitmemeli (`_studio_public_oncesi`).
+    Ayrılmasaydı `pending[:1]` her koşu bu projeyi seçer, arkadaki şarkıyı tıkardı
+    (`_yalniz_drain_bekleyenleri_ayir` ile aynı desen). Public anı geçince normal.
+    Okunamayan state SEÇİLEBİLİR kalır (kapı değil, sıra düzeltmesi)."""
+    secilebilir, bekleyen = [], []
+    for p in project_dirs:
+        try:
+            bekle = _studio_public_oncesi(_load_state(p))
+        except (OSError, ValueError, TypeError):
+            bekle = False
+        (bekleyen if bekle else secilebilir).append(p)
+    return secilebilir, bekleyen
+
+
+def _tr_simdi():
+    """Şimdi (TR yerel, tz'li). Testler bunu değiştirir."""
+    from datetime import datetime
+    return datetime.now(config.TR_TZ)
+
+
+def _golden_pencere_anahtari(an):
+    """`an` bir golden-hour penceresindeyse pencerenin kimliği ("2026-09-13@12"),
+    değilse None. Sınırlar `config.GOLDEN_HOURS` ([başlangıç, bitiş))."""
+    an = an.astimezone(config.TR_TZ)
+    for bas, bit in config.GOLDEN_HOURS:
+        if bas <= an.hour < bit:
+            return "%s@%02d" % (an.strftime("%Y-%m-%d"), bas)
+    return None
+
+
+def _youtube_servisi():
+    from youtube_auth import get_authenticated_service
+    return get_authenticated_service()
+
+
+def _gorunurlugu_youtubeda_uygula(youtube, video_idler: list, hedef: str) -> list:
+    """Videoları `hedef` gizliliğine alır ve GERİ OKUYARAK doğrular; olmazsa raise.
+
+    Gövde `set_privacy.guvenli_status_govdesi` ile kuruluyor: `videos.update`
+    kısmi güncelleme YAPMAZ, `part`ta olup gövdede olmayan alanları SİLER —
+    zorunlu AI beyanı (`containsSyntheticMedia`) dahil, ve o alan okumada geri
+    GELMEDİĞİ için round-trip onu korumaz (bkz. set_privacy.py docstring'i).
+    Zaten hedefte olan videoya update HARCANMIYOR (50 birim).
+
+    DÖNÜŞ: gizliliği GERÇEKTEN değişen kimlikler (sıra korunur). Ölçüt state
+    DEĞİL, API'den okunan ÖNCEKİ gizlilik — state bayat olabiliyor (canlı
+    vaka: `Küllerimden Geç` uzun formatı Studio'dan public yapıldı, state
+    "unlisted" diyordu). Çağıran `*_publish_at`'i YALNIZ bunlara yazar;
+    değişmeyen videoya damga yazmak 52 saatlik tabanı sahte bir "yeni yayın"la
+    yeniden başlatıyordu (2026-09-13, doğrulama turu 2 bulgu 3).
+    """
+    from set_privacy import guvenli_status_govdesi
+
+    def _oku():
+        yanit = youtube.videos().list(part="status", id=",".join(video_idler)).execute()
+        return {it.get("id"): (it.get("status") or {})
+                for it in (yanit.get("items") or [])}
+
+    mevcut = _oku()
+    eksik = [v for v in video_idler if v not in mevcut]
+    if eksik:
+        # Okuma yoksa YAZMIYORUZ: mevcut status olmadan kurulan her gövde,
+        # korumaya çalıştığımız alanları silen gövdenin ta kendisi olurdu.
+        raise RuntimeError("status okunamadı: %s — gizlilik DEĞİŞTİRİLMEDİ"
+                           % ", ".join(eksik))
+    degisen = []
+    for vid in video_idler:
+        if mevcut[vid].get("privacyStatus") == hedef:
+            continue
+        govde = guvenli_status_govdesi(mevcut[vid], hedef)
+        youtube.videos().update(part="status",
+                                body={"id": vid, "status": govde}).execute()
+        degisen.append(vid)
+    # GERİ OKUMA YARIŞI (2026-09-13, Küllerimden Geç jN78mJrZd3c): update 200 döndü,
+    # hemen ardından okunan status eski değeri (unlisted) verdi — YouTube tarafında
+    # yayılma gecikmesi. Sahte HATA + 3 sa retry üretmesin: kısa beklemeyle ikinci
+    # deneme; ikisinde de tutmazsa raise (config.GORUNURLUK_GERI_OKUMA_*).
+    deneme = max(1, int(getattr(config, "GORUNURLUK_GERI_OKUMA_DENEME", 2)))
+    bekleme = float(getattr(config, "GORUNURLUK_GERI_OKUMA_BEKLEME_SN", 5))
+    yanlis = []
+    for deneme_no in range(deneme):
+        sonra = _oku()
+        yanlis = ["%s=%s" % (v, (sonra.get(v) or {}).get("privacyStatus"))
+                  for v in video_idler
+                  if (sonra.get(v) or {}).get("privacyStatus") != hedef]
+        if not yanlis:
+            break
+        if deneme_no + 1 < deneme:
+            time.sleep(bekleme)
+    if yanlis:
+        raise RuntimeError("geri okuma hedefi (%s) doğrulamadı: %s"
+                           % (hedef, ", ".join(yanlis)))
+    return degisen
+
+
+def _youtube_gorunurluk_planlarini_uygula(project_dirs: list) -> None:
+    """state'teki `youtube_gorunurluk_plani`nı golden-hour içinde uygular.
+
+    NEDEN VAR (2026-09-12): önceden yayınlanmış bir videoyu "şu saatte public
+    olsun" diye YouTube'a zamanlatmak MÜMKÜN DEĞİL — `status.publishAt` yalnız
+    hiç yayınlanmamış videoda kabul ediliyor (`invalidPublishAt`, ölçüldü).
+    İlk kullanım: `Küllerimden Geç` (asıl kayıt) Shorts'unun public'e dönmesi.
+
+    Plan: `{"hedef": "public", "sebep": ..., "istendi_at": ...}`.
+
+    KURALLAR:
+      * yalnız `config.GOLDEN_HOURS` içinde; dışarıda SESSİZ çıkar (koşuların
+        üçte ikisi pencere dışı, her birinde satır basmak gürültü olurdu);
+      * pencere başına EN FAZLA BİR proje — o pencerede bir plan zaten
+        uygulandıysa (`GORUNURLUK_UYGULANDI_ALANI`) bekler ve log'a yazar; iki
+        şarkı aynı anda yayına dönmesin. Koşu başına da tek deneme;
+      * sıra `istendi_at` (sonra klasör adı); ilk plan bekliyorsa (bekletme,
+        soğuma, uyumluluk) arkasındaki ÖNE GEÇMEZ;
+      * `uyumluluk.BEKLETME_ALANI` doluysa uygulanmaz; hedef public ise
+        `uyumluluk.kontrol(..., "yukleme")` HATASIZ olmalı (aynı sesin ikinci
+        kopyasını public'e çıkarmak da bir yayındır) — fail-closed;
+      * hata: plan SİLİNMEZ, `son_hata_at`/`son_hata` yazılır; aynı projeye
+        `GORUNURLUK_TEKRAR_BEKLEME_SN` dolmadan yeni `videos.update` harcanmaz.
+    BAŞARI: `<önek>_privacy` = hedef (geri okumayla doğrulandı); hedef public ise
+    `<önek>_publish_at` = GERÇEK public anı (UTC "...Z") — AMA YALNIZ gizliliği
+    bu koşuda GERÇEKTEN değişen videoya (`_gorunurlugu_youtubeda_uygula`'nın
+    dönüşü; ölçüt API'den okunan önceki gizlilik). Zaten public olan videoya
+    damga YAZILMAZ: `_son_yeni_yayin_ani` `youtube_publish_at`'i 52 saatlik tempo
+    tabanına sayıyor ve Shorts-only bir plan tabanı sahte bir "yeni yayın"la
+    yeniden başlatıyordu (2026-09-13). `youtube_shorts_publish_at` tempoya
+    zaten sayılmaz. Gerçek unlisted -> public UZUN format geçişi sayılmaya
+    DEVAM eder; plan `tempo_sayilir: False` taşıyorsa o an
+    `TEMPO_DISI_PUBLIC_ANI_ALANI`na yazılır (taban okumaz). Plan silinir,
+    uygulama damgası yazılır; state `state_io` ile atomik yazılır.
+    Koruma: tests/test_youtube_gorunurluk_plani.py.
+    """
+    from datetime import datetime, timezone
+
+    planlilar = []
+    for p in project_dirs:
+        try:
+            plan = _load_state(p).get(GORUNURLUK_PLANI_ALANI)
+        except (OSError, ValueError):
+            continue
+        if isinstance(plan, dict) and plan.get("hedef"):
+            planlilar.append((str(plan.get("istendi_at") or ""),
+                              os.path.basename(os.path.normpath(p)), p))
+    if not planlilar:
+        return
+    simdi = _tr_simdi()
+    pencere = _golden_pencere_anahtari(simdi)
+    if pencere is None:
+        return
+    planlilar.sort()
+    _, ad, proje = planlilar[0]
+
+    for p in project_dirs:
+        try:
+            damga = _load_state(p).get(GORUNURLUK_UYGULANDI_ALANI)
+            if damga and _golden_pencere_anahtari(
+                    datetime.fromisoformat(damga)) == pencere:
+                log(f"  YouTube görünürlük planı: bu pencerede "
+                    f"'{os.path.basename(os.path.normpath(p))}' zaten uygulandı — "
+                    f"'{ad}' bir sonraki pencereyi bekliyor")
+                return
+        except (OSError, ValueError, TypeError):
+            continue
+
+    import state_io
+    import uyumluluk
+
+    state = uyumluluk._durum(proje)      # YAZMADAN önce kesin okuma (bozuksa raise)
+    plan = state.get(GORUNURLUK_PLANI_ALANI) or {}
+    hedef = plan.get("hedef")
+    if hedef not in ("public", "unlisted", "private"):
+        log(f"  YouTube görünürlük planı: '{ad}' geçersiz hedef ({hedef!r}) — uygulanmadı")
+        return
+    if _yayin_bekletiliyor(state):
+        log(f"  YouTube görünürlük planı: '{ad}' yayın bekletiliyor "
+            f"({_bekletme_sebebi(state)}) — plan uygulanmadı")
+        return
+    son_hata_at = plan.get("son_hata_at")
+    if son_hata_at:
+        try:
+            gecen = (simdi - datetime.fromisoformat(son_hata_at)).total_seconds()
+        except (ValueError, TypeError):
+            gecen = None
+        if gecen is not None and gecen < GORUNURLUK_TEKRAR_BEKLEME_SN:
+            log(f"  YouTube görünürlük planı: '{ad}' son denemesi hata verdi, "
+                f"soğuma sürüyor ({int(gecen // 60)} dk önce)")
+            return
+    if hedef == "public":
+        # FAIL-CLOSED: `except` dalı `return` ile BİTİYOR — tests/
+        # test_uyumluluk_fail_closed.py muhafızı auto_process.py'deki HER kapı
+        # try'ında bunu arıyor.
+        try:
+            u_hatalar, _ = uyumluluk.kontrol(proje, "yukleme")
+        except Exception as e:  # noqa: BLE001
+            log(f"  YouTube görünürlük planı: '{ad}' public YAPILMADI — uyumluluk "
+                f"kapısı ÇÖKTÜ ({type(e).__name__}: {str(e)[:150]})")
+            return
+        if u_hatalar:
+            log(f"  YouTube görünürlük planı: '{ad}' public YAPILMADI — uyumluluk "
+                f"HATASI: {str(u_hatalar[0])[:200]}")
+            return
+    onekler = [o for o in ("youtube", "youtube_shorts") if state.get(o + "_video_id")]
+    if not onekler:
+        log(f"  YouTube görünürlük planı: '{ad}' state'inde video kimliği yok — uygulanmadı")
+        return
+
+    try:
+        degisen = set(_gorunurlugu_youtubeda_uygula(
+            _youtube_servisi(), [state[o + "_video_id"] for o in onekler], hedef)
+            or ())
+    except Exception as e:  # noqa: BLE001
+        taze = uyumluluk._durum(proje)
+        taze_plan = taze.get(GORUNURLUK_PLANI_ALANI)
+        if isinstance(taze_plan, dict):
+            taze_plan["son_hata_at"] = simdi.isoformat(timespec="seconds")
+            taze_plan["son_hata"] = ("%s: %s" % (type(e).__name__, e))[:300]
+            state_io.durum_yaz(proje, taze)
+        log(f"  YouTube görünürlük planı HATA: '{ad}' -> {hedef}: "
+            f"{type(e).__name__}: {str(e)[:200]} — plan duruyor, "
+            f"{GORUNURLUK_TEKRAR_BEKLEME_SN // 3600} saat sonra yeniden denenecek")
+        return
+
+    an_utc = simdi.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # `plan` YAZMADAN önceki okumadan; varsayılan True (kural gevşemiyor).
+    tempo_sayilir = plan.get(GORUNURLUK_TEMPO_ALANI, True) is not False
+    taze = uyumluluk._durum(proje)
+    notlar = []
+    for o in onekler:
+        taze[o + "_privacy"] = hedef
+        vid = state[o + "_video_id"]
+        if hedef != "public":
+            continue
+        if vid not in degisen:
+            notlar.append(f"{vid} zaten public, damga yazılmadı")
+            continue
+        if o == "youtube" and not tempo_sayilir:
+            taze[TEMPO_DISI_PUBLIC_ANI_ALANI] = an_utc
+            notlar.append(f"{vid} tempo DIŞI")
+        else:
+            taze[o + "_publish_at"] = an_utc
+    taze.pop(GORUNURLUK_PLANI_ALANI, None)
+    taze[GORUNURLUK_UYGULANDI_ALANI] = simdi.isoformat(timespec="seconds")
+    state_io.durum_yaz(proje, taze)
+    idler = ", ".join(str(taze.get(o + "_video_id")) for o in onekler)
+    log(f"  YouTube görünürlük planı UYGULANDI: '{ad}' -> {hedef} ({idler}), "
+        f"public anı {an_utc}" + (f" [{'; '.join(notlar)}]" if notlar else ""))
 
 
 def _drain_golden_hour_queue(project_dirs: list) -> None:
@@ -304,13 +1138,69 @@ def _drain_golden_hour_queue(project_dirs: list) -> None:
     captions_checked_this_run = False
     for project_dir in project_dirs:
         state = _load_state(project_dir)
-        if "instagram_creation_id" in state and "instagram_media_id" not in state:
-            _check_instagram_pending(project_dir)
-        if state.get("tiktok_publish_id") and not state.get("tiktok_notified"):
-            _check_tiktok_notification(project_dir, state)
+        # NEDEN "instagram_media_id" KOŞULU YOK: eskiden burada
+        # `and "instagram_media_id" not in state` vardı; zaten yayınlanmış bir
+        # gönderinin VARLIĞI, sonradan oluşturulmuş YENİ bir konteyneri
+        # (ör. "kapak değişti, yeniden paylaş") kalıcı olarak blokluyordu —
+        # Gece Sürüşü / Kalbim Oynuyor'da 05 Eylül konteynerleri hiç
+        # yayınlanmadı, log'da 6 gün "golden-hour bekleniyor" yazdı. Kararı
+        # artık try_publish_pending() veriyor: konteyner son yayından YENİ mi
+        # (instagram_upload._konteyner_yayindan_yeni), damga eksikse temkinli
+        # davranıp yayınlamıyor. Yani çift yayın koruması KIRILMADI, sadece
+        # doğru katmana taşındı.
+        if _yayin_bekletiliyor(state):
+            # BEKLETME (uyumluluk.BEKLETME_ALANI): aşağıdaki iki dal `uyumluluk`
+            # kapısından GEÇMİYOR — biri mevcut bir Instagram konteynerini
+            # YAYINLIYOR, diğeri TikTok taslağı için "şimdi yayınla" bildirimi
+            # gönderiyor. Bekletilen projede ikisi de atlanır; altyazı senkronu
+            # (yayın değil) devam eder.
+            if ("instagram_creation_id" in state
+                    or (state.get("tiktok_publish_id")
+                        and not state.get("tiktok_notified"))):
+                log(f"  {os.path.basename(os.path.normpath(project_dir))}: yayın "
+                    f"bekletiliyor ({_bekletme_sebebi(state)}) — bekleyen "
+                    f"Instagram yayını / TikTok bildirimi atlandı")
+        else:
+            if "instagram_creation_id" in state:
+                _check_instagram_pending(project_dir)
+            if state.get("tiktok_publish_id") and not state.get("tiktok_notified"):
+                _check_tiktok_notification(project_dir, state)
         if not captions_checked_this_run:
             if _check_youtube_captions(project_dir, state):
                 captions_checked_this_run = True
+
+    # YouTube GÖRÜNÜRLÜK PLANI (2026-09-12). Neden burada: plan zaten yayınlanmış
+    # (`_is_fully_done`'dan geçmiş) projelerde duruyor ve `ready` ile gezen TEK yer
+    # bu fonksiyon. Pencere/soğuma/kota kuralları fonksiyonun içinde. İstisna
+    # buradan TAŞMAZ: drain'in geri kalanı bir planın arızası yüzünden durmamalı.
+    try:
+        _youtube_gorunurluk_planlarini_uygula(project_dirs)
+    except Exception as e:
+        log(f"  YouTube görünürlük planı HATA (beklenmedik): "
+            f"{type(e).__name__}: {str(e)[:200]}")
+
+
+def _tiktok_adimi(project_dir: str, state: dict, upload_dir: str) -> None:
+    """process_project'in TikTok adımı.
+
+    WEB PLANLAMA MODU (config.TIKTOK_AKIS="web_planla", kullanıcı kararı 2026-09-13): yeni
+    projeye API taslağı YÜKLENMEZ — gönderi TikTok Studio web'de "Planla" ile kurulur
+    (upload/tiktok_web.py plan-oner). Mevcut taslaklı projelerin bildirim dalı aynen
+    kalır (web planlıysa bildirim fonksiyonun içinde durur). "api_taslak" eski yol."""
+    if "tiktok_publish_id" in state:
+        _check_tiktok_notification(project_dir, state)
+    elif config.tiktok_web_modu():
+        log("  TikTok: web planlama modu (config.TIKTOK_AKIS) — API taslağı yüklenmedi; "
+            "plan: python upload/tiktok_web.py plan-oner")
+    elif os.path.isfile(os.path.join(upload_dir, "tiktok_token.json")):
+        try:
+            from tiktok_upload import upload_video as tt_upload
+            publish_id = tt_upload(project_dir)
+            log(f"  TikTok: tamam (taslak/inbox), publish_id={publish_id} — TikTok uygulamasından yayınla")
+        except Exception as e:
+            log(f"  TikTok HATA: {e}")
+    else:
+        log("  TikTok atlandı: upload/tiktok_token.json yok (önce tiktok_auth.py çalıştır)")
 
 
 def process_project(project_dir: str, privacy: str, schedule: bool = True) -> None:
@@ -334,6 +1224,73 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     else:
         log(f"=== Zaten render edilmiş, upload kontrolüne geçiliyor: {project_dir} ===")
 
+    # UYUMLULUK KAPISI (bkz. uyumluluk.py). Render'daki kontrolden AYRI:
+    # orada uretim oncesi bakiliyor, burada YAYIN oncesi. Bugun iki politika
+    # riski de olay olduktan sonra kesfedildi (Content ID eslesmesi, "toplu
+    # uretilmis icerik" kurali) - kapinin yayin anina da konmasi bunun icin.
+    #
+    # HATA varsa yukleme HIC baslamiyor. Kapinin KENDISI cokerse de yukleme
+    # baslamiyor: FAIL-CLOSED (2026-09-12). Eski kod `kontrol()`un istisnasini
+    # "gormezden geliniyor" diye loglayip DEVAM ediyordu, yani yukaridaki
+    # garanti yalnizca kontrol() duzgun DONDUGUNDE geceliydi; istisna dalinda
+    # kapi SESSIZCE ACILIYORDU. Bu depoda tam olarak bunun bedeli odendi:
+    # `uyumluluk.KOKLER` goreli yolken yanlis cwd'de `os.path.isdir` False
+    # doner, kontrol() "hata=0 uyari=0" der ve kapi kendiliginden acilir.
+    # "Bilmiyorum" ile "temiz" ayni sey DEGIL. Bu kapiya bagli iki gercek
+    # koruma var - City Pulse Set'in acik telif itirazi (`telif_araliklari`) ve
+    # 'Kullerimden Gec'/'Yeniden Dogacagim' md5 kopyasi - ve ikisinin de yanlis
+    # tarafa dusmesi GERI ALINAMAZ bir yayin demek (Instagram'da yayinlanmis
+    # medyayi API'den silmek MUMKUN DEGIL). Ters yonun maliyeti ise bu projenin
+    # BIR KOSU gecikmesi: saatlik gorev bir sonraki koseda yeniden dener.
+    # Ayni karar bugun depoda dort yerde daha verildi: upload/
+    # ek_platform_backfill.py, upload/facebook_backfill.py, dj_clips.py,
+    # upload/tiktok_publish_plan.py.
+    #
+    # KAPSAM - `return` yalnizca BU PROJEYI atliyor, KOSUYU degil: main()'deki
+    # `for project_dir in batch` dongusu bir sonraki projeyle devam eder ve
+    # finally'deki supurgeler yine calisir. Fail-closed "boru hatti sonsuza
+    # kadar dursun" demek DEGIL, "bu proje bu kosuda yayinlanmasin" demek.
+    #
+    # notify.uyar_bir_kez BILEREK KULLANILMIYOR (supurgelerden farki): o desen
+    # ayni projeye HER KOSUDA ve kosu ICINDE birden cok kez bakan supurgeler
+    # icin var. `process_project()` proje basina kosuda BIR kez calisir, yani
+    # asagidaki satir zaten kosu basina en fazla bir kez dusuyor - ustelik
+    # atlanan proje `pending`de kaldigi icin satirin her kosuda tekrarlanmasi
+    # GURULTU degil, arizanin surdugunun kaniti.
+    try:
+        import uyumluluk
+        _uh, _uu = uyumluluk.kontrol(project_dir, "yukleme")
+    except Exception as e:
+        log(f"  uyumluluk kapisi COKTU ({type(e).__name__}: {e}) — fail-closed, "
+            f"bu proje bu kosuda yayinlanmiyor")
+        return
+    # rapor_yaz KAPI KARARINDAN AYRI sarmalandi: o bir RAPORLAMA adimi, karar
+    # adimi degil - kararin girdisi (_uh) zaten elimizde. Raporun yazilamamasi
+    # temiz cikmis bir yayini durdurmaz; durdurmak korumaya HICBIR SEY eklemez,
+    # yalnizca bir log fonksiyonunun arizasini yayin engeline cevirirdi. Ama
+    # sessiz de kalmiyor: eksik rapor loga ISMIYLE dusuyor.
+    try:
+        uyumluluk.rapor_yaz(project_dir, _uh, _uu, log)
+    except Exception as e:
+        log(f"  uyumluluk raporu yazilamadi ({type(e).__name__}: {e}) — kapi "
+            f"karari BUNDAN ETKILENMIYOR, hata/uyari sayisi: "
+            f"{len(_uh)}/{len(_uu)}")
+    if _uh:
+        log("  uyumluluk hatasi nedeniyle bu proje yayinlanmiyor")
+        return
+
+    # DİKKAT — `state` bundan sonra BİR DAHA TAZELENMİYOR: aşağıdaki tüm
+    # kapılar ("zaten yüklü mü") bu YÜKLEME ÖNCESİ fotoğrafı okuyor. Yani bu
+    # koşuda yazılan hiçbir alan (youtube_video_id, youtube_shorts_video_id,
+    # tiktok_publish_id, instagram_creation_id...) `state` içinde GÖRÜNMEZ —
+    # onları okumak isteyen bir adım state'i DİSKTEN yeniden okumalı.
+    # Bunun bedeli 2026-09-11'de ölçüldü: playlist senkronu bu fotoğrafa
+    # bakan sync_project'i Shorts yüklemesinden ÖNCE çağırıyordu ve 20
+    # Shorts'un hiçbiri hiçbir listeye girmedi (düzeltme: Shorts bloğundan
+    # sonraki ikinci sync_project çağrısı). Diğer adımlar bugün KURTULUYOR
+    # çünkü her birinin state'i diskten okuyan bir süpürgesi var
+    # (_drain_golden_hour_queue, *_backfill, _facebook_yorumlari,
+    # _refresh_stats). YENİ bir adım eklerken önce o süpürgeyi sor.
     state = _load_state(project_dir)
     youtube_video_id = state.get("youtube_video_id")
 
@@ -362,6 +1319,15 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     if youtube_video_id:
         _check_youtube_captions(project_dir, state)
 
+    # YouTube STUDIO PLANLI (2026-09-13, bkz. STUDIO_PLAN_ALANI): uzun format Studio'dan
+    # yüklendi, public anı gelecekte. Buradan sonrası (API Shorts, TikTok, Instagram,
+    # Facebook) izleyiciye GÖRÜNÜR paylaşım — YouTube public olmadan hiçbiri gitmez.
+    # Playlist senkronu ve altyazı yukarıda çalıştı (ikisi de görünmez, idempotent).
+    if _studio_public_oncesi(state):
+        log("  YouTube Studio planlı: public anı henüz gelmedi — Shorts/TikTok/Instagram/"
+            "ek platform adımları public sonrasına bırakıldı")
+        return
+
     # YouTube Shorts: zaten render edilen shorts_9x16.mp4'ü AYRICA (uzun formattan
     # bağımsız) bir YouTube Short olarak yükler — küçük/yeni kanallar için Shorts
     # akışı, uzun format önerilen videolar sisteminden çok daha erişilebilir bir
@@ -371,6 +1337,11 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
         log("  YouTube Shorts: zaten yüklü, atlanıyor")
     elif not youtube_video_id:
         log("  YouTube Shorts atlandı: önce uzun format yüklenmeli")
+    elif not yayin_ritmi.shorts_zamani(_load_state(project_dir))[0]:
+        # RİTİM R3a (2026-09-13): Shorts uzun formatın public anından 24 sa sonra;
+        # yüklemeyi `_shorts_gecikmeli_supurge` yapar (main finally, kalıp B).
+        log("  YouTube Shorts: " + yayin_ritmi.shorts_zamani(_load_state(project_dir))[2]
+            + " — Shorts süpürgesi yükleyecek")
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
             from youtube_upload import upload_short as yt_upload_short
@@ -381,22 +1352,38 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     else:
         log("  YouTube Shorts atlandı: upload/token.json yok (önce youtube_auth.py çalıştır)")
 
-    if "tiktok_publish_id" in state:
-        _check_tiktok_notification(project_dir, state)
-    elif os.path.isfile(os.path.join(upload_dir, "tiktok_token.json")):
+    # NEDEN İKİNCİ KEZ: yukarıdaki çağrı Shorts yüklemesinden ÖNCE çalışıyor,
+    # o an state'te youtube_shorts_video_id YOK — yani Short hiçbir playlist'e
+    # girmiyordu ve proje _is_fully_done'dan geçip pending'den düştüğü için bir
+    # daha hiç denenmiyordu. sync_project idempotent ve üyeliği YouTube'dan
+    # doğruluyor; aynı süreç içindeki ikinci çağrı önbellekten okuduğu için
+    # EK KOTA harcamıyor.
+    if youtube_video_id and os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
-            from tiktok_upload import upload_video as tt_upload
-            publish_id = tt_upload(project_dir)
-            log(f"  TikTok: tamam (taslak/inbox), publish_id={publish_id} — TikTok uygulamasından yayınla")
+            from youtube_playlists import sync_project as yt_sync_playlist, get_authenticated_service as yt_service
+            yt_sync_playlist(yt_service(), project_dir)
         except Exception as e:
-            log(f"  TikTok HATA: {e}")
-    else:
-        log("  TikTok atlandı: upload/tiktok_token.json yok (önce tiktok_auth.py çalıştır)")
+            log(f"  YouTube playlist HATA: {e}")
 
-    if "instagram_media_id" in state:
-        log("  Instagram: zaten yüklü, atlanıyor")
-    elif "instagram_creation_id" in state:
+    _tiktok_adimi(project_dir, state, upload_dir)
+
+    # SIRA ÖNEMLİ — "bekleyen konteyner" kontrolü "zaten yüklü" dalının ÖNÜNE
+    # alındı. Eskiden `instagram_media_id` dalı başta olduğu için, state'te
+    # HEM eski bir media_id HEM de yeni bir creation_id varsa (yeniden paylaşım
+    # senaryosu) elif hiç değerlendirilmiyor ve bekleyen konteyner kalıcı
+    # olarak "zaten yüklü, atlanıyor" satırına takılıyordu. Bekleyen bir
+    # konteyner varsa kararı try_publish_pending() vermeli (o, konteynerin son
+    # yayından yeni olup olmadığına bakıyor); creation_id yoksa eski davranış
+    # aynen geçerli.
+    if "instagram_creation_id" in state:
         _check_instagram_pending(project_dir)
+    elif "instagram_media_id" in state:
+        log("  Instagram: zaten yüklü, atlanıyor")
+    elif not yayin_ritmi.platform_gun_izni(_load_state(project_dir), "instagram")[0]:
+        # RİTİM R3b (2026-09-13, karar 4): şarkı aynı gün en fazla N platformda —
+        # konteyner OLUŞTURMA anında uygulanır (bayatlama riski yok; sonraki koşu dener).
+        log("  Instagram: " + yayin_ritmi.platform_gun_izni(_load_state(project_dir),
+                                                            "instagram")[1] + " — ertelendi")
     elif os.path.isfile(os.path.join(upload_dir, "instagram_token.json")):
         try:
             from instagram_upload import upload_video as ig_upload
@@ -405,6 +1392,81 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
             log(f"  Instagram HATA: {e}")
     else:
         log("  Instagram atlandı: upload/instagram_token.json yok (önce instagram_auth.py çalıştır)")
+
+    _ek_platformlari_isle(project_dir, state, upload_dir, schedule)
+
+
+# (bayrak, ad, state anahtarı, kimlik dosyası, modül, fonksiyon,
+#  zamanlama_destegi, kurulum ipucu)
+# zamanlama_destegi: fonksiyon `schedule` argümanı alıyor mu. Sadece
+# Facebook alıyor (video_state=SCHEDULED). Telegram ve Bluesky'da
+# zamanlanmış yayın kavramı yok — onlara `schedule` geçmek TypeError olurdu,
+# ama daha sinsisi: geçmemek --no-schedule'ı Facebook'ta sessizce yok saymaktı.
+# Bayrak açıkça yazılıyor, modül adından TÜRETİLMİYOR: modül bir gün yeniden
+# adlandırılırsa türetme sessizce yanlış anahtara bakar ve platform hiç
+# çalışmadığı hâlde hata da vermezdi.
+# Sözleşme: fonksiyon project_dir alır, state.json'ı kendi yazar, hata
+# durumunda istisna fırlatır.
+#
+# TELEGRAM VE BLUESKY BİLEREK YOK (2026-09-13). Burada gönderildiklerinde
+# golden-hour, gizlilik ve günlük tavan kapılarının HİÇBİRİ yoktu: pencere
+# dışında işlenen yeni şarkı YouTube'da private + `publishAt` iken linkiyle bu
+# platformlara düşüyordu (Bluesky 12 Eylül'de tavan 1 iken 2 gönderi yaptı).
+# İkisinde de native zamanlama yok; artık YALNIZ `upload/ek_platform_backfill.py`
+# gönderiyor (golden-hour + günlük tavan + politika kapısı + public-anı kapısı,
+# yeni public şarkılar kuyruğun önünde). CLAUDE.md'nin A/B kuralındaki (B):
+# günlük tavanı olan iş süpürgeye. Facebook KALDI: native zamanlaması var
+# (`scheduled_publish_time`, `schedule` argümanı). Koruma:
+# tests/test_ek_platform_ana_hattan_cikis.py.
+_EK_PLATFORMLAR = [
+    ("facebook", "Facebook", "facebook_reels_id", "facebook_token.json",
+     "facebook_upload", "upload_reels", True,
+     "önce facebook_auth.py çalıştır"),
+]
+
+
+def _ek_platformlari_isle(project_dir: str, state: dict, upload_dir: str,
+                          schedule: bool) -> None:
+    """Ana hattaki ek platformlar (bugün yalnız Facebook) — OPT-IN, hatasız-geçer.
+
+    Telegram/Bluesky 2026-09-13'ten beri burada DEĞİL (bkz. `_EK_PLATFORMLAR`
+    üstündeki not) — yalnız geri doldurma süpürgesinde.
+
+    Üç kapı sırayla:
+      1. config.EK_PLATFORMLAR[bayrak] True mu — kapalıysa hiç denenmez, log da
+         basılmaz (her saat 3 satır gürültü üretmesin).
+      2. state'te zaten yüklendi işareti var mı.
+      3. Kimlik dosyası var mı.
+
+    Hiçbir hata otomasyonu durdurmaz: bu platformlar boru hattının ASIL işi
+    (YouTube/TikTok/Instagram) değil, ekidir. Yeni bir platformdaki geçici bir
+    API arızası yüzünden saatlik koşunun geri kalanının düşmesi kabul edilemez —
+    bu yüzden her biri kendi try/except'i içinde ve yalnızca log'a yazıyor.
+    """
+    for (bayrak, ad, durum_anahtari, kimlik_dosyasi, modul_adi, fonksiyon,
+         zamanlama_destegi, ipucu) in _EK_PLATFORMLAR:
+        if not config.EK_PLATFORMLAR.get(bayrak, False):
+            continue
+        if durum_anahtari in state:
+            log(f"  {ad}: zaten yüklü, atlanıyor")
+            continue
+        if not os.path.isfile(os.path.join(upload_dir, kimlik_dosyasi)):
+            log(f"  {ad} atlandı: upload/{kimlik_dosyasi} yok ({ipucu})")
+            continue
+        # RİTİM R3b (2026-09-13): şarkı aynı gün en fazla N platformda; Facebook'un geri
+        # doldurması (facebook_backfill) sonraki günlerde tamamlar.
+        _r_izin, _r_sebep = yayin_ritmi.platform_gun_izni(_load_state(project_dir), bayrak)
+        if not _r_izin:
+            log(f"  {ad}: {_r_sebep} — ertelendi (geri doldurma tamamlar)")
+            continue
+        try:
+            modul = __import__(modul_adi)
+            islev = getattr(modul, fonksiyon)
+            sonuc = (islev(project_dir, schedule=schedule)
+                     if zamanlama_destegi else islev(project_dir))
+            log(f"  {ad}: tamam — {sonuc}")
+        except Exception as e:
+            log(f"  {ad} HATA: {e}")
 
 
 def _refresh_latest_listing() -> None:
@@ -425,6 +1487,507 @@ def _refresh_latest_listing() -> None:
         )
     except Exception as e:
         log(f"  latest.html güncelleme HATA: {e}")
+
+
+# Supurgelerin "bu kosuda gonderi yapmadim" donuslerinin okunabilir
+# karsiligi. Anahtarlar iki modulun `durum` degerleri (facebook_backfill:
+# kapali/beklemede/tavan/bitti/tamam/kuru — ek_platform_backfill:
+# tamam / "golden-hour disinda").
+_BACKFILL_SEBEPLERI = {
+    "kapalı": "config.EK_PLATFORMLAR bayragi kapali",
+    "beklemede": "golden-hour disinda, bu kosuda gonderi yok",
+    "golden-hour disinda": "golden-hour disinda, bu kosuda gonderi yok",
+    "tavan": "gunluk tavan dolu",
+    "bitti": "gidecek aday kalmadi",
+    "tamam": "gonderilecek aday yok",
+    "kuru": "kuru kosu",
+}
+
+
+def _backfill_sebep(s: dict) -> str:
+    """Bir supurgenin bu kosuda NEDEN gonderi yapmadigini tek satira indirger.
+
+    NEDEN VAR — CLAUDE.md'nin UCUNCU sorusu ("calismadigini nasil
+    anlariz?"): iki supurge de golden-hour DISINDA hicbir sey yapmadan
+    donuyor ve loga TEK BIR satir bile dusmuyordu (facebook_backfill'de
+    ayrica "kapali"/"tavan"/"bitti" donusleri de sessizdi). Gunun 24
+    saatinin 18'i golden-hour disi, yani kosularin ucte ikisinden
+    fazlasinda "supurge calisti, isi yoktu" ile "supurge artik main()'in
+    finally blogundan hic cagrilmiyor" logda BIREBIR AYNI goruniyordu —
+    2026-09-12'de tam bu ayrimi yapabilmek icin ayri bir sorusturma gerekti.
+
+    GURULTU DENGESI (supurge saatlik kosuyor): satir kosu basina EN FAZLA
+    BIR tane ve YALNIZCA baska hicbir satir yazilmadiginda basiliyor — is
+    varken islenen/tavan/kalan satirlari zaten yeterli iz. Maliyet gunde
+    ~2 satir; sessizligin maliyeti ise bir sorusturma.
+    """
+    parca = _BACKFILL_SEBEPLERI.get(s.get("durum"), str(s.get("durum")))
+    if s.get("sebep"):
+        parca += f" — {s['sebep']}"
+    eng = s.get("engellenen") or {}
+    n = sum(len(v) for v in eng.values()) if isinstance(eng, dict) else len(eng)
+    if n:
+        parca += f"; {n} aday uyumluluk kapisinda engellendi"
+    return parca
+
+
+def _facebook_backfill() -> None:
+    """Katalogda Facebook'a hic gitmemis parcalari gunlere yayarak yukler.
+
+    Neden ayri bir adim: _is_fully_done() Facebook'u SAYMIYOR (bilerek —
+    saymak, bayrak kapaliyken tum katalogu sonsuza kadar "bekleyen"
+    gosterirdi), dolayisiyla zaten tamamlanmis projeler bir daha hic
+    islenmiyor ve geri doldurma kendiliginden olmuyor.
+
+    Kendi kapilari var (bkz. facebook_backfill.backfill): bayrak kapaliysa,
+    golden-hour disindaysak veya gunluk tavan (2) dolduysa hicbir sey yapmaz.
+    Hicbir hata otomasyonu durdurmaz.
+    """
+    try:
+        from facebook_backfill import backfill
+        # log=log SART — BAGLANTI arizasi (2026-09-12): modulun varsayilani
+        # `_stderr` ve ayni gun eklenen politika kapisinin "UYUMLULUK
+        # HATASI ... ATLANDI" satiri `notify` import edilemedigi anda oraya
+        # dusup KAYBOLUYORDU. _ek_platform_backfill ayni cagrida `log=log`
+        # geciyor; asimetri kazaydi.
+        s = backfill(limit=1, log=log)
+        for x in s.get("islenen") or []:
+            if x.get("hata"):
+                log(f"  Facebook geri doldurma HATA ({x['proje']}): {x['hata']}")
+            else:
+                log(f"  Facebook geri doldurma: {x['proje']} -> {x.get('video_id')} "
+                    f"(kalan {s.get('kalan', '?')})")
+        if not s.get("islenen"):
+            # Gonderi YAPILMAYAN kosu da iz birakmali: "kapali"/"beklemede"/
+            # "tavan"/"bitti" donuslerinin DORDU de tamamen sessizdi
+            # (bkz. _backfill_sebep).
+            log(f"  Facebook geri doldurma: {_backfill_sebep(s)}")
+    except Exception as e:
+        log(f"  Facebook geri doldurma HATA: {e}")
+
+
+def _dj_tarama() -> None:
+    """DJ setlerinin Content ID taramasini kontrol edip yayini acar.
+
+    Neden SAATLIK kosuda: dj_famous_process.py haftada bir calisiyor, ikinci
+    asama bir sonraki haftaya kalirdi. Bkz. dj_tarama_kontrol modul notu.
+    Hicbir hata otomasyonu durdurmaz.
+    """
+    try:
+        import dj_tarama_kontrol
+        # Ozet satirlarini artik kontrol_et()'in KENDISI basiyor (bakilan=0
+        # olsa bile, erken/damgasiz kovalariyla birlikte). Burada tekrar
+        # basmak ayni bilgiyi iki satira bolüyordu; asil onemli olan sey
+        # "hic satir yok" durumunun ORTADAN KALKMASI ve o garanti artik
+        # modulun icinde (bkz. dj_tarama_kontrol._tara aciklamasi).
+        dj_tarama_kontrol.kontrol_et(log)
+    except Exception as e:
+        log(f"  DJ tarama kontrolu HATA: {e}")
+
+
+def _facebook_veri_erisimi() -> None:
+    """Facebook veri erisimi suresi dolmadan once uyarir (log + telefon).
+
+    Token SURESIZ ama Meta'nin ayri 90 gunluk `data access` sayaci var; o
+    dolunca istekler sessizce yetkisiz donmeye basliyor - gonderiler bir gun
+    aniden gitmiyor ve sebebi anlasilmiyor. Bu adim o sessiz arizayi
+    onceden gorunur yapiyor.
+
+    Push bildirimi GUNDE BIR: sayac 14 gun geri sayiyor, saatlik kosuda her
+    seferinde telefon calmasi uyariyi degersizlestirirdi.
+    """
+    try:
+        import notify
+        from facebook_upload import veri_erisimi_durumu
+        s = veri_erisimi_durumu()
+        if not s.get("uyari"):
+            return
+        kalan = s.get("kalan_gun")
+        mesaj = (f"Facebook veri erisimi {kalan} gun sonra doluyor "
+                 "- upload/facebook_auth.py ile yeniden yetkilendir")
+        log(f"  UYARI: {mesaj}")
+
+        bugun = time.strftime("%Y-%m-%d")
+        if s.get("bildirildi_gun") != bugun:
+            try:
+                notify.send("Facebook yetkisi yenilenmeli", mesaj)
+            except Exception:
+                pass
+            s["bildirildi_gun"] = bugun
+            try:
+                from facebook_upload import VERI_ERISIMI_CACHE
+                with open(VERI_ERISIMI_CACHE, "w", encoding="utf-8") as f:
+                    json.dump(s, f, ensure_ascii=False, indent=2)
+            except OSError:
+                pass
+    except Exception as e:
+        log(f"  Facebook veri erisimi kontrolu HATA: {e}")
+
+
+def _ek_platform_backfill() -> None:
+    """Telegram/Bluesky'ya hic gitmemis sarkilari geri doldurur.
+
+    2026-09-13'ten beri Telegram/Bluesky'nin TEK yolu bu: ana hat
+    (`_ek_platformlari_isle`) artik bu iki platformu gondermiyor. Yeni public
+    sarkilar (public ani son 7 gun) aday listesinin ONUNDE.
+
+    NEDEN AYRI SUPURGE: _is_fully_done() bu iki platformu SAYMIYOR, dolayisiyla
+    dort ana platformu tamamlayan proje pending'den kalici olarak dusuyor ve
+    _ek_platformlari_isle() bir daha hic calismiyor. 2026-09-11 taramasi: 18
+    sarkidan Telegram'a 1, Bluesky'a 1 gitmis; 14'u kalici dislanmis ve loga
+    tek satir bile dusmemis. Facebook'un ayni bosluk icin zaten kendi geri
+    doldurmasi vardi (_facebook_backfill), bu onun karsiligi.
+
+    Hicbir hata otomasyonu durdurmaz.
+    """
+    try:
+        from ek_platform_backfill import backfill
+        s = backfill(log=log)
+        # `yazildi`: bu kosuda loga HERHANGI bir satir dustu mu. Dusmediyse
+        # asagida tek satirlik ozet basiliyor (bkz. _backfill_sebep).
+        yazildi = False
+        for x in s.get("islenen", []):
+            if x.get("hata"):
+                log(f"  {x['platform']} geri doldurma HATA ({x['proje']}): {x['hata']}")
+            else:
+                log(f"  {x['platform']} geri doldurma: {x['proje']} -> {x.get('sonuc','')}")
+            yazildi = True
+        # Gunluk tavan devreye girdiginde loga HICBIR iz kalmiyordu: o gun
+        # "kalan" sayisi degismiyor ama sebebi gorunmuyor, yani hat calisiyor mu
+        # yoksa sessizce mi durdu ayirt edilemiyordu. Bu modul tam da o "sessiz
+        # durus" desenini yakalamak icin var (bkz. docstring) — tavani da yaz.
+        for ad, sebep in (s.get("tavan") or {}).items():
+            log(f"  {ad} geri doldurma: gunluk tavan dolu ({sebep})")
+            yazildi = True
+        for ad, kalan in (s.get("kalan") or {}).items():
+            if kalan:
+                log(f"  {ad}: {kalan} sarki hala eksik")
+                yazildi = True
+        # Bu dallarin satirlarini MODULUN KENDISI `log=log` ile yaziyor
+        # (bayrak kapali / kimlik dosyasi yok / boyut sinirini asan aday /
+        # politika kapisinda engellenen proje) — ozeti tekrarlamaya gerek
+        # yok.
+        if any(s.get(k) for k in ("kapali", "kimlik_yok", "atlanan",
+                                  "engellenen")):
+            yazildi = True
+        if not yazildi:
+            # En sik dal: golden-hour DISI. backfill() ilk satirinda bos
+            # islenen/tavan/kalan sozlukleriyle donuyor, yani eski kod bu
+            # kosularda loga tek bayt bile yazmiyordu.
+            log(f"  Ek platform geri doldurma: {_backfill_sebep(s)}")
+    except Exception as e:
+        log(f"  Ek platform geri doldurma HATA: {e}")
+
+
+_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
+
+
+def _shorts_uyumluluk_gecti(proje: str, ad: str) -> bool:
+    """Shorts süpürgesinin politika kapısı — FAIL-CLOSED (process_project ile aynı
+    sözleşme; muhafız: tests/test_uyumluluk_fail_closed.py, except dalı `return` ile biter)."""
+    try:
+        import uyumluluk
+        _uh, _uu = uyumluluk.kontrol(proje, "yukleme")
+    except Exception as e:  # noqa: BLE001
+        log(f"  Shorts süpürgesi: {ad} uyumluluk kapısı ÇÖKTÜ ({type(e).__name__}) "
+            f"— fail-closed, atlandı")
+        return False
+    if _uh:
+        log(f"  Shorts süpürgesi: {ad} uyumluluk HATASI — atlandı: {_uh[0][:120]}")
+        return False
+    return True
+
+
+def _shorts_gecikmeli_supurge() -> None:
+    """YouTube Shorts'u uzun formatın public anından 24 sa SONRA yükler (ritim R3a,
+    ozgunluk_plani.md §2d, karar 4, 2026-09-13). CLAUDE.md kalıp B: kendi zamanlama kapısı
+    olan iş, `_is_fully_done`/`_ana_anahtarlar` DIŞINDA, `main()` finally'den.
+
+    Kapılar sırayla: şalter (config.YAYIN_RITMI_SHORTS_GECIKMELI), uzun format yüklü +
+    Shorts yok + shorts_9x16.mp4 var, DJ Content ID karantinası yok, bekletme yok,
+    `uyumluluk` "yukleme" fail-closed, 24 sa dolmuş, günlük platform tavanı, koşu başına
+    EN FAZLA 1 (kota + toplu desen). Golden-hour zamanlaması `upload_short`ün kendi
+    `publishAt`i. Sonra playlist senkronu (Shorts zinciri). ÜÇ SORU: çağıran main() finally
+    (saatlik); her koşuda tek özet satırı; koruma tests/test_yayin_ritmi_baglanti.py."""
+    if not yayin_ritmi.shorts_gecikmeli_mi():
+        log("  Shorts süpürgesi: kapalı (config.YAYIN_RITMI_SHORTS_GECIKMELI)")
+        return
+    if not os.path.isfile(os.path.join(_UPLOAD_DIR, "token.json")):
+        log("  Shorts süpürgesi: upload/token.json yok, atlandı")
+        return
+    bekleyen, yuklenen = 0, None
+    try:
+        import uyumluluk
+        for proje in uyumluluk.proje_klasorleri():
+            try:
+                st = _load_state(proje)
+            except (OSError, ValueError):
+                continue
+            if (not st.get("youtube_video_id") or st.get("youtube_shorts_video_id")
+                    or st.get("dj_tarama_bekliyor") or st.get("dj_tarama_engelli")
+                    or _yayin_bekletiliyor(st)
+                    or not os.path.isfile(os.path.join(proje, "output", "shorts_9x16.mp4"))):
+                continue
+            hazir, _kalan, sebep = yayin_ritmi.shorts_zamani(st)
+            if not hazir:
+                bekleyen += 1
+                continue
+            ad = os.path.basename(os.path.normpath(proje))
+            izin, sebep = yayin_ritmi.platform_gun_izni(st, "youtube_shorts")
+            if not izin:
+                log(f"  Shorts süpürgesi: {ad} — {sebep}")
+                bekleyen += 1
+                continue
+            if not _shorts_uyumluluk_gecti(proje, ad):
+                continue
+            if yuklenen is not None:
+                bekleyen += 1
+                continue
+            try:
+                from youtube_upload import upload_short as yt_upload_short
+                sid = yt_upload_short(proje, st.get("youtube_privacy") or "public",
+                                      st["youtube_video_id"], schedule=True)
+                yuklenen = ad
+                log(f"  YouTube Shorts (24 sa gecikmeli): {ad} tamam, "
+                    f"https://youtube.com/shorts/{sid}")
+            except Exception as e:  # noqa: BLE001
+                log(f"  YouTube Shorts (24 sa gecikmeli) HATA ({ad}): {e}")
+                continue
+            try:
+                from youtube_playlists import sync_project as yt_sync_playlist, \
+                    get_authenticated_service as yt_service
+                yt_sync_playlist(yt_service(), proje)
+            except Exception as e:  # noqa: BLE001
+                log(f"  YouTube playlist HATA: {e}")
+    except Exception as e:  # noqa: BLE001
+        log(f"  Shorts süpürgesi HATA: {type(e).__name__}: {str(e)[:200]}")
+        return
+    log(f"  Shorts süpürgesi: yüklenen {yuklenen or 'yok'}, bekleyen {bekleyen}")
+
+
+def _saglik_kontrol() -> None:
+    """Sessizce duran hatlari yakalar (bkz. saglik_kontrol.py).
+
+    Depoda bu is icin yazilmis IKI koruma vardi ve ikisi de hic calismiyordu:
+    netlify_kontrol.py (hicbir yerden cagrilmiyordu) ve weekly_report'taki
+    Instagram token suresi kontrolu (weekly_report zamanlayiciya bagli degil).
+    netlify_kontrol'un kendi docstring'i, yakalamak icin yazildigi arizanin
+    2026-09-08'de olup 25+ kosu boyunca fark edilmedigini yaziyor.
+
+    Bildirimler gunde bir. Hicbir hata otomasyonu durdurmaz.
+    """
+    try:
+        import saglik_kontrol
+        saglik_kontrol.kontrol_et(log)
+    except Exception as e:
+        log(f"  Saglik kontrolu HATA: {e}")
+
+
+def _izlenme_raporu() -> None:
+    """Haftalik izlenme SURESI (watch-time) raporu — saatlik kosudan.
+
+    upload/youtube_analytics.py dogru yazildi ama tek cagirani weekly_report.py'ydi
+    ve o dosya hicbir Gorev Zamanlayici gorevine bagli degil (bkz. saglik_kontrol
+    docstring'i, madde 2) — yani olcum pratikte HIC calismiyordu. saglik_kontrol
+    ile ayni desen, tek farkla: damga gunluk degil HAFTALIK (izlenme raporu
+    haftalik bir sey). Damga kontrolu fonksiyonun icinde: bu cagri haftanin
+    geri kalaninda hicbir sey yapmaz, API'ye dokunmaz. Analytics izni hic
+    alinmamissa haftada bir gurultusuz hatirlatma birakir.
+    """
+    try:
+        from weekly_report import izlenme_raporu
+        izlenme_raporu(log)
+    except Exception as e:
+        log(f"  İzlenme raporu HATA: {e}")
+
+
+def _haftalik_gozden_gecirme() -> None:
+    """Haftalik "ne oldu / ne bekliyor / ne yapmaliyim" ozeti — saatlik kosudan.
+
+    YENI bir Gorev Zamanlayici gorevi EKLENMEDI (CLAUDE.md bunu yasakliyor):
+    bu kanca da _izlenme_raporu gibi saatlik hatta bagli ve damga kontrolu
+    fonksiyonun ICINDE — haftanin geri kalaninda hicbir sey yapmaz, diske ve
+    aga dokunmaz. Calisma penceresi pazartesi 09:00 sonrasi, golden-hour
+    disi; gerekcenin tamami weekly_report.RAPOR_GUNU'nun yanindaki notta.
+
+    Rapor uretilemezse SESSIZ KALMAZ: weekly_report ayri bir "uretilemedi"
+    bildirimi gonderir ve hafta damgasini ATMAZ.
+    """
+    try:
+        from weekly_report import haftalik_gozden_gecirme
+        haftalik_gozden_gecirme(log)
+    except Exception as e:
+        log(f"  Haftalık özet HATA: {e}")
+
+
+def _gunluk_izlenme() -> None:
+    """Gunluk "tum sarkilar adlariyla" izlenme mesaji — saatlik kosudan.
+
+    YENI bir Gorev Zamanlayici gorevi EKLENMEDI (CLAUDE.md). Pencere ve damga
+    kontrolu fonksiyonun ICINDE (gunde bir, 09:00 sonrasi, yalniz yeni ve taze
+    olcumle); gunun geri kalaninda yalniz birkac yerel dosya okur, aga
+    dokunmaz. `_refresh_stats(None)`dan SONRA cagrilmali — once cagrilirsa
+    bayat olcumu raporlar (tests/test_gunluk_izlenme.py sirayi `ast` ile
+    kilitliyor). Hicbir hata otomasyonu durdurmaz.
+    """
+    try:
+        from weekly_report import gunluk_izlenme_raporu
+        gunluk_izlenme_raporu(log)
+    except Exception as e:
+        log(f"  Günlük izlenme HATA: {e}")
+
+
+def _tiktok_yayin_dogrulama() -> None:
+    """TikTok taslaklari yayinlandi mi? — API'den SALT OKUNUR, gunde bir.
+
+    Kullanici taslagi uygulamadan ELLE yayinliyor; Telegram onayini unutursa
+    depo bunu hic bilmiyordu (bkz. upload/tiktok_yayin_dogrulama.py). YENI bir
+    Gorev Zamanlayici gorevi EKLENMEDI ve `_is_fully_done()`a EKLENMEDI
+    (CLAUDE.md, secenek B): kendi hiz siniri ve kosu tavani olan bir supurge.
+    Gun damgasi fonksiyonun ICINDE (upload/saglik_durum.json); gunun geri
+    kalaninda aga dokunmaz. Hicbir hata otomasyonu durdurmaz.
+    """
+    try:
+        from tiktok_yayin_dogrulama import gunluk_dogrulama
+        gunluk_dogrulama(log)
+    except Exception as e:
+        log(f"  TikTok yayın doğrulama HATA: {maskele(str(e))}")
+
+
+def _tiktok_kit_sirasi() -> None:
+    """TikTok YAYIN KITI sirasi (upload/tiktok_yayin_kiti.py) — her kosuda.
+
+    Taslagi telefondan eksiksiz yayinlamak icin kapak/aciklama/ayarlar/ilk
+    yorum/onay satiri Telegram'dan AYRI mesajlar olarak gider. Golden-hour,
+    tempo (config.TIKTOK_KIT_*), durum on sarti ve "onceki kit onaylanmadan
+    yenisi yok" kapilari modulun ICINDE. `_tiktok_yayin_dogrulama()` SONRASINDA
+    cagriliyor: ayni kosuda yayinda bulunup isaretlenen taslaga kit gitmesin.
+    Secenek B (CLAUDE.md): kendi tempo tavani olan supurge; `_is_fully_done()`a
+    EKLENMEDI, yeni Gorev Zamanlayici gorevi yok. Hicbir hata otomasyonu
+    durdurmaz.
+    """
+    if not getattr(config, "TIKTOK_KIT_AKTIF", False):
+        log("  TikTok yayın kiti: kapalı (config.TIKTOK_KIT_AKTIF=False)")
+        return
+    try:
+        from tiktok_yayin_kiti import kit_gonder_sirasi
+        kit_gonder_sirasi(log)
+    except Exception as e:
+        log(f"  TikTok yayın kiti HATA: {maskele(str(e))}")
+
+
+def _turev_takvimi() -> None:
+    """TÜREV TAKVİMİ (turev_takvimi.py, Aşama 1: salt plan + görünürlük, YAYIN YOK).
+
+    T0'ı son 72 saatte olan projelere `turev_plani` yazar, bayrakla açılan elle
+    türev hatırlatmasını dener (config.TUREV_HATIRLATMA_AKTIF, varsayılan False)
+    ve her koşuda TEK "Türev takvimi:" satırı bırakır. `_tiktok_kit_sirasi()`
+    SONRASINDA: ilk yayın ve kit işleri önce. Seçenek B (CLAUDE.md): kendi
+    tavanları olan süpürge; `_is_fully_done()`a EKLENMEDİ, yeni görev yok.
+    Import dahil hiçbir hata otomasyonu durdurmaz.
+    """
+    try:
+        import turev_takvimi
+        turev_takvimi.sirasi(log)
+    except Exception as e:
+        log(f"  Türev takvimi HATA: {maskele(str(e))}")
+
+
+def _tiktok_web_sirasi() -> None:
+    """TikTok WEB PLANLAMA görünürlüğü (upload/tiktok_web.py) — her koşuda.
+
+    Tek "  TikTok web:" satırı; planlanan anı geçmiş, onaylanmamış gönderi için
+    golden-hour'da günde en fazla 1 "TikTok'ta çıktı mı?" (config.TIKTOK_WEB_KONTROL_HATIRLATMA).
+    Planlanan an geçti diye `yayinlandi` YAZMAZ. Kalıp B; `_is_fully_done`'a EKLENMEDİ,
+    yeni görev yok; `_turev_takvimi()` SONRASINDA. Hiçbir hata otomasyonu durdurmaz."""
+    try:
+        from tiktok_web import kontrol_hatirlatma
+        kontrol_hatirlatma(log)
+    except Exception as e:
+        log(f"  TikTok web HATA: {maskele(str(e))}")
+
+
+def _youtube_studio_sirasi() -> None:
+    """YouTube STUDIO PLANLI yükleme görünürlüğü (upload/youtube_studio.py) — her koşuda.
+
+    Tempo tabanı yüzünden bekleyen, Studio'dan planlanmaya uygun proje varsa günde en fazla
+    1 Telegram satırı (config.YOUTUBE_STUDIO_PLAN_BILDIRIM). Tarayıcı AÇMAZ (YouTube ToS);
+    işi kullanıcı başlatınca Claude yapar. Kalıp B; `_is_fully_done`'a EKLENMEDİ; yeni görev
+    yok; `_tiktok_web_sirasi()` SONRASINDA. Hiçbir hata otomasyonu durdurmaz."""
+    try:
+        from youtube_studio import plan_bildirimi
+        plan_bildirimi(log)
+    except Exception as e:
+        log(f"  YouTube Studio planı HATA: {maskele(str(e))}")
+
+
+def _facebook_yorumlari() -> None:
+    """Canliya cikmis zamanlanmis Facebook gonderilerine YouTube yorumunu ekler.
+
+    Bu adim bugune kadar HIC calismiyordu: facebook_upload.post_pending_comment()
+    yazilmisti ama depoda onu cagiran tek bir satir yoktu. Etkisi yalnizca
+    ZAMANLANMIS gonderilerde gorunuyor - golden-hour icinde yuklenen gonderiler
+    hemen yayinlandigi icin yorumu _finalize zaten o anda ekliyor. Katalogta
+    zamanlanmis gonderi olusmadigi surece kimse fark etmedi.
+    """
+    try:
+        from facebook_upload import bekleyen_yorumlari_tamamla
+        s = bekleyen_yorumlari_tamamla()
+        if s.get("tamamlanan"):
+            log(f"  Facebook yorumu: {s['tamamlanan']} gönderiye eklendi "
+                f"(kalan {s.get('kalan', '?')})")
+        for h in s.get("hatalar", []):
+            log(f"  Facebook yorumu HATA: {h}")
+    except Exception as e:
+        log(f"  Facebook yorumu HATA: {e}")
+
+
+def _refresh_comments() -> None:
+    """Yanit bekleyen YouTube yorumlarini onbellege yazar (saatte bir).
+
+    Depoda bugune kadar yorum OKUYAN kod YOKTU — 11 gercek yorum (4-8 Eylul,
+    5 ayri kisiden) hic gorulmemisti. Bu fonksiyon SADECE okur ve
+    `comments_cache.json`'a yazar; YANIT bu hattan GONDERILMIYOR.
+    Yanit gonderme yolu: `upload/yorum_gonder.py --gonder` (elle calistirilir).
+    ONCEKI HALI YALANDI: "panodan tek tek onaylaniyor" diyordu, oysa boyle
+    bir pano depoda YOK — ayni uydurma iddia youtube_comments.py:17'de de
+    vardi ve 2026-09-12'de duzeltildi, bu ikizi o turda atlanmisti.
+
+    Kota: allThreadsRelatedToChannelId ile tum kanal yorumlari tek istekte
+    geliyor — sayfa basina 1 birim. Tazeleme araligi modulun icinde.
+    """
+    try:
+        from youtube_comments import fetch_comments
+        veri = fetch_comments()
+        if veri.get("istek"):
+            log(f"  Yorumlar: {len(veri.get('bekleyen', []))} yanıt bekliyor "
+                f"({veri['istek']} istek)")
+    except Exception as e:
+        log(f"  Yorum güncelleme HATA: {e}")
+
+
+def _refresh_stats(base: str) -> None:
+    """Katalogun YouTube istatistiklerini gunde bir tazeler.
+
+    Neden burada: `youtube_stats.py` depoda vardi ama HIC cagrilmiyordu —
+    18 projenin hicbirinin state.json'inda `youtube_views` yoktu. Depo ne
+    yayinladigini biliyordu, nasil gittigini bilmiyordu.
+
+    Maliyet ihmal edilebilir: 18 uzun + 18 Shorts = 36 id, videos.list tek
+    istekte 50 id aliyor, yani 1 istek = **1 kota birimi** (gunluk 10.000'in
+    on binde biri). Tazeleme araligi kontrolu get_stats_batch icinde: saatlik
+    kosuda gun icinde ikinci kez cagrildiginda hic istek atmaz.
+
+    Hicbir hata otomasyonu durdurmaz — olcum, yayin isinin eki.
+    """
+    try:
+        from youtube_stats import get_stats_batch
+        sonuc = get_stats_batch(base)
+        if sonuc.get("istek"):
+            log(f"  İstatistik: {sonuc['video']} video, {sonuc['proje']} proje "
+                f"({sonuc['istek']} istek)")
+    except Exception as e:
+        log(f"  İstatistik güncelleme HATA: {e}")
 
 
 def main():
@@ -483,20 +2046,72 @@ def main():
         # görünebilir; `ready` kullanmak bu projeyi de kapsar (drain zaten
         # ucuz/idempotent — bekleyeni yoksa hiçbir şey yapmaz).
         pending = [p for p in ready if not _is_fully_done(p)]
+        # BEKLETİLEN projeler sıra DIŞI (uyumluluk.BEKLETME_ALANI). Ayrılmasalardı
+        # `batch = pending[:count]` her koşuda aynı projeyi seçer, process_project
+        # uyumluluk kapısında `return` eder ve arkadaki proje KALICI tıkanırdı.
+        # `_auto_pace_count`'tan ÖNCE: kademeleme de bekletilenleri saymamalı.
+        pending, bekletilen = _bekletilenleri_ayir(pending)
+        for p in bekletilen:
+            log(f"Yayın bekletiliyor, sıraya alınmadı: "
+                f"{os.path.basename(os.path.normpath(p))} "
+                f"({_bekletme_sebebi(_load_state(p))})")
         if not pending:
             _drain_golden_hour_queue(ready)
             log("Tüm hazır projeler zaten 3 platforma da yüklenmiş, yapılacak bir şey yok.")
             return
 
-        count = args.count if args.count is not None else _auto_pace_count(pending, ready)
+        # YALNIZ Instagram golden-hour yayınını bekleyenler de sıra DIŞI
+        # (2026-09-13). Onlar için `process_project` hiçbir şey yapamaz; yayını
+        # aşağıdaki `_drain_golden_hour_queue` (`ready` ile) yapıyor. Ayrılmasalardı
+        # kuyruk başında her koşu boşuna seçilip arkadaki YENİ şarkıyı tıkıyorlardı
+        # (Son Kez 28, Sessiz Mektup 34, Yeraltı 11 koşu). Günlük pencere paydası
+        # DEĞİŞMEDİ: TÜM pending sayısı (`pencere_paydasi`).
+        pencere_paydasi = len(pending)
+        secilebilir, yalniz_drain = _yalniz_drain_bekleyenleri_ayir(pending)
+        if yalniz_drain:
+            log(f"Yalnız Instagram golden-hour yayını bekliyor, sıraya alınmadı "
+                f"(drain yayınlayacak): "
+                f"{', '.join(os.path.basename(os.path.normpath(p)) for p in yalniz_drain)}")
+        # YouTube Studio'dan planlanmış, public anı gelmemiş projeler de sıra DIŞI
+        # (2026-09-13, bkz. STUDIO_PLAN_ALANI ve _studio_planli_bekleyenleri_ayir).
+        secilebilir, studio_bekleyen = _studio_planli_bekleyenleri_ayir(secilebilir)
+        if studio_bekleyen:
+            log(f"YouTube Studio'dan planlı, public anı bekleniyor, sıraya alınmadı: "
+                f"{', '.join(os.path.basename(os.path.normpath(p)) for p in studio_bekleyen)}")
+        if not secilebilir:
+            _drain_golden_hour_queue(ready)
+            log("İşlenecek proje yok bu koşuda (yalnız golden-hour bekleyenler var), "
+                "sadece golden-hour kontrolü yapıldı.")
+            return
+
+        # _auto_pace_count'un 1. argümanı ile aşağıdaki `batch = secilebilir[:count]`
+        # AYNI liste, 3. parametresi (varsayılan 1) de o dilimle AYNI olmak
+        # ZORUNDA: 52 saatlik yeni-yayın tabanının muafiyeti o dilimin TAMAMINA
+        # bakarak veriliyor (bkz. o fonksiyondaki "AYIRT ETME" notu). Burada bir
+        # gün 1'den büyük bir kademe istenirse, aynı sayı oraya da geçilmeli.
+        # Sözleşme ast ile kilitli: tests/test_kuyruk_basi_drain.py.
+        count = (args.count if args.count is not None
+                 else _auto_pace_count(secilebilir, ready,
+                                       pencere_paydasi=pencere_paydasi))
         if count == 0:
             # Bu koşuda yeni bir proje işlenmeyecek olsa bile, ZATEN başlatılmış
             # (Instagram konteyneri / TikTok yüklemesi) ama golden-hour'u bekleyen
             # aksiyonlar olabilir — onları yine de kontrol et.
             _drain_golden_hour_queue(ready)
+            # "İşlenecek proje yok" — durum panelinin _RUN_START_RE'si bu ifadeyi
+            # bir koşunun BAŞLANGICI olarak tanıyor. (Panel 2026-09'da
+            # Desktop/jarvis-panel'den Hermes eklentisine taşındı:
+            # %LOCALAPPDATA%/hermes/plugins/jarvis-hud/dashboard/plugin_api.py
+            # — aynı kalıbı orası da kullanıyor.) Bu satır
+            # olmadan bu erken-dönüş yolu hiçbir "koşu başlangıcı" işareti
+            # bırakmıyordu, bu yüzden panel widget'ı BİR ÖNCEKİ koşunun (artık
+            # çözülmüş) hatalarını süresiz göstermeye devam ediyordu — gerçek
+            # bir örnekte (2026-09-08) çözülen bir "Temiz Sözler eksik" hatası
+            # kullanıcıya hâlâ mevcutmuş gibi sesli/yazılı aktarılmıştı.
+            log("İşlenecek proje yok bu koşuda (count=0), sadece golden-hour kontrolü yapıldı.")
             return
 
-        batch = pending[:count]
+        batch = secilebilir[:count]
         log(f"{len(pending)} bekleyen proje var, bu koşuda işlenecek ({len(batch)}): "
             f"{', '.join(os.path.basename(p) for p in batch)}")
         for project_dir in batch:
@@ -506,7 +2121,43 @@ def main():
         log("Çalıştırma tamamlandı.")
     finally:
         _refresh_latest_listing()
+        # base=None => youtube_stats.KOKLER (projects + dj_sets + derlemeler).
+        # Onceden args.base ("projects") geciyordu ve cok-kok duzeltmesi olu
+        # dalda kaliyordu: dj_sets'teki iki set bir kez elle olculmus, delta
+        # hic hesaplanmamisti.
+        _refresh_stats(None)
+        _refresh_comments()
+        _facebook_backfill()
+        _ek_platform_backfill()
+        _shorts_gecikmeli_supurge()
+        _facebook_yorumlari()
+        _facebook_veri_erisimi()
+        _dj_tarama()
+        _saglik_kontrol()
+        _izlenme_raporu()
+        _haftalik_gozden_gecirme()
+        _gunluk_izlenme()
+        _tiktok_yayin_dogrulama()
+        _tiktok_kit_sirasi()
+        _turev_takvimi()
+        _tiktok_web_sirasi()
+        _youtube_studio_sirasi()
         _release_lock()
+        # YouTube kota — TEK satır + kapak telafisi + Studio Telegram bildirimi.
+        # finally'nin EN SONUNDA ve KENDİ try'ında: defter/hesap hatası koşuyu ASLA
+        # düşürmez (kosu_sonu ayrıca kendi içinde hiçbir istisna fırlatmaz). Kilit
+        # bırakıldıktan sonra log() güvenli: nabız bayrağı _release_lock()'ta zaten düştü.
+        # Kapak telafisi kota yetersizliğinde kendini bekleyenler listesine geri koyar;
+        # Studio bildirimi kapanan işleri telefona taşır (kotaya düşen adımların
+        # "günlerce sessizce durma"sını kapatır). Defter ve gerekçe: upload/youtube_kota.py.
+        try:
+            from youtube_kota import kosu_sonu as _youtube_kota_sonu
+            _youtube_kota_sonu(log=log)
+        except Exception as e:  # noqa: BLE001
+            try:
+                log(f"  YouTube kota kosu sonu adımı yazılamadı: {e}")
+            except Exception:  # noqa: BLE001
+                pass
 
 
 if __name__ == "__main__":

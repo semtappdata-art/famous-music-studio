@@ -1,1 +1,13 @@
-{"title": "Sofraya Gelmedin", "theme": "arabesk"}
+{
+  "title": "Sofraya Gelmedin",
+  "theme": "arabesk",
+  "custom_hooks": [
+    "Masada iki tabak, biri hep boş 🍽️",
+    "Kapıyı çalsan yeter, açarım 🚪",
+    "Baba-oğul, arada yıllar 💔"
+  ],
+  "custom_questions": [
+    "Sen kime 'kapıyı çalsan yeter' derdin? 💬",
+    "Sofranda kimin yeri boş? 👇"
+  ]
+}

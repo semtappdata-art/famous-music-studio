@@ -2,8 +2,7 @@
   "youtube_video_id": "yUA9LXMlD9k",
   "youtube_uploaded_at": "2026-09-03T17:15:15",
   "youtube_privacy": "public",
-  "youtube_playlist_id": "PLKsOiTu3OtV8",
-  "youtube_shorts_video_id": "WYzP3kb4Tow",
+  "youtube_shorts_video_id": "zAW3m7n68cs",
   "youtube_shorts_uploaded_at": "2026-09-03T17:15:20",
   "youtube_shorts_privacy": "public",
   "tiktok_publish_id": "v_inbox_file~v2.7681992127890343954",
@@ -14,6 +13,134 @@
   "instagram_media_id": "17890753710432077",
   "instagram_uploaded_at": "2026-09-05T13:17:19",
   "tiktok_cover_hint": "projects\\Bir Bahar Daha\\cover_vertical.png",
-  "instagram_creation_id": "18092913020265431",
-  "instagram_container_created_at": "2026-09-05T13:16:57"
+  "youtube_playlist_id": "PLKsOiTu3OtV8",
+  "youtube_captions_done": true,
+  "youtube_captions_synced_at": "2026-09-08T13:12:16",
+  "youtube_views": 42,
+  "youtube_likes": 2,
+  "youtube_comments": 2,
+  "youtube_stats_checked_at": "2026-09-17T12:33:40",
+  "youtube_shorts_views": 91,
+  "youtube_shorts_likes": 4,
+  "youtube_shorts_comments": 0,
+  "youtube_stats_prev_at": "2026-09-16T04:05:12",
+  "youtube_views_prev": 42,
+  "youtube_likes_prev": 2,
+  "youtube_comments_prev": 2,
+  "youtube_shorts_views_prev": 91,
+  "youtube_shorts_likes_prev": 4,
+  "youtube_shorts_comments_prev": 0,
+  "youtube_thumbnail_updated_at": "2026-09-11T15:20:00",
+  "youtube_thumbnail_kapak_surumu": "v2_buyuk_baslik",
+  "tiktok_notified": true,
+  "youtube_playlists": [
+    "PLKsOiTu3OtV8",
+    "PLKFBTOXunWQ0",
+    "PLIfBoPfEuEWQ"
+  ],
+  "youtube_shorts_playlist_id": "PLIfBoPfEuEWQ",
+  "tiktok_publish_status": "SEND_TO_USER_INBOX",
+  "tiktok_status_checked_at": "2026-09-13T02:23:10",
+  "turev_plani": [
+    {
+      "id": "TRV-bir-bahar-daha-tiktok_ikinci_kesit",
+      "tur": "tiktok_ikinci_kesit",
+      "tur_adi": "TikTok ikinci kesit",
+      "platform": "tiktok",
+      "yuzey": true,
+      "elle": true,
+      "youtube_video": false,
+      "t0": "2026-09-03T17:15:15+03:00",
+      "hedef_an": "2026-09-14T18:00:00+03:00",
+      "en_erken": "2026-09-14T18:00:00+03:00",
+      "en_gec": "2026-09-24T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [
+        "output/turev_kesit_9x16.mp4"
+      ],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti",
+        "d7_karar=ac"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi",
+        "d7_karar=iptal"
+      ],
+      "kosul": "d7_karar=ac",
+      "risk": "orta",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:38+03:00",
+      "guncellendi_at": "2026-09-13T04:29:38+03:00"
+    },
+    {
+      "id": "TRV-bir-bahar-daha-derleme_adayligi",
+      "tur": "derleme_adayligi",
+      "tur_adi": "Derleme adaylığı notu",
+      "platform": "rapor",
+      "yuzey": false,
+      "elle": false,
+      "youtube_video": false,
+      "t0": "2026-09-03T17:15:15+03:00",
+      "hedef_an": "2026-09-21T12:00:00+03:00",
+      "en_erken": "2026-09-21T12:00:00+03:00",
+      "en_gec": "2026-09-24T22:00:00+03:00",
+      "durum": "planlandi",
+      "dosyalar": [],
+      "bagimliliklar": [
+        "youtube_public",
+        "!yayin_beklet",
+        "!kopya_notu",
+        "!telif_isareti"
+      ],
+      "iptal_kosulu": [
+        "kopya_notu",
+        "telif_isareti",
+        "en_gec_asildi"
+      ],
+      "kosul": null,
+      "risk": "dusuk",
+      "tempo_sayilir": false,
+      "yayin": null,
+      "iptal_sebebi": null,
+      "hatirlatildi_at": null,
+      "olusturuldu_at": "2026-09-13T04:29:38+03:00",
+      "guncellendi_at": "2026-09-13T04:29:38+03:00"
+    }
+  ],
+  "turev_plani_surumu": 1,
+  "tiktok_web": {
+    "durum": "planlandi",
+    "planlanan_an": "2026-09-15T18:00:00+03:00",
+    "yuklendi_at": "2026-09-13T08:42:03+03:00",
+    "studio_id": null,
+    "aciklama_sha1": "491bd7d991a5aadbb2eb0f2855ad4cd984126722",
+    "kaynak": "claude",
+    "surum": 1
+  },
+  "youtube_privacy_gercek": "public",
+  "youtube_privacy_gercek_at": "2026-09-17T12:33:40",
+  "youtube_shorts_privacy_gercek": "public",
+  "facebook_reels_id": "1116262187600597",
+  "facebook_uploaded_at": "2026-09-15T12:08:33",
+  "tiktok_published_at": "2026-09-16T12:15:57",
+  "yukleme_belirsiz": {
+    "telegram_message_id": {
+      "platform": "Telegram",
+      "ne": "Telegram sendVideo",
+      "istisna": "ConnectionError",
+      "zaman": "2026-09-16T14:11:54",
+      "not": "Gövde gönderildikten sonra bağlantı koptu. Gönderi PLATFORMDA OLABİLİR. Yeniden yükleme BİLEREK engellendi (kopya riski). Elle kontrol et; sonra upload/ag_yeniden_deneme.py --temizle ile bu işareti kaldır."
+    }
+  },
+  "bluesky_post_uri": "at://did:plc:nrovntwqdz5sbbcy7zp3qodk/app.bsky.feed.post/3mvpfr632qw2t",
+  "bluesky_post_cid": "bafyreicb3lqnbz7qi2bwpocbju7rodeznrjnlm5vylioflybrx5oaquvq4",
+  "bluesky_uploaded_at": "2026-09-17T13:06:00"
 }

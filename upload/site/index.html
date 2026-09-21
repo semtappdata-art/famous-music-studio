@@ -1,82 +1,499 @@
-<title>Famous Music Studio</title>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Famous Music Studio — Tüm şarkılar tek sayfada</title>
+<meta name="description" content="Famous Music Studio'nun tüm yayındaki şarkıları, DJ setleri ve derlemeleri — tek sayfada. Instagram ve TikTok'taki linkler tıklanamaz, bu yüzden tek gerçek 'bio link' burası.">
+<meta name="theme-color" content="#0a0806">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap');
-
   :root {
-    --bg: #0b0d12;
-    --text: #e8eaf0;
-    --text-muted: #8b92a6;
-    --accent: #33d6e8;
-    --accent-2: #e8399c;
-  }
-
-  :root[data-theme="light"] {
-    --bg: #faf9f7;
-    --text: #191a1e;
-    --text-muted: #5c6270;
-    --accent: #0f9fae;
-    --accent-2: #b91c78;
-  }
-
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg: #faf9f7;
-      --text: #191a1e;
-      --text-muted: #5c6270;
-      --accent: #0f9fae;
-      --accent-2: #b91c78;
-    }
+    --bg: #0a0806;
+    --bg-alt: #131009;
+    --text: #ece6da;
+    --text-dim: #a89b84;
+    --gold: #c9a15a;
+    --gold-bright: #e6c17e;
+    --border: rgba(201, 161, 90, 0.25);
+    --kart: rgba(255, 255, 255, 0.035);
   }
 
   * { box-sizing: border-box; }
 
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Manrope', system-ui, sans-serif;
     margin: 0;
-    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: var(--bg);
+    background-image: radial-gradient(ellipse at 50% 0%, var(--bg-alt) 0%, var(--bg) 65%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    padding: 4vh 1rem calc(4vh + env(safe-area-inset-bottom, 0px));
+  }
+
+  main { max-width: 64rem; width: 100%; margin: 0 auto; }
+
+  /* Marka bloğu: logo + ad + slogan */
+  .kimlik { text-align: center; margin-bottom: 0.8rem; }
+  .logo-wrap {
+    position: relative;
+    width: clamp(72px, 16vw, 96px);
+    margin: 0 auto 0.85rem;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow:
+      0 0 22px 5px rgba(230, 193, 126, 0.4),
+      0 0 60px 12px rgba(201, 161, 90, 0.25);
+  }
+  .logo { display: block; width: 100%; height: auto; filter: brightness(1.15) saturate(1.3) contrast(1.1); }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    font-size: clamp(1.45rem, 4.5vw, 1.8rem);
+    margin: 0 0 0.2rem;
+    color: var(--gold-bright);
+  }
+  .alt { margin: 0 0 0.2rem; text-align: center; font-size: 0.84rem; color: var(--text-dim); }
+
+  /* HERO açıklaması */
+  .hero {
+    margin: 1.3rem auto 0.3rem;
+    max-width: 34rem;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  /* Bölüm başlığı */
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 1.9rem 0 0.8rem;
+  }
+  h2::before, h2::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border) 30%, var(--border) 70%, transparent);
+  }
+  .takip h2 { text-align: center; }
+  .takip h2::before, .takip h2::after { display: none; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+
+  /* Arayüz/bölüm filtresi */
+  .arama { margin: 0 0 1.4rem; }
+  .arama label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  #fms-ara {
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  #fms-ara::placeholder { color: rgba(168, 155, 132, 0.6); }
+  #fms-ara:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-color: var(--gold); }
+  .filtre-cubugu { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem; }
+  .filtre {
+    border: 1px solid var(--border);
+    background: var(--kart);
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    min-height: 38px;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
+  .filtre.aktif { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.10); }
+  .filtre:active { border-color: var(--gold); color: var(--gold-bright); }
+  @media (hover: hover) { .filtre:hover { border-color: var(--gold); color: var(--gold-bright); } }
+  .filtre:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .arama-bos { margin-top: 1.1rem; text-align: center; color: var(--text-dim); }
+  li[hidden] { display: none; }
+
+  /* DJ setleri + derlemeler yan yana */
+  .ikili {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-items: start;
+  }
+  .ikili > .blok { min-width: 0; }
+  .ikili .blok h2::before, .ikili .blok h2::after { display: none; }
+
+  /* Şarkı/DJ/Derleme kart ızgarası */
+  .eserler {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.6rem;
+  }
+  .eserler a {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    min-height: 56px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--kart);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 1rem;
+    line-height: 1.3;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
+  .eserler a:hover { color: inherit; }
+  .eserler a img {
+    flex: 0 0 auto;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: var(--bg-alt);
+  }
+  .eserler a span {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(2 * 1.3rem + 1.1rem);
+    padding: 0.55rem 0.5rem;
+    text-align: center;
+  }
+  .eserler a:active { border-color: var(--gold); background: rgba(201, 161, 90, 0.10); }
+  @media (hover: hover) { .eserler a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); } }
+  .eserler a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  h2[hidden], ul[hidden] { display: none; }
+
+  @media (max-width: 40rem) { .ikili { grid-template-columns: 1fr; } }
+  .ikili[hidden] { display: none; }
+
+  /* "Bizi takip et": sıralı kartlar — aynı dilde olmalı */
+  .takip-liste { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+  .takip-liste li + li { margin-top: 0; }
+  .takip-liste a {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
-  }
-
-  .wrap { text-align: center; max-width: 480px; }
-
-  h1 {
-    font-family: 'Fraunces', Georgia, serif;
-    font-weight: 500;
-    font-size: clamp(32px, 6vw, 48px);
-    margin: 0 0 8px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  p { color: var(--text-muted); font-size: 16px; margin: 0 0 32px; }
-
-  nav { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
-
-  a {
+    gap: 0.6rem;
+    min-height: 56px;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--kart);
     color: var(--text);
     text-decoration: none;
-    font-size: 14px;
-    letter-spacing: 0.02em;
-    padding: 10px 18px;
-    border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
-    border-radius: 999px;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
+  .takip-liste svg { flex: 0 0 auto; width: 22px; height: 22px; color: var(--gold-bright); }
+  .takip-liste li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .takip-liste a:active { border-color: var(--gold); background: rgba(201, 161, 90, 0.10); }
+  @media (hover: hover) { .takip-liste a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); } }
+  .takip-liste a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* Gizlilik + Kurallar bölümü */
+  .avukat { margin-top: 2.4rem; }
+  .avukat .kutu {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-alt);
+    overflow: hidden;
+  }
+  .avukat nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--kart);
+  }
+  .avukat nav button {
+    flex: 1;
+    padding: 0.7rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .avukat nav button[aria-pressed="true"] { color: var(--gold-bright); border-bottom-color: var(--gold); }
+  .avukat nav button:active { background: rgba(201, 161, 90, 0.08); }
+  .avukat nav button:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+  .avukat article {
+    padding: 1rem 1.2rem 1.4rem;
+    max-height: 32rem;
+    overflow: auto;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--text-dim);
+  }
+  .avukat h3 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    font-size: 1.05rem;
+    color: var(--text);
+    margin: 0 0 0.5rem;
+  }
+  .avukat p { margin: 0 0 0.7rem; }
+  .avukat p:last-child { margin-bottom: 0; }
+  .avukat ul { margin: 0 0 0.7rem; padding-left: 1.1rem; }
+  .avukat li { margin-bottom: 0.35rem; }
+  .avukat a { color: var(--gold-bright); }
+  .avukat a:hover { text-decoration: underline; }
+  .avukat a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 2px; }
+
+  footer {
+    margin-top: 2.4rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: rgba(168, 155, 132, 0.55);
+    letter-spacing: 0.03em;
   }
 
-  a:hover { border-color: var(--accent); color: var(--accent); }
+  @media (prefers-reduced-motion: no-preference) {
+    .kimlik { animation: yukari 0.55s ease-out both; }
+    li { animation: yukari 0.45s ease-out both; }
+    li:nth-child(2) { animation-delay: 0.04s; }
+    li:nth-child(3) { animation-delay: 0.08s; }
+    li:nth-child(4) { animation-delay: 0.12s; }
+    li:nth-child(5) { animation-delay: 0.16s; }
+    li:nth-child(6) { animation-delay: 0.20s; }
+    li:nth-child(7) { animation-delay: 0.24s; }
+    li:nth-child(8) { animation-delay: 0.28s; }
+  }
+  @keyframes yukari {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>
+</head>
+<body>
+<main>
+  <header class="kimlik">
+    <div class="logo-wrap">
+      <img class="logo" src="assets/logo.png" alt="Famous Music Studio logosu">
+    </div>
+    <h1>Famous Music Studio</h1>
+    <p class="alt">Dinlemek için dokun — hepsi YouTube'da.</p>
+  </header>
 
-<div class="wrap">
-  <h1>Famous Music Studio</h1>
-  <p>Original music, produced and published.</p>
-  <nav>
-    <a href="/privacy-policy.html">Privacy Policy</a>
-    <a href="/terms-of-service.html">Terms of Service</a>
-  </nav>
-</div>
+  <p class="hero">Instagram ve TikTok'taki gönderilerdeki linkler tıklanamaz — tek gerçek "bio link" burası. Yayındaki her şarkıya, DJ setine ve derlemeye buradan ulaşabilirsin; en yeni şarkılar en üstte, eski paylaşımlara da buradan ulaşılır.</p>
+
+  <div class="arama" role="search">
+    <label for="fms-ara">Ara / filtrele</label>
+    <input id="fms-ara" type="search" placeholder="Şarkı adı yaz… (örn. Kader, Zincir, Gece)" autocomplete="off" spellcheck="false">
+    <div class="filtre-cubugu" role="group" aria-label="Bölüm filtresi">
+      <button type="button" class="filtre aktif" data-bolum="">Tümü</button>
+      <button type="button" class="filtre" data-bolum="sarkilar">Şarkılar</button>
+      <button type="button" class="filtre" data-bolum="dj">DJ Setleri</button>
+      <button type="button" class="filtre" data-bolum="derlemeler">Derlemeler</button>
+    </div>
+    <p class="arama-bos" hidden>Sonuç bulunamadı.</p>
+  </div>
+
+  <h2>Şarkılar</h2>
+  <ul class="eserler" data-bolum="sarkilar">
+    <li data-ad="Bu Gece Kazandık"><a href="https://youtu.be/Ai9U_zFZmLI"><img src="https://i.ytimg.com/vi/Ai9U_zFZmLI/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Bu Gece Kazandık</span></a></li>
+    <li data-ad="Sabah Senin"><a href="https://youtu.be/WCH57G1BA2Y"><img src="https://i.ytimg.com/vi/WCH57G1BA2Y/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sabah Senin</span></a></li>
+    <li data-ad="Kader Ortakları"><a href="https://youtu.be/htVtV-JIIjw"><img src="https://i.ytimg.com/vi/htVtV-JIIjw/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kader Ortakları</span></a></li>
+    <li data-ad="Kırık Zincir"><a href="https://youtu.be/FIkTi_SEI9w"><img src="https://i.ytimg.com/vi/FIkTi_SEI9w/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kırık Zincir</span></a></li>
+    <li data-ad="Küllerimden Geç"><a href="https://youtu.be/-CQ7MmUygTQ"><img src="https://i.ytimg.com/vi/-CQ7MmUygTQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Küllerimden Geç</span></a></li>
+    <li data-ad="Sokaklar Beni Tanır"><a href="https://youtu.be/kyE-TvW0WQ4"><img src="https://i.ytimg.com/vi/kyE-TvW0WQ4/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sokaklar Beni Tanır</span></a></li>
+    <li data-ad="Kumdan Denize"><a href="https://youtu.be/NMFMXdUPBT8"><img src="https://i.ytimg.com/vi/NMFMXdUPBT8/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kumdan Denize</span></a></li>
+    <li data-ad="Sofraya Gelmedin"><a href="https://youtu.be/9qgIU8vcYZY"><img src="https://i.ytimg.com/vi/9qgIU8vcYZY/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sofraya Gelmedin</span></a></li>
+    <li data-ad="Yürek Yarası"><a href="https://youtu.be/0ePR5BUUFoQ"><img src="https://i.ytimg.com/vi/0ePR5BUUFoQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Yürek Yarası</span></a></li>
+    <li data-ad="Yeraltı"><a href="https://youtu.be/X3xRBwjUaEQ"><img src="https://i.ytimg.com/vi/X3xRBwjUaEQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Yeraltı</span></a></li>
+    <li data-ad="Sessiz Mektup"><a href="https://youtu.be/Y8tlsFFP6kg"><img src="https://i.ytimg.com/vi/Y8tlsFFP6kg/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sessiz Mektup</span></a></li>
+    <li data-ad="Son Kez"><a href="https://youtu.be/sTXz-7V1fzc"><img src="https://i.ytimg.com/vi/sTXz-7V1fzc/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Son Kez</span></a></li>
+    <li data-ad="Bir Bahar Daha"><a href="https://youtu.be/yUA9LXMlD9k"><img src="https://i.ytimg.com/vi/yUA9LXMlD9k/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Bir Bahar Daha</span></a></li>
+    <li data-ad="Beton Krallığı"><a href="https://youtu.be/1-xofMJPVgY"><img src="https://i.ytimg.com/vi/1-xofMJPVgY/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Beton Krallığı</span></a></li>
+    <li data-ad="Sabaha Kadar"><a href="https://youtu.be/vcZHfvpOrpc"><img src="https://i.ytimg.com/vi/vcZHfvpOrpc/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Sabaha Kadar</span></a></li>
+    <li data-ad="Kalbim Oynuyor"><a href="https://youtu.be/SUd_Ss-kKgU"><img src="https://i.ytimg.com/vi/SUd_Ss-kKgU/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Kalbim Oynuyor</span></a></li>
+    <li data-ad="Gece Sürüşü"><a href="https://youtu.be/7gyLv84KxTk"><img src="https://i.ytimg.com/vi/7gyLv84KxTk/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Gece Sürüşü</span></a></li>
+    <li data-ad="Beni Bırakma"><a href="https://youtu.be/8ixjisC6Ato"><img src="https://i.ytimg.com/vi/8ixjisC6Ato/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Beni Bırakma</span></a></li>
+  </ul>
+
+  <div class="ikili">
+    <section class="blok">
+      <h2>DJ Famous Setleri</h2>
+      <ul class="eserler" data-bolum="dj">
+        <li data-ad="Just Relax"><a href="https://youtu.be/wo2xZBU6VjU"><img src="https://i.ytimg.com/vi/wo2xZBU6VjU/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Just Relax</span></a></li>
+        <li data-ad="City Pulse Set"><a href="https://youtu.be/ph_qlIpHx_A"><img src="https://i.ytimg.com/vi/ph_qlIpHx_A/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>City Pulse Set</span></a></li>
+      </ul>
+    </section>
+    <section class="blok">
+      <h2>Derlemeler</h2>
+      <ul class="eserler" data-bolum="derlemeler">
+        <li data-ad="Gece Seansı Vol. 1"><a href="https://youtu.be/O2VGj5SUz30"><img src="https://i.ytimg.com/vi/O2VGj5SUz30/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Gece Seansı Vol. 1</span></a></li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="takip" aria-labelledby="takip-baslik">
+    <h2 id="takip-baslik">Bizi takip et</h2>
+    <ul class="takip-liste">
+      <li><a class="takip-youtube" href="https://www.youtube.com/@Famous_musics_studio" target="_blank" rel="noopener" aria-label="Famous Music Studio YouTube (yeni sekmede açılır)"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg><span>YouTube</span></a></li>
+      <li><a class="takip-tiktok" href="https://www.tiktok.com/@famousmusicstudio" target="_blank" rel="noopener" aria-label="Famous Music Studio TikTok (yeni sekmede açılır)"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg><span>TikTok</span></a></li>
+      <li><a class="takip-instagram" href="https://www.instagram.com/famous_music_studio/" target="_blank" rel="noopener" aria-label="Famous Music Studio Instagram (yeni sekmede açılır)"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.003 1.003 0 0 0 16.046 3.53.475.475 0 0 1 15.617 3.21c-.204-.07-.426-.098-.654-.08-.339.026-1.444.158-2.588.371-.674.136-1.36.293-1.948.461-.377.123-.766.262-1.13.413-.517.209-1.05.432-1.55 1.081-.485.639-.572 1.027-.586 1.202s-.338.301-.698.29c-.542-.014-1.217-.151-1.638-.385-.547-.305-1.015-.879-1.063-1.872-.047-.992.178-1.368.492-1.587.468-.323 1.057-.465 1.596-.403.261.027.54.054.762.085.742.102 1.29-.014 1.568-.181.262-.158.42-.46.466-.824.045-.376.033-.698-.034-1.051-.036-.187-.102-.375-.253-.485-.152-.111-.346-.139-.537-.119-.36.041-.567.301-.588.656-.032.574.03 1.308.107 2.016.213 2.128.407 4.285.617 5.883.1.714.179 1.28.231 1.363.355.055.513.159.598.38.085.22.048.453-.085.697-.14.255-.45.355-.858.338-.275-.012-.56-.023-.848-.031-.822-.023-1.191.032-1.626.224-.278.124-.54.315-.607.611a.5.5 0 0 0 .082.15c.029.075.06.104.132.095.072-.01.383-.098.433-.127.447-.273.838-.509 1.145-.698.452-.27 1.181-.448 1.998-.474.005.007.01.013.015.02.004.006.008.012.011.018.036.073.084.263.1.378.015.102.007.123.008.106z"/></svg><span>Instagram</span></a></li>
+      <li><a class="takip-facebook" href="https://www.facebook.com/famousmusicstudio" target="_blank" rel="noopener" aria-label="Famous Music Studio Facebook (yeni sekmede açılır)"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></svg><span>Facebook</span></a></li>
+      <li><a class="takip-telegram" href="https://t.me/hermes_famous_asistan" target="_blank" rel="noopener" aria-label="Famous Music Studio Telegram (yeni sekmede açılır)"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg><span>Telegram</span></a></li>
+      <li><a class="takip-bluesky" href="https://bsky.app/profile/famousmusicstudio.bsky.social" target="_blank" rel="noopener" aria-label="Famous Music Studio Bluesky (yeni sekmede açılır)"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8Z"/></svg><span>Bluesky</span></a></li>
+    </ul>
+  </section>
+
+  <section class="avukat">
+    <h2 style="margin-top:2.4rem">Hukuki bölüm</h2>
+    <div class="kutu">
+      <nav>
+        <button type="button" data-sec="gizlilik" aria-pressed="true">Gizlilik Politikası</button>
+        <button type="button" data-sec="kurallar" aria-pressed="false">Kullanım Şartları</button>
+      </nav>
+      <article>
+        <section id="sec-gizlilik">
+          <h3>Gizlilik Politikası</h3>
+          <p><strong>Etkin tarihi:</strong> 31 Ağustos 2026</p>
+          <p>Famous Music Studio özgün müzik ve kısa format video üretir ve bu içerikleri YouTube, TikTok ve Instagram dahil platformlara yayımlar. Bu politika, bunun nasıl yapıldığını ve bu süreçte ne kadar veri toplandığını açıklar.</p>
+          <h3>1 — Ne toplarız</h3>
+          <p>Bir yayımlama aracını platform hesabına bağladığınızda (örneğin, YouTube veya TikTok'a sizin adınızda video yüklemek için), platform size o spesifik eyleme kotelenmiş bir yetki token'ı verir — video yükleme, doğru hesabın bağlandığını doğrulamak için temel profil bilgilerini okuma. Bu token'ı her seferinde yeniden yetkilendirmememiz için yerel olarak saklarız.</p>
+          <p>Hazinenin kullanıcılarına yönelik, kullanıcılar veya ziyaretçilerden veri toplayan kamusal bir uygulama değiliz. Bu politika okuyorsanız, büyük ihtimalle stüdyonun kendi operatörüyüz, tüketici ürününün son kullanıcısı değilsiniz.</p>
+          <h3>2 — Nasıl kullanırız</h3>
+          <ul>
+            <li>Bahsettiğiniz platform hesabına render edilmiş videoları yayımlamak için.</li>
+            <li>Hangi şarkılar işe yaradığını anlamak için, yayımladığımız videoların temel istatistiklerini (izlenme, beğeni) okumak için.</li>
+            <li>Diğer bir şey için değil. Reklam profili oluşturmuyoruz ve bu veriyi üçüncü taraflarla paylaşmıyor veya satmıyoruz.</li>
+          </ul>
+          <h3>3 — Üçüncü taraf platformlar</h3>
+          <p><strong>YouTube (Google)</strong> — video yükleme ve istatistikler, YouTube Data API üzerinden. Google'ın Gizlilik Politikası tarafından da yönetilir: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Gizlilik Politikası</a>.</p>
+          <p><strong>TikTok</strong> — video yayımlama, Content Posting API üzerinden. TikTok Gizlilik Politikası tarafından da yönetilir: <a href="https://www.tiktok.com/legal/page/row/privacy-policy/en" target="_blank" rel="noopener">TikTok Gizlilik Politikası</a>.</p>
+          <h3>4 — Saklama ve güvenlik</h3>
+          <p>Yetki token'ları yayımlama çalışmasını sürdürmek için yalnızca ihtiyaç duyulduğu kadar saklanır; yayımlama aracını çalıştıran makinede tutulur — paylaşılan veya barındırılan bir veritabanında değil. Platformunuzun kendi güvenlik ayarlarından erişimi iptal etmek (YouTube veya TikTok güvenlik ayarları), bizim tarafımızdaki token'ı hemen geçersiz kılar.</p>
+          <h3>5 — Değişiklikler</h3>
+          <p>Bu politikada önemli ölçüde değişiklik olursa, üstteki tarih güncellenir ve değişiklik burada özetlenir. Değişiklik sonrası devam eden kullanım, güncellemeyi kabul ettiğiniz anlamına gelir.</p>
+          <footer>Gizlilik politikasıyla ilgili sorular: platform profillerinde listelenen iletişim kanalından Famous Music Studio'ya ulaşın.</footer>
+        </section>
+        <section id="sec-kurallar" hidden>
+          <h3>Kullanım Şartları</h3>
+          <p><strong>Etkin tarihi:</strong> 31 Ağustos 2026</p>
+          <p>Famous Music Studio, YouTube'a yayımlamak üzere özgün müzik ve kısa format video üretir. Bu şartlar, bunu yapmak için kullandığımız araçları kapsar; kamusal bir ürün değil — ayrı bir hesap kaydı veya tüketiciye açık hizmet yok.</p>
+          <h3>1 — Ne kapsar</h3>
+          <p>Famous Music Studio, ürettiğimiz video içeriğini yüklemek için platform API'lerine (YouTube Data API, TikTok Content Posting API) bağlanan dahili yayımlama araçları işletir. Bu şartlar, o bağlantıyı yönetir; bir tüketici hesabı veya kamusal bir hizmet burada yok.</p>
+          <h3>2 — İçerik sahipliği</h3>
+          <p>Bu araçlar aracılığıyla üreten, video ve sanat işi, Famous Music Studio tarafından veya adına özgün çalışmadır. Yayımladığımız içeriğin sahipliğini saklıyoruz, ancak her platformun kendi şartlarına tabi olarak yaşadığı yerde.</p>
+          <h3>3 — Kabul edilebilir kullanım</h3>
+          <ul>
+            <li>Yayımlama aracı yalnızca sahibimiz veya kullanım hakkımız olan içerikleri yayımlamak için kullanılır.</li>
+            <li>API erişimini sürdürmenin koşulu olarak, bağlı olduğumuz her platformun (YouTube, TikTok, Instagram) topluluk kurallarına ve geliştirici politikalarına uyuyoruz.</li>
+            <li>Erişim token'ları, stüdyonun kendi operasyonunun dışında paylaşılmaz.</li>
+          </ul>
+          <h3>3 — Garanti yok</h3>
+          <p>Bu araçlar olduğu gibi sağlanır. Platform çökmesi, politika değişikliği veya kota sınırı gibi kontrollü olmayan nedenlerle yayımlama başarısız olabilir ve yayımlamanın kesintisiz olacağını garanti etmiyoruz.</p>
+          <h3>4 — Değişiklikler</h3>
+          <p>Bu şartlar önemli ölçüde değişirse, üstteki tarih güncellenir. Değişiklik sonrası devam eden kullanım, güncellemeyi kabul ettiğiniz anlamına gelir.</p>
+          <footer>Bu şartlarla ilgili sorular: platform profillerinde listelenen iletişim kanalından Famous Music Studio'ya ulaşın.</footer>
+        </section>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    &copy; 2026 Famous Music Studio &middot; Söz ve müzik: Famous Music Studio
+  </footer>
+</main>
+
+<script>
+(function () {
+  var kutu = document.getElementById("fms-ara");
+  var listeler = document.querySelectorAll(".eserler");
+  var bolum = "";
+  var bos = document.querySelector(".arama-bos");
+
+  function norm(s) { return (s || "").toLocaleLowerCase("tr").trim(); }
+  function guncelle() {
+    var terim = norm(kutu ? kutu.value : "");
+    var gosterilen = 0;
+    for (var i = 0; i < listeler.length; i++) {
+      var ul = listeler[i];
+      var ulBolum = ul.getAttribute("data-bolum") || "";
+      var kartlar = ul.querySelectorAll("li");
+      var ulGosterilen = 0;
+      for (var j = 0; j < kartlar.length; j++) {
+        var li = kartlar[j];
+        var gor = true;
+        if (bolum && ulBolum !== bolum) gor = false;
+        if (gor && terim && norm(li.getAttribute("data-ad")).indexOf(terim) === -1) gor = false;
+        li.hidden = !gor;
+        if (gor) gosterilen += 1;
+        if (gor) ulGosterilen += 1;
+      }
+      var h2 = ul.previousElementSibling;
+      if (h2 && h2.tagName && h2.tagName.toLowerCase() === "h2") h2.hidden = ulGosterilen === 0;
+      ul.hidden = ulGosterilen === 0;
+      var blok = ul.parentNode && ul.parentNode.parentNode;
+      if (blok && blok.classList.contains("ikili")) {
+        var hepsiBos = true;
+        var blokUlleri = blok.querySelectorAll("ul.eserler");
+        for (var k = 0; k < blokUlleri.length; k++) {
+          if (!blokUlleri[k].hidden) hepsiBos = false;
+        }
+        blok.hidden = hepsiBos;
+      }
+    }
+    if (bos) bos.hidden = gosterilen !== 0;
+  }
+  if (kutu) kutu.addEventListener("input", guncelle);
+  var cips = document.querySelectorAll(".filtre");
+  for (var k = 0; k < cips.length; k++) {
+    cips[k].addEventListener("click", function () {
+      for (var t = 0; t < cips.length; t++) cips[t].classList.remove("aktif");
+      this.classList.add("aktif");
+      bolum = this.getAttribute("data-bolum") || "";
+      guncelle();
+    });
+  }
+
+  var avukatButonlari = document.querySelectorAll(".avukat nav button");
+  var avukatEnlaces = {
+    gizlilik: document.getElementById("sec-gizlilik"),
+    kurallar: document.getElementById("sec-kurallar")
+  };
+  for (var b = 0; b < avukatButonlari.length; b++) {
+    avukatButonlari[b].addEventListener("click", function () {
+      for (var n = 0; n < avukatButonlari.length; n++) avukatButonlari[n].setAttribute("aria-pressed", "false");
+      this.setAttribute("aria-pressed", "true");
+      var anahtar = this.getAttribute("data-sec");
+      for (var s in avukatEnlaces) {
+        if (avukatEnlaces.hasOwnProperty(s)) {
+          avukatEnlaces[s].hidden = (s !== anahtar);
+        }
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

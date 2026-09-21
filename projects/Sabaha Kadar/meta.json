@@ -1,1 +1,14 @@
-{"title": "Sabaha Kadar", "theme": "elektronik", "art_query": "blue hour twilight city skyline dark cinematic"}
+{
+  "title": "Sabaha Kadar",
+  "theme": "elektronik",
+  "art_query": "blue hour twilight city skyline dark cinematic",
+  "custom_hooks": [
+    "Şehir uyanmadan biz buradayız 🌃",
+    "Saat kaç kimse bilmiyor ⏰",
+    "Bir şarkı daha, ışıklar sönmeden 🔦"
+  ],
+  "custom_questions": [
+    "Sabahı kiminle ettin? 💬",
+    "Bu şarkı hangi geceyi hatırlattı? 👇"
+  ]
+}

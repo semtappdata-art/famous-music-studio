@@ -1,0 +1,13 @@
+{
+  "title": "Kalbim Oynuyor",
+  "theme": "pop",
+  "custom_hooks": [
+    "Klarnet başlayınca omuzlar oynar 🎺",
+    "Darbuka vursun, kalp atsın 🥁",
+    "Bu gece kimse üzgün değil 💃"
+  ],
+  "custom_questions": [
+    "Bu şarkıda ilk neren oynadı? 👇",
+    "Hangi düğünde çalsın bu? 💬"
+  ]
+}

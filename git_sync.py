@@ -35,14 +35,14 @@ def auto_pull(repo_dir: str, log) -> None:
     try:
         branch = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=15,
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15,
         )
         if branch.returncode != 0 or branch.stdout.strip() != "main":
             return
 
         result = subprocess.run(
             ["git", "pull", "--ff-only", "origin", "main"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=60,
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
         )
         if result.returncode == 0:
             output = result.stdout.strip()
@@ -74,26 +74,26 @@ def push_path(repo_dir: str, relpath: str, message: str, log) -> None:
     try:
         branch = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=15,
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15,
         )
         if branch.returncode != 0 or branch.stdout.strip() != "main":
             return
 
         status = subprocess.run(
             ["git", "status", "--porcelain", "--", relpath],
-            cwd=repo_dir, capture_output=True, text=True, timeout=15,
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15,
         )
         if status.returncode != 0 or not status.stdout.strip():
             return  # değişiklik yok
 
-        add = subprocess.run(["git", "add", "--", relpath], cwd=repo_dir, capture_output=True, text=True, timeout=15)
+        add = subprocess.run(["git", "add", "--", relpath], cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
         if add.returncode != 0:
             log(f"git: {relpath} stage edilemedi — {add.stderr.strip()}")
             return
 
         commit = subprocess.run(
             ["git", "commit", "-m", message, "--", relpath],
-            cwd=repo_dir, capture_output=True, text=True, timeout=15,
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15,
         )
         if commit.returncode != 0:
             log(f"git: {relpath} commit edilemedi — {commit.stderr.strip()}")
@@ -101,7 +101,7 @@ def push_path(repo_dir: str, relpath: str, message: str, log) -> None:
 
         push = subprocess.run(
             ["git", "push", "origin", "main"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=60,
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
         )
         if push.returncode == 0:
             log(f"git: {relpath} otomatik push edildi")
