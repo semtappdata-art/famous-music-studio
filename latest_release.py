@@ -40,9 +40,24 @@ import os
 import re
 from datetime import datetime, timezone
 
+import config
+
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_DIR = os.path.join(REPO_DIR, "docs")
 LATEST_HTML_PATH = os.path.join(DOCS_DIR, "latest.html")
+
+# Playlist ID cache'i: tema bazlı "Diğer {tema} şarkıları →" bağlantıları
+# için ihtiyaç duyulur. İmport zinciri (youtube_auth) boğulmamak için
+# lazy yüklenir — `_get_playlist_ids()` ilk çağrıda `upload.youtube_playlists`
+# modulünü dinamik olarak import eder.
+_PLAYLIST_IDS_CACHE = None
+
+def _get_playlist_ids():
+    global _PLAYLIST_IDS_CACHE
+    if _PLAYLIST_IDS_CACHE is None:
+        from upload.youtube_playlists import _load_playlist_ids as _pl
+        _PLAYLIST_IDS_CACHE = _pl()
+    return _PLAYLIST_IDS_CACHE
 
 # Sayfaya giren TÜM kökler, (klasör, başlık) — gösterim sırasıyla.
 # NEDEN LİSTE: `derlemeler/` buraya HİÇ eklenmemişti (kök, DJ setleri
@@ -116,18 +131,18 @@ def _yayinda_mi(state: dict) -> bool:
     return _already_live(state)
 
 
-def _collect(base: str) -> list[tuple[str, str, str]]:
-    """(uploaded_at, title, youtube_video_id) üçlülerini, GERÇEKTEN canlı +
-    geçerli youtube_video_id olan projeler için, en yeni önce sıralı döner."""
+def _collect(base: str) -> list[tuple[str, str, str, str]]:
+    """(uploaded_at, title, youtube_video_id, tema_anahtari) 4lülerini,
+    GERÇEKTEN canlı + geçerli youtube_video_id olan projeler için,
+    en yeni önce sıralı döner.
+
+    `tema_anahtari`: meta.json'daki `theme` (varsayılan: config.DEFAULT_THEME).
+    DJ setleri / derlemeler için tema_anahtari boş string («) döner — bu
+    bölümlerde tema bazlı öneri YOK.
+    """
     rows = []
-    for state_path in glob.glob(os.path.join(REPO_DIR, base, "*", "state.json")):
+    for state_path in glob.glob(os.path.join(REPO_DIR, base, "*/state.json")):
         project_dir = os.path.dirname(state_path)
-        # `_` ön eki bu depoda "bu klasörü yok say" demek (dj_clips.py,
-        # watch_projects.py aynı kuralı uyguluyor: `_arda`, `_iptal`).
-        # Burada YOKTU: yayınlanmış bir projeyi `_` ekleyerek arşivleyen
-        # kullanıcı boru hattının geri kalanından düşürüyor ama HERKESE AÇIK
-        # sayfada listelenmeye devam ediyordu — arşivleme jesti sessizce
-        # yarım çalışıyordu. Sızıntı kapısı olarak burası da aynı kuralı uygular.
         if os.path.basename(project_dir).startswith("_"):
             continue
         state = _load_json(state_path)
@@ -136,25 +151,43 @@ def _collect(base: str) -> list[tuple[str, str, str]]:
             continue
         meta = _load_json(os.path.join(project_dir, "meta.json"))
         title = meta.get("title") or os.path.basename(project_dir)
-        rows.append((str(state.get("youtube_uploaded_at") or ""), str(title), video_id))
+        tema = ""
+        if base == "projects":
+            tema = str(meta.get("theme", config.DEFAULT_THEME) or "")
+            if tema not in config.THEMES:
+                tema = config.DEFAULT_THEME
+        rows.append((str(state.get("youtube_uploaded_at") or ""), str(title),
+                     video_id, tema))
     rows.sort(reverse=True)
     return rows
 
 
-def _section(heading: str, rows: list[tuple[str, str, str]], liste_class: str = "eserler",
-             bolum: str = "") -> str:
+def _section(heading: str, rows: list[tuple[str, str, str, str]],
+             liste_class: str = "eserler", bolum: str = "") -> str:
     if not rows:
         return ""
-    items = "\n".join(
-        '    <li data-ad="{ad}"><a href="https://youtu.be/{vid}">'
-        '<img src="https://i.ytimg.com/vi/{vid}/mqdefault.jpg" alt="" '
-        'width="88" height="50" loading="lazy" decoding="async">'
-        "<span>{ad}</span></a></li>".format(vid=video_id, ad=html.escape(title))
-        for _, title, video_id in rows
-    )
+    items = []
+    for _, title, video_id, tema in rows:
+        tema_baslik = config.THEMES.get(tema, {}).get("title", "")
+        tema_link = ""
+        if tema_baslik:
+            playlist_ids = _get_playlist_ids()
+            pid = playlist_ids.get(tema)
+            if pid:
+                tema_link = ('<a class="tema-oneri" href="'
+                             'https://www.youtube.com/playlist?list={}">'
+                             'Diğer {} şarkıları →</a>').format(
+                    pid, html.escape(tema_baslik))
+        items.append(
+            '    <li data-ad="{ad}"><a href="https://youtu.be/{vid}">'
+            '<img src="https://i.ytimg.com/vi/{vid}/mqdefault.jpg" alt="" '
+            'width="88" height="50" loading="lazy" decoding="async">'
+            "<span>{ad}</span></a>{oma}</li>".format(
+                vid=video_id, ad=html.escape(title), oma=tema_link))
+    items_str = "\n".join(items)
     data_bolum = ' data-bolum="{}"'.format(html.escape(bolum)) if bolum else ""
     return '  <h2>{}</h2>\n  <ul class="{}"{}>\n{}\n  </ul>\n'.format(
-        html.escape(heading), liste_class, data_bolum, items)
+        html.escape(heading), liste_class, data_bolum, items_str)
 
 
 # --- "Bizi takip et" bölümü: TEK KAYNAK -----------------------------------
@@ -519,6 +552,23 @@ _TEMPLATE = """<!DOCTYPE html>
     .takip-liste a:hover { border-color: var(--gold); color: var(--gold-bright); background: rgba(201, 161, 90, 0.06); }
   }
   .takip-liste a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* Tema bazlı "Diğer {tema} şarkıları →" bağlantıları.
+     Biyo-linkindeki şarkı kartının altına, tıklandığında aynı tarzın
+     playlist'ine (YouTube) gider. Platform linkleri DEĞİL, YouTube
+     playlist'idir — herkese açık bir görsel/kapak yok. CSS
+     moile uyumlu: küçük, italik, altın-dim, hover ile belirginleşir. */
+  .tema-oneri {
+    display: inline-block;
+    margin: 0.35rem 0.4rem 0.4rem;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--text-dim);
+    text-decoration: none;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
+  .tema-oneri:hover { color: var(--gold-bright); }
+  .eserler a:active .tema-oneri { color: var(--gold-bright); }
 
   footer {
     margin-top: 2.6rem;
