@@ -23,6 +23,7 @@ stock_art_config.json
 # → Pexels anahtarı gibi) — tek bir `git add -A` ile commit'lenebilirdi.
 *.bak
 *.bak.*
+*.bak_*
 
 # Render çıktıları ve büyük binary dosyalar
 # Yeniden üretilebilir eski sürüm arşivleri (ör. _eski_2026-09-13/, audio_eski_*):

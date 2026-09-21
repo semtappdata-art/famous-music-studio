@@ -379,6 +379,37 @@ def ai_beyan_satiri(meta: dict) -> str:
     return config.AI_BEYAN_SATIRLARI[dil][ai_beyan_turu(meta)]
 
 
+def build_story_overlay(title: str, versiyon: int, dil: str, meta: dict = None, onceki_sarki: str = "") -> str:
+    """Instagram hikaye overlay metni (versiyona gore) — caption STORY overlay ile
+    sinyal verir (API'de hikaye container'ina 'caption' parametresi support edilebilir).
+
+    V1 (yayin +2-6 saat): yeni şarki duyuru + bio link yönlendirme
+    V2 (yayin +24 saat): kaçirmayi kurtar + bio link
+    V3 (yayin +3-4 gun): fragman + onceki şarkı atfı
+
+    dil: "tr" veya "en". title: şarki adi. onceki_sarki: baglanti atan odaya
+    gosterilecek önceki şarkı (mutlak değil, bos olabilir).
+    """
+    if dil == "en":
+        if versiyon == 1:
+            return (f"New track just landed 🎵\\n\\n{title}\\n\\n"
+                    f"Full version in bio link 🎧")
+        elif versiyon == 2:
+            return (f"Missed this? {title} — full version in bio 🎵")
+        else:  # versiyon == 3
+            return (f"A clip from {title} 🎵\\n"
+                    f"Previous track: {onceki_sarki} — in bio")
+    # varsayilan: Türkçe
+    if versiyon == 1:
+        return (f"Yeni şarki cıktı 🎵\\n\\n{title}\\n\\n"
+                f"Tam versiyon bio'daki linkte 🎧")
+    elif versiyon == 2:
+        return (f"Bunu kağırdıysan — {title} tam versiyon bio'da 🎵")
+    else:  # versiyon == 3
+        return (f"Bir fragman: {title} 🎵\\n"
+                f"Bir önceki şarkı: {onceki_sarki} — bio'da")
+
+
 def build_caption(meta: dict, ai_beyani: bool = False) -> str:
     """Şarkıya ÖZEL metin varsa genel havuzun önüne geçer (2026-09-10):
     meta.json içindeki `custom_hooks` / `custom_questions`, o şarkının
