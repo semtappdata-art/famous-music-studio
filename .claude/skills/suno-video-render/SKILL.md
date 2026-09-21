@@ -42,7 +42,12 @@ kontrol etmek hızlı bir sağlık kontrolü.
 ## Proje Yapısı
 
 - `render.py` — CLI giriş noktası (`--project <klasör>` veya `--all`), platformları paralel render eder (`config.PLATFORMS`)
-- `generate_cover.py` — eksik `cover.png`/`art.png`'yi tema rengi + bokeh dokusuyla otomatik üretir (`auto_process.py` render'dan önce çağırır)
+- `generate_cover.py` — eksik `cover.png`/`art.png`'yi otomatik üretir (`auto_process.py`
+  render'dan önce çağırır). SIRA ÖNEMLİ: **önce `stock_art.py` ile Pexels'ten şarkının
+  tarzına/sözlerine uygun GERÇEK bir fotoğraf indiriliyor**; tema rengi + deterministik
+  bokeh dokusu yalnızca anahtar/ağ/sonuç yoksa düşülen YEDEK yol. Yani bu adımın bir DIŞ
+  API bağımlılığı (`stock_art_config.json`, gitignored) ve 3. taraf lisansı (Pexels
+  License — ücretsiz, ticari kullanıma açık, atıf zorunlu değil) var.
 - `ffmpeg_utils.py` — ffprobe süre okuma + kart/backdrop(pan+hue)/marquee/progress-bar filtergraph inşası + `render_video()`
 - `audio_highlight.py` — Shorts/Reels için sesin en yoğun/enerjik bölümünü bulur (`config.HIGHLIGHT_DURATION`, 45sn)
 - `auto_process.py` — asıl production giriş noktası: cover/art üretimi + render + YouTube (uzun+Shorts) + TikTok + Instagram, hepsi tek komutta
@@ -76,9 +81,13 @@ kontrol etmek hızlı bir sağlık kontrolü.
 - `MARQUEE_SEPARATOR`, `MARQUEE_REPEAT`, `MARQUEE_SPEED_PX_S`, `FONT_SIZE_RATIO`, `FONT_COLOR` — künye tarzı kayan yazı.
 - `PROGRESS_BAR_*` — alttaki ilerleme çubuğu boyut/renk/konum ayarları.
 - `MAX_PARALLEL_RENDERS` — kaç platformun aynı anda render edileceği.
-- `THEMES` / `DEFAULT_THEME` — meta.json'daki `"theme"` alanına göre (`pop`, `rock`,
-  `elektronik`, `akustik`, `hiphop`, `arabesk`) kayan yazının rengini ve caption'daki tür
-  hashtag'lerini belirler — backdrop'un rengini DEĞİL (o artık `art.jpg`'den geliyor).
+- `THEMES` / `DEFAULT_THEME` — meta.json'daki `"theme"` alanına göre kayan yazının rengini
+  ve caption'daki tür hashtag'lerini belirler — backdrop'un rengini DEĞİL (o artık
+  `art.jpg`'den geliyor). **YEDİ tema var, altı değil:** ana kataloğun altısı (`pop`,
+  `rock`, `elektronik`, `akustik`, `hiphop`, `arabesk`) + `dj`. `dj` listede
+  görünmüyordu ve YALNIZCA bir renk slotu DEĞİL: `social_text.resolve_language()` dil
+  seçimini `THEMES[tema]["language"]` üzerinden yapıyor ve `dj` tek `"en"` kayıt —
+  silen/atlayan biri DJ Famous hattının metinlerini sessizce Türkçeye düşürür.
 - `HIGHLIGHT_DURATION`, `HIGHLIGHT_PLATFORMS` — Shorts/Reels için hangi platformların ses
   highlight'ıyla kırpılacağı ve ne kadar süreyle.
 
@@ -149,3 +158,19 @@ tonu + basit bir görsel) izole bir klip üzerinde dene, ana pipeline'a onaylanm
   hızlandırılması **bilinçli olarak yapılmadı** — iki kademeli bir önbellek ikinci nesil
   sıkıştırma kaybı getirir ve gerçek kullanım akışında (şarkı başına tek render) faydası yoktur.
   Her render her zaman orijinal kaynak dosyalardan yapılır — kalite kaybı birikmez.
+
+## Suno stil tarifi, ses limiter'ı ve Shorts başlangıcı (2026-09-13)
+
+- **Mix/vokal/düzenleme ifadeleri havuzdan seçilir, elle kopyalanmaz.** Stil tarifini yazmadan önce:
+  `python suno_stil.py --proje "<şarkı adı>"` (proje klasörü yoksa `--tur pop|rock|elektronik|akustik|hiphop|arabesk`,
+  makine okunur çıktı için `--json`). Çıkan `cumle`yi stil tarifinin mix/master satırına koy
+  (`suno_kalite_onerileri.md` §2 şablonu). Seçim proje adının sha1'inden deterministik: aynı şarkı hep aynı
+  ifadeleri alır, farklı şarkılar farklı alt küme ve sıra. Havuz `config.STIL_IFADE_HAVUZU`; sanatçı adı,
+  "Suno" ya da AI vurgusu ekleme (`tests/test_suno_stil.py`). DJ setleri kapsam dışı (`SET_STILLERI`).
+- **Render öncesi koşullu true-peak limiter.** `render.render_project` sesi `ebur128=peak=true` ile ölçüp
+  (state.json varsa `ses_olcum`a yazar, aynı md5'te tekrar ölçmez) TP −1,0 dBTP'yi AŞARSA ses çıkışına
+  yalnız 4x aşırı örneklemeli `alimiter` (−2,0 dBFS, `level=false`) ekler. loudnorm YOK. Ölçüm başarısızsa
+  render sürer, log'a UYARI düşer. Ayarlar `config.SES_*`.
+- **Shorts kesiti nakaratın başından:** `meta.json`'a yalnız `"highlight_start": <sn>` yazmak yeter; kesit
+  oradan `HIGHLIGHT_DURATION` (45 sn) sürer. Yazılmazsa eski RMS tespiti. Otomatik değer yok (yerelde
+  nakarat zamanı tutulmuyor). DJ kesitleri (`dj_clips`) bundan etkilenmez.

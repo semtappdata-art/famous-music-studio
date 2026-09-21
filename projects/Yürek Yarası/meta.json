@@ -1,1 +1,13 @@
-{"title": "Yürek Yarası", "theme": "arabesk"}
+{
+  "title": "Yürek Yarası",
+  "theme": "arabesk",
+  "custom_hooks": [
+    "Bir yara açtın, kapanmadı 💔",
+    "Her geçen arabada gölgeni ararım 🚗",
+    "Kalbim hep aynı yerde takılı 🎶"
+  ],
+  "custom_questions": [
+    "Hangi yara hâlâ kapanmadı? 💬",
+    "Sesi kalan biri var mı? 👇"
+  ]
+}

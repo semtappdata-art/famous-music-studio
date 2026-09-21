@@ -1,0 +1,16 @@
+{
+  "title": "Sabah Senin",
+  "theme": "rock",
+  "art_query": "empty city street at dawn first light cinematic",
+  "custom_hooks": [
+    "Gece benden, sabah senin 🌙",
+    "Sabahı sana bırakırım 🌅",
+    "Soğuyanı dök, gerisi seninle 🎸"
+  ],
+  "custom_questions": [
+    "Senin sabahını kim saklıyor? 💬",
+    "Eve döndüğünde ilk ne yaparsın? 👇"
+  ],
+  "hikaye": "Bu şarkının ilk yazımı eve dönüş yolunda, bir servisin camında başlıyordu ve dört buçuk dakikaya uzamıştı. Sözleri ikinci kez yazarken hikâyeyi evin içine taşıdık: saat dört, soğumuş bir demlik ve şafakta sessizce çıkıp giden biri. \"Gece benden, sabah senin\" satırını nakaratın en başına aldık; uzun kalan ve kafiyesi tutmayan \"Eşiği yalnız sabah geçsin, bir de ben\" dizesini çıkardık.",
+  "neden_bu_sarki": "Geceyi uyanık geçirip sabahı uyuyan birine bırakan birinin sessiz vedasını anlattığı için bu şarkıyı seçtik."
+}

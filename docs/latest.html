@@ -263,6 +263,23 @@
   }
   .takip-liste a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
+  /* Tema bazlı "Diğer {tema} şarkıları →" bağlantıları.
+     Biyo-linkindeki şarkı kartının altına, tıklandığında aynı tarzın
+     playlist'ine (YouTube) gider. Platform linkleri DEĞİL, YouTube
+     playlist'idir — herkese açık bir görsel/kapak yok. CSS
+     moile uyumlu: küçük, italik, altın-dim, hover ile belirginleşir. */
+  .tema-oneri {
+    display: inline-block;
+    margin: 0.35rem 0.4rem 0.4rem;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--text-dim);
+    text-decoration: none;
+    -webkit-tap-highlight-color: rgba(201, 161, 90, 0.25);
+  }
+  .tema-oneri:hover { color: var(--gold-bright); }
+  .eserler a:active .tema-oneri { color: var(--gold-bright); }
+
   footer {
     margin-top: 2.6rem;
     text-align: center;
@@ -335,6 +352,7 @@
     <section class="blok">
   <h2>DJ Famous Setleri</h2>
   <ul class="eserler" data-bolum="dj">
+    <li data-ad="Peak District"><a href="https://youtu.be/Q2keNsN0kCA"><img src="https://i.ytimg.com/vi/Q2keNsN0kCA/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Peak District</span></a></li>
     <li data-ad="Night Drive"><a href="https://youtu.be/3MyDXRgl1xQ"><img src="https://i.ytimg.com/vi/3MyDXRgl1xQ/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Night Drive</span></a></li>
     <li data-ad="Just Relax"><a href="https://youtu.be/wo2xZBU6VjU"><img src="https://i.ytimg.com/vi/wo2xZBU6VjU/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>Just Relax</span></a></li>
     <li data-ad="City Pulse Set"><a href="https://youtu.be/ph_qlIpHx_A"><img src="https://i.ytimg.com/vi/ph_qlIpHx_A/mqdefault.jpg" alt="" width="88" height="50" loading="lazy" decoding="async"><span>City Pulse Set</span></a></li>

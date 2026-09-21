@@ -1,1 +1,14 @@
-{"title": "Beton Krallığı", "theme": "hiphop", "art_query": "brutalist concrete building night urban skyline cinematic"}
+{
+  "title": "Beton Krallığı",
+  "theme": "hiphop",
+  "art_query": "brutalist concrete building night urban skyline cinematic",
+  "custom_hooks": [
+    "Sabah beşte kalkanlar bilir 🌆",
+    "Bu şehir yedi ama büyüttü 🏙️",
+    "Beton duvarlar tanık oldu 🧱"
+  ],
+  "custom_questions": [
+    "Sen hangi saatte kalkıyorsun? 👇",
+    "Bu şehir sana ne öğretti? 💬"
+  ]
+}

@@ -8,17 +8,21 @@ Suno'nun Lyrics kutusuna aynen yapıştırılabilir.
 **Neden bu tema:** Sokaktan/karanlıktan zirveye çıkış anlatan tekli bir
 anlatıcı (düet formatında DEĞİL) — `arabesk` yerine `hiphop` seçildi (o
 tema bu katalogda SABİT olarak düet formatında üretiliyor, bkz. CLAUDE.md).
-Gece/şehir/azim imgeleri marka evrenine uygun. Son loglanan vokal Sokaklar
-Beni Tanır'da erkekti, ondan önce (Kumdan Denize) kadındı — dönüşümlü
-gitmek için kadına dönülüyor; "polished/confident", "powerful/belting",
-"bright/breathy", "soft/breathy" dokuları kadın vokallerde zaten
-kullanıldığı için "smoky, laid-back" (henüz kullanılmamış, melodik rap
-akışına uygun) seçildi.
+Gece/şehir/azim imgeleri marka evrenine uygun. Vokal (2026-09-13 düzeltmesi): bu dosyanın ilk hâli kadın vokal + "smoky,
+laid-back" seçmiş ve bunu "henüz kullanılmamış" diye gerekçelendirmişti; iddia
+YANLIŞTI — hemen önceki üretim `Sabah Senin` zaten "smoky husky" kadın vokal.
+Olduğu gibi üretilseydi kadın vokal üst üste ikiye çıkar ve "smoky" dokusu
+tekrarlanırdı (`ses_ve_tarz_takibi.md` "Sıradaki" notuyla çelişki). Son üç üretim:
+Kader Ortakları (erkek-erkek düet), Bu Gece Kazandık (erkek-erkek düet), Sabah Senin
+(kadın, tekli). Bu yüzden TEKLİ erkek vokale dönülüyor; erkek hiphop dokuları
+(aggressive gritty, husky nasal, deep world-weary) ve diğer erkek dokuları (warm
+raspy, warm smooth, powerful gritty, raspy baritone, tender tenor, bright nasal-edged)
+kullanıldığı için katalogda olmayan "clear, crisp, confident" orta ses seçildi.
 
 ## Stil Etiketi (Suno Style kutusuna yapıştır)
 
 ```
-Turkish melodic rap, confident and cinematic, smoky laid-back female vocals, trap hi-hats, deep 808 bass, dreamy synth pads, city night atmosphere, strong final hit ending, no abrupt cutoff
+Turkish melodic rap, confident and cinematic, clear crisp confident mid-range male rap vocals, trap hi-hats, deep 808 bass, dreamy synth pads, city night atmosphere, strong final hit ending, no abrupt cutoff
 ```
 
 ## Sözler (Suno Lyrics kutusuna yapıştır)
@@ -111,9 +115,10 @@ Bu şehir tanık, ben sözümü tutan biriyim
 
 ## Notlar
 
-- Vokal dili: Türkçe ("smoky laid-back female vocals" + Türkçe sözler).
-- Vokal cinsiyeti: Sokaklar Beni Tanır'ın (erkek) ardından kadına dönüldü,
-  doku "smoky, laid-back" — daha önce kullanılmamış bir kombinasyon.
+- Vokal dili: Türkçe ("clear crisp confident mid-range male rap vocals" + Türkçe sözler).
+- Vokal cinsiyeti (2026-09-13 düzeltmesi): Sabah Senin'in (kadın, smoky husky)
+  ardından tekli ERKEK vokale dönüldü; doku "clear, crisp, confident" katalogda
+  kullanılmamış. Eski "smoky laid-back female" seçimi `yukselis_sozler_eski_2026-09-13.md`'de.
 - Tema: azim, sokaktan zirveye çıkış, gece/şehir — marka evreninin genel
   ruh haliyle uyumlu ama önceki hiphop şarkılarındaki (Beni Bırakma,
   Yeraltı, Sokaklar Beni Tanır) yalnızlık/terk edilmişlik anlatısından

@@ -10,6 +10,7 @@ açık yayınlanamaz. Detay: https://developers.tiktok.com/docs/en/content-posti
 """
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -22,23 +23,59 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 import notify
+import state_io
+from gizli_maskele import maskele_istisna
 from tiktok_auth import get_access_token
 from social_text import build_caption, build_youtube_comment, resolve_language
+# Kok listesi TEK kaynaktan: bkz. uyumluluk.KOK_ADLARI'nin uzerindeki not.
+from uyumluluk import proje_klasorleri
+from tiktok_web import web_aktif
 
 API_BASE = "https://open.tiktokapis.com/v2"
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
 COVER_VERTICAL_NAMES = ["cover_vertical.jpg", "cover_vertical.jpeg", "cover_vertical.png"]
 
 
+def _en_yeni_kapak(project_dir: str, names: list) -> str | None:
+    """Verilen adaylar arasından EN YENİ (mtime) olanı döndürür, birden fazla
+    aday varsa UYARI basar.
+
+    NEDEN: eskiden liste sırasıyla İLK eşleşen dönüyordu — yani `cover.jpg`
+    her zaman `cover.png`'yi yeniyordu, oysa kapak üreticisi
+    (`generate_cover.py`) `cover.png` yazıyor. Bir projede eski bir
+    `cover.jpg` kalmışsa yenilenen PNG SESSİZCE yok sayılıyordu; hiçbir hata
+    mesajı yoktu. Uyarı satırı bilerek var: asıl arıza yanlış dosyanın
+    seçilmesi değil, seçimin sessiz olmasıydı."""
+    adaylar = [
+        os.path.join(project_dir, ad)
+        for ad in names
+        if os.path.isfile(os.path.join(project_dir, ad))
+    ]
+    if not adaylar:
+        return None
+    # Eşit mtime'da liste sırası korunsun diye sıralama kararlı (stable) kullanılıyor.
+    adaylar.sort(key=os.path.getmtime, reverse=True)
+    if len(adaylar) > 1:
+        digerleri = ", ".join(os.path.basename(p) for p in adaylar[1:])
+        print(
+            f"  UYARI: birden fazla kapak adayı var ({os.path.basename(project_dir)}), "
+            f"en yenisi kullanılıyor: {os.path.basename(adaylar[0])} "
+            f"(yok sayılan: {digerleri})"
+        )
+    return adaylar[0]
+
+
 def _find_cover(project_dir: str) -> str | None:
     """TikTok videosu dikey (9:16) olduğu için önce cover_vertical.*'a bakar —
     kullanıcının uygulamadan elle seçeceği kapak tam kadraj kaplasın diye
-    (bkz. modül docstring'i, --pending-covers). Yoksa 16:9 cover.png'ye düşülür."""
-    for name in COVER_VERTICAL_NAMES + COVER_NAMES:
-        path = os.path.join(project_dir, name)
-        if os.path.isfile(path):
-            return path
-    return None
+    (bkz. modül docstring'i, --pending-covers). Yoksa 16:9 cover.png'ye düşülür.
+
+    Dikey/yatay TERCİHİ mtime'dan ÖNCE gelir (dikey varsa yatay hiç bakılmaz);
+    mtime yalnızca AYNI grup içindeki uzantı çakışmasını (jpg/jpeg/png) çözer."""
+    dikey = _en_yeni_kapak(project_dir, COVER_VERTICAL_NAMES)
+    if dikey:
+        return dikey
+    return _en_yeni_kapak(project_dir, COVER_NAMES)
 
 
 def _headers(access_token: str) -> dict:
@@ -88,7 +125,7 @@ def upload_video(project_dir: str) -> str:
         video_id = existing_state.get("youtube_video_id")
         if video_id:
             youtube_url = f"https://youtu.be/{video_id}"
-    suggested_caption = build_caption(meta)
+    suggested_caption = build_caption(meta, ai_beyani=True)   # AI beyanı açıklamada (config.AI_BEYAN_SATIRLARI)
     suggested_comment = build_youtube_comment(youtube_url, resolve_language(meta), platform="tiktok") if youtube_url else None
     print("  --- TikTok'ta yayınlarken caption olarak yapıştır ---")
     print(f"  {suggested_caption}")
@@ -168,7 +205,10 @@ def upload_video(project_dir: str) -> str:
     except requests.exceptions.HTTPError:
         raise
     except requests.exceptions.RequestException as e:
-        print(f"  UYARI: video yükleme yanıtı alınamadı ({e}) — durum sorgulanarak devam ediliyor.")
+        # maskele_istisna: `upload_url` TikTok'un imzali yukleme adresi,
+        # sorgu dizesinde gizli bir imza tasiyor — bir ag hatasinin mesaji
+        # tam URL'i icerdigi icin maskesiz basmak onu log'a dusururdu.
+        print(f"  UYARI: video yükleme yanıtı alınamadı ({maskele_istisna(e)}) — durum sorgulanarak devam ediliyor.")
 
     # Yayın durumunu poll et — bu noktada video baytları TikTok'a ZATEN ulaştı
     # (PUT başarılı oldu), yani durum sorgulaması sırasında bir AĞ hatası
@@ -198,7 +238,7 @@ def upload_video(project_dir: str) -> str:
             print(f"  Durum belirsiz (timeout), publish_id={publish_id} — TikTok Studio'dan kontrol et.")
     except requests.exceptions.RequestException as e:
         print(
-            f"  UYARI: durum sorgulanamadı ({e}) — video muhtemelen zaten yüklendi, "
+            f"  UYARI: durum sorgulanamadı ({maskele_istisna(e)}) — video muhtemelen zaten yüklendi, "
             f"publish_id={publish_id} yine de kaydediliyor, TikTok Studio'dan kontrol et."
         )
 
@@ -210,8 +250,19 @@ def upload_video(project_dir: str) -> str:
         existing_state["tiktok_suggested_comment"] = suggested_comment
     if cover_path:
         existing_state["tiktok_cover_hint"] = cover_path
-    with open(state_path, "w", encoding="utf-8") as f:
-        json.dump(existing_state, f, ensure_ascii=False, indent=2)
+    # YENİ YÜKLEME = YAYIN KİTİ (2026-09-13): bu taslağın hatırlatması düz metin
+    # DEĞİL, `tiktok_yayin_kiti.py`nin eksiksiz kiti (kapak, açıklama, ayarlar,
+    # ilk yorum, onay satırı). İşaret, `notify_pending_publish`'in AYNI şarkı için
+    # ikinci bir (düz metin) mesaj göndermesini engelliyor. Kit, doğrulama bu
+    # taslakta SEND_TO_USER_INBOX okuyunca ve tempo kapıları izin verince gider.
+    existing_state["tiktok_hatirlatma"] = "kit"
+    # ATOMIK yazim (state_io): eskiden hedefin USTUNE dogrudan yaziliyordu.
+    # `open(..., "w")` dosyayi once SIFIRLIYOR; `json.dump` bitmeden surec
+    # olurse diskte YARIM bir JSON kaliyor ve `uyumluluk._durum()`
+    # sertlestirildikten sonra bozuk bir state.json boru hattini DURDURUYOR.
+    # Kaybolan bir `tiktok_publish_id` ayrica TikTok'a IKINCI bir yukleme
+    # demek (auto_process ile dj_famous_process AYRI kilitler kullaniyor).
+    state_io.durum_yaz(project_dir, existing_state)
 
     # Upload her saat olabilir (auto_process.py'nin saatlik/1-dakikalık
     # tetikleyicileri) ama taslağı TikTok uygulamasından yayınlamak elle bir
@@ -226,12 +277,40 @@ def upload_video(project_dir: str) -> str:
     return publish_id
 
 
+def _kanal_yok_uyar_bir_kez() -> None:
+    """Bildirim kanalı kuruluysa hiç çalışmaz; kurulu değilse KOŞU BAŞINA BİR
+    KEZ açık bir satır yazar. NEDEN koşu başına bir kez: bu fonksiyon bekleyen
+    HER proje için çağrılıyor (17 proje = 17 satır), oysa sebep tek ve ortak."""
+    notify.uyar_bir_kez(
+        "tiktok-kanal-yok",
+        "UYARI: TikTok taslak hatirlatmalari GONDERILEMIYOR — sebep golden-hour "
+        "penceresi DEGIL, bildirim kanalinin kurulu olmamasi (notify_config.json "
+        "yok). Bekleyen tum projeler icin gecerli; kurulunca ilk golden-hour'da "
+        "hepsi hatirlatilir.",
+    )
+
+
+def yayin_kodu(publish_id) -> str | None:
+    """Taslağın kısa, kararlı kodu (ör. "T3F2A") — Telegram onay yanıtı için.
+
+    NEDEN publish_id'den türetiliyor, klasör adından DEĞİL: kod TASLAĞIN
+    kendisini gösteriyor. Proje yeniden yüklenirse (yeni publish_id) eski
+    hatırlatmadaki kod artık eşleşmez — eski bir mesaja verilen yanıt yeni
+    taslağı işaretlemesin diye. Çakışma (16^4 alan, ~25 proje) mümkün ama
+    zararsız: `tiktok_yayin_onayi.py` birden çok eşleşmede İŞARETLEMEZ.
+    `tiktok_publish_id` olmayan projenin kodu yok (işaretlenebilir de değil).
+    """
+    if not publish_id:
+        return None
+    return "T" + hashlib.sha1(str(publish_id).encode("utf-8")).hexdigest()[:4].upper()
+
+
 def notify_pending_publish(project_dir: str) -> bool:
     """state.json'da 'tiktok_publish_id' var ama henüz bildirim gönderilmediyse
     (tiktok_notified yok) ve şu an bir golden-hour penceresindeysek telefona
     ntfy.sh üzerinden bir hatırlatma bildirimi gönderir ve tiktok_notified=true
-    kaydeder (bir daha hatırlatmaz — TikTok API'sinden kullanıcının taslağı
-    gerçekten yayınlayıp yayınlamadığını öğrenmenin bir yolu yok). Bildirim
+    kaydeder (bir daha hatırlatmaz). Yayın olgusu ayrı yazılıyor: Telegram onayı
+    (`tiktok_yayin_onayi.py`) ve API'den salt okunur doğrulama (`tiktok_yayin_dogrulama.py`). Bildirim
     gönderildiyse True döner; golden-hour dışındaysa, zaten bildirildiyse ya da
     notify_config.json kurulmadıysa False döner."""
     state_path = os.path.join(project_dir, "state.json")
@@ -241,37 +320,72 @@ def notify_pending_publish(project_dir: str) -> bool:
         state = json.load(f)
     if not state.get("tiktok_publish_id") or state.get("tiktok_notified"):
         return False
+    if web_aktif(state):
+        # WEB PLANLI (tiktok_web.py, 2026-09-13): gönderiyi TikTok Studio yayınlayacak;
+        # eski taslak için "uygulamadan yayınla" demek ÇİFT GÖNDERİ davetidir.
+        return False
+    if state.get("tiktok_hatirlatma") == "kit":
+        # Yeni yüklemenin hatırlatması YAYIN KİTİ (bkz. upload_video). Düz metin
+        # burada da giderse aynı şarkı için iki mesaj olur. `tiktok_notified`
+        # yazılmıyor: kit kapıları o alanı KULLANMIYOR, ve bu dal zaten mesaj yok.
+        return False
+    # SIRA ÖNEMLİ: kanal kontrolü golden-hour kontrolünden ÖNCE.
+    # NEDEN: notify_config.json 2026-09-11'e kadar hiç yoktu; bu kontrol sonra
+    # gelseydi (eskiden öyleydi) golden-hour DIŞINDA "pencere bekleniyor" diye
+    # çıkılıyor, golden-hour İÇİNDE de aynı satır basılıyordu — log 13:37'de
+    # (pencerenin tam içinde) "golden-hour penceresi bekleniyor" diyordu.
+    # Gerçek sebep pencere değil, bildirim kanalının hiç kurulmamış olmasıydı.
+    if not notify.is_configured():
+        _kanal_yok_uyar_bir_kez()
+        return False
     if config.next_golden_publish_time() is not None:
         return False  # golden-hour değil, bir sonraki kontrolde tekrar denenecek
 
     title = _load_meta(project_dir).get("title", "Untitled")
+    # YANIT TALİMATI (2026-09-13): "yayınladım" işaretinin tek yazanı bir CLI
+    # komutuydu ve unutuluyordu. Bot Hermes gateway'iyle PAYLAŞILIYOR — yanıtı
+    # depo OKUMAZ (getUpdates ikinci tüketici olup Hermes'in mesajlarını çalar),
+    # Hermes okur ve `.hermes/skills/tiktok-yayin-onayi` becerisiyle
+    # `upload/tiktok_yayin_onayi.py`yi çalıştırır. Hermes bu mesajı GÖRMEDİĞİ
+    # için (başka süreç gönderiyor) yanıt kendi başına yeterli olmalı: şarkı
+    # adı yanıtın İÇİNDE. Kalıp `tests/test_tiktok_yayin_onayi.py`de betikle
+    # uçtan uca eşleştiriliyor.
+    kod = yayin_kodu(state.get("tiktok_publish_id"))
     sent = notify.send(
         "TikTok",
-        f"'{title}' TikTok'ta taslak olarak bekliyor — uygulamadan yayınlayabilirsin.",
+        f"'{title}' TikTok'ta taslak olarak bekliyor — uygulamadan yayınlayabilirsin.\n"
+        f"Yayınladıysan bu sohbete yaz: yayınladım {title}\n"
+        f"(kod: {kod} — ad yerine 'yayınladım {kod}' de olur)",
     )
     if not sent:
         return False
 
     state["tiktok_notified"] = True
-    with open(state_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+    state_io.durum_yaz(project_dir, state)  # ATOMIK — bkz. upload_video()'daki not
     return True
 
 
-def print_pending_covers(base: str = "projects") -> None:
+def print_pending_covers(base: str | None = None) -> None:
     """API'den kapak ayarlanamadığı için (bkz. upload_video() içindeki not) TikTok'a
     zaten yüklenmiş (state.json'da tiktok_publish_id olan) TÜM projeler için elle
     yapılması gereken kapak düzeltmesini tek seferde listeler — özellikle bu özellik
     eklenmeden ÖNCE yüklenmiş eski videolar için (onlarda tiktok_cover_hint yok,
-    _find_cover ile yeniden bulunuyor)."""
-    if not os.path.isdir(base):
+    _find_cover ile yeniden bulunuyor).
+
+    KÖK LİSTESİ (2026-09-11): varsayılan eskiden `"projects"` (tek kök, üstelik
+    GÖRELİ) idi. DJ setleri ve derlemeler de TikTok'a çıkıyor ve kapağı yine
+    ELLE seçilmesi gereken içerikler onlar — canlı kanıt:
+    `derlemeler/Gece Seansı Vol. 1` state.json'ında `tiktok_cover_hint` var ama
+    bu liste onu hiç göstermiyordu, yani operatör "bekleyen kapak yok" görüyordu.
+    Artık varsayılan `uyumluluk.KOKLER` (mutlak, üç kök); tek kök incelemek için
+    `base` hâlâ verilebiliyor.
+    """
+    if base is not None and not os.path.isdir(base):
         print(f"HATA: {base} klasörü bulunamadı.")
         return
     found_any = False
-    for name in sorted(os.listdir(base)):
-        project_dir = os.path.join(base, name)
-        if not os.path.isdir(project_dir):
-            continue
+    for project_dir in proje_klasorleri(base):
+        name = os.path.basename(project_dir)
         state_path = os.path.join(project_dir, "state.json")
         if not os.path.isfile(state_path):
             continue

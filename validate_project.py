@@ -9,7 +9,7 @@ bunu otomatik çağırır — elle çalıştırmaya gerek yok, ama tek başına 
 kullanılabilir:
 
     python validate_project.py --project "projects/sarki-adi"
-    python validate_project.py --all
+    python validate_project.py --all      # projects/ + dj_sets/ + derlemeler/
 
 HATA (error) seviyesindeki bulgular render'ı durdurur; UYARI (warning)
 seviyesindekiler sadece loglanır, render devam eder.
@@ -45,7 +45,7 @@ def _ffprobe_duration(path: str) -> float | None:
     result = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "default=noprint_wrappers=1:nokey=1", path],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     if result.returncode != 0:
         return None
@@ -59,7 +59,7 @@ def _valid_image(path: str) -> bool:
     result = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0",
          "-show_entries", "stream=width,height", "-of", "csv=p=0", path],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     return result.returncode == 0 and bool(result.stdout.strip())
 
@@ -140,6 +140,50 @@ def validate(project_dir: str) -> tuple[list[str], list[str]]:
     # cover.jpg render.py'de zorunlu (art.jpg opsiyonel, yoksa düz renge düşülür) —
     # o kontrolü burada tekrar etmiyoruz, render_project zaten kendi hata mesajını basıyor.
 
+    # Platform politikasi kontrolleri (bkz. uyumluluk.py). Render'dan once
+    # calisiyor cunku render.py bu fonksiyonu zaten cagiriyor - ayri bir kanca
+    # acmak yerine mevcut kapiyi kullaniyoruz.
+    #
+    # FAIL-CLOSED (2026-09-12): kapi COKERSE bu bir UYARI degil HATA. Eskiden
+    # istisna `warnings`e yaziliyor ve render DEVAM ediyordu - yani kapinin
+    # calismamasi "temiz" sayiliyordu. Burasi yayin degil URETIM adimi oldugu
+    # icin karar auto_process/dj_famous_process'tekinden AYRI dusunuldu;
+    # gerekce sunlar:
+    #
+    #   1. SIDDET, kapinin KENDI cevabiyla ayni olmali. Iki satir yukarida
+    #      `kontrol()`un dondugu HATA'lar dogrudan `errors`a giriyor ve render'i
+    #      durduruyor. Kapinin "hata var" demesi render'i durduruyorsa,
+    #      "cevap veremiyorum" demesi de durdurmali - aksi hâlde kapiyi
+    #      atlatmanin en kolay yolu onu BOZMAK olurdu.
+    #   2. Bu yonun maliyeti GERI ALINABILIR, tersi degil. Durdurulan render
+    #      bir sonraki kosuda yeniden denenir; hicbir dis sistemde iz birakmaz.
+    #      Fail-open'in maliyeti ise saatlerce suren bir render'in bosa
+    #      harcanmasi: kapi yukleme asamasinda da (AYNI process, AYNI import)
+    #      cokecegi icin o video zaten yayinlanamayacak.
+    #   3. "Kullanici neden video cikmadigini anlamali" sarti KARSILANIYOR:
+    #      bu liste `print_report()` ile "[<proje>] HATA: ..." olarak basiliyor
+    #      ve `render.render_project()` ustune "Render durduruldu: N dogrulama
+    #      hatasi" satirini ekliyor. Mesaj bu yuzden ne yapilacagini da soyluyor.
+    #
+    # KAPSAM: bu `errors` listesi YALNIZCA bu projeye ait. `render_project()`
+    # sadece bu proje icin False doner, `auto_process`/`dj_famous_process` de
+    # sadece bu projeyi atlar - dongu bir sonraki projeyle devam eder.
+    #
+    # NOT: yukleme kapisinin (auto_process/dj_famous_process) fail-closed
+    # olmasi bu satiri GEREKSIZ KILMIYOR. Oradaki kapi yayini durdurur, bu
+    # kapi ise bosa gidecek uretimi durdurur; ikisi farkli seye mal oluyor.
+    try:
+        import uyumluluk
+        u_hata, u_uyari = uyumluluk.kontrol(project_dir, "render")
+        errors.extend(u_hata)
+        warnings.extend(u_uyari)
+    except Exception as e:
+        errors.append(
+            "uyumluluk (politika) kapisi CALISTIRILAMADI: %s — fail-closed, "
+            "render baslatilmiyor. Kapi cevap veremedigi surece bu projenin "
+            "telif/tekrar-icerik kontrolu YAPILAMIYOR demektir; once "
+            "`python uyumluluk.py` ile hatayi gider." % str(e)[:120])
+
     return errors, warnings
 
 
@@ -157,18 +201,27 @@ def main():
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--project", help="Tek bir proje klasörü (örn. projects/sarki-adi)")
-    group.add_argument("--all", action="store_true", help="projects/ altındaki tüm klasörleri kontrol et")
+    group.add_argument("--all", action="store_true",
+                       help="TÜM içerik köklerindeki (projects/, dj_sets/, derlemeler/) "
+                            "klasörleri kontrol et")
     args = parser.parse_args()
 
     if args.project:
         project_dirs = [args.project]
     else:
-        base = "projects"
-        project_dirs = [
-            os.path.join(base, name)
-            for name in sorted(os.listdir(base))
-            if os.path.isdir(os.path.join(base, name))
-        ] if os.path.isdir(base) else []
+        # ÜÇ içerik kökü de taranıyor. Eskiden sadece `projects/` idi: boru hattı
+        # validate()'i zaten proje bazında çağırdığı için (render.py) bu etki
+        # olarak küçüktü, ama ELLE yapılan tam-katalog koşusu ("her şey sağlam
+        # mı") DJ setlerini ve derlemeleri hiç görmüyordu — yani "sorun yok"
+        # çıktısı kataloğun bir bölümü için hiçbir şey ifade etmiyordu.
+        # Kök listesi ELLE sayılmıyor: kanonik kaynak uyumluluk.KOKLER
+        # (muhafız: tests/test_kok_listesi_muhafizi.py). Yollar MUTLAK, yani
+        # script hangi klasörden çağrılırsa çağrılsın aynı kümeye bakıyor.
+        # Import BURADA (modül düzeyinde değil): `uyumluluk` bu dosyada
+        # bilerek TEMBEL import ediliyor (bkz. validate() içindeki try/except) —
+        # bozuk bir uyumluluk.py render hattını durdurmasın diye. Aynı disiplin.
+        import uyumluluk
+        project_dirs = list(uyumluluk.proje_klasorleri())
 
     any_errors = False
     for project_dir in project_dirs:

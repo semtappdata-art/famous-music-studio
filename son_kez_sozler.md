@@ -65,6 +65,46 @@ Son kez sarıl bana...
 Sonra git, istersen hiç dönme...
 ```
 
+## Temiz Sözler (YouTube açıklaması için kopyala-yapıştır)
+
+```
+Bir mektup yazdım, göndermedim
+Belki hiç göndermeyeceğim
+
+Kapının önünde durup baktım o pencereye
+Işık yanmıyordu artık, biliyordum aslında
+Elimde hâlâ senin verdiğin o eski anahtar
+Ne kapıyı açıyor ne de kalbimi kapatıyor
+
+Belki de böyle bitmeliydi
+Sessizce, kimse duymadan
+Ama bir kez daha, sadece bir kez
+Sana söylemek istiyorum
+
+Son kez sarıl bana, son kez bak gözlerime
+Sonra git, istersen hiç dönme
+Ben burada kalırım, anılarla baş başa
+Son kez, sadece son kez
+
+Fotoğraflar hâlâ duruyor telefonumda
+Silmeye kıyamıyorum, belki bu bile bir suç
+Herkes "unut" diyor, kolaymış gibi konuşuyorlar
+Unutmak değil, sadece bir kez daha görmek istiyorum
+
+Son kez sarıl bana, son kez bak gözlerime
+Sonra git, istersen hiç dönme
+Ben burada kalırım, anılarla baş başa
+Son kez, sadece son kez
+
+Belki yıllar sonra bir şarkı duyarsın
+Ve hatırlarsın beni, bir an bile olsa
+Ben o anı bekleyeceğim, sessizce
+Son kez demiştim ama hiç unutmadım
+
+Son kez sarıl bana...
+Sonra git, istersen hiç dönme...
+```
+
 ## Notlar
 
 - Vokal dili: Türkçe belirtildi ("male vocals" + Türkçe sözler)
