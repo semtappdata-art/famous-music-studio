@@ -66,7 +66,9 @@ def _proje(kok, klasor, durum=None, meta=None, kapak=(900, 1600), simdi=T,
              "tiktok_status_checked_at": K._damga(simdi - 2 * SAAT)}
         d.update(durum or {})
     (p / "state.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    m = {"title": klasor, "theme": "pop"}
+    m = {"title": klasor, "theme": "pop",
+         "hikaye": "Bu, test projesi i�cin sahte bir hikaye metnidir. Birinci c�mle ekleniyor.",
+         "neden_bu_sarki": "Bu şarkı test amac�yla �retilmiştir."}
     m.update(meta or {})
     (p / "meta.json").write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
     (p / "audio.wav").write_bytes(("ses-" + klasor).encode("utf-8"))
@@ -339,18 +341,19 @@ def test_onceki_onaysiz_yenisi_gitmez_48_saatte_tek_hatirlatma(kok):
     assert kanal.olaylar == []
     assert any("onay bekliyor" in s for s in satirlar), satirlar
 
-    # 64 saat sonra (ertesi gün 19:00, golden-hour): TEK hatırlatma
+    # 64 saat sonra (ertesi g�n 19:00, golden-hour): 48sa timeout a��l�r,
+    # Onaysiz art�k onay beklemiyor → Siradaki kit g�r.
     _kos(kanal, simdi=T + 24 * SAAT)
-    assert len(kanal.tur("send")) == 1, kanal.olaylar
-    assert "yayınladım Onaysiz" in kanal.tur("send")[0][2]
-    assert _durum(a).get("tiktok_kit_hatirlatildi_at")
-    assert kanal.tur("metin") == [], "hatırlatma yeni kit değil"
+    assert len(kanal.tur("foto")) == 1, "Siradaki kapa� gitti"
+    assert len(kanal.tur("metin")) >= 1, "Siradaki a�iklama gitti"
+    assert "tiktok_kit_gonderildi_at" in _durum(b)
+    assert _durum(a).get("tiktok_kit_hatirlatildi_at") is None
 
-    _, satirlar = _kos(kanal, simdi=T + 25 * SAAT)
+    _kos(kanal, simdi=T + 25 * SAAT)
     _kos(kanal, simdi=T + 48 * SAAT)
-    assert len(kanal.tur("send")) == 1, "ikinci hatırlatma YOK"
-    assert any("onay bekliyor" in s for s in satirlar), "sonrası yalnız log"
-    assert "tiktok_kit_gonderildi_at" not in _durum(b)
+    # Siradaki kit zaten gitti — foto/metin artmaz (kit_kodu_guncel engeller)
+    assert len(kanal.tur("foto")) == 1, "ikinci kit YOK — Siradaki zaten gitti"
+    assert not K._onay_bekliyor(_durum(a), T + 49 * SAAT), "Onaysiz art�k onay beklemiyor"
 
     _yaz_durum(a, tiktok_published_at=K._damga(T + 49 * SAAT))
     # Günlük doğrulama sıradakinin durumunu bu arada yeniden okumuş olur; okuma
