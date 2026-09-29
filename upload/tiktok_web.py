@@ -106,6 +106,18 @@ DURUM_YAYINDA = "PUBLISH_COMPLETE"
 GERCEK_KOKLER = tuple(uyumluluk.KOKLER)
 DURUM_DOSYASI = os.path.join(REPO, "upload", "saglik_durum.json")
 HATIRLATMA_GUN_DAMGASI = "tiktok_web_kontrol_gun"
+
+
+def _bayat_esigi_sn():
+    """Doğrulanmamış planın 'bayat' sayılma eşiği (sn) — varsayılan 48 saat.
+
+    Eşik altı gecikme normal bekleyiştir (hatırlatma yine gider, rozetsiz);
+    eşiği aşan `durum`da bayat rozeti alır ve hatırlatma mesajı kapanış
+    komutlarını taşır. `TIKTOK_KIT_HATIRLATMA_SAAT` deseniyle aynı kapı."""
+    try:
+        return float(getattr(config, "TIKTOK_WEB_BAYAT_SAAT", 48)) * 3600
+    except (TypeError, ValueError):
+        return 48 * 3600
 WEB_KAYNAK_BICIMI = "TikTok Studio web (Planla %s)"
 
 
@@ -208,6 +220,29 @@ def _durum_oku(proje):
     except (OSError, ValueError):
         return None
     return v if isinstance(v, dict) else None
+
+
+def tiktok_publish_id_durum(proje):
+    """Eski API taslağı kimliğinin durumu — web modu için rapor.
+
+    Web planlama (TIKTOK_AKIS=web_planla) esnasında `tiktok_publish_id`
+    artık kullanılmaz; ama state'de kalır ve "bekleyen taslak" sayısını
+    yanıltabilir. Bu fonksiyon bunu SADECE raporlar, silmez:
+    - "yok": temiz
+    - "eski_web_var": eski ID var ama web kaydı da var (normal geçiş)
+    - "eski_web_yok": eski ID var, web kaydı yok (tasfiye edilmeli)
+    Kullanıcı "sil" demezse state'de kalır; silme YALNIZ elle,
+    `tiktok_publish_id` anahtarını çıkaran bir `state_io.durum_yaz` ile.
+    Testler bu fonksiyonu tarar; auto_process bunu çağırmaz.
+    """
+    st = _durum_oku(proje)
+    pid = st.get("tiktok_publish_id")
+    wk = web_kaydi(st)
+    if not pid:
+        return "yok", None
+    if wk and wk.get("durum") in DURUMLAR:
+        return "eski_web_var", pid
+    return "eski_web_yok", pid
 
 
 def _klasorler(klasorler=None):
@@ -754,13 +789,17 @@ def durum(simdi=None, klasorler=None):
             continue
         an = _ts(k.get("planlanan_an"))
         gecti = an is not None and an <= t
+        dogrulanmadi = (k.get("durum") == "planlandi" and gecti
+                         and not st.get("tiktok_published_at"))
+        gecikme = int(t - an) if (dogrulanmadi and an is not None) else 0
         satir = {
             "proje": ad, "proje_yolu": os.path.abspath(p), "durum": k.get("durum"),
             "planlanan_an": k.get("planlanan_an"), "yuklendi_at": k.get("yuklendi_at"),
             "studio_id": k.get("studio_id"), "aciklama_sha1": k.get("aciklama_sha1"),
             "kaynak": k.get("kaynak"), "an_gecti": gecti,
-            "dogrulanmadi": (k.get("durum") == "planlandi" and gecti
-                             and not st.get("tiktok_published_at")),
+            "dogrulanmadi": dogrulanmadi,
+            "gecikme_sn": gecikme,
+            "bayat": gecikme >= _bayat_esigi_sn(),
             "tiktok_published_at": st.get("tiktok_published_at"),
             "onaylandi_at": k.get("onaylandi_at"),
         }
@@ -790,7 +829,12 @@ def rapor_satirlari(simdi=None, klasorler=None):
     for s in d["planli"]:
         an = _ts(s["planlanan_an"])
         metin = _dt(an).strftime("%d.%m %H:%M") if an is not None else str(s["planlanan_an"])
-        ek = " (an geçti, doğrulanmadı)" if s["dogrulanmadi"] else ""
+        if s.get("bayat"):
+            ek = " (%d gündür doğrulanmadı)" % max(2, s.get("gecikme_sn", 0) // 86400)
+        elif s["dogrulanmadi"]:
+            ek = " (an geçti, doğrulanmadı)"
+        else:
+            ek = ""
         satirlar.append("TikTok planlı: %s %s%s" % (s["proje"], metin, ek))
     return satirlar
 
@@ -849,7 +893,12 @@ def kontrol_hatirlatma(log=print, simdi=None, klasorler=None, gonder=None):
             sonuc["sebep"] = "test ortamı — gerçek bildirim yok"
         else:
             ilk = bekleyen[0]["proje"]
-            mesaj = "TikTok'ta çıktı mı? %s\nÇıktıysa bu sohbete yaz: yayınladım %s" % (ilk, ilk)
+            gun = bekleyen[0].get("gecikme_sn", 0) // 86400
+            mesaj = "TikTok'ta çıktı mı? %s" % ilk
+            if gun >= 2:
+                mesaj += " (%d gündür doğrulanmadı)" % gun
+            mesaj += ("\nÇıktıysa bu sohbete yaz: yayınladım %s"
+                      "\nÇıkmadıysa/sildiysen yaz: iptal %s" % (ilk, ilk))
             if len(bekleyen) > 1:
                 mesaj += "\n(+%d planlı gönderi daha doğrulanmadı)" % (len(bekleyen) - 1)
             if gonder is None:
@@ -869,9 +918,101 @@ def kontrol_hatirlatma(log=print, simdi=None, klasorler=None, gonder=None):
     return sonuc
 
 
+PAKET_GUN_ANAHTARI = "paket_at"
+
+
+def paket_hatirlatma(log=print, simdi=None, klasorler=None, gonder=None,
+                      gonder_foto=None):
+    """24 saat içinde plan anı gelen kayda paket servisi (kapak + açıklama + ayarlar).
+
+    Koşu başına EN FAZLA 1 proje (en erken an); proje başına günde 1
+    (`tiktok_web.paket_at` gün damgası); yalnız golden-hour içinde;
+    `config.TIKTOK_WEB_PAKET` (varsayılan True) kapısı. Amaç: kullanıcı
+    telefonda metin aramaz, Studio web'e paketi olduğu gibi uygular.
+    Planlanan an geçip yayınlanmamış kayıtlara DOKUNMAZ (o `kontrol_hatirlatma`'nın
+    işi). Hiçbir hata yukarı çıkmaz; her koşuda tek özet satırı."""
+    sonuc = {"gonderilen": None, "sebep": ""}
+    t = time.time() if simdi is None else simdi
+    try:
+        katalog, _bozuk = _katalog(klasorler)
+    except Exception as e:                                   # noqa: BLE001
+        log("  TikTok paket: katalog okunamadı (%s)" % type(e).__name__)
+        sonuc["sebep"] = "katalog okunamadı"
+        return sonuc
+    bugun = _dt(t).date().isoformat()
+    adaylar = []
+    for p, ad, st in katalog:
+        k = web_kaydi(st)
+        if not k or k.get("durum") != "planlandi":
+            continue
+        if st.get("tiktok_published_at"):
+            continue
+        an = _ts(k.get("planlanan_an"))
+        if an is None or not (t < an <= t + 24 * 3600):
+            continue
+        if k.get(PAKET_GUN_ANAHTARI) == bugun:
+            continue
+        adaylar.append((an, p, ad, st, k))
+    if not adaylar:
+        sonuc["sebep"] = "24sa içinde paketsiz plan yok"
+        log("  TikTok paket: %s" % sonuc["sebep"])
+        return sonuc
+    if not getattr(config, "TIKTOK_WEB_PAKET", True):
+        sonuc["sebep"] = "paket kapalı (config)"
+    elif not _golden_icinde(t):
+        sonuc["sebep"] = "golden-hour dışında"
+    elif gonder is None and klasorler is None and os.environ.get("PYTEST_CURRENT_TEST"):
+        sonuc["sebep"] = "test ortamı — gerçek bildirim yok"
+    else:
+        an, p, ad, st, k = sorted(adaylar, key=lambda x: x[0])[0]
+        try:
+            import tiktok_yayin_kiti as K
+            kit = K.build_kit(p)
+            ayarlar = web_ayarlari(getattr(config, "TIKTOK_AI_BEYANI", "aciklama"),
+                                   kit.get("kapak"), an)
+            metin = ("Bu akşam TikTok planı: %s (%s)\n"
+                     "--- açıklama (olduğu gibi yapıştır) ---\n%s\n"
+                     "--- ayarlar ---" % (ad, _dt(an).strftime("%d.%m %H:%M"),
+                                            kit["aciklama"]))
+            for s in ayarlar:
+                metin += "\n%s → %s" % (s["alan"], s["deger"])
+            metin += ("\nkapak: %s (galeriye kaydet → Kapağı düzenle → Yükle)"
+                      % (kit.get("kapak") or "yok"))
+            if gonder is None:
+                import notify
+                gonder = notify.send_text
+            if gonder_foto is None:
+                import notify as _nt
+                gonder_foto = _nt.send_photo
+            foto = kit.get("kapak")
+            foto_ok = True
+            if foto and os.path.isfile(foto):
+                try:
+                    foto_ok = gonder_foto(foto, "Kapak — galeriye kaydet: %s" % ad) is True
+                except Exception:                            # noqa: BLE001
+                    foto_ok = False
+            ok = gonder("TikTok paketi: %s" % ad, metin) is True
+            if ok:
+                _yazim_kapisi(p)
+                st = _durum_oku(p) or {}
+                kayit = web_kaydi(st) or {}
+                kayit[PAKET_GUN_ANAHTARI] = bugun
+                st[ALAN] = kayit
+                state_io.durum_yaz(p, st)
+                sonuc["gonderilen"] = ad
+                sonuc["sebep"] = "paket gönderildi" + ("" if foto_ok else " (kapak düşmedi)")
+            else:
+                sonuc["sebep"] = "paket gönderilemedi"
+        except Exception as e:                               # noqa: BLE001
+            sonuc["sebep"] = "paket kurulamadı (%s)" % type(e).__name__
+    log("  TikTok paket: %s" % sonuc["sebep"])
+    return sonuc
+
+
 # --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
+
 
 def _json_bas(veri):
     print(json.dumps(veri, ensure_ascii=False, indent=2))

@@ -46,7 +46,7 @@ def test_access_token_sorgu_dizesinde():
 
 
 def test_input_token_sorgu_dizesinde():
-    metin = f"GET /debug_token?input_token={SAHTE_FB}&access_token=123|sahte"
+    metin = f"GET /debug_token?input_token={SAHTE_FB}&access_token=FAKE_TOKEN"
     _sizmadi(maskele(metin), SAHTE_FB)
 
 

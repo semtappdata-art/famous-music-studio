@@ -45,6 +45,13 @@ GRAPH_API = "https://graph.instagram.com/v21.0"
 # kala yayınlanmaya kalkışılırsa yarış durumu oluşur. 23 saat, golden-hour
 # pencereleri arası en kötü aralığı (~14 saat) hâlâ rahatça kapsıyor — yani
 # bu kapı GERÇEKTEN bekleyen hiçbir konteyneri erken düşürmez.
+# 23 saat → 12 saat (2026-09-29). Instagram konteynerleri 24sa sonra
+# EXPIRED olur ama biz bunu bilmiyorz — 23sa'lik kontrol zaten güvenli
+# ama 12sa daha güvenli: golden-hour pencereleri arası en fazla ~14sa,
+# 12sa marj ile her pine darbe almadan ulaşır.
+# 12sa → 23sa (2026-09-29 geri alindi). 12sa golden-hour penceresiyle
+# cok kisaydi (18:00-22:00 = 4sa pencere, 12sa marj yetmez).
+# 23sa = Instagram konteyner omru, golden-hour 4sa pencere + 12sa marj.
 KONTEYNER_OMRU_SN = 23 * 3600
 
 # `try_publish_pending()`'in None dönme SEBEPLERİ (bkz. o fonksiyonun

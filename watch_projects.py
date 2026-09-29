@@ -121,12 +121,17 @@ IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 # yani bu script'in var olma sebebini yok eder: eşleşme "adın içinde geçiyor"
 # değil, "adın İLK parçası (ilk `_`e kadar, uzantısız) TAM OLARAK bir rol adı".
 #   sahipsiz DEĞİL : cover.png, cover.jpeg, cover_vertical.png, art.jpg,
-#                    art_kare.png            (boru hattının ürettikleri)
+#                    art_kare.png, sahne_guverte.png, sahne_hero.png
+#                    (boru hattının ürettikleri + bölüm sahneleri)
 #   HÂLÂ sahipsiz  : kapak_tasarimi.png, pixlr_export_1234.png,
 #                    sahne_art_final.jpg, kart_art_gorseli.png, coverim.png
 # Yani kullanıcının indirdiği bir dosyanın adında "cover"/"art" GEÇSE bile
 # yakalanmaya devam ediyor; yalnızca dosyanın ROLÜ olarak BAŞLIYORSA eleniyor.
-PIPELINE_IMAGE_ROLES = {"cover", "art"}
+# "sahne" rolü 2026-09-23'te eklendi: bölüm-sahne sistemi (`sahne_parti.json`
+# + `stock_video.bolum_sahneleri()`) her sete `sahne_<id>.png` dosyaları koyuyor
+# ve izleyici bunları "sahipsiz görsel" sanıp İLKİNİ cover.png'ye TAŞIYORDU
+# (3 sette 3 dosya, canlı vaka — `_place_stray_images` + `os.rename`).
+PIPELINE_IMAGE_ROLES = {"cover", "art", "sahne"}
 
 # Aşağıdaki İKİ liste HÂLÂ AÇIK AD LİSTESİ, bilerek: bunlar "sahipsiz mi"
 # sorusunu değil, `_place_stray_images()`'ın "hedef zaten dolu mu / hangi ada
@@ -138,9 +143,20 @@ ART_NAMES = {"art.jpg", "art.jpeg", "art.png"}
 
 def _is_pipeline_image(name: str) -> bool:
     """Bu görsel boru hattının KENDİ ürettiği bir dosya mı — bkz.
-    PIPELINE_IMAGE_ROLES'deki gerekçe (desen, liste değil)."""
+    PIPELINE_IMAGE_ROLES'deki gerekçe (desen, liste değil).
+
+    "sahne" rolünde İNCE AYRIM (2026-09-23): `sahne_guverte.png` gibi bölüm
+    sahneleri muaf, ama adında "art" geçen `sahne_art_final.jpg` gibi bir
+    dosya HÂLÂ sahipsiz sayılıp art.jpg olur (eski davranış + testi korunur).
+    Gerekçe: muafiyetin amacı bölüm-sahne sözleşmesini (`sahne_<id>`) korumak,
+    kullanıcının "art" niyetini gizlemek değil."""
     stem = os.path.splitext(name)[0].lower()
-    return stem.split("_", 1)[0] in PIPELINE_IMAGE_ROLES
+    rol = stem.split("_", 1)[0]
+    if rol not in PIPELINE_IMAGE_ROLES:
+        return False
+    if rol == "sahne" and "art" in stem:
+        return False
+    return True
 
 
 def log(msg: str) -> None:

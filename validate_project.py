@@ -74,6 +74,24 @@ def validate(project_dir: str) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
 
+    # 0) Render kilidi (editoryal kapı, politika DEĞİL): state.json'da
+    #    `render_kilit` doluysa görseller netleşmemiş / onay verilmemiş demektir.
+    #    İlk kontrol olmasının sebebi: diğer tüm kontrollerin maliyeti boşa
+    #    gitmesin ve log'un ilk satırı sebebi söylesin. Kaldırmak: onay sonrası
+    #    alanı state.json'dan silmek (render yapıldıktan sonra kilit geri
+    #    konmaz — kilit proje başına TEK seferlik).
+    try:
+        with open(os.path.join(project_dir, "state.json"), encoding="utf-8") as f:
+            _st = json.load(f)
+        if isinstance(_st, dict) and _st.get("render_kilit"):
+            errors.append(
+                "render_kilit aktif (%s) — görsel onayı bekleniyor, "
+                "render başlatılmıyor." % _st.get("render_kilit")
+            )
+            return errors, warnings
+    except (OSError, ValueError):
+        pass
+
     # 1) audio — var mı, ffprobe ile okunabiliyor mu, süresi mantıklı mı
     audio_path = _find(project_dir, AUDIO_NAMES)
     if not audio_path:

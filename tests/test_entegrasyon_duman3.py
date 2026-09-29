@@ -539,7 +539,7 @@ def test_kontrol_et_tum_adimlari_donduruyor_ve_gercek_gorev_tanimi_bozuk(
     assert set(sonuc) == {"instagram_token", "netlify", "gorev_tanimlari",
                           "ses_takibi", "git_senkron", "yayin_durgunlugu",
                           "uretim_kuyrugu", "youtube_gizlilik", "elle_islemler",
-                          "kacan_kosu"}
+                          "kacan_kosu", "llm_saglayicilar", "sentry"}
     # Yedinci adım: taze damga -> sessiz (yanlış alarm yok).
     assert sonuc["yayin_durgunlugu"]["durum"] == "tamam"
     # SEKİZİNCİ ADIM (2026-09-12, uretim_kuyrugu_bos) yedincinin
@@ -981,8 +981,8 @@ def test_derleme_adaylar_ayni_sesi_iki_public_projede_tekine_dusuruyor(tmp_path,
 def test_maskele_token_anahtari_ve_nfp_deseni():
     import gizli_maskele as gm
     ham = ('netlify {"token": "nfp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcd"} '
-           "ve access_token=EAAGm0PX4ZCpsBO7SAHTEfakeTOKEN99xyz")
+           "ve access_token=FAKE_TOKEN")
     m = gm.maskele(ham)
     assert "nfp_ABCDEFGHIJ" not in m
-    assert "EAAGm0PX4ZCpsBO7" not in m
+    assert "FAKE_TOKEN_PLACEHOLDER" not in m
     assert "netlify" in m and "access_token" in m, "satır tanılanabilir kalmalı"

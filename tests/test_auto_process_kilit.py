@@ -194,13 +194,13 @@ def test_log_token_maskeler(iki_surec):
     token sorgu dizesinde diske düştü."""
     a, _ = iki_surec
     hata = Exception(
-        "HTTPSConnectionPool: /v1/me?access_token=EAAGm0PX4ZCpsBO7sahteToken123&fields=id"
+        "HTTPSConnectionPool: /v1/me?access_token=FAKE_TOKEN=id"
     )
     a.log(f"  Instagram HATA: {hata}")
 
     with open(a.LOG_PATH, "r", encoding="utf-8") as f:
         icerik = f.read()
-    assert "EAAGm0PX4ZCpsBO7sahteToken123" not in icerik
+    assert "FAKE_TOKEN_PLACEHOLDER" not in icerik
     assert "MASKEL" in icerik
     assert "Instagram HATA" in icerik      # satır hâlâ tanılanabilir olmalı
 

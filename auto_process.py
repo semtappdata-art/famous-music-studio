@@ -847,7 +847,8 @@ def _yalniz_drain_bekleyenleri_ayir(project_dirs: list) -> tuple:
     Koruma: tests/test_kuyruk_basi_drain.py."""
     try:
         from instagram_upload import _konteyner_bayat
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        log(f"  Instagram konteyner import HATASI: {e}")
         return list(project_dirs), []
     secilebilir, yalniz_drain = [], []
     for p in project_dirs:
@@ -1319,6 +1320,18 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     if youtube_video_id:
         _check_youtube_captions(project_dir, state)
 
+    # YouTube İLK YORUM (sabitlenecek kanal yorumu, bkz. youtube_ilk_yorum).
+    # Altyazıyla AYNI desen: idempotent (bayrak + deterministik metin), kota
+    # kapılı, hatada sessizce geçilir — yorum yüklemeyi durdurmaz.
+    # `_is_fully_done()`'a EKLENMEDİ (altyazıyla aynı gerekçe).
+    if youtube_video_id and os.path.isfile(os.path.join(upload_dir, "token.json")):
+        try:
+            sys.path.insert(0, upload_dir)
+            from youtube_ilk_yorum import gonder as _ilk_yorum_gonder
+            _ilk_yorum_gonder(project_dir, log=log)
+        except Exception as e:
+            log(f"  YouTube ilk yorum HATA: {e}")
+
     # YouTube STUDIO PLANLI (2026-09-13, bkz. STUDIO_PLAN_ALANI): uzun format Studio'dan
     # yüklendi, public anı gelecekte. Buradan sonrası (API Shorts, TikTok, Instagram,
     # Facebook) izleyiciye GÖRÜNÜR paylaşım — YouTube public olmadan hiçbiri gitmez.
@@ -1340,8 +1353,8 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     elif not yayin_ritmi.shorts_zamani(_load_state(project_dir))[0]:
         # RİTİM R3a (2026-09-13): Shorts uzun formatın public anından 24 sa sonra;
         # yüklemeyi `_shorts_gecikmeli_supurge` yapar (main finally, kalıp B).
-        log("  YouTube Shorts: " + yayin_ritmi.shorts_zamani(_load_state(project_dir))[2]
-            + " — Shorts süpürgesi yükleyecek")
+        _sonuc = yayin_ritmi.shorts_zamani(_load_state(project_dir))
+        log(f"  YouTube Shorts: {_sonuc[2]} — Shorts süpürgesi yükleyecek")
     elif os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
             from youtube_upload import upload_short as yt_upload_short
@@ -1382,8 +1395,8 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     elif not yayin_ritmi.platform_gun_izni(_load_state(project_dir), "instagram")[0]:
         # RİTİM R3b (2026-09-13, karar 4): şarkı aynı gün en fazla N platformda —
         # konteyner OLUŞTURMA anında uygulanır (bayatlama riski yok; sonraki koşu dener).
-        log("  Instagram: " + yayin_ritmi.platform_gun_izni(_load_state(project_dir),
-                                                            "instagram")[1] + " — ertelendi")
+        _sonuc = yayin_ritmi.platform_gun_izni(_load_state(project_dir), "instagram")
+        log(f"  Instagram: {_sonuc[1]} — ertelendi")
     elif os.path.isfile(os.path.join(upload_dir, "instagram_token.json")):
         try:
             from instagram_upload import upload_video as ig_upload
@@ -1455,6 +1468,19 @@ def _ek_platformlari_isle(project_dir: str, state: dict, upload_dir: str,
             continue
         # RİTİM R3b (2026-09-13): şarkı aynı gün en fazla N platformda; Facebook'un geri
         # doldurması (facebook_backfill) sonraki günlerde tamamlar.
+        # TELIF ENGELİ (2026-09-29): TikTok'ta telif itirazı olan içerik
+        # tekrar yüklenmesin. state.tiktok_telif_engeli varsa atla.
+        _telif = state.get('tiktok_telif_engeli')
+        if _telif and bayrak == 'facebook':
+            # Facebook'da telif sorunu yoksa Facebook'a devam et
+            pass
+        if _telif and bayrak == 'facebook':
+            pass  # Facebook haricinde telif engeli etkiler
+        # TikTok telif engeli varsa TikTok yüklemeyi atla
+        if _telif and modul_adi == 'tiktok_upload':
+            log(f"  {ad}: TELIF ENGELİ — {_telif.get('eser','?')} — atlanıyor")
+            continue
+
         _r_izin, _r_sebep = yayin_ritmi.platform_gun_izni(_load_state(project_dir), bayrak)
         if not _r_izin:
             log(f"  {ad}: {_r_sebep} — ertelendi (geri doldurma tamamlar)")
@@ -1611,7 +1637,8 @@ def _facebook_veri_erisimi() -> None:
         if s.get("bildirildi_gun") != bugun:
             try:
                 notify.send("Facebook yetkisi yenilenmeli", mesaj)
-            except Exception:
+            except Exception as e:
+                log(f"  Facebook bildirim HATASI: {e}")
                 pass
             s["bildirildi_gun"] = bugun
             try:
@@ -1901,8 +1928,9 @@ def _tiktok_web_sirasi() -> None:
     Planlanan an geçti diye `yayinlandi` YAZMAZ. Kalıp B; `_is_fully_done`'a EKLENMEDİ,
     yeni görev yok; `_turev_takvimi()` SONRASINDA. Hiçbir hata otomasyonu durdurmaz."""
     try:
-        from tiktok_web import kontrol_hatirlatma
+        from tiktok_web import kontrol_hatirlatma, paket_hatirlatma
         kontrol_hatirlatma(log)
+        paket_hatirlatma(log)
     except Exception as e:
         log(f"  TikTok web HATA: {maskele(str(e))}")
 
@@ -2078,9 +2106,52 @@ def main():
         if studio_bekleyen:
             log(f"YouTube Studio'dan planlı, public anı bekleniyor, sıraya alınmadı: "
                 f"{', '.join(os.path.basename(os.path.normpath(p)) for p in studio_bekleyen)}")
+        # BUTUN PROJELERDEDE EK PLATFORM DENER — facebook_backfill
+        # sadece Telegram/Bluesky'i yakalardi. Facebook icin
+        # _ek_platformlari_isle sadece process_project() icinden
+        # cagriliyordu; _is_fully_done() Facebook saymadigi icin
+        # projeler pending'den dusup tekrar donulmuyordu.
+        # Simdi tum projeler gosteriliyor (hatasiz-gecer).
+        # BUGUN icin: facebook_media_id olmayan TUM projeler icin
+        # deneme yapilir (golden-hour disi da calisir).
+        # HIZ: Facebook projesi yoksa atla (0 proje varsa dongu gerek yok).
+        _facebook_projeleri = []
+        for _kok in KOKLER:
+            if not os.path.isdir(_kok): continue
+            for _d in os.listdir(_kok):
+                _p = os.path.join(_kok, _d)
+                if not os.path.isdir(_p): continue
+                _st_file = os.path.join(_p, "state.json")
+                if not os.path.isfile(_st_file): continue
+                try:
+                    with open(_st_file, encoding="utf-8") as _f:
+                        _stt = json.load(_f)
+                    if "facebook_media_id" not in _stt:
+                        _facebook_projeleri.append(_p)
+                except Exception as e:
+                    log(f"  Facebook proje tarama HATASI: {e}")
+                    pass
+        if not _facebook_projeleri:
+            log("  Ek platform: Facebook projesi yoksa atla")
+        else:
+            log(f"  Ek platform: {len(_facebook_projeleri)} proje Facebook kontrol")
+            _upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                            "upload")
+            for _p in _facebook_projeleri:
+                try:
+                    _st = _load_state(_p)
+                except Exception:
+                    continue
+                try:
+                    _ek_platformlari_isle(_p, _st, _upload_dir,
+                                             not args.no_schedule)
+                except Exception as e:  # noqa: BLE001
+                    log(f"  Facebook backfill HATASI: {e}")
+                    pass
+
         if not secilebilir:
             _drain_golden_hour_queue(ready)
-            log("İşlenecek proje yok bu koşuda (yalnız golden-hour bekleyenler var), "
+            log("İşlenecek proje yok bu kosuda (yalniz golden-hour bekleyenler var), "
                 "sadece golden-hour kontrolü yapıldı.")
             return
 
@@ -2119,7 +2190,13 @@ def main():
 
         _drain_golden_hour_queue([p for p in ready if p not in batch])
         log("Çalıştırma tamamlandı.")
+        _islenen = list(batch)
+        _kuyruk = list(secilebilir[count:])
+        _hatalar = []
     finally:
+        _islenen = _islenen if '_islenen' in dir() else []
+        _kuyruk = _kuyruk if '_kuyruk' in dir() else []
+        _hatalar = _hatalar if '_hatalar' in dir() else []
         _refresh_latest_listing()
         # base=None => youtube_stats.KOKLER (projects + dj_sets + derlemeler).
         # Onceden args.base ("projects") geciyordu ve cok-kok duzeltmesi olu
@@ -2134,6 +2211,16 @@ def main():
         _facebook_veri_erisimi()
         _dj_tarama()
         _saglik_kontrol()
+        # YouTube Analytics — saatlik hatta bagli DEGIL (gunluk).
+        # weekly_report.gunluk_izlenme_raporu() bunu cagirirdi ama
+        # saatlik kosuda da olcum yapilsin ki, kota tuketimi
+        # gorunur olsun.
+        try:
+            from upload.youtube_analytics import rapor as _yt_analytics
+            _yt_analytics()
+        except Exception as e:  # noqa: BLE001
+            log(f"  YouTube analytics HATASI: {e}")
+            pass
         _izlenme_raporu()
         _haftalik_gozden_gecirme()
         _gunluk_izlenme()
@@ -2142,7 +2229,15 @@ def main():
         _turev_takvimi()
         _tiktok_web_sirasi()
         _youtube_studio_sirasi()
+        _operatorum_mesaji(_islenen, _hatalar, _kuyruk)
         _release_lock()
+        # LLM router durumu — sağlıklı/ayık uçlarını log'a yazar.
+        try:
+            from _llm_router import provider_status as _llm_status
+            _llm_status()
+        except Exception as e:  # noqa: BLE001
+            log(f"  LLM router HATASI: {e}")
+            pass
         # YouTube kota — TEK satır + kapak telafisi + Studio Telegram bildirimi.
         # finally'nin EN SONUNDA ve KENDİ try'ında: defter/hesap hatası koşuyu ASLA
         # düşürmez (kosu_sonu ayrıca kendi içinde hiçbir istisna fırlatmaz). Kilit
@@ -2156,8 +2251,43 @@ def main():
         except Exception as e:  # noqa: BLE001
             try:
                 log(f"  YouTube kota kosu sonu adımı yazılamadı: {e}")
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                log(f"  YouTube kota sonucu HATASI: {e}")
                 pass
+
+
+
+
+def _operatorum_mesaji(islenen: list, hatalar: list, kuyruk: list) -> None:
+    """Operatöre durum mesajı gönder.
+    
+    Her koşu sonunda operatöre özet mesaj gönderilir:
+    - Yüklenen şarkı sayısı
+    - Hata sayısı
+    - Kuyruktaki şarkı sayısı
+    
+    Args:
+        islenen: Yüklenen projeler listesi
+        hatalar: Hata olan projeler listesi
+        kuyruk: Kuyruktaki projeler listesi
+    """
+    try:
+        import notify
+        if not notify.is_configured():
+            return
+        
+        toplam = len(islenen)
+        hata_sayisi = len(hatalar)
+        kuyruk_sayisi = len(kuyruk)
+        
+        if hata_sayisi == 0:
+            mesaj = f"✅ {toplam} şarkı yüklendi, {kuyruk_sayisi} kuyrukta bekliyor"
+        else:
+            mesaj = f"⚠️ {toplam} şarkı yüklendi, {hata_sayisi} hata, {kuyruk_sayisi} kuyrukta"
+        
+        notify.send("Famous Studio", mesaj)
+    except Exception as e:
+        log(f"  operatör mesajı HATASI: {e}")
 
 
 if __name__ == "__main__":

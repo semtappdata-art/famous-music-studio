@@ -56,6 +56,8 @@ import re
 import subprocess
 import sys
 import time
+import sentry_sdk
+from sentry_sdk import capture_exception, capture_message
 
 REPO = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, REPO)
@@ -896,7 +898,8 @@ def _eksik_adlari_metni(eksik) -> str:
     """
     try:
         harita = _kimlik_ad_haritasi()
-    except Exception:
+    except Exception as e:
+        log(f"  kimlik harita HATASI: {e}")
         harita = {}
     adlar = sorted({harita[k] for k in eksik if k in harita}, key=str.casefold)
     ham = sorted(k for k in eksik if k not in harita)
@@ -1124,7 +1127,8 @@ def ana_platform_anahtarlari() -> tuple:
         import yayin_ritmi
         if yayin_ritmi.shorts_gecikmeli_mi():
             kume = tuple(k for k in kume if k != "youtube_shorts_video_id")
-    except Exception:                                        # noqa: BLE001
+    except Exception as e:                                        # noqa: BLE001
+        log(f"  shorts gecikmeli HATASI: {e}")
         pass
     return kume
 
@@ -1614,14 +1618,16 @@ def _uretim_onerisi() -> list:
 
     try:
         not_ = _siradaki_uretim_notu()
-    except Exception:
+    except Exception as e:
+        log(f"  uretim notu HATASI: {e}")
         not_ = None
     if not_:
         satirlar.append("Sıradaki üretim (%s): %s" % (TAKIP_DOSYASI_ADI, not_))
 
     try:
         tarz = _en_uzun_bosta_tarz()
-    except Exception:
+    except Exception as e:
+        log(f"  tarz HATASI: {e}")
         tarz = None
     if tarz and tarz["son_ts"]:
         satirlar.append("En uzun boşta tarz: %s (katalogda %d şarkı, son yayını %s)."
@@ -1638,7 +1644,8 @@ def _uretim_onerisi() -> list:
 
     try:
         akis = _belge_oku(IS_AKISI_DOSYASI_ADI)
-    except Exception:
+    except Exception as e:
+        log(f"  akisi HATASI: {e}")
         akis = None
     if akis:
         baslik = _URETIM_BASLIK_RE.search(akis)
@@ -1894,7 +1901,56 @@ def elle_islemler_defteri(log=print) -> dict:
     return s
 
 
+def _llm_saglayici_durum(log=print) -> dict:
+    """LLM router saglayici durumunu olcer.
+
+    Her saglayici icin: anahtar var mi, client olusturulabiliyor mu,
+    model listesi. Ag yoksa saglayici listede kalir ama
+    client_ok=False — bu capik degil, sessiz bir uyari.
+    Hicbir saglayici yoksa UYARI (caption deternistik olur).
+    """
+    try:
+        from _llm_router import provider_status
+        durum = provider_status()
+    except Exception as e:
+        log(f"  saglik: LLM router okunamadi: {e}")
+        return {"hata": str(e)}
+
+    aktif = sum(1 for v in durum.values() if v.get("client_ok"))
+    toplam = len(durum)
+    if aktif == 0 and toplam > 0:
+        log(f"  saglik: LLM router — {toplam} saglayici var, HICBIRI aktif degil. Caption deternistik.")
+    elif aktif < toplam:
+        log(f"  saglik: LLM router — {aktif}/{toplam} saglayici aktif.")
+    else:
+        log(f"  saglik: LLM router — tum {toplam} saglayici aktif.")
+    return {"aktif": aktif, "toplam": toplam, "saglayicilar": durum}
+
+
+def _sentry_init() -> None:
+    """Sentry SDK başlat — hata izleme ve alert."""
+    try:
+        sentry_sdk.init(
+            dsn=os.environ.get("SENTRY_DSN", ""),
+            traces_sample_rate=0.1,
+            profiles_sample_rate=0.1,
+            _experiments={"continuous_profiling": True},
+        )
+    except Exception as e:
+        log(f"  sentry init HATASI: {e}")
+        pass
+
+
+def _sentry_durum(log=print) -> dict:
+    """Sentry durumu."""
+    import sentry_sdk
+    if sentry_sdk.Hub.current.client is None:
+        return {"durum": "aktif_degil", "not": "SENTRY_DSN yok — sessiz mod"}
+    return {"durum": "aktif", "dsn": "..."}
+
+
 def kontrol_et(log=print) -> dict:
+    _sentry_init()
     return {
         "instagram_token": instagram_token_suresi(log),
         "netlify": netlify_araci(log),
@@ -1944,6 +2000,13 @@ def kontrol_et(log=print) -> dict:
         # satiri ATLAYARAK okuyor; atlanan kayit raporlardan ve panodan sessizce
         # duser. Ag yok, yalniz defteri okur. SIRA: kacan_kosu'dan ONCE.
         "elle_islemler": elle_islemler_defteri(log),
+        # ONBIRINCI ADIM (2026-09-16). LLM router saglayicilari —
+        # boru hattinda LLM cagrisi varsa (ai_caption, sosyal medya
+        # caption'i) bu saglayicilar calismali. Capik olmayan bir
+        # saglayici varsa (anahtar yok veya client olusturulamadi)
+        # UYARI, hata DEGIL — caption deternistik havuzdan gelir.
+        # SIRA: elle_islemler'den SONRA, kacan_kosu'dan ONCE.
+        "llm_saglayicilar": _llm_saglayici_durum(log),
         # EN SONDA, bilerek: bu adim damgayi TAZELIYOR ("saatlik hattin sonuna
         # en son ne zaman ulasildi"). Yukaridaki adimlardan biri beklenmedik
         # bir sekilde patlarsa damga da atilmaz ve bir SONRAKI kosu bunu
@@ -1951,6 +2014,8 @@ def kontrol_et(log=print) -> dict:
         # Digerlerinden farki: onlar "kosu oldu" varsayiminin USTUNE kurulu
         # kontroller; bu ise kosunun KENDISININ olup olmadigini olcen tek adim.
         "kacan_kosu": kacan_kosu(log),
+        # ONBIRINCI ADIM: Sentry durumu
+        "sentry": _sentry_durum(log),
     }
 
 
