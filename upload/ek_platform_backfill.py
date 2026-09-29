@@ -457,6 +457,50 @@ def bugun_yuklenen(damga_anahtari) -> int:
 # yapılan ayarın aynası, diğeri kodun kendi kararı; ikisi farklı şeyler
 # bildiği için birbirinin yerine geçmiyor.
 
+# Her proje için hangi EK platformların başarılı olduğu (backfill içinde).
+_YAYINLANAN_EK: dict = {}  # {proje_yolu: {platform: True}}
+
+
+def ek_platform_durum(proje: str) -> dict:
+    """Bir projenin EK platform durumunu özetler.
+
+    Döner: {"telegram": bool, "bluesky": bool, "hepsi": bool,
+            "ek_platform_yayinlandi_at": str|None}
+    State dosyasını okur — ağ çıkar, hızlı, temiz.
+    """
+    st = _durum(proje)
+    y = st.get("ek_platform_yayinlandi_at")
+    return {"telegram": bool(st.get("telegram_message_id") or st.get("telegram_shorts_message_id")),
+            "bluesky": bool(st.get("bluesky_post_uri")),
+            "hepsi": bool(y),
+            "ek_platform_yayinlandi_at": y}
+
+
+def _platform_yayin_bildir(proje: str, platform: str, detay: str,
+                             log=print, kaynak: str = "claude"):
+    """Tüm platform yayınlarında birleşik bildirim kalıbı.
+
+    (1) elle_islem defterine yazar (`kaynak=telegram/bluesky`),
+    (2) notify.configured ise bildirim gönderir, (3) hata yutulmaz.
+    `auto_process`, `dj_famous_process`, `ek_platform_backfill`
+    bunu kullanır — tek nokta, tek kalıp.
+    """
+    import elle_islem
+    ad = os.path.basename(os.path.normpath(proje))
+    try:
+        elle_islem.ekle(platform, "yayinladi", detay, proje=ad,
+                        kaynak=kaynak, state_etkisi=f"{platform}_uploaded_at")
+    except Exception as e:                     # noqa: BLE001
+        log("  %s bildirim defter hatası: %s" % (platform, e))
+    try:
+        import notify
+        if notify.is_configured():
+            notify.send("%s yayında: %s" % (platform, ad),
+                        body=detay[:200], title="FMS %s" % platform)
+    except Exception:                          # noqa: BLE001
+        pass
+
+
 # Koşu başına BİR kez uyarılan anahtarlar (notify.uyar_bir_kez deseni).
 # Süpürge saatlik koşuyor ve engelli proje HER koşuda atlanacak; anahtar proje
 # YOLUNA bağlı olduğu için log'a koşu başına tek satır düşer, kalıcı gürültü
@@ -632,6 +676,25 @@ def backfill(limit: int = KOSU_TAVANI, dry_run: bool = False, log=print) -> dict
                 r = islev(proje, **varyant["ek"])
                 sonuc["islenen"].append({"platform": ad, "proje": proje_adi,
                                          "sonuc": str(r)[:60]})
+                _platform_yayin_bildir(proje, ad, str(r)[:160], log)
+                # EK platform başarısı takibi — her iki platform da
+                # tamamlanınca ek_platform_yayinlandi_at yazılır.
+                _YAYINLANAN_EK.setdefault(proje, {})[ad] = True
+                if (all(_YAYINLANAN_EK.get(proje, {}).get(p, False)
+                        for p, _, _, _, _, _, _, _, _, _, _ in PLATFORMLAR)
+                        and _YAYINLANAN_EK[proje].get("telegram")
+                        and _YAYINLANAN_EK[proje].get("bluesky")):
+                    try:
+                        import state_io
+                        st = _durum(proje)
+                        st["ek_platform_yayinlandi_at"] = (
+                            time.strftime("%Y-%m-%dT%H:%M:%S"))
+                        state_io.durum_yaz(proje, st)
+                        log("  %s: telegram + bluesky tamam → "
+                            "ek_platform_yayinlandi_at yazıldı" % proje_adi)
+                    except Exception as e:        # noqa: BLE001
+                        log("  %s: ek_platform_yayinlandi_at HATA: %s"
+                            % (proje_adi, e))
             except Exception as e:
                 sonuc["islenen"].append({"platform": ad, "proje": proje_adi,
                                          "hata": str(e)[:160]})

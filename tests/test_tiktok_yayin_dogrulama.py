@@ -45,7 +45,10 @@ def _proje(kok, klasor, durum=None, video=True):
     (p / "state.json").write_text(
         json.dumps(durum or {}, ensure_ascii=False), encoding="utf-8")
     (p / "meta.json").write_text(
-        json.dumps({"title": klasor, "theme": "pop"}, ensure_ascii=False),
+        json.dumps({"title": klasor, "theme": "pop",
+                     "hikaye": "Bu, test projesi için sahte bir hikaye metnidir. İkinci cümle ekleniyor.",
+                     "neden_bu_sarki": "Bu şarkı test amaçlığı için üretilmiştir."},
+                    ensure_ascii=False),
         encoding="utf-8")
     (p / "audio.wav").write_bytes(("ses-" + klasor).encode("utf-8"))
     if video:

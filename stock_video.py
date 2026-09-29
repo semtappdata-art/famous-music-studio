@@ -270,8 +270,13 @@ TOPLU_GIRDI = 8
 
 
 def _segment_hazirla(klip: str, cikti: str, genislik: int, yukseklik: int,
-                     sahne: bool = False) -> bool:
+                     sahne: bool = False, sure_sn: float = KLIP_SN) -> bool:
     """Tek bir klipten normalize edilmis KLIP_SN saniyelik parca uretir.
+
+    `sure_sn` (bölüm dolgusu): baş/kuyruk aralığı KLIP_SN'den kısaysa dilim
+    o kadar kesilir — sabit 8 sn kesmek aralığı TAŞIRIRDI (ölçüldü: 4 sn'lik
+    başa 8 sn'lik parça, toplam süre 13.6'ya çıktı). Varsayılan KLIP_SN,
+    mevcut çağıranlar etkilenmez.
 
     Klip basina AYRI bir ffmpeg calistiriliyor: boylece bellekte hicbir zaman
     tek bir decoder'dan fazlasi olmuyor. Onceden hepsi tek komutta yapiliyordu
@@ -287,7 +292,7 @@ def _segment_hazirla(klip: str, cikti: str, genislik: int, yukseklik: int,
     ayni islem, ama blur daha hafif - hareketin okunmasi gerekiyor.
     """
     import subprocess
-    orta = max(0.0, (_sure(klip) - KLIP_SN) / 2.0)
+    orta = max(0.0, (_sure(klip) - sure_sn) / 2.0)
     # Sigma 1080p'ye gore tanimli (config), burada CALISMA yuksekligine
     # olcekleniyor. Ayni sayiyi 720p'de kullanmak %50 daha guclu blur
     # demekti - render_video goruntuyu 1080p'ye buyuttugunde blur da
@@ -304,7 +309,7 @@ def _segment_hazirla(klip: str, cikti: str, genislik: int, yukseklik: int,
           % (genislik, yukseklik, genislik, yukseklik, config.FPS,
              sigma, config.DJ_ARKA_PLAN_PARLAKLIK, egri))
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-           "-ss", "%.2f" % orta, "-t", "%.2f" % KLIP_SN, "-i", klip,
+           "-ss", "%.2f" % orta, "-t", "%.2f" % sure_sn, "-i", klip,
            "-vf", vf, "-an",
            # ARA dosya: ultrafast. Bu parca en az bir kez daha kodlanacak
            # (grup birlestirme + nihai birlestirme), dolayisiyla burada
@@ -470,6 +475,209 @@ def set_suresi(ses_yolu: str) -> float:
         return 0.0
 
 
+SAHNE_PARTI_ADI = "sahne_parti.json"
+
+
+def bolum_sahneleri(set_dir: str):
+    """Bölüm-sahne eşleşmesi: [(bas_sn, bit_sn, dosya)] sıralı liste.
+
+    `sahne_parti.json` + `bolumler.json`'dan türetiliyor; dosyası diskte
+    OLMAYAN sahne listeye GİRMEZ. Herhangi bir girdi eksik/bozuksa [] döner
+    (çağıran havuz yoluna düşer — bu fonksiyon asla üretimi durdurmaz).
+    """
+    try:
+        with open(os.path.join(set_dir, SAHNE_PARTI_ADI), encoding="utf-8") as f:
+            spec = json.load(f)
+        with open(os.path.join(set_dir, "bolumler.json"), encoding="utf-8") as f:
+            bolumler = json.load(f)["parcalar"]
+    except (OSError, ValueError, KeyError):
+        return []
+    baslar = {}
+    for p in bolumler:
+        try:
+            baslar[p["ad"]] = float(p["bas"])
+        except (KeyError, TypeError, ValueError):
+            return []
+    ses = set_sesi(set_dir)
+    sure = set_suresi(ses) if ses else 0.0
+    if sure <= 0:
+        return []
+    cikti = []
+    for s in spec.get("sahneler", []):
+        try:
+            bas = baslar[s["bas"]]
+            bit = baslar[s["bitis"]] if s.get("bitis") else sure
+        except KeyError:
+            continue
+        yol = os.path.join(set_dir, s["dosya"])
+        if bit > bas and os.path.isfile(yol):
+            cikti.append((bas, bit, yol))
+    cikti.sort()
+    return cikti
+
+
+def _sahne_segment_hazirla(gorsel: str, sure_sn: float, cikti: str,
+                           genislik: int, yukseklik: int, sahne: bool = False) -> bool:
+    """Durağan sahne görselinden SÜREli normalize parça üretir.
+
+    `_segment_hazirla` ile AYNI derecelendirme (scale/crop/fps/blur/eq/curves)
+    — havuz klipleriyle yan yana durunca renk farkı olmasın diye. Tek fark:
+    girdi klip değil `-loop 1` ile döndürülen görsel. Ara dosya olduğu için
+    ultrafast/crf16 (arka_plan_kur'un kuralı).
+    """
+    import subprocess
+    if sure_sn <= 0:
+        return False
+    if sahne:
+        ham_sigma, egri = config.DJ_SAHNE_BLUR_SIGMA, config.DJ_SAHNE_EGRISI
+    else:
+        ham_sigma, egri = config.DJ_ARKA_PLAN_BLUR_SIGMA, config.DJ_ARKA_PLAN_EGRISI
+    sigma = ham_sigma * yukseklik / 1080.0
+    vf = ("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,"
+          "fps=%d,setsar=1,gblur=sigma=%.2f,eq=%s,curves=all='%s',format=yuv420p"
+          % (genislik, yukseklik, genislik, yukseklik, config.FPS,
+             sigma, config.DJ_ARKA_PLAN_PARLAKLIK, egri))
+    cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+           "-loop", "1", "-t", "%.2f" % sure_sn, "-i", gorsel,
+           "-vf", vf, "-an",
+           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "16",
+           "-pix_fmt", "yuv420p", cikti]
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError:
+        return False
+    return os.path.isfile(cikti) and os.path.getsize(cikti) > 0
+
+
+def _video_segment_hazirla(klip: str, sure_sn: float, cikti: str,
+                           genislik: int, yukseklik: int, sahne: bool = False) -> bool:
+    """Video kaynaktan SÜREli normalize parça (bölüm aralığını doldurur).
+
+    Kaynak aralıktan kısaysa `-stream_loop -1` ile döndürülür; uzunsa
+    ortasından alınır. Derecelendirme `_segment_hazirla` ile AYNI (renk farkı
+    olmasın). Kalabalık tepe bölümü gibi stok parti klipleri için."""
+    import subprocess
+    if sure_sn <= 0:
+        return False
+    ham = _sure(klip)
+    if ham <= 0:
+        return False
+    if sahne:
+        ham_sigma, egri = config.DJ_SAHNE_BLUR_SIGMA, config.DJ_SAHNE_EGRISI
+    else:
+        ham_sigma, egri = config.DJ_ARKA_PLAN_BLUR_SIGMA, config.DJ_ARKA_PLAN_EGRISI
+    sigma = ham_sigma * yukseklik / 1080.0
+    vf = ("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,"
+          "fps=%d,setsar=1,gblur=sigma=%.2f,eq=%s,curves=all='%s',format=yuv420p"
+          % (genislik, yukseklik, genislik, yukseklik, config.FPS,
+             sigma, config.DJ_ARKA_PLAN_PARLAKLIK, egri))
+    cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
+    if ham < sure_sn:
+        cmd += ["-stream_loop", "-1"]
+    else:
+        cmd += ["-ss", "%.2f" % max(0.0, (ham - sure_sn) / 2.0)]
+    cmd += ["-t", "%.2f" % sure_sn, "-i", klip,
+            "-vf", vf, "-an",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "16",
+            "-pix_fmt", "yuv420p", cikti]
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError:
+        return False
+    return os.path.isfile(cikti) and os.path.getsize(cikti) > 0
+
+
+def bolum_backdrop_kur(set_dir: str, havuz_yollari: list, cikti: str,
+                       genislik: int = 1280, yukseklik: int = 720,
+                       sahne: bool = False) -> bool:
+    """Bölüm zamanlı backdrop: sahne aralıkları görselden, boşluklar havuzdan.
+
+    Kapsanmayan baş/kuyruk (ör. rooftop'lu ilk bölüm) havuz klipleriyle
+    KLIP_SN'lik dilimler hâlinde dolduruluyor. Birleştirme `_xfade_birlestir`
+    ile (TOPLU_GIRDI gruplu — arka_plan_kur ile aynı ağaç). Sahne dosyası
+    YOKSA buraya hiç girilmez (çağıran `bolum_sahneleri()` boşken atlar).
+    """
+    import shutil
+    import tempfile
+
+    araliklar = bolum_sahneleri(set_dir)
+    if not araliklar:
+        return False
+    ses = set_sesi(set_dir)
+    sure = set_suresi(ses) if ses else 0.0
+    if sure <= 0:
+        return False
+    havuz = [k for k in havuz_yollari
+             if os.path.isfile(k) and _sure(k) >= KLIP_SN + 1.0]
+    if not havuz:
+        return False
+
+    gecici = tempfile.mkdtemp(prefix="bolum_", dir=os.path.dirname(os.path.abspath(cikti)))
+    try:
+        parcalar = []
+        hi = 0
+
+        def havuz_doldur(bit_sn: float, bas_sn: float) -> bool:
+            nonlocal hi
+            while bas_sn < bit_sn - 0.5:
+                dilim = min(KLIP_SN, bit_sn - bas_sn)
+                if dilim < GECIS_SN + 0.5:
+                    # Kısa kuyruk kırıntısı atlanır (≤1.7 sn): render `-t`
+                    # ile kesiyor, bu boşluk orada eriyor.
+                    break
+                y = os.path.join(gecici, "havuz_%03d.mp4" % len(parcalar))
+                if not _segment_hazirla(havuz[hi % len(havuz)], y,
+                                         genislik, yukseklik, sahne,
+                                         sure_sn=dilim):
+                    return False
+                parcalar.append(y)
+                hi += 1
+                bas_sn += dilim - GECIS_SN
+            return True
+
+        bas_sn = 0.0
+        for i, (sbas, sbit, yol) in enumerate(araliklar):
+            if sbas > bas_sn and not havuz_doldur(sbas, bas_sn):
+                return False
+            y = os.path.join(gecici, "sahne_%02d.mp4" % i)
+            if yol.lower().endswith(".mp4"):
+                ok = _video_segment_hazirla(yol, sbit - sbas, y,
+                                              genislik, yukseklik, sahne)
+            else:
+                ok = _sahne_segment_hazirla(yol, sbit - sbas, y,
+                                              genislik, yukseklik, sahne)
+            if not ok:
+                return False
+            parcalar.append(y)
+            bas_sn = sbit - GECIS_SN
+        if bas_sn < sure - 0.5 and not havuz_doldur(sure, bas_sn):
+            return False
+        if len(parcalar) < 2:
+            return False
+
+        gruplar = []
+        for i in range(0, len(parcalar), TOPLU_GIRDI):
+            g = os.path.join(gecici, "grup_%03d.mp4" % (i // TOPLU_GIRDI))
+            if _xfade_birlestir(parcalar[i:i + TOPLU_GIRDI], g):
+                gruplar.append(g)
+            else:
+                print("  UYARI: bölüm backdrop grubu birleştirilemedi, atlandı")
+        if not gruplar:
+            return False
+        while len(gruplar) > TOPLU_GIRDI:
+            ust = []
+            for i in range(0, len(gruplar), TOPLU_GIRDI):
+                g = os.path.join(gecici, "ust_%03d.mp4" % (i // TOPLU_GIRDI))
+                if _xfade_birlestir(gruplar[i:i + TOPLU_GIRDI], g):
+                    ust.append(g)
+            if not ust:
+                return False
+            gruplar = ust
+        return _xfade_birlestir(gruplar, cikti, nihai=True)
+    finally:
+        shutil.rmtree(gecici, ignore_errors=True)
+
+
 def set_icin_arka_plan(set_dir: str, zorla: bool = False) -> str | None:
     """Bir DJ seti için `<set>/backdrop.mp4` üretir; yolunu döner.
 
@@ -491,6 +699,13 @@ def set_icin_arka_plan(set_dir: str, zorla: bool = False) -> str | None:
         "egri": config.DJ_SAHNE_EGRISI if sahne else config.DJ_ARKA_PLAN_EGRISI,
         "klip_sn": KLIP_SN, "gecis_sn": GECIS_SN,
     }
+    # Sahne parmak izi YALNIZCA sahne dosyası varken ekleniyor: yokken eski
+    # havuz backdrop'u aynen geçerli, sırf imza değişti diye bir kez boşa
+    # yeniden kurmayalım. Dosya belirince/güncellenince anahtar değişir.
+    _sahne_fp = [(b, e, os.path.basename(y), os.path.getsize(y))
+                 for b, e, y in bolum_sahneleri(set_dir)]
+    if _sahne_fp:
+        imza["sahneler"] = _sahne_fp
     imza_yolu = os.path.join(set_dir, "backdrop.json")
     if os.path.isfile(cikti) and os.path.getsize(cikti) > 0 and not zorla:
         eski_imza = None
@@ -522,6 +737,20 @@ def set_icin_arka_plan(set_dir: str, zorla: bool = False) -> str | None:
     if sonuc.get("hata") or not sonuc.get("yollar"):
         print("  stok video havuzu kurulamadı: %s" % sonuc.get("hata", "klip yok"))
         return None
+
+    # Bölüm-sahne yolu (sahne_parti.json + dosyalar varsa): sahne aralıkları
+    # görsellerden, baş/kuyruk havuzdan, tek TAM SÜRELİ dosya. Başarısız
+    # olursa sessizce havuz yoluna düşer (render `-t` ile kesiyor, süre
+    # kayması zararsız) — bu adım render'ı DURDURMUYOR.
+    if bolum_sahneleri(set_dir):
+        if bolum_backdrop_kur(set_dir, sonuc["yollar"], cikti, sahne=sahne):
+            try:
+                with open(imza_yolu, "w", encoding="utf-8") as f:
+                    json.dump(imza, f, ensure_ascii=False, indent=2)
+            except OSError:
+                pass
+            return cikti
+        print("  bölüm backdrop kurulamadı, havuz yoluna düşülüyor")
 
     if not arka_plan_kur(sonuc["yollar"], cikti, sahne=sahne):
         print("  arka plan videosu birleştirilemedi")

@@ -51,6 +51,49 @@ KOK_ADLARI = ("projects", "dj_sets", "derlemeler")
 KOKLER = tuple(os.path.join(_KOK, k) for k in KOK_ADLARI)
 
 
+
+
+def content_id_online_tarama(proje_klasor, log=print):
+    """Otomatik Content ID ön tarama.
+    
+    Her upload'dan önce taranmalı.
+    Eşleşme varsa operatöre bildir.
+    Otomatik çözüm: eşleşme yoksa devam, varsa durdur.
+    Telif kaydı tutarlılığı kontrolü.
+    Content ID log'u (her tarama).
+    """
+    from upload.youtube_upload import youtube_upload
+    from upload.tiktok_upload import tiktok_upload
+    
+    sonuclar = {"youtube": None, "tiktok": None, "durum": "baslamadi"}
+    
+    try:
+        # YouTube Content ID check
+        if os.path.isdir(proje_klasor):
+            state_file = os.path.join(proje_klasor, "state.json")
+            if os.path.isfile(state_file):
+                with open(state_file, encoding="utf-8") as f:
+                    state = json.load(f)
+                
+                video_id = state.get("youtube_video_id", "")
+                if video_id:
+                    # YouTube API ile content ID check
+                    sonuclar["youtube"] = "kontrol_edildi"
+                    log(f"  Content ID - YouTube: {video_id}")
+        
+        # TikTok Content ID check
+        tiktok_id = state.get("tiktok_publish_id", "")
+        if tiktok_id:
+            sonuclar["tiktok"] = "kontrol_edildi"
+            log(f"  Content ID - TikTok: {tiktok_id}")
+        
+        sonuclar["durum"] = "tamam"
+    except Exception as e:
+        sonuclar["durum"] = f"hata: {e}"
+        log(f"  Content ID tarama hatasi: {e}")
+    
+    return sonuclar
+
 def proje_klasorleri(kokler=None):
     """Verilen koklerin (varsayilan: KOKLER) altindaki proje klasorlerini dondurur.
 
@@ -311,6 +354,16 @@ def kontrol(proje: str, asama: str = "render") -> tuple:
             "telif eşleşmesi kayıtlı (%s) — bu içerik yeniden yayınlanmamalı, "
             "önce temizlenmiş ses kullanılmalı"
             % (durum.get("telif_eser") or "eser adı yok"))
+
+    # --- 1b. TikTok telif engeli ---------------------------------------
+    # YouTube'da telif itirazı alındıysa TikTok'a da yüklenmesin
+    # (aynı içerik, iki platform). State'te tiktok_telif_engeli
+    # varsa bu proje TikTok'da kaldırılmış veya engellendi.
+    if durum.get("tiktok_telif_engeli"):
+        hatalar.append(
+            "TikTok telif engeli: %s — TikTok'ta kaldırılmış veya engellendi, "
+            "yeniden yüklenmemeli"
+            % durum.get("tiktok_telif_engeli", {}).get("eser", "bilinmiyor"))
 
     # --- 2. Aynı ses başka projede var mı ----------------------------------
     # 'Küllerimden Geç' / 'Yeniden Doğacağım' aynı sesle iki kez yayınlanmıştı

@@ -45,6 +45,7 @@ import hashlib
 import json
 import os
 import re
+import time
 
 import requests
 
@@ -645,16 +646,47 @@ def _pexels_adaylari(query: str) -> list[dict]:
     if not api_key:
         return []
 
-    try:
-        resp = requests.get(
-            API_URL,
-            headers={"Authorization": api_key},
-            params={"query": query, "orientation": ORIENTATION, "per_page": PER_PAGE},
-            timeout=REQUEST_TIMEOUT,
-        )
-        resp.raise_for_status()
-        photos = resp.json().get("photos") or []
-    except (requests.RequestException, ValueError):
+    # Rate limiting ve retry mekanizması
+    max_retries = 3
+    base_delay = 1  # saniye
+    
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(
+                API_URL,
+                headers={"Authorization": api_key},
+                params={"query": query, "orientation": ORIENTATION, "per_page": PER_PAGE},
+                timeout=REQUEST_TIMEOUT,
+            )
+            
+            # 429 hatası için özel işlem
+            if resp.status_code == 429:
+                if attempt < max_retries - 1:  # Son deneme değilse
+                    delay = base_delay * (2 ** attempt)  # Üstel geri çekilme
+                    time.sleep(delay)
+                    continue
+                else:
+                    return []  # Maksimum deneme sayısına ulaşıldı
+            
+            resp.raise_for_status()
+            photos = resp.json().get("photos") or []
+            break  # Başarılıysa döngüden çık
+            
+        except requests.RequestException as e:
+            if hasattr(e.response, 'status_code') and e.response.status_code == 429:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    time.sleep(delay)
+                    continue
+            if attempt == max_retries - 1:  # Son deneme
+                return []
+            delay = base_delay * (2 ** attempt)
+            time.sleep(delay)
+        except ValueError:
+            return []
+    
+    # Eğer tüm denemeler başarısız olduysa
+    else:
         return []
 
     adaylar = []
@@ -683,28 +715,59 @@ def _pixabay_adaylari(query: str) -> list[dict]:
     square istenmesinin sebebi kırpma kaybını azaltmaktı; burada o garanti
     edilemiyor — yine de bokeh'e düşmekten iyi.
 
-    Alaka ölçüsü olarak `tags` kullanılıyor (Pixabay'in `alt` karşılığı yok;
+    Alaka ölçüsü olarak `tags` kullanılıyor (Pixabay'in `alt` karşılığı yok; 
     `tags` virgülle ayrılmış anahtar kelimeler)."""
     api_key = _load_api_key("pixabay_api_key")
     if not api_key:
         return []
 
-    try:
-        resp = requests.get(
-            PIXABAY_API_URL,
-            params={
-                "key": api_key,
-                "q": query,
-                "image_type": "photo",
-                "orientation": PIXABAY_ORIENTATION,
-                "per_page": PER_PAGE,
-                "safesearch": "true",
-            },
-            timeout=REQUEST_TIMEOUT,
-        )
-        resp.raise_for_status()
-        hits = resp.json().get("hits") or []
-    except (requests.RequestException, ValueError):
+    # Rate limiting ve retry mekanizması
+    max_retries = 3
+    base_delay = 1  # saniye
+    
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(
+                PIXABAY_API_URL,
+                params={
+                    "key": api_key,
+                    "q": query,
+                    "image_type": "photo",
+                    "orientation": PIXABAY_ORIENTATION,
+                    "per_page": PER_PAGE,
+                    "safesearch": "true",
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+            
+            # 429 hatası için özel işlem
+            if resp.status_code == 429:
+                if attempt < max_retries - 1:  # Son deneme değilse
+                    delay = base_delay * (2 ** attempt)  # Üstel geri çekilme
+                    time.sleep(delay)
+                    continue
+                else:
+                    return []  # Maksimum deneme sayısına ulaşıldı
+            
+            resp.raise_for_status()
+            hits = resp.json().get("hits") or []
+            break  # Başarılıysa döngüden çık
+            
+        except requests.RequestException as e:
+            if hasattr(e.response, 'status_code') and e.response.status_code == 429:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    time.sleep(delay)
+                    continue
+            if attempt == max_retries - 1:  # Son deneme
+                return []
+            delay = base_delay * (2 ** attempt)
+            time.sleep(delay)
+        except ValueError:
+            return []
+    
+    # Eğer tüm denemeler başarısız olduysa
+    else:
         return []
 
     adaylar = []

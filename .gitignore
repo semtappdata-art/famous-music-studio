@@ -135,10 +135,30 @@ yorum_taslaklari.json
 reply.txt
 .stock_video_cache/
 
+# DJ setleri state.json — yeni setler her zaman buraya yazilacak
+**/dj_sets/**/state.json
+
 # Atomik state.json yaziminin gecici dosyasi (state_io._atomik_yaz). Normalde
 # os.replace ile aninda tuketiliyor; guc kesintisi/kill sonrasi artik kalirsa
 # commit'lenmesin.
 *.json.tmp
+
+# CI/CD workflow — OAuth app 'workflow' scope'u olmadan push edilemez.
+# Yetki verildikten sonra .gitignore'dan çıkarılacak.
+.github/workflows/ci_cd.yml
+
+# LLM cache — her zaman temizlenebilir, asla commit olmaması gereken
+# AI yanıtları buraya yazılır.
+.llm_cache/
+
+# .env — gerçek API anahtarları buraya yazılır, asla commit olmasın
+.env
+
+# Kimliği sıfırlanmış ortak anahtar dosyaları — test/araştırma amaçlı,
+# içindeki anahtarlar asla commit olmamalı.
+_saglayici_kontrol.py
+_nerve2.py
+_anahtar_dogrulama.py
 
 # YouTube Data API kota defteri (upload/youtube_kota.py) — makineye özgü ölçüm.
 youtube_kota_defteri.jsonl
