@@ -307,6 +307,7 @@ def _build_filter_complex(
     kart_goster: bool = True,
     intro_index: int | None = None,
     dil_params: dict | None = None,
+    portre_index: int | None = None,
 ) -> str:
     fps = config.FPS
     bg_pan_w, bg_pan_h = _panned_size(width, height)
@@ -370,10 +371,26 @@ def _build_filter_complex(
         # bir kez uygulanıyor (stock_video.arka_plan_kur). Sebep: gblur her
         # karede çalışıyor ve 80 dakikalık bir sette render'a ~%30 ekliyordu;
         # arka plan zaten tek seferlik bir dosya, orada pişirmek bedava.
-        canvas = (
-            f"[2:v]fps={fps},scale={width}:{height}:force_original_aspect_ratio=increase,"
-            f"crop={width}:{height},setsar=1[canvas]"
-        )
+        # Sahne zoom'u (config.DJ_SAHNE_ZOOM): set boyunca 1.00 -> BİTİŞ.
+        # zoompan TEK filtrede yapıyor; ayrı crop+scale ikinci bir tam-kare
+        # resample demekti. `time` GİRDİ damgası: -ss ile kesilmiş girdide
+        # sıfırdan başlar, burada girdi her zaman baştan oynadığı için sorun yok.
+        # x/y MERKEZ SABİTLİ: varsayılan (0,0) sol-üst köşeyi sabitler, kadraj
+        # sağa-aşağı kayar ve göz bunu "sola zoom" diye okur (demoda görüldü).
+        if getattr(config, "DJ_SAHNE_ZOOM", False) and duration > 0:
+            _zbit = float(config.DJ_SAHNE_ZOOM_BITIS)
+            canvas = (
+                f"[2:v]fps={fps},scale={width}:{height}:force_original_aspect_ratio=increase,"
+                f"crop={width}:{height},setsar=1,"
+                f"zoompan=z='min({_zbit},1+({_zbit}-1)*time/{duration:.3f}')"
+                f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+                f":d=1:s={width}x{height}:fps={fps},setsar=1[canvas]"
+            )
+        else:
+            canvas = (
+                f"[2:v]fps={fps},scale={width}:{height}:force_original_aspect_ratio=increase,"
+                f"crop={width}:{height},setsar=1[canvas]"
+            )
     else:
         canvas = (
             f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}',"
@@ -425,6 +442,61 @@ def _build_filter_complex(
         # boşuna ölçeklenip alphamerge edilirdi.
         parts = [canvas]
         pre_label = "canvas"
+
+    if portre_index is not None:
+        # PORTRE SAHNE (2026-09-14, meta "sahne": "portre"): ortada SABİT
+        # gerçek portre (AI yüz yok, kredi yok), dış kenarlarda sesten beslenen
+        # CANLI grafikler. Kart düzeniyle birleşmez — sahne modunun dalı.
+        # Kenar grafikleri `showspectrum` (scroll): seçenekler uzun yıllık,
+        # belgeli (s/slide/mode/color/scale) — deneysel showcqt hacim
+        # seçenekleri bilerek YOK (bilinmeyen seçenek filtreyi kurdurtmuyor).
+        theme = config.THEMES.get(theme_key, {})
+        accent = theme.get("accent", (255, 210, 60))
+        accent_hex = "0x%02X%02X%02X" % tuple(accent)
+        S = int(height * 0.76) - int(height * 0.76) % 2
+        alt_pay = int(height * 0.16)  # kayan yazı + marka + progress bar
+        px = (width - S) // 2
+        py = max(0, (height - alt_pay - S) // 2)
+        mx = int(width * 0.03)
+        bw = (width - S) // 2 - 2 * mx
+        parts.append(
+            f"[{portre_index}:v]fps={fps},scale={S}:{S}:"
+            f"force_original_aspect_ratio=increase,crop={S}:{S},"
+            f"setsar=1,format=rgba[portre]"
+        )
+        # Çift neon çerçeve: dışta kalın-soluk, içte ince-parlak.
+        parts.append(
+            f"[{pre_label}]drawbox=x={px - 16}:y={py - 16}:w={S + 32}:h={S + 32}:"
+            f"color={accent_hex}@0.22:t=14[pf1]"
+        )
+        parts.append(
+            f"[pf1]drawbox=x={px - 4}:y={py - 4}:w={S + 8}:h={S + 8}:"
+            f"color={accent_hex}@0.9:t=4[pf2]"
+        )
+        parts.append(f"[pf2][portre]overlay={px}:{py}[pf3]")
+        # Işık süpürmesi: ~8 sn'de bir portrenin üstünden geçen ince bant.
+        # SÜPÜRME BOYU SAYI olarak gömülüyor: filtre dilinde `S` diye bir
+        # değişken YOK (w/h/text_w var), harf bırakmak filtreyi kurdurtmaz.
+        supur_boy = S + 180
+        parts.append(
+            f"[pf3]drawbox=x='{px - 90}+mod(t*140\\,{supur_boy})':y={py}:w=90:h={S}:"
+            f"color=white@0.10:t=fill[pf4]"
+        )
+        pre_label = "pf4"
+        if bw >= 140:
+            # Renk: `rainbow` (bu ffmpeg derlemesinde adlandırılmış renkler
+            # ifade diye yorumlanıp filtreyi kurdurtmuyor — ölçüldü).
+            edge_h = S
+            parts.append(
+                f"[0:a]showspectrum=s={bw}x{edge_h}:slide=1:mode=separate:"
+                f"color=rainbow:scale=log:fps={fps},format=yuv420p,split[spec][spec1]"
+            )
+            parts.append(f"[{pre_label}][spec]overlay={mx}:{py}[pf5]")
+            parts.append(f"[spec1]hflip[specr]")
+            parts.append(
+                f"[pf5][specr]overlay={width - mx - bw}:{py}[pf6]"
+            )
+            pre_label = "pf6"
 
     if title:
         # Künye yazısı (şarkı adı + müzik türü, tekrarlı) kartın ALTINDA, kart
@@ -506,7 +578,21 @@ def _build_filter_complex(
         # blend RGB uzayında çalışmalı: yuv420p'de kanal başına harmanlama
         # renk kaymasına yol açıyor, o yüzden gbrp'ye geçip geri dönülüyor.
         parts.append(f"[vbar]format=gbrp[vb_rgb]")
-        parts.append(f"[{hud_index}:v]scale={width}:{height},format=gbrp[hud_rgb]")
+        if getattr(config, "DJ_HUD_NEFES", False):
+            # Nefes alma: HUD katmanının kontrastı kare kare salınıyor
+            # (bkz. config.DJ_HUD_NEFES_*). `eval=frame` ŞART: varsayılan `init`
+            # ifadeyi bir kez hesaplayıp dondurur, nabız durur. Yön yukarı
+            # (1.0 -> 1+derinlik): siyah taban klipte kalıyor, screen blend'e
+            # gri peçe binmiyor. blend `all_opacity` KULLANILMIYOR: o alan bu
+            # ffmpeg sürümünde sayı (double), ifade kabul etmiyor.
+            _derinlik = float(config.DJ_HUD_NEFES_DERINLIK)
+            _sure = float(config.DJ_HUD_NEFES_SURE_SN)
+            parts.append(
+                f"[{hud_index}:v]scale={width}:{height},"
+                f"eq=contrast='1+{_derinlik}*(0.5+0.5*sin(2*PI*t/{_sure}))':eval=frame,"
+                f"format=gbrp[hud_rgb]")
+        else:
+            parts.append(f"[{hud_index}:v]scale={width}:{height},format=gbrp[hud_rgb]")
         parts.append(
             f"[vb_rgb][hud_rgb]blend=all_mode=screen,format=yuv420p[{son_etiket}]")
 
@@ -548,6 +634,9 @@ def render_video(
     intro_cover: str | None = None,
     ses_limiter: bool = False,
     dil_params: dict | None = None,
+    portre_path: str | None = None,
+    crf_override: str | None = None,
+    preset_override: str | None = None,
 ) -> None:
     """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
     kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için.
@@ -565,7 +654,12 @@ def render_video(
     kendiliğinden atlanır.
     ses_limiter=True ise ses çıkışına YALNIZ limiter_filtresi() eklenir (karar
     render.render_project'te, ölçülen TP'ye göre). Varsayılan False: DJ
-    kesitleri (dj_clips) ve diğer bütün çağıranlar eskisi gibi filtresiz."""
+    kesitleri (dj_clips) ve diğer bütün çağıranlar eskisi gibi filtresiz.
+    portre_path verilirse (dosya VARSA) ve tam-boy daldaysa (highlight
+    kırpması yok) sahneye PORTRE düzeni kurulur: ortada sabit portre + çift
+    neon çerçeve + ışık süpürmesi + yanlarda sesten beslenen spektrum.
+    crf_override/preset_override YALNIZ elle test içindir (üretim hattı
+    config değerlerini kullanır)."""
     full_duration = get_audio_duration(audio_path)
     if start_time is not None and end_time is not None:
         duration = min(end_time, full_duration) - start_time
@@ -612,13 +706,23 @@ def render_video(
         and os.path.isfile(intro_cover)
         and duration >= intro_toplam * 2
     )
+    # PORTRE girdi indeksi EN SONDA (açılış kapağı gibi): araya girseydi
+    # hud_index/intro_index kayar, yanlış akış harmanlanırdı. YALNIZ tam-boy
+    # dalda (end_time None): Shorts/highlight kırpması kendi kart düzeninde.
+    use_portre = bool(portre_path) and os.path.isfile(portre_path or "") \
+        and end_time is None and not kart_goster
     if use_intro:
         intro_index = (hud_index + 1) if hud_index is not None else (4 if has_art else 3)
     else:
         intro_index = None
+    if use_portre:
+        portre_index = (intro_index + 1) if intro_index is not None \
+            else ((hud_index + 1) if hud_index is not None else (4 if has_art else 3))
+    else:
+        portre_index = None
     filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key,
                                            marquee_override, use_backdrop_video, hud_index,
-                                           kart_goster, intro_index, dil_params)
+                                           kart_goster, intro_index, dil_params, portre_index)
 
     audio_input = ["-ss", f"{start_time:.3f}"] if start_time is not None else []
     cmd = [
@@ -639,6 +743,8 @@ def render_video(
         cmd += ["-loop", "1", "-i", hud_path]
     if use_intro:
         cmd += ["-loop", "1", "-i", intro_cover]
+    if use_portre:
+        cmd += ["-loop", "1", "-i", portre_path]
     cmd += [
         "-filter_complex", filter_complex,
         "-map", "[vfinal]",
@@ -646,8 +752,8 @@ def render_video(
         *(["-af", limiter_filtresi()] if ses_limiter else []),
         "-t", f"{duration:.3f}",
         "-c:v", config.VIDEO_CODEC,
-        "-preset", config.PRESET,
-        "-crf", config.CRF,
+        "-preset", preset_override or config.PRESET,
+        "-crf", crf_override or config.CRF,
         "-pix_fmt", "yuv420p",
         "-c:a", config.AUDIO_CODEC,
         "-b:a", config.AUDIO_BITRATE,

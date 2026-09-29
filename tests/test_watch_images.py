@@ -80,3 +80,17 @@ def test_scan_dir_places_images_even_when_audio_already_ready(tmp_path, monkeypa
 
     assert (project_dir / "cover.jpg").is_file()
     assert triggered == []  # audio zaten hazırdı, yeniden tetiklenmemeli
+
+
+def test_bolum_sahnesi_sahipsiz_sayilmaz(tmp_path, monkeypatch):
+    """Canlı vaka (2026-09-23): izleyici `sahne_gece_deniz.png` dosyasını
+    cover.png'ye TAŞIYORDU. Bölüm sahneleri dokunulmaz."""
+    monkeypatch.setattr(wp, "STABILITY_WAIT_SECONDS", 0)
+    (tmp_path / "sahne_gece_deniz.png").write_bytes(b"x" * 100)
+    (tmp_path / "sahne_hero.png").write_bytes(b"x" * 100)
+
+    wp._place_stray_images(str(tmp_path))
+
+    assert (tmp_path / "sahne_gece_deniz.png").is_file()
+    assert (tmp_path / "sahne_hero.png").is_file()
+    assert not (tmp_path / "cover.png").exists()

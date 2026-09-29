@@ -48,6 +48,9 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 _NUM_RE = re.compile(r"(\d+)\.wav$", re.IGNORECASE)
+_PARANTEZ_ADI_RE = re.compile(r"\(([^()]*)\)")
+
+BOLUM_DOSYASI = "bolumler.json"
 
 # Konfigürasyon: aynı eşik render'ın önünde de kullanılıyor (ffmpeg_utils.
 # bastaki_sessizlik) — iki yer ayrı eşik tutarsa davranış ayrışır. Buradan
@@ -81,6 +84,53 @@ def _probe_format(path: str) -> tuple[str, str, str]:
     if len(parts) < 3:
         raise RuntimeError(f"{path}: ffprobe formatı okunamadı ({result.stderr.strip()})")
     return tuple(parts[:3])  # codec_name, sample_rate, channels (ffprobe -show_entries sırası)
+
+
+def _bolum_adi(dosya_yolu: str) -> str:
+    """Bölüm adı dosya adındaki parantezden gelir ("Deep Medusa (Dive) 04.wav"
+    -> "Dive"); parantez yoksa uzantısız dosya adı. YouTube chapter satırında
+    görünen ad budur."""
+    ad = os.path.splitext(os.path.basename(dosya_yolu))[0]
+    parantezler = _PARANTEZ_ADI_RE.findall(ad)
+    if parantezler:
+        return parantezler[-1].strip()
+    return re.sub(r"\s*\d+\s*$", "", ad).strip() or ad
+
+
+def _mmss(sn: float) -> str:
+    """123.4 -> "2:03" (YouTube chapter damgası; derleme._mmss ile aynı kural,
+    tek sahip BURASI — derleme modülü kendi kopyasını tutuyor, iki yönde de
+    import yok)."""
+    sn = int(sn)
+    if sn < 3600:
+        return "%d:%02d" % (sn // 60, sn % 60)
+    return "%d:%02d:%02d" % (sn // 3600, (sn % 3600) // 60, sn % 60)
+
+
+def bolum_baslangiclari(kesimler: list[tuple[float, float]], crossfade: float) -> list[float]:
+    """Kırpılmış [(bas, son)] listesi + crossfade -> her parçanın BİRLEŞİK
+    sesteki başlangıç saniyesi. acrossfade her birleşmede `crossfade` kadar
+    overlap yediği için i+1'in başı i'nin kırpılmış süresinden o kadar erkene
+    çekilir (derleme.zaman_damgalari ile aynı aritmetik, aynı gerekçe)."""
+    baslar, t = [], 0.0
+    for i, (s, e) in enumerate(kesimler):
+        baslar.append(round(t, 1))
+        if i < len(kesimler) - 1:
+            t += (e - s) - crossfade
+    return baslar
+
+
+def _atomik_json_yaz(yol: str, veri: dict) -> None:
+    """state_io.durum_yaz ile aynı desen (.tmp + fsync + os.replace) ama
+    rastgele bir dosya için — bolumler.json yarım yazılırsa açıklama hattı
+    bozuk damga basar."""
+    tmp = yol + ".tmp"
+    import json as _json
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(_json.dumps(veri, ensure_ascii=False, indent=1))
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, yol)
 
 
 def _kenar_sessizlik(path: str) -> tuple[float, float]:
@@ -227,6 +277,25 @@ def merge(set_dir: str, crossfade: float = 3.0) -> str:
         raise RuntimeError("ffmpeg birleştirme başarısız oldu.")
 
     print(f"\nTamam: {output_path}")
+
+    # BÖLÜM DAMGALARI (2026-09-14): kırpma + crossfade düşülmüş GERÇEK
+    # başlangıçlar `bolumler.json`'a yazılıyor; upload/youtube_upload.py
+    # buradan okuyup açıklamaya YouTube chapter bloğu basıyor. Merge
+    # ARİTMETİĞİNİN TEK SAHİBİ burası — damgayı render/upload tarafında
+    # yeniden hesaplamak ikinci bir saat demek (sessiz kayma tuzağı).
+    baslar = bolum_baslangiclari(kesimler, crossfade)
+    parcalar = [
+        {"sira": i + 1, "ad": _bolum_adi(f), "bas": b, "zaman": _mmss(b)}
+        for i, (f, b) in enumerate(zip(files, baslar))
+    ]
+    import time as _time
+    _atomik_json_yaz(
+        os.path.join(set_dir, BOLUM_DOSYASI),
+        {"uredi_at": _time.strftime("%Y-%m-%dT%H:%M:%S"),
+         "crossfade_sn": crossfade, "parcalar": parcalar},
+    )
+    print(f"Bölüm damgaları: {BOLUM_DOSYASI} ({len(parcalar)} parça, "
+          f"ilk 3: {', '.join(p['zaman'] + ' ' + p['ad'] for p in parcalar[:3])}...)")
     return output_path
 
 

@@ -119,3 +119,22 @@ def test_file_hash_is_content_based_not_path_based(tmp_path):
     c = tmp_path / "c.bin"
     c.write_text("farklı içerik", encoding="utf-8")
     assert vp._file_hash(str(a)) != vp._file_hash(str(c))
+
+
+def test_render_kilit_durdurur(tmp_path):
+    """state.json'da render_kilit varsa errors dolu döner (onaysız render yok)."""
+    _write_silent_wav(tmp_path / "audio.wav")
+    (tmp_path / "meta.json").write_text('{"theme": "pop"}', encoding="utf-8")
+    (tmp_path / "state.json").write_text(
+        json.dumps({"render_kilit": {"sebep": "onay bekleniyor"}}),
+        encoding="utf-8")
+    errors, _ = vp.validate(str(tmp_path))
+    assert any("render_kilit" in e for e in errors)
+
+
+def test_render_kilit_kalkinca_gecer(tmp_path):
+    _write_silent_wav(tmp_path / "audio.wav")
+    (tmp_path / "meta.json").write_text('{"theme": "pop"}', encoding="utf-8")
+    (tmp_path / "state.json").write_text("{}", encoding="utf-8")
+    errors, _ = vp.validate(str(tmp_path))
+    assert not any("render_kilit" in e for e in errors)

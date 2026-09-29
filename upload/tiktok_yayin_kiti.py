@@ -337,10 +337,25 @@ def _kit_kodu_guncel(d: dict) -> bool:
     return bool(kod) and d.get("tiktok_kit_kodu") == kod
 
 
-def _onay_bekliyor(d: dict) -> bool:
+def _onay_bekliyor(d: dict, simdi: float = None) -> bool:
     # Web'de planlanan (tiktok_web.py) taslağın kiti artık onay BEKLEMEZ: gönderiyi
     # TikTok Studio yayınlayacak; sıra tıkanmaz, 48 sa hatırlatması da gitmez.
-    return (bool(d.get("tiktok_kit_gonderildi_at")) and _kit_kodu_guncel(d)
+    # 24 saat sonra onay bekleyen kit otomatik iptal edilir — operator
+    # dokunmazsa kit yok sayılır ve sıradaki taslağa geçilir.
+    tazelik = float(config.TIKTOK_KIT_DURUM_TAZELIK_SAAT) * SAAT
+    simdi = simdi or time.time()
+    
+    # Timeout kontrolü
+    gonderildi = d.get("tiktok_kit_gonderildi_at")
+    if gonderildi:
+        try:
+            giden = _ts(gonderildi)
+            if giden and (simdi - giden) > float(config.TIKTOK_KIT_ONAY_TIMEOUT_SAAT) * SAAT:
+                return False  # kit timeout oldu, onay beklemiyor (eski kayıt)
+        except Exception:
+            pass
+    
+    return (bool(gonderildi) and _kit_kodu_guncel(d)
             and not d.get("tiktok_published_at") and not d.get("tiktok_status_denenmez")
             and not web_aktif(d))
 
@@ -520,7 +535,7 @@ def kit_gonder_sirasi(log=print, simdi: float = None, projeler=None,
     durumlar = [(p, TPP._durum_oku(p)) for p in projeler]
 
     # 1. Önceki kit onay bekliyor mu?
-    bekleyen = sorted(((p, d) for p, d in durumlar if _onay_bekliyor(d)),
+    bekleyen = sorted(((p, d) for p, d in durumlar if _onay_bekliyor(d, simdi)),
                       key=lambda x: str(x[1].get("tiktok_kit_gonderildi_at")))
     if bekleyen:
         proje, d = bekleyen[0]

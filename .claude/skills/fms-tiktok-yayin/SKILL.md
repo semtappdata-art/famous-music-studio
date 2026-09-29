@@ -56,6 +56,39 @@ Kullanıcı "bu taslağı yayınla" derse önce kiti öner; bekleyen taslakları
 zaten yayında (API `PUBLISH_COMPLETE` gördüğünü kendisi işaretliyor) — aynı şarkıyı ikinci kez
 yayınlatma. Aşağıdaki MCP akışı DIRECT_POST içindir (taslaktan bağımsız yeni gönderi).
 
+## Standart yol: WEB PLANI (2026-09-29 kararı — tek yol)
+
+`config.TIKTOK_AKIS = "web_planla"`: yeni yüklemelerde TEK yol TikTok Studio
+web üzerinden planlı yüklemedir. API taslak yolu (`api_taslak`) donduruldu —
+eski taslaklar tasfiye edilene kadar kit akışı sürer, YENİ plan açıldez.
+Gerekçe: web planı tam çalışıyor (Kader Ortakları, Sabah Senin), açıklamada AI
+beyanı + hashtag + kapak telefon yerine Studio web'de tek ekranda uygulanıyor.
+
+Yaşam döngüsü (`upload/tiktok_web.py`, tarayıcı AÇMAZ — paket verir, insan tıklar):
+
+```bash
+python upload/tiktok_web.py plan-oner            # öneri listesi (KURU, yazmaz)
+python upload/tiktok_web.py paket --proje "projects/<Ad>"   # tarayıcı paketi (yazmaz)
+python upload/tiktok_web.py isaretle --proje "projects/<Ad>" # web'de planlandı: doğrula + state + defter
+python upload/tiktok_web.py yayinlandi --proje "projects/<Ad>"  # anı geçmiş kaydı onayla
+python upload/tiktok_web.py iptal --proje "projects/<Ad>"      # planı iptal (Studio'da da iptal et)
+python upload/tiktok_web.py durum                 # pano/Hermes özeti = takip raporu
+```
+
+- `isaretle` state'e `tiktok_web={durum:planlandi, planlanan_an, ...}` yazar +
+deftere `kaynak=claude` satırı düşer. Planlanan an gelmeden `yayinlandi`
+İŞARETLEMEZ (fail-closed) — erken yayın gerçekten olduysa an geçtikten sonra
+aynı komut çalışır, damga tespit anıyla atılır.
+- Bayat kuralı: plan anı +48 saat geçip doğrulanmayan (`an geçti, doğrulanmadı`)
+her gün tek hatırlatma alır; kullanıcı Studio web'e bakıp `yayinlandi` ya da
+`iptal` ile kapatır. `durum` çıktısında bayat satırı kalması raporun kirli
+olduğu anlamına gelir — bekleyen listesi gibi takip edilir.
+- Silinen plan: Studio web'de silindiği görülürse ÖNCE orada silindiği doğrulanır,
+SONRA `iptal` koşulur (komut Studio'ya dokunmez, yalnız state+defter yazar).
+Asla silinmemiş bir plan `iptal` ile kapatılmaz.
+- Bu skill TikTok tarafının TEK sahibidir: web planı + kit + MCP taslak
+tasfiyesi + `durum` raporu. Yeni TikTok işi açıldez, hepsi buradan geçer.
+
 ## Adım 1 — Planı al (caption'ı ASLA uydurma)
 
 ```bash

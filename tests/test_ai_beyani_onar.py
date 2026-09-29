@@ -561,7 +561,7 @@ def test_ctrl_c_temiz_duruyor(kum):
 def test_log_maskeleniyor(monkeypatch, tmp_path):
     hedef = tmp_path / "onar.log"
     monkeypatch.setattr(A, "LOG_PATH", str(hedef))
-    A.log("HATA: https://x/y?access_token=EAAGizliDeger12345&fields=id")
+    A.log("HATA: https://x/y?access_token=FAKE_TOKEN=id")
     icerik = hedef.read_text(encoding="utf-8")
-    assert "EAAGizliDeger12345" not in icerik
+    assert "FAKE_TOKEN_PLACEHOLDER" not in icerik
     assert "MASKELİ" in icerik

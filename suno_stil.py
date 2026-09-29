@@ -89,6 +89,62 @@ def turu_bul(proje: str, kokler=None):
     return None
 
 
+def kota_kontrol(log=print) -> dict:
+    """Suno API kotasini kontrol eder — resmi API ile gerçek kota.
+
+    Önce suno_api.SunoClient kullanır (gerçek kota).
+    API yoksa state dosyasından tahmin yapar.
+    """
+    sonuc = {"durum": "bilinmiyor", "kalan": None, "gunluk_tavan": None}
+
+    # 1. Giriş resmi API denense
+    try:
+        from suno_api import SunoClient
+        key = os.environ.get("SUNO_API_KEY", "")
+        if key:
+            k = SunoClient(key).kota()
+            sonuc["durum"] = "aktif"
+            sonuc["kalan"] = k.get("credits")
+            sonuc["gunluk_tavan"] = k.get("dailyLimit")
+            log(f"  suno_api: {sonuc['kalan']} kredi kalan")
+            return sonuc
+    except Exception as e:
+        log(f"  suno_api kota hatasi: {e}")
+
+    # 2. Fallback: state dosyalarindan tahmin
+    try:
+        import json as _json
+        state_dir = "projects"
+        son_indirme = None
+        for d in os.listdir(state_dir):
+            st = os.path.join(state_dir, d, "state.json")
+            if os.path.isfile(st):
+                try:
+                    with open(st, encoding="utf-8") as f:
+                        s = _json.load(f)
+                    up = s.get("suno_uploaded_at", "")
+                    if up:
+                        from datetime import datetime
+                        t = datetime.strptime(up[:19], "%Y-%m-%dT%H:%M:%S")
+                        if son_indirme is None or t > son_indirme:
+                            son_indirme = t
+                except Exception:
+                    pass
+        if son_indirme:
+            from datetime import datetime, timezone
+            simdi = datetime.now(timezone.utc)
+            fark = (simdi - son_indirme.replace(tzinfo=timezone.utc)).total_seconds()
+            sonuc["son_indirme"] = son_indirme.isoformat()
+            sonuc["son_indirmeden_gecen_sn"] = int(fark)
+            sonuc["durum"] = "aktif" if fark < 86400 * 2 else "durdu"
+            sonuc["kalan"] = max(0, 86400 * 2 - int(fark))
+        else:
+            sonuc["durum"] = "henuz_yok"
+    except Exception as e:
+        sonuc["hata"] = str(e)
+    return sonuc
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Suno stil tarifi için mix/vokal/düzenleme ifadeleri.")
     p.add_argument("--proje", required=True, help="Şarkı / proje klasörü adı")

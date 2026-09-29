@@ -35,7 +35,7 @@ import state_io
 import uyumluluk
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
-from social_text import (build_caption, hashtag, pick_deterministic, pick_subset,
+from social_text import (build_caption, hashtag, mekan_etiketleri, pick_deterministic, pick_subset,
                          resolve_language, sozlerden_alinti, stil_etiketleri)
 from youtube_auth import get_authenticated_service
 
@@ -49,6 +49,75 @@ def load_meta(project_dir: str) -> dict:
         with open(meta_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
+
+
+SET_BOLUM_DOSYASI = "bolumler.json"
+
+
+def set_bolumleri(project_dir: str) -> list:
+    """DJ seti bölüm damgaları: merge_dj_set_segments.merge() `bolumler.json`
+    yazıyor (kırpma + crossfade düşülmüş GERÇEK başlangıçlar — aritmetiğin TEK
+    sahibi orası). Burada SADECE okunup doğrulanıyor; dosya yoksa/bozuksa []
+    (açıklama chapters'sız kurulur, yükleme ASLA durmaz)."""
+    yol = os.path.join(project_dir, SET_BOLUM_DOSYASI)
+    try:
+        with open(yol, "r", encoding="utf-8") as f:
+            veri = json.load(f)
+    except (OSError, ValueError):
+        return []
+    parcalar = veri.get("parcalar") if isinstance(veri, dict) else None
+    if not isinstance(parcalar, list):
+        return []
+    temiz = []
+    for p in parcalar:
+        if (isinstance(p, dict) and isinstance(p.get("zaman"), str)
+                and isinstance(p.get("ad"), str) and p["zaman"] and p["ad"]):
+                    temiz.append({"zaman": p["zaman"], "ad": p["ad"]})
+    return temiz
+
+
+def set_liste_ekle(project_dir: str, meta: dict) -> dict:
+    """upload_video + fix_description'ın ORTAK enjeksiyon noktası: set
+    klasöründe bolumler.json varsa meta["set_liste"]'ye koyar. İKİ çağıran
+    da BURADAN geçer — biri eklenip diğeri unutulursa yeni yükleme ile
+    açıklama-düzeltme ayrışır (sessiz tutarsızlık tuzağı)."""
+    if meta.get("theme") == "dj" and not meta.get("set_liste"):
+        meta["set_liste"] = set_bolumleri(project_dir)
+    if meta.get("theme") == "dj" and not meta.get("yil"):
+        # Başlık yılını YAYIN yılına dondur (bkz. set_basligi). state yoksa
+        # (henüz yüklenmemiş) varsayılan devreye girer = içinde bulunulan yıl.
+        try:
+            with open(os.path.join(project_dir, "state.json"), "r", encoding="utf-8") as f:
+                yuklendi = (json.load(f) or {}).get("youtube_uploaded_at") or ""
+            if len(yuklendi) >= 4 and yuklendi[:4].isdigit():
+                meta["yil"] = int(yuklendi[:4])
+        except (OSError, ValueError):
+            pass
+    return meta
+
+
+def set_basligi(meta: dict) -> str:
+    """DJ seti YouTube başlığı: `<Stil> <Nitelik> Mix <YIL> | <Ad> (DJ Famous Set)`.
+    Set adı tek başına arama niyeti taşımıyor; izleyicinin aradığı kalıp
+    (tür + yıl + mix) başa geliyor. Stil `set_style`'dan (SET_STILLERI label).
+    YIL DONDURULMUŞTUR: meta["yil"] varsa o (yayın yılı), yoksa içinde
+    bulunulan yıl. Gerekçe: mix başlığındaki yıl YAYIN yılıdır; her Ocak'ta
+    kendiliğinden değişen bir başlık hem arşiv testini hem de eski videoların
+    başlığını bozar. upload_video ilk yüklemede içinde bulunulan yılı yazar
+    (= yayın yılı), fix_description state'teki `youtube_uploaded_at` yılını
+    okuyup dondurur. set_style yoksa türe inmeden `<Ad> (DJ Famous Set)`."""
+    title = meta.get("title") or "Untitled DJ Set"
+    try:
+        yil = int(meta.get("yil") or datetime.now().year)
+    except (TypeError, ValueError):
+        yil = datetime.now().year
+    stil = config.set_stili(meta) or {}
+    label = (stil.get("label") or "").strip()
+    if not label:
+        return f"{title} (DJ Famous Set)"
+    niteleyici = "Night" if "deep_house" in (meta.get("set_style") or "") else ""
+    bas = " ".join(x for x in (label, niteleyici, "Mix", str(yil)) if x)
+    return f"{bas} | {title} (DJ Famous Set)"
 
 
 # `_derleme_temalari` / `_derleme_tur_bilgisi` 2026-09-13'te `social_text`'e
@@ -105,7 +174,7 @@ def build_snippet(meta: dict, baslik_kalibi: str | None = None) -> dict:
     if derleme:
         genre_tags = derleme_etiketleri + ["Derleme", "Mix", "Karışık Müzik"]
     else:
-        genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta)
+        genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta) + mekan_etiketleri(meta)
     links = config.SOCIAL_LINKS
 
     # Keşfet hashtag'leri İKİ ayrı yerde kullanılıyor ve ikisi AYNI OLMAMALI:
@@ -124,7 +193,7 @@ def build_snippet(meta: dict, baslik_kalibi: str | None = None) -> dict:
         engagement_question = pick_deterministic(
             title, meta.get("custom_questions") or config.ENGAGEMENT_QUESTIONS_EN, salt=7)
         follow_line = pick_deterministic(title, config.FOLLOW_LINES_EN, salt=11)
-        video_title = title
+        video_title = set_basligi(meta) if theme_key == "dj" else title
         lyrics_tags = []
         # DJ Famous setleri için kullanıcının referans aldığı bir YouTube DJ-mix
         # kanalının (ör. "GUESTMIX | ... | MENU") açıklama formatı: kısa,
@@ -151,7 +220,7 @@ def build_snippet(meta: dict, baslik_kalibi: str | None = None) -> dict:
         # eklendi — eskiden başlık sadece şarkı adıydı, YouTube arama trafiği
         # neredeyse sıfırdı (Studio analitiğiyle doğrulandı, 2026-09-06).
         if theme_key == "dj":
-            video_title = title
+            video_title = set_basligi(meta)
             lyrics_tags = []
         elif derleme:
             # "(Sözleri)" EKİ YOK: derlemenin sözleri yok, 13 ayrı şarkının
@@ -175,7 +244,8 @@ def build_snippet(meta: dict, baslik_kalibi: str | None = None) -> dict:
     else:
         genre_hashtags = ([hashtag(theme["label"])]
                           + [hashtag(t) for t in theme.get("related", [])]
-                          + [hashtag(t) for t in stil_etiketleri(meta)])
+                          + [hashtag(t) for t in stil_etiketleri(meta)]
+                          + [hashtag(t) for t in mekan_etiketleri(meta)])
     hashtags = " ".join(config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags)
 
     # Derleme parca listesi -> YouTube BOLUMLERI (chapters).
@@ -193,6 +263,16 @@ def build_snippet(meta: dict, baslik_kalibi: str | None = None) -> dict:
     if len(_liste) >= 3:
         _satirlar = [("%s %s" % (x["zaman"], x["ad"])) for x in _liste]
         bolumler = "\n\nParçalar:\n" + "\n".join(_satirlar)
+
+    # DJ SETİ BÖLÜMLERİ (2026-09-14): derleme dalıyla AYNI kural (ilk damga
+    # 0:00 — merge her zaman 0.0'dan başlatıyor; en az 3 bölüm; her biri
+    # ~3 dk, 10 sn sınırının çok üstünde). Kaynak meta["set_liste"] —
+    # upload_video/fix_description set_liste_ekle() ile dolduruyor; merge
+    # aritmetiği burada TEKRARLANMIYOR.
+    _set_liste = meta.get("set_liste") or []
+    if theme_key == "dj" and not derleme and len(_set_liste) >= 3:
+        _set_satirlar = [("%s %s" % (x["zaman"], x["ad"])) for x in _set_liste]
+        bolumler += "\n\nParçalar:\n" + "\n".join(_set_satirlar)
 
     # Şarkının KENDİ sözünden bir beyit — açıklamanın şarkıya ÖZEL olan tek
     # gerçek içeriği (başlık dışında). Köşeli parantez etiketi taşımayan
@@ -271,7 +351,7 @@ def build_shorts_snippet(meta: dict, full_video_id: str | None = None,
     if meta.get("derleme"):
         genre_tags = _derleme_tur_bilgisi(meta)[1] + ["Derleme", "Mix", "Karışık Müzik"]
     else:
-        genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta)
+        genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta) + mekan_etiketleri(meta)
 
     description = build_caption(meta)
     if full_video_id:
@@ -473,6 +553,7 @@ def _compute_publish_at(privacy: str, schedule: bool) -> str | None:
 def upload_video(project_dir: str, privacy: str, schedule: bool = True) -> str:
     video_path = os.path.join(project_dir, "output", "youtube_16x9.mp4")
     meta = load_meta(project_dir)
+    meta = set_liste_ekle(project_dir, meta)
     # BAŞLIK KALIBI yalnız YENİ yüklemede seçilir (karar 2): önceki yeni yayının kalıbından
     # farklı, deterministik; state'e yazılır ki fix_description aynı kalıbı kullansın.
     kalip = None
@@ -578,7 +659,7 @@ def build_clip_snippet(meta: dict, full_video_id: str | None, bas_sn: float) -> 
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
-    genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta)
+    genre_tags = [theme["label"]] + theme.get("related", []) + stil_etiketleri(meta) + mekan_etiketleri(meta)
 
     damga = _dakika_damgasi(bas_sn)
     lang = resolve_language(meta)
@@ -750,6 +831,7 @@ def fix_description(project_dir: str) -> None:
         return
 
     meta = load_meta(project_dir)
+    meta = set_liste_ekle(project_dir, meta)
     youtube = get_authenticated_service()
 
     if video_id:
