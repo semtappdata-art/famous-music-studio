@@ -135,10 +135,17 @@ yorum_taslaklari.json
 reply.txt
 .stock_video_cache/
 
+# DJ setleri state.json — yeni setler her zaman buraya yazilacak
+**/dj_sets/**/state.json
+
 # Atomik state.json yaziminin gecici dosyasi (state_io._atomik_yaz). Normalde
 # os.replace ile aninda tuketiliyor; guc kesintisi/kill sonrasi artik kalirsa
 # commit'lenmesin.
 *.json.tmp
+
+# CI/CD workflow — OAuth app 'workflow' scope'u olmadan push edilemez.
+# Yetki verildikten sonra .gitignore'dan çıkarılacak.
+.github/workflows/ci_cd.yml
 
 # LLM cache — her zaman temizlenebilir, asla commit olmaması gereken
 # AI yanıtları buraya yazılır.

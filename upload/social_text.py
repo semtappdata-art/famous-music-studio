@@ -9,11 +9,14 @@ import collections
 import difflib
 import hashlib
 import json
+import logging
 import os
 import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+logger = logging.getLogger("fms.social_text")
 
 import config
 
@@ -228,6 +231,19 @@ def stil_etiketleri(meta: dict) -> list:
     return list(stil["etiketler"]) if stil else []
 
 
+def mekan_etiketleri(meta: dict) -> list:
+    """DJ setinin çekim mekânı etiketleri (meta.json'daki `mekan`).
+
+    Örn. `mekan: "Eiffel Nights"` → `["Eiffel Nights"]`; çağıran hashtag()
+    ile `#EiffelNights` yapar ya da tags alanına düz yazar. Alan yoksa/boşsa
+    boş liste — eski setler (mekan alanı olmayan meta.json'lar) bayt bayt
+    eski çıktıyı üretir. TEK kaynak: YouTube görünür hashtag bloğu, görünmez
+    tags, Shorts tags, kesit tags, build_caption ve TikTok kit hepsi buradan
+    beslenir; yeni bir çıktı eklenirse o da buraya bağlanır."""
+    mekan = (meta.get("mekan") or "").strip()
+    return [mekan] if mekan else []
+
+
 def _derleme_temalari(meta: dict) -> list:
     """Derlemedeki her parçanın tema anahtarı (çoklu, seçim sırasıyla).
 
@@ -410,6 +426,51 @@ def build_story_overlay(title: str, versiyon: int, dil: str, meta: dict = None, 
                 f"Bir önceki şarkı: {onceki_sarki} — bio'da")
 
 
+def ai_caption(meta: dict, hook: str = None, *, force: bool = False) -> str:
+    """LLM router ile şarkıya özel AI caption üret (opsiyonel).
+
+    `meta["ai_caption"]` True değilse boş string döner — kapalı.
+    Router tüm sağlayıcısız/bağlantısızsa sessizce boş string,
+    hata yakalanır, caption deterministik havuzdan gelir (zaten
+    `build_caption`'ın davranışı).
+
+    Kullanım: upload/<platform>_upload.py içinde caption üretimi
+    öncesine koyulabilir; mevcut `build_caption` yolu değişmez.
+    """
+    if not force and not meta.get("ai_caption"):
+        return ""
+    try:
+        from _llm_router import llm_chat
+        from _llm_cache import caption_cache as _caption_cache
+    except Exception:
+        return ""
+    title = meta.get("title", "şarkı")
+    theme = meta.get("theme", "")
+    lyric_path = dogrulanmis_sozler_yolu(title)
+    lyrics = ""
+    if lyric_path:
+        try:
+            with open(lyric_path, "r", encoding="utf-8") as f:
+                lyrics = f.read()[:800]
+        except Exception:
+            pass
+    user_msg = (
+        f"Şarkı: {title}\nTema: {theme}\n"
+        f"Sözler (kırpılmış):\n{lyrics}\n\n"
+        f"Bu şarkı için Instagram/TikTok paylaşım caption'ı üret. "
+        f"Hook cümlesi, kısa açıklama, 3-5 hashtag. "
+        f"Türkçe cevap ver. Link yoksun. AI beyanı yok."
+    )
+    if hook:
+        user_msg += f"\nMevcut hook: {hook}"
+
+    def _call():
+        return llm_chat([{"role": "user", "content": user_msg}],
+                          model="smart", temperature=0.3, max_tokens=400)
+
+    return _caption_cache(meta, _call, force=force)
+
+
 def build_caption(meta: dict, ai_beyani: bool = False) -> str:
     """Şarkıya ÖZEL metin varsa genel havuzun önüne geçer (2026-09-10):
     meta.json içindeki `custom_hooks` / `custom_questions`, o şarkının
@@ -431,7 +492,8 @@ def build_caption(meta: dict, ai_beyani: bool = False) -> str:
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
     genre_hashtags = ([hashtag(theme["label"])]
                       + [hashtag(t) for t in theme.get("related", [])]
-                      + [hashtag(t) for t in stil_etiketleri(meta)])
+                      + [hashtag(t) for t in stil_etiketleri(meta)]
+                      + [hashtag(t) for t in mekan_etiketleri(meta)])
 
     # Gövde ve havuzlar TikTok kitiyle ORTAK (`_govde_satirlari`, `_dil_havuzlari`)
     # — 2026-09-13'te iki dil dalının kopyası tek yola indirildi. Çıktı önceki
@@ -446,7 +508,20 @@ def build_caption(meta: dict, ai_beyani: bool = False) -> str:
     # kullanıcı kararı; Meta kuralı gerçekçi AI ses için beyan istiyor, API'de etiket
     # alanı yok). Satır hashtag bloğundan HEMEN ÖNCE — TikTok kitiyle aynı konum.
     # Shorts/Telegram/Bluesky/TikTok planı varsayılanla (False) aynen kalıyor.
+    # ai_caption: meta["ai_caption"] True ise LLM router'dan
+    # özel hook üret ( Sağlayıcı kapalıysa hook yine de deterministic ).
+    ai_cap = ""
+    if meta.get("ai_caption"):
+        try:
+            ai_cap = ai_caption(meta)
+        except Exception:
+            pass
+
     beyan = f"{ai_beyan_satiri(meta)}\n\n" if ai_beyani else ""
+
+    hook = ai_cap if ai_cap else pick_deterministic(
+        title, meta.get("custom_hooks") or _dil_havuzlari(meta)["hook"])
+
     return (
         f"{hook}\n\n{title} 🎵\n\n"
         f"{use_line}\n\n"
@@ -529,7 +604,8 @@ def tiktok_kit_hashtagleri(meta: dict) -> list:
         havuz = ([hashtag(t) for t in stil_etiketleri(meta)]
                  + pick_subset(title, config.TIKTOK_SET_ETIKETLERI_EN,
                                len(config.TIKTOK_SET_ETIKETLERI_EN), salt=19))
-        return _etiket_sec(zorunlu + ["#DJSet"], havuz)
+        return _etiket_sec(zorunlu + ["#DJSet"]
+                            + [hashtag(t) for t in mekan_etiketleri(meta)], havuz)
     if tur == "derleme":
         _tur, turler = _derleme_tur_bilgisi(meta)
         kesif = config.TEMA_KESIF_ETIKETLERI["derleme"]
@@ -582,6 +658,20 @@ def build_tiktok_kit_caption(meta: dict, ai_beyani: str = None) -> str:
         parcalar.append(ai_beyan_satiri(meta))
     parcalar.append(" ".join(tiktok_kit_hashtagleri(meta)))
     return "\n\n".join(parcalar)
+
+
+def build_ilk_yorum(title: str, lang: str = "tr") -> str:
+    """YouTube'a atılacak İLK yorum (kanalın kendi yorumu, Studio'dan sabitlenir).
+
+    İki satır: bölüm sorusu + abone çağrısı. `pick_deterministic` (salt 21) —
+    aynı video hep aynı metni alır. build_youtube_comment'ten FARKLI: o, BAŞKA
+    platformlardaki paylaşıma YouTube linki taşıyan yorum; bu, videonun KENDİ
+    sayfasındaki etkileşim çağrısı (link yok, link burada gereksiz)."""
+    if lang == "en":
+        soru = pick_deterministic(title, config.ILK_YORUM_SORULARI_EN, salt=21)
+        return f"{soru}\n{config.ILK_YORUM_ABONE_EN}"
+    soru = pick_deterministic(title, config.ILK_YORUM_SORULARI, salt=21)
+    return f"{soru}\n{config.ILK_YORUM_ABONE}"
 
 
 def build_ai_disclosure_line(lang: str = "tr", meta: dict = None) -> str:

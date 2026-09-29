@@ -365,3 +365,45 @@ def test_dj_kesitleri_highlight_start_tan_etkilenmiyor(tmp_path, monkeypatch):
     assert duz["pencereler"] == isaretli["pencereler"]
     assert [(p["bas"], p["son"]) for p in isaretli["pencereler"]] == [(150.0, 195.0),
                                                                        (900.0, 945.0)]
+
+
+def test_dj_set_highlight_kapatilmis(tmp_path, monkeypatch):
+    """DJ setlerinde (backdrop.mp4 var) Shorts highlight ACIK değil,
+    tam ekran (long format) calisir — 2026-09-24 karari."""
+    import config
+    import dj_famous_process as djp
+    # backdrop.mp4 olustur (DJ set isareti)
+    (tmp_path / "backdrop.mp4").write_bytes(b"backdrop")
+    (tmp_path / "audio.wav").write_bytes(b"RIFF0000WAVEdata")
+    (tmp_path / "cover.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    (tmp_path / "meta.json").write_text(
+        json.dumps({"title": "Deep Medusa", "theme": "dj",
+                     "artist": "DJ Famous"}), encoding="utf-8")
+    kayit = {"render": [], "olcum_sayisi": 0, "highlight_sayisi": 0}
+    import render as rmod
+
+    def sahte_olc(yol):
+        kayit["olcum_sayisi"] += 1
+        return {"lufs": -14.0, "tp": -1.0, "lra": 2.0}
+    def sahte_highlight(a, s):
+        kayit["highlight_sayisi"] += 1
+        return (10.0, 55.0)
+    def sahte_render(art, audio, output_path, w, h, *a, **k):
+        kayit["render"].append({"w": w, "h": h, **k})
+        open(output_path, "wb").write(b"\x00" * 8)
+
+    monkeypatch.setattr(rmod.validate_project, "validate", lambda d: ([], []))
+    monkeypatch.setattr(rmod.validate_project, "print_report", lambda d, e, u: None)
+    monkeypatch.setattr(rmod, "find_highlight", sahte_highlight)
+    monkeypatch.setattr(rmod.ffmpeg_utils, "ensure_card_mask", lambda: None)
+    monkeypatch.setattr(rmod.ffmpeg_utils, "ensure_art_backdrop", lambda *a, **k: None)
+    monkeypatch.setattr(rmod.ffmpeg_utils, "ensure_vignette", lambda *a, **k: None)
+    monkeypatch.setattr(rmod.ffmpeg_utils, "render_video", sahte_render)
+    monkeypatch.setattr(rmod.ffmpeg_utils, "ses_olc", sahte_olc)
+    rmod.render_project(str(tmp_path))
+    # highlight bulunsa bile use_highlight=False → kullanılmaz
+    # shorts platformu bile backdrop_video ile uzun format
+    shorts = [r for r in kayit["render"] if r["w"] == 1080][0]
+    assert shorts["backdrop_video"] is not None, "backdrop_video olmalı"
+    assert shorts["start_time"] is None, "long format: start None"
+    assert shorts["end_time"] is None, "long format: end None"

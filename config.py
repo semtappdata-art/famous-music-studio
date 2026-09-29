@@ -363,6 +363,24 @@ FOLLOW_LINES = [
     "Sıradaki parça için takipte kal 🔔",
 ]
 
+# YouTube İLK YORUM (sabitlenecek kanal yorumu, bkz. youtube_ilk_yorum.py).
+# Açıklamayı kimse açmıyor; sabit yorum herkesin gördüğü ilk satır. İki cümle:
+# bölüm sorusu (setse dakika, şarkıysa kısım) + abone çağrısı. Deterministik
+# seçim (salt 21) — aynı video hep aynı yorumu alır, tekrar gönderimde
+# çift yorum çıkmaz (state bayrağı da var, ikinci kilit). Yalvarma dili YOK.
+ILK_YORUM_SORULARI = [
+    "Favori bölümün hangisi? Dakikasıyla yaz 👇",
+    "En çok nerede kaldın? Bölümü yaz, konuşalım 💬",
+    "Baştan sona mı, bölüm bölüm mü dinliyorsun? 👇",
+]
+ILK_YORUM_SORULARI_EN = [
+    "Which section is your favorite? Drop the timestamp 👇",
+    "Where did you stay the longest? Tell us 💬",
+    "Full listen or section hopping? 👇",
+]
+ILK_YORUM_ABONE = "Abone ol, yenileri kaçırma 🔔"
+ILK_YORUM_ABONE_EN = "Subscribe so you don't miss the next drop 🔔"
+
 # Caption'ın sonunda, hashtag'lerden hemen önce — yorum sayısını artırmayı
 # hedefleyen bir soru (yorum, algoritma için güçlü bir etkileşim sinyali).
 # HOOK_LINES ile aynı deterministik seçim mantığı ama farklı bir index kullanılır
@@ -404,6 +422,18 @@ DJ_ARDA_BACKDROP = os.path.join(
 # aynı kapsam: YALNIZCA dj_sets/ ve yalnızca uzun formatta. Dikey 45 saniyelik
 # kesitte köşe ayraçları kadrajı daraltıyor, orada kapalı.
 DJ_HUD = True
+
+# HUD nefes alması: köşe ayraçları render sırasında çok yavaş nabız yapıyor
+# (kontrast 1.0 -> 1+DERINLIK -> 1.0, periyot SURE_SN). PNG sabit üretiliyor,
+# hareket ffmpeg_utils'taki blend öncesi `eq=...:eval=frame` ile veriliyor:
+# kare başına PNG üretmek gerekmez, maliyet ~sıfır. Yön bilerek YUKARI:
+# kontrast 1'in altına inseydi YUV pivotu (128) siyah tabanı griye kaldırır
+# ve `screen` blend tüm kareye nabızla inip kalkan bir peçe basardı; yukarı
+# yönde siyah klipte kalıyor, yalnız çizgiler ışıldıyor. Yalnızca uzun format
+# (HUD'un zaten çalıştığı yer); dikeyde HUD kapalı olduğu için etkisiz.
+DJ_HUD_NEFES = True
+DJ_HUD_NEFES_SURE_SN = 8.0  # aralık: 4-16 (altı telaşlı, üstü donuk)
+DJ_HUD_NEFES_DERINLIK = 0.15  # aralık: 0.05-0.30 (üstü gri-peçe bölgesi)
 
 # SAHNE MODU: arka plan artık kartın ARKASINDAKİ dekor değil, kadrajın
 # KENDİSİ. Kart kaldırılıyor, görüntü bulanıklaştırılmıyor, HUD onu
@@ -462,6 +492,17 @@ DJ_ARKA_PLAN_PARLAKLIK = "brightness=0.08:saturation=1.2"
 # Siyahlar hala kaldiriliyor (kart one ciksin), sadece tepe bastiriliyor.
 DJ_ARKA_PLAN_EGRISI = "0/0.14 0.5/0.70 1/0.88"
 
+# Sahne zoom'u: video backdrop 1.00 -> BITIS'e SET BOYUNCA yavaşça yaklaşıyor
+# (38 dk'da 1.08: anlık farkedilmez, ama kare asla aynı kalmaz — loop'un
+# "bu hareketsiz" hissini kıran şey bu). zoompan tek filtrede yapıyor
+# (ayrı crop+scale ikinci bir tam-kare resample demekti, ~2x canvas maliyeti).
+# YALNIZCA video backdrop dalında; statik PNG dalında pan/hue aynen duruyor,
+# kartta zoom YOK (modül docstring'indeki kural kart içindi, değişmedi).
+# Aralık 1.00-1.15: üstü 1080p'de yumuşama + sarsıntı (zoompan tamsayı
+# yuvarlaması) bölgesi; süre-set boyu oranlı olduğu için periyot ayarı yok.
+DJ_SAHNE_ZOOM = True
+DJ_SAHNE_ZOOM_BITIS = 1.08
+
 
 # --- DJ setlerinin muzik stili -------------------------------------------
 # SORUN: her set `theme: "dj"` kullaniyordu, yani deep house bir set ile
@@ -499,6 +540,8 @@ SET_STILLERI = {
             "industrial dark fog light beams",
             "aerial city night lights slow",
             "particles dark blue slow motion",
+            "luxury yacht party night",
+            "rooftop pool dancing nightclub",
         ],
         "suno_stil": "melodic techno, hypnotic arpeggio, deep sub bass, airy pads, no vocals, 124 bpm, late night drive",
     },
@@ -533,6 +576,8 @@ SET_STILLERI = {
             "dj booth hands lights dark party",
             "concert stage lights beams crowd night",
             "neon tunnel light streaks fast motion",
+            "luxury yacht party night",
+            "superyacht deck night party",
         ],
         "suno_stil": "melodic progressive house, driving kick, hypnotic lead synth, layered atmosphere, no vocals, 126 bpm, peak time club, forward motion",
     },
@@ -724,6 +769,7 @@ TIKTOK_KIT_AKTIF = True
 TIKTOK_KIT_GUNLUK_TAVAN = 1        # TR takvim günü başına en fazla kit
 TIKTOK_KIT_HAFTALIK_TAVAN = 4      # son 7 gün (kayan) içinde en fazla kit
 TIKTOK_KIT_ARALIK_SAAT = 36        # iki kit arası en az (saat)
+TIKTOK_KIT_ONAY_TIMEOUT_SAAT = 48  # 24→48: operator onayina yeter zaman   # onay bekleyen kit timeout (saat)
 TIKTOK_KIT_HATIRLATMA_SAAT = 48    # onaysız kit için TEK hatırlatma eşiği (saat)
 # Kit yalnız API durumu SEND_TO_USER_INBOX olan taslağa gidiyor; okuma bayatsa
 # (kullanıcı bu arada yayınlamış olabilir) gitmiyor. Doğrulama günde bir ve koşu
@@ -745,6 +791,10 @@ TIKTOK_WEB_PLANLA_MAX_GUN = 10
 TIKTOK_WEB_PLANLA_MIN_DAKIKA = 60
 # Planlanan anı geçmiş, onaylanmamış web gönderisi için günde en fazla 1 "TikTok'ta çıktı mı?"
 TIKTOK_WEB_KONTROL_HATIRLATMA = True
+# 24 saat içinde plan anı gelen kayda paket servisi (kapak + açıklama + ayarlar).
+TIKTOK_WEB_PAKET = True
+# Doğrulanmamış planın "bayat" rozeti + yaşlı hatırlatma eşiği (saat).
+TIKTOK_WEB_BAYAT_SAAT = 48
 
 
 def tiktok_web_modu() -> bool:

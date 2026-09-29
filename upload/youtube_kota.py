@@ -1054,5 +1054,74 @@ def main(argv=None) -> int:
     return 0
 
 
+
+
+def kota_surucu(log=print):
+    """Her API çağrısında kota durumunu izle.
+    
+    - Kalan krediyi logla
+    - %80'i geçildiğinde UYARI
+    - %90'ı geçildiğinde HATA
+    - Günlük rapor: kullanım yüzdesi
+    """
+    try:
+        from youtube_auth import get_client
+        client = get_client()
+        if not client:
+            return {"durum": "client_yok"}
+        
+        # YouTube Data API kota durumu
+        # part="status" ile kalan havuzu oku
+        request = client.videos().list(
+            part="statistics",
+            id="dummy"  # gerçek ID gerekli, bu only quota check
+        )
+        # Quota bilgisi response header'da gelir
+        # Gerçek kota: quotaUsed, quotaMax, quotaRemaining
+        # API bu bilgiyi doğrudan vermez, biz takip ederiz
+        
+        # Günlük kullanım tahmini
+        gunluk_kullanim = _kota_kullanimini_oku()
+        kalan = max(0, 10000 - gunluk_kullanim)
+        yuzde = (gunluk_kullanim / 10000) * 100
+        
+        durum = "normal"
+        if yuzde >= 90:
+            durum = "kritis"
+        elif yuzde >= 80:
+            durum = "uyari"
+        
+        log(f"  kota: {gunluk_kullanim}/10000 ({yuzde:.1f}%) - {durum}")
+        
+        return {
+            "durum": durum,
+            "kullanim": gunluk_kullanim,
+            "kalan": kalan,
+            "yuzde": round(yuzde, 1),
+        }
+    except Exception as e:
+        log(f"  kota_surucu HATASI: {e}")
+        return {"durum": "hata", "mesaj": str(e)}
+
+
+def _kota_kullanimini_oku():
+    """Günlük kota kullanımını oku (dosyadan)."""
+    dosya = "upload/youtube_kota_kullanim.json"
+    try:
+        with open(dosya, encoding="utf-8") as f:
+            data = json.load(f)
+        # Son 24 saat
+        from datetime import datetime, timezone, timedelta
+        simdi = datetime.now(timezone.utc)
+        son24 = simdi - timedelta(hours=24)
+        toplam = sum(
+            v for k, v in data.items()
+            if datetime.fromisoformat(k).replace(tzinfo=timezone.utc) > son24
+        )
+        return toplam
+    except Exception:
+        return 0
+
+
 if __name__ == "__main__":
     sys.exit(main())

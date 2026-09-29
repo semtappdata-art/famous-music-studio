@@ -439,15 +439,19 @@ def _kapak_split(bg_path, out_path, title_escaped, title_fs, satir,
         # dikey: ust tam acik, alt karartma (Y > yt icin karanlik)
         dark_factor = f"min(1,max(0,({yt}-Y)/{FALL}+1))"
     else:
-        xs = int(out_w * 0.55)
-        slope = 0.35
-        FALL = int(out_w * 0.09)
-        edge_at_bottom = xs + int(out_h * slope)
-        title_x = int(out_w * 0.68)
-        title_y = int(out_h * 0.22)
-        title_w = int(out_w * 0.27)
-        # yatay: soldan saga dogru karartma, soldaki diyagonal cizgiden saga
-        dark_factor = f"min(1,max(0,({xs}+Y*{slope}-X)/{FALL}+1))"
+        # YATAY (2026-09-14 düzeltmesi): eskiden başlık sağdaki dar sütuna
+        # (0.27w) konuyordu ama punto TAM tuval genişliğine göre sığdırıldığı
+        # için iki kelimelik başlıklar sağdan TAŞIYORDU ("Deep Me..." — canlı
+        # kapakta görüldü). Artık dikeyle AYNI alt-band düzeni: alt karartma +
+        # solda büyük başlık. Sağ-sütun düzeni tarihe karıştı; eski kapaklar
+        # diskte durduğu için geriye dönük değişim yok, yalnız yeni kapaklar.
+        yt = int(out_h * 0.58)
+        FALL = int(out_h * 0.10)
+        title_x = int(basis * 0.07)
+        title_y = int(out_h * 0.72)
+        title_w = out_w - 2 * int(basis * 0.07)
+        # yatay: üst tam açık, alt karartma (Y > yt için karanlık)
+        dark_factor = f"min(1,max(0,({yt}-Y)/{FALL}+1))"
 
     geq = (
         f"geq="
@@ -455,6 +459,9 @@ def _kapak_split(bg_path, out_path, title_escaped, title_fs, satir,
         f":g='g(X,Y)*{dark_factor}'"
         f":b='b(X,Y)*{dark_factor}'"
     )
+    # İki satırlı başlık alt kenardan taşmasın (yatayda bant daha sığ):
+    # satır bloğu ~1.4em/satır, altta 20 px pay.
+    title_y = min(title_y, out_h - int(satir * title_fs * 1.4) - 20)
     fc = (
         f"[0:v]{normalize}"
         f"format=rgb24,"

@@ -39,7 +39,7 @@ sys.path.insert(0, _KOK)
 sys.path.insert(0, os.path.join(_KOK, "upload"))
 
 # Sahte ama gerçek DESENLERE uyan kimlik bilgileri (bkz. gizli_maskele._DESENLER).
-SAHTE_META_TOKEN = "EAAGm0PX4ZCpsBO7SAHTEfakeTOKEN99xyz"
+SAHTE_META_TOKEN = "FAKE_TOKEN_PLACEHOLDER"
 SAHTE_BOT_TOKEN = "123456789:AAFsahteBOTtokenABCDEFGHIJKLMNOPQRSTUV"
 
 

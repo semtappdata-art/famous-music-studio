@@ -6,6 +6,7 @@ Kullanım:
 """
 
 import argparse
+import traceback
 import hashlib
 import json
 import math
@@ -148,6 +149,20 @@ def find_art(project_dir: str) -> str | None:
     """Kart içinde gösterilecek opsiyonel görsel — cover.jpg'den (thumbnail) FARKLI.
     Yoksa render_video düz renge (config.CARD_ART_COLOR) düşer."""
     for name in ART_NAMES:
+        path = os.path.join(project_dir, name)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+PORTRE_NAMES = ["portre.jpg", "portre.jpeg", "portre.png"]
+
+
+def find_portre(project_dir: str) -> str | None:
+    """Portre-sahne düzeni için setin KENDİ portre dosyası — roster'dan sihirli
+    düşme YOK (hangi yüzün kullanılacağı görünür olmalı). meta.json'da
+    "sahne": "portre" yoksa çağrılmıyor bile."""
+    for name in PORTRE_NAMES:
         path = os.path.join(project_dir, name)
         if os.path.isfile(path):
             return path
@@ -411,7 +426,7 @@ def meta_highlight(meta: dict, audio_path: str | None = None):
     return bas, son
 
 
-def render_project(project_dir: str) -> bool:
+def render_project(project_dir: str, crf: str | None = None, preset: str | None = None) -> bool:
     name = os.path.basename(os.path.normpath(project_dir))
     print(f"\n=== {name} ===")
 
@@ -462,6 +477,14 @@ def render_project(project_dir: str) -> bool:
         print("  " + satir)
         _ses_uyarisi(f"ses_karar:{proje_adi}", satir)
 
+    # PORTRE SAHNE (2026-09-14): meta "sahne" == "portre" VE sette portre.*
+    # varsa uzun format portre düzeninde (ortada sabit portre + canlı kenarlar).
+    # İkisi de şart: bayrak tek başına eski sahne düzenini değiştirmez, dosya
+    # tek başına bir şey tetiklemez. Shorts/highlight kırpması kart düzeninde.
+    portre_path = find_portre(project_dir) if meta.get("sahne") == "portre" else None
+    if meta.get("sahne") == "portre":
+        print(f"  sahne: portre ({os.path.basename(portre_path) if portre_path else 'portre dosyası YOK — normal sahne'})")
+
     # DJ Famous gibi özel içerikler için kayan yazının içeriğini override eder
     # (ör. "DJ Famous  •  Hafta 1 Seti  •  #DJFamous ...") — sabit alt satır
     # ("Famous Music Studio") HER ZAMAN aynı kalır, bundan etkilenmez.
@@ -477,6 +500,7 @@ def render_project(project_dir: str) -> bool:
             print("  highlight otomatik tespit ediliyor (en yoğun bölüm)...")
             highlight_start, highlight_end = find_highlight(audio_path, config.HIGHLIGHT_DURATION)
             print(f"  highlight: {highlight_start:.1f}s - {highlight_end:.1f}s")
+        print("Highlight tespiti tamamlandı, render_video çağrılıyor...")
     else:
         print(f"  highlight (meta.json'dan): {highlight_start:.1f}s - {highlight_end:.1f}s")
 
@@ -522,7 +546,15 @@ def render_project(project_dir: str) -> bool:
         # aynı anda koşan iki render aynı geçici dosyaya yazmasın diye.
         tmp_path = os.path.join(output_dir, f".{platform_key}{PARCALI_SONEK}")
         print(f"  -> {platform_key} ({width}x{height}) render ediliyor...")
-        use_highlight = platform_key in config.HIGHLIGHT_PLATFORMS
+        # DJ SETLER TAM EKRAN — Shorts iptal (2026-09-24).
+        # Eski kural HIGHLIGHT_PLATFORMS'daki platformlarda highlight
+        # (en iyi 45 sn, kapak+animasyon, no HUD) üretiliyordu.
+        # DJ setlerinde bu anlamsız: 13 bölümlük sahne zaman çizgisi
+        # ve backdrop.mp4 45 sn'de gözden kaçar; tam ekran (backdrop +
+        # HUD + HUD-nefes) izlenmesi gerektiği için backdrop varsa
+        # highlight açılmaz. Yani dj_sets/ her zaman uzun format.
+        use_highlight = (platform_key in config.HIGHLIGHT_PLATFORMS
+                         and not backdrop_path)
         # Açılış kapağı sadece config.INTRO_KAPAK_PLATFORMLAR'daki platformlarda —
         # Shorts akışında küçük resim izleyiciye hiç gösterilmediği için orada
         # tıklama sürekliliği diye bir şey yok.
@@ -548,11 +580,13 @@ def render_project(project_dir: str) -> bool:
                 end_time=highlight_end if use_highlight else None,
                 backdrop_video=None if use_highlight else backdrop_path,
                 hud_path=None if use_highlight else _hud(width, height),
+                portre_path=None if use_highlight else portre_path,
                 kart_goster=not (config.DJ_SAHNE_MODU and backdrop_path
                                  and not use_highlight),
                 intro_cover=intro_cover,
                 ses_limiter=ses_limiter,
                 dil_params=render_dil,
+                crf_override=crf, preset_override=preset,
             )
         except BaseException:
             # Hata/iptal durumunda yarım geçici dosyayı bırakma. Süreç
@@ -562,6 +596,11 @@ def render_project(project_dir: str) -> bool:
                 os.remove(tmp_path)
             except OSError:
                 pass
+            # Hata ayrıntılarını dosyaya yaz (debug için)
+            import traceback as _tb
+            with open(os.path.join(project_dir, "_render_error.txt"), "w", encoding="utf-8") as _f:
+                _f.write("Render hatası: {}\n".format(type(e).__name__))
+                _f.write(_tb.format_exc())
             raise
         # ffmpeg 0 ile döndü: dosya artık BÜTÜN, nihai adına atomik geçiş.
         os.replace(tmp_path, output_path)
@@ -578,7 +617,7 @@ def render_project(project_dir: str) -> bool:
         else:
             ffmpeg_utils.ensure_vignette(width, height, theme_key)
 
-    with ThreadPoolExecutor(max_workers=config.MAX_PARALLEL_RENDERS) as executor:
+    with ThreadPoolExecutor(max_workers=1) as executor:
         futures = {
             executor.submit(render_one, platform_key, width, height): platform_key
             for platform_key, (width, height) in config.PLATFORMS.items()
@@ -605,6 +644,10 @@ def main():
         # kök açıldığında sessizce eskirdi (bkz. uyumluluk.KOK_ADLARI).
         help="%s altındaki tüm proje klasörlerini render et"
              % ", ".join("%s/" % k for k in uyumluluk.KOK_ADLARI))
+    parser.add_argument("--crf", default=None,
+                        help="Video kalitesi (örn. 18). Verilmezse config.CRF.")
+    parser.add_argument("--preset", default=None,
+                        help="ffmpeg preset (örn. slow). Verilmezse config.PRESET.")
     args = parser.parse_args()
 
     if args.project:
@@ -624,7 +667,7 @@ def main():
 
     all_ok = True
     for project_dir in project_dirs:
-        if not render_project(project_dir):
+        if not render_project(project_dir, crf=args.crf, preset=args.preset):
             all_ok = False
 
     sys.exit(0 if all_ok else 1)
