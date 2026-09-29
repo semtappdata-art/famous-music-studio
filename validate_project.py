@@ -202,7 +202,94 @@ def validate(project_dir: str) -> tuple[list[str], list[str]]:
             "telif/tekrar-icerik kontrolu YAPILAMIYOR demektir; once "
             "`python uyumluluk.py` ile hatayi gider." % str(e)[:120])
 
+    # 5) KALITE KAPISI (2026-09): ses ve kapak kalitesi
+    _kalite_kontrolu(project_dir, errors, warnings)
+
     return errors, warnings
+
+
+def _kalite_kontrolu(project_dir: str, errors: list[str], warnings: list[str]) -> None:
+    """Ses + kapak kalitesi kontrolü.
+
+    Ses: RMS db (çok sessiz / çok yüksek), yanlık süresi.
+    Kapak: çözünürlük, aspect ratio.
+    """
+    # --- Ses ---
+    audio_path = _find(project_dir, AUDIO_NAMES)
+    if audio_path and not any("audio" in e.lower() for e in errors):
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error",
+                 "-filter:a", "volumedetect",
+                 "-show_entries", "frame_tags=volume",
+                 "-of", "csv=p=0", audio_path],
+                capture_output=True, text=True, encoding="utf-8",
+                timeout=30)
+            if result.returncode == 0:
+                for satir in result.stdout.strip().split("\n"):
+                    if "mean_volume" in satir:
+                        try:
+                            db = float(satir.split(":")[1].strip().replace(" dB", ""))
+                            if db < -30:
+                                errors.append(
+                                    f"ses çok sessiz (RMS {db:.1f} dB) — "
+                                    f"Suno'da tekrar üret veya ses dosyasını değiştir")
+                            elif db > -3:
+                                warnings.append(
+                                    f"ses çok yüksek (RMS {db:.1f} dB) — distorsiyon riski")
+                        except (ValueError, IndexError):
+                            pass
+                    if "max_volume" in satir:
+                        try:
+                            db_max = float(satir.split(":")[1].strip().replace(" dB", ""))
+                            if db_max < -20:
+                                warnings.append(
+                                    f"ses peak çok düşük ({db_max:.1f} dB) — dinleyici sesini açmalı")
+                        except (ValueError, IndexError):
+                            pass
+        except Exception:
+            pass
+
+        # Yanlık kontrolü
+        try:
+            result = subprocess.run(
+                ["ffmpeg", "-i", audio_path,
+                 "-af", "silencedetect=noise=-50dB:d=3",
+                 "-f", "null", "-"],
+                capture_output=True, text=True, encoding="utf-8",
+                timeout=60)
+            import re
+            matches = re.findall(r"silence_start:\s*([\d.]+)", result.stderr)
+            if len(matches) >= 2:
+                warnings.append(
+                    f"ses içinde {len(matches)} yanlık bölüm var — dinleyici deneyimi düşük")
+        except Exception:
+            pass
+
+    # --- Kapak ---
+    cover_path = _find(project_dir, COVER_NAMES)
+    if cover_path and _valid_image(cover_path):
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error",
+                 "-select_streams", "v:0",
+                 "-show_entries", "stream=width,height",
+                 "-of", "csv=p=0", cover_path],
+                capture_output=True, text=True, encoding="utf-8",
+                timeout=10)
+            if result.returncode == 0:
+                wh = result.stdout.strip().split(",")
+                if len(wh) == 2:
+                    w, h = int(wh[0]), int(wh[1])
+                    if w < 800 or h < 450:
+                        errors.append(
+                            f"kapak çözünürlüğü çok düşük ({w}x{h}) — YouTube feed'te bulanık")
+                    ratio = w / h if h else 0
+                    if abs(ratio - 16/9) > 0.1:
+                        warnings.append(
+                            f"kapak aspect oranı {ratio:.2f} — 16:9 bekleniyor, pillarbox olabilir")
+        except Exception:
+            pass
 
 
 def print_report(project_dir: str, errors: list[str], warnings: list[str]) -> None:
