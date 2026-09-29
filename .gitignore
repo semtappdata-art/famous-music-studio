@@ -140,6 +140,19 @@ reply.txt
 # commit'lenmesin.
 *.json.tmp
 
+# LLM cache — her zaman temizlenebilir, asla commit olmaması gereken
+# AI yanıtları buraya yazılır.
+.llm_cache/
+
+# .env — gerçek API anahtarları buraya yazılır, asla commit olmasın
+.env
+
+# Kimliği sıfırlanmış ortak anahtar dosyaları — test/araştırma amaçlı,
+# içindeki anahtarlar asla commit olmamalı.
+_saglayici_kontrol.py
+_nerve2.py
+_anahtar_dogrulama.py
+
 # YouTube Data API kota defteri (upload/youtube_kota.py) — makineye özgü ölçüm.
 youtube_kota_defteri.jsonl
 youtube_kota_defteri.jsonl.tmp
