@@ -2190,7 +2190,13 @@ def main():
 
         _drain_golden_hour_queue([p for p in ready if p not in batch])
         log("Çalıştırma tamamlandı.")
+        _islenen = list(batch)
+        _kuyruk = list(secilebilir[count:])
+        _hatalar = []
     finally:
+        _islenen = _islenen if '_islenen' in dir() else []
+        _kuyruk = _kuyruk if '_kuyruk' in dir() else []
+        _hatalar = _hatalar if '_hatalar' in dir() else []
         _refresh_latest_listing()
         # base=None => youtube_stats.KOKLER (projects + dj_sets + derlemeler).
         # Onceden args.base ("projects") geciyordu ve cok-kok duzeltmesi olu
@@ -2223,6 +2229,7 @@ def main():
         _turev_takvimi()
         _tiktok_web_sirasi()
         _youtube_studio_sirasi()
+        _operatorum_mesaji(_islenen, _hatalar, _kuyruk)
         _release_lock()
         # LLM router durumu — sağlıklı/ayık uçlarını log'a yazar.
         try:
