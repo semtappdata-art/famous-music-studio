@@ -242,10 +242,13 @@ def test_kit_web_planli_projeye_gitmiyor(kok):
 def test_onay_bekleyen_kit_web_planlandiysa_hatirlatma_ve_blok_yok(kok):
     p = _taslak(kok, "Bekleyen")
     kod = tiktok_upload.yayin_kodu(_st(p)["tiktok_publish_id"])
+    _yaz(p, tiktok_kit_gonderildi_at=K._damga(T - 40 * SAAT), tiktok_kit_kodu=kod)
+    assert K._onay_bekliyor(_st(p), T) is True  # 40sa < 48sa timeout
+    _web(p, T + 30 * SAAT)
+    assert K._onay_bekliyor(_st(p), T) is False  # web planli -> kit yok
+    # 50sa > 48sa timeout
     _yaz(p, tiktok_kit_gonderildi_at=K._damga(T - 50 * SAAT), tiktok_kit_kodu=kod)
-    assert K._onay_bekliyor(_st(p)) is True
-    _web(p, T + 40 * SAAT)
-    assert K._onay_bekliyor(_st(p)) is False
+    assert K._onay_bekliyor(_st(p), T) is False
 
 
 def test_kit_temposu_web_planini_sayiyor(kok):
