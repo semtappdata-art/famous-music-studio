@@ -565,3 +565,32 @@ def test_cli_alt_surec_cp1254_durum_json():
     assert r.returncode == 0, r.stderr.decode("utf-8", "replace")
     veri = json.loads(r.stdout.decode("utf-8"))
     assert set(veri) >= {"surum", "planli", "yayinlandi", "iptal", "dogrulanmadi", "web_modu"}
+
+
+# ---------- publish_id_durum (web modu eski API kimliği takibi) ----------
+
+
+def test_publish_id_yok(kok):
+    p = _proje(kok, "Temiz")
+    assert TW.tiktok_publish_id_durum(p) == ("yok", None)
+
+
+def test_publish_id_eski_web_var(kok):
+    p = _proje(kok, "Eski")
+    json.dump({"youtube_video_id": "yt-Eski",
+               "tiktok_publish_id": "v~abc",
+               "tiktok_web": {"durum": "planlandi",
+                               "planlanan_an": "2026-09-30T18:00:00+0300",
+                               "yuklendi_at": "2026-09-13T10:00:00",
+                               "studio_id": None, "aciklama_sha1": "x",
+                               "kaynak": "claude"}},
+              open(os.path.join(p, "state.json"), "w", encoding="utf-8"))
+    assert TW.tiktok_publish_id_durum(p) == ("eski_web_var", "v~abc")
+
+
+def test_publish_id_eski_web_yok(kok):
+    p = _proje(kok, "Yarim")
+    json.dump({"youtube_video_id": "yt-Yarim",
+               "tiktok_publish_id": "v~abc"},
+              open(os.path.join(p, "state.json"), "w", encoding="utf-8"))
+    assert TW.tiktok_publish_id_durum(p) == ("eski_web_yok", "v~abc")
