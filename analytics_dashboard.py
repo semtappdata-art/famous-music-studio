@@ -79,8 +79,9 @@ def hesapla_metrikler(rapor_data: dict) -> dict:
             retention_values.append(ort_sn / 60)
     retention_ort = round(sum(retention_values) / len(retention_values), 2) if retention_values else 0
 
-    # Subs per 1K views (kalite metriği) - abone verisi yok, 0
-    subs_per_1k = 0
+    # Subs per 1K views (kalite metrigi) - subscribersGained API'den gelir
+    toplam_abone = sum(v.get("abone", 0) for v in videolar)
+    subs_per_1k = round(toplam_abone / max(toplam_izlenme, 1) * 1000, 2)
 
     # En iyi video (izlenme)
     en_iyi = max(videolar, key=lambda v: v.get("izlenme", 0)) if videolar else {}
@@ -94,14 +95,14 @@ def hesapla_metrikler(rapor_data: dict) -> dict:
 
     return {
         "toplam_izlenme": toplam_izlenme,
-        "toplam_abone": 0,  # analytics API'de yok
+        "toplam_abone": toplam_abone,
         "watch_saat": round(toplam_watch_dakika / 60, 1),
         "ctr_ort": ctr_ort,
         "retention_ort": retention_ort,
         "subs_per_1k_views": subs_per_1k,
         "en_iyi_video": {
             "title": en_iyi.get("ad", ""),
-            "subs": 0,
+            "subs": en_iyi.get("abone", 0),
             "views": en_iyi.get("izlenme", 0),
         },
         "en_cok_gorusen": {

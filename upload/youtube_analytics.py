@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """YouTube Analytics — izlenme SÜRESİ (watch-time) ölçümü.
 
 NEDEN AYRI BİR MODÜL VE AYRI BİR TOKEN:
@@ -91,8 +90,8 @@ def get_service():
     """Analytics servisini döner; token yoksa None (sessiz geçiş)."""
     if not os.path.isfile(TOKEN_PATH):
         return None
-    from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
 
     creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
@@ -141,7 +140,7 @@ def _video_idler() -> dict:
             if not os.path.isfile(sp):
                 continue
             try:
-                with open(sp, "r", encoding="utf-8") as f:
+                with open(sp, encoding="utf-8") as f:
                     st = json.load(f)
             except (OSError, ValueError):
                 continue
@@ -177,7 +176,7 @@ def izlenme_suresi(video_idler=None) -> dict:
                 ids="channel==MINE",
                 startDate=BASLANGIC,
                 endDate=bugun,
-                metrics="estimatedMinutesWatched,averageViewDuration,averageViewPercentage,views",
+                metrics="estimatedMinutesWatched,averageViewDuration,averageViewPercentage,views,subscribersGained",
                 dimensions="video",
                 filters="video==%s" % ",".join(obek),
                 maxResults=200,
@@ -187,6 +186,7 @@ def izlenme_suresi(video_idler=None) -> dict:
             continue
         for satir in r.get("rows", []) or []:
             vid, dk, ort_sn, ort_yuzde, izlenme = satir[0], satir[1], satir[2], satir[3], satir[4]
+            abone = satir[5] if len(satir) > 5 else 0
             kok, ad = harita.get(vid, ("?", vid))
             sonuc[vid] = {
                 "kok": kok, "ad": ad,
@@ -194,6 +194,7 @@ def izlenme_suresi(video_idler=None) -> dict:
                 "ort_izlenme_sn": ort_sn,
                 "ort_izlenme_yuzde": ort_yuzde,
                 "izlenme": izlenme,
+                "abone": abone,
             }
     return sonuc
 
@@ -204,10 +205,11 @@ def rapor() -> dict:
     ozet = {}
     for bilgi in veri.values():
         o = ozet.setdefault(bilgi["kok"], {"video": 0, "dakika": 0, "izlenme": 0,
-                                           "ort_sn_toplam": 0})
+                                           "abone": 0, "ort_sn_toplam": 0})
         o["video"] += 1
         o["dakika"] += bilgi["toplam_dakika"]
         o["izlenme"] += bilgi["izlenme"]
+        o["abone"] += bilgi.get("abone", 0)
         o["ort_sn_toplam"] += bilgi["ort_izlenme_sn"]
     for o in ozet.values():
         o["ort_izlenme_sn"] = round(o["ort_sn_toplam"] / o["video"]) if o["video"] else 0
