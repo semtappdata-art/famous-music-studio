@@ -259,13 +259,13 @@ def pick_subset(title: str, options: list, count: int, salt: int = 0) -> list:
     count = min(count, n)
     seed = int(hashlib.sha256((title + str(salt)).encode("utf-8")).hexdigest()[:8], 16)
     adim = 1 if n < 2 else 1 + seed % (n - 1)
-    secilen, i = [], 0
-    while len(secilen) < count and i < n * 3:
+    seçilen, i = [], 0
+    while len(seçilen) < count and i < n * 3:
         aday = options[(seed + i * adim) % n]
-        if aday not in secilen:
-            secilen.append(aday)
+        if aday not in seçilen:
+            seçilen.append(aday)
         i += 1
-    return secilen
+    return seçilen
 
 
 def dogrulanmis_sozler_yolu(title: str) -> str | None:
@@ -583,7 +583,7 @@ def build_story_overlay(title: str, versiyon: int, dil: str, meta: dict = None, 
     if dil == "en":
         if versiyon == 1:
             return (f"New track just landed 🎵\\n\\n{title}\\n\\n"
-                    f"Full version in bio link 🎧")
+                    f"Full version in bio link ")
         elif versiyon == 2:
             return (f"Missed this? {title} — full version in bio 🎵")
         else:  # versiyon == 3
@@ -592,7 +592,7 @@ def build_story_overlay(title: str, versiyon: int, dil: str, meta: dict = None, 
     # varsayilan: Türkçe
     if versiyon == 1:
         return (f"Yeni şarki cıktı 🎵\\n\\n{title}\\n\\n"
-                f"Tam versiyon bio'daki linkte 🎧")
+                f"Tam versiyon bio'daki linkte ")
     elif versiyon == 2:
         return (f"Bunu kağırdıysan — {title} tam versiyon bio'da 🎵")
     else:  # versiyon == 3
@@ -752,6 +752,31 @@ def build_caption(meta: dict, ai_beyani: bool = False, platform: str = "instagra
     return caption
 
 
+def community_cta_havuzu() -> list[str]:
+    """Community CTA havuzu — topluluk etkileşimi için sorular.
+
+    Profesyonel şirketler toplulukla sürekli etkileşimde:
+    1. Her yorumu 24 saat içinde cevapla
+    2. Soru sor (etkileşim sinyali)
+    3. CTA'ya cevap ver (abone ol, takip et)
+
+    Returns:
+        ["soru1", "soru2", ...]
+    """
+    return [
+        "Bu şarkı hangi anını hatırlattı?",
+        "Favori bölümün hangisi? Dakikasıyla yaz ",
+        "En çok nerede kaldın? Bölümü yaz, konuşalım ",
+        "Baştan sona mı, bölüm bölüm mü dinliyorsun? ",
+        "Bu şarkıyı bitirmeden geçme ",
+        "İlk on saniye yeter, anlarsın ",
+        "Hangisi daha güzel: intro mu chorus mu?",
+        "Bu şarkı için en iyiletani olani seç ",
+        "Senin icin ne an? Benim en gösterge 3",
+        "Bu şarkıda kacinci anını dinliyorsun? yaz",
+    ]
+
+
 # --------------------------------------------------------------------------
 # TikTok YAYIN KİTİ açıklaması (upload/tiktok_yayin_kiti.py) — YALNIZ TikTok.
 # Instagram/Shorts/Telegram/Bluesky/Facebook `build_caption()` ile aynen kalıyor.
@@ -780,12 +805,12 @@ def tiktok_kit_turu(meta: dict) -> str:
     return "sarki"
 
 
-def _etiket_sec(zorunlu: list, havuz: list, sonuna: list = ()) -> list:
+def _etiket_seç(zorunlu: list, havuz: list, sonuna: list = ()) -> list:
     """Sıralı, tekrarsız (büyük/küçük harf duyarsız) en fazla
     `config.TIKTOK_KIT_ETIKET_SAYISI` etiket. #fyp/#foryou/#viral asla; #keşfet*
     en fazla bir. `sonuna` her zaman sona yer ayrılarak eklenir."""
     hedef = config.TIKTOK_KIT_ETIKET_SAYISI
-    secilen, gorulen = [], set()
+    seçilen, gorulen = [], set()
     kesfet = [0]
 
     def _ekle(e):
@@ -797,18 +822,18 @@ def _etiket_sec(zorunlu: list, havuz: list, sonuna: list = ()) -> list:
                 return
             kesfet[0] += 1
         gorulen.add(k)
-        secilen.append(e)
+        seçilen.append(e)
 
     for e in zorunlu:
         _ekle(e)
     son = [e for e in sonuna if str(e).casefold() not in gorulen]
     for e in havuz:
-        if len(secilen) >= hedef - len(son):
+        if len(seçilen) >= hedef - len(son):
             break
         _ekle(e)
     for e in son:
         _ekle(e)
-    return secilen
+    return seçilen
 
 
 def tiktok_kit_hashtagleri(meta: dict) -> list:
@@ -826,19 +851,19 @@ def tiktok_kit_hashtagleri(meta: dict) -> list:
         havuz = ([hashtag(t) for t in stil_etiketleri(meta)]
                  + pick_subset(title, config.TIKTOK_SET_ETIKETLERI_EN,
                                len(config.TIKTOK_SET_ETIKETLERI_EN), salt=19))
-        return _etiket_sec(zorunlu + ["#DJSet"]
+        return _etiket_seç(zorunlu + ["#DJSet"]
                             + [hashtag(t) for t in mekan_etiketleri(meta)], havuz)
     if tur == "derleme":
         _tur, turler = _derleme_tur_bilgisi(meta)
         kesif = config.TEMA_KESIF_ETIKETLERI["derleme"]
         havuz = ([hashtag(t) for t in turler]
                  + pick_subset(title, kesif, len(kesif), salt=17))
-        return _etiket_sec(zorunlu, havuz, sonuna=["#Derleme"])
+        return _etiket_seç(zorunlu, havuz, sonuna=["#Derleme"])
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
     kesif = (config.TEMA_KESIF_ETIKETLERI.get(theme_key)
              or config.TEMA_KESIF_ETIKETLERI["_varsayilan"])
-    return _etiket_sec(zorunlu + [hashtag(theme["label"])],
+    return _etiket_seç(zorunlu + [hashtag(theme["label"])],
                        pick_subset(title, kesif, len(kesif), salt=17))
 
 
@@ -857,14 +882,14 @@ def build_tiktok_kit_caption(meta: dict, ai_beyani: str = None) -> str:
     dil = resolve_language(meta)
     if tur == "set":
         stil = config.set_stili(meta)
-        ilk = (f"{title} — {stil['label']} DJ Set 🎧" if stil else f"{title} — DJ Set 🎧")
+        ilk = (f"{title} — {stil['label']} DJ Set " if stil else f"{title} — DJ Set ")
         hook, kullan, takip, soru = _govde_satirlari(
             meta, config.TIKTOK_SET_HOOKS_EN, config.TIKTOK_SET_SORULARI_EN)
     elif tur == "derleme":
         derleme_turu, _ = _derleme_tur_bilgisi(meta)
         adet = len(meta.get("derleme_liste") or [])
         sayi = f"{adet} şarkılık " if adet else ""
-        ilk = f"{title} — {sayi}Türkçe {derleme_turu} derlemesi 🎧"
+        ilk = f"{title} — {sayi}Türkçe {derleme_turu} derlemesi "
         hook, kullan, takip, soru = _govde_satirlari(
             meta, config.TIKTOK_DERLEME_HOOKS, config.TIKTOK_DERLEME_SORULARI)
     else:
@@ -940,13 +965,13 @@ def build_youtube_comment(youtube_url: str, lang: str = "tr", platform: str = "i
     #      yani mention teknik olarak zaten mumkun degil.
     if platform == "facebook":
         if lang == "en":
-            return f"🎧 Full track on YouTube: {youtube_url}"
-        return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}"
+            return f" Full track on YouTube: {youtube_url}"
+        return f" Şarkının tamamı YouTube'da: {youtube_url}"
 
     handle = config.SOCIAL_HANDLES.get(platform, config.SOCIAL_HANDLES["instagram"])
     if lang == "en":
-        return f"🎧 Full track on YouTube: {youtube_url}\nTap @{handle} above and check the link in bio 🔗"
-    return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}\n@{handle} hesabına dokun, bio'daki linkten de ulaşabilirsin 🔗"
+        return f" Full track on YouTube: {youtube_url}\nTap @{handle} above and check the link in bio 🔗"
+    return f" Şarkının tamamı YouTube'da: {youtube_url}\n@{handle} hesabına dokun, bio'daki linkten de ulaşabilirsin 🔗"
 
 
 # ================================================================
@@ -1036,7 +1061,7 @@ def build_youtube_description(meta: dict, youtube_url: str = "") -> str:
     # Linkler
     if youtube_url:
         parcalar.append(f"🔗 YouTube: {youtube_url}")
-        parcalar.append(f"🎧 Bio link: famousmusicstudio.com/latest.html")
+        parcalar.append(f" Bio link: famousmusicstudio.com/latest.html")
         parcalar.append("")
 
     # Playlist referansları
@@ -1075,7 +1100,7 @@ def build_youtube_description(meta: dict, youtube_url: str = "") -> str:
 #   1. AI caption draft uretir (_call_llm_for_caption)
 #   2. Insan onay verir (onayla / reddet / duzenle)
 #   3. Onaylanan caption kullanilir
-#   4. Reddedilen caption eski havuzden secilir
+#   4. Reddedilen caption eski havuzden seçilir
 #   5. Ogrenilen kalip ertesi hafta tekrar kullanilir
 
 def ai_hybrid_caption(meta, ai_beyani=False, platform="instagram", onayli_caption=None):
@@ -1105,7 +1130,7 @@ def ai_hybrid_caption(meta, ai_beyani=False, platform="instagram", onayli_captio
     except Exception:
         pass
     
-    # AI basarisiz ya da gecersiz => eski havuzden sec
+    # AI basarisiz ya da gecersiz => eski havuzden seç
     return build_caption(meta, ai_beyani=ai_beyani, platform=platform), False
 
 
