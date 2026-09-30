@@ -1163,10 +1163,38 @@ GROWTH_OUTLIER_CARPAN = 2.0
 # Minimal izlenme (altı bu outlier olarak sayılmaz)
 GROWTH_MIN_VIEWS = 1000
 
+# ================================================================
+# END SCREEN KONTROLÜ (YouTube video sonu ekranı)
+# ================================================================
+# YouTube Data API end screen eklemeyi desteklemediği için,
+# bu kural: 'yeni yüklenen her video sonuna end screen eklenmedi uyarısı'
+# YouTube Studio'da manuel eklemeyi gerektirir.
+END_SCREEN_ENABLED = True      # Kapı (True/False)
+END_SCREEN_MINUTES = 5         # Videonun son N saniyesi hedef aralığı
+END_SCREEN_LOG_MESSAGE = (    # Kullanıcıya gösterilecek uyarı mesajı
+    'End screen kontrolü: YouTube Studio\'da son {min} saniyeye '
+    'video/playlist eklenmedi'
+)
+
 # Keyword tabanı — (kelime, arama_miktarı, rekabet_derecesi)
 # arama_miktarı: günlük YouTube arama (ör. 10000 = yüksek talep)
 # rekabet: "yüksek" | "orta" | "düşük"
-GROWTH_KEYWORDS = []
+GROWTH_KEYWORDS = [
+    # Türkçe hip-hop/rap kategorisi
+    ("rap", 8000, "orta"),
+    ("türkçe hip-hop", 3500, "yüksek"),
+    ("sözler", 2000, "düşük"),
+
+    # Duygu/ton kategorisi
+    ("hüzün", 1500, "yüksek"),
+    ("sevgi", 1200, "orta"),
+    ("kader", 800, "düşük"),
+
+    # Format/feature kategorisi
+    ("melodi", 3000, "orta"),
+    ("beats", 1800, "düşük"),
+    ("freestyle", 1000, "yüksek"),
+]
 
 # ================================================================
 # MARKA SES REHBERİ (profesyonel şirket davranışı)

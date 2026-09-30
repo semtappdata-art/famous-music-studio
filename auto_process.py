@@ -2462,6 +2462,17 @@ def main():
             except Exception as e:  # noqa: BLE001
                 log(f"  YouTube kota sonucu HATASI: {e}")
                 pass
+        # End screen kontrolu: bu kosuda islenen projelerde bir kez uyari
+        try:
+            from uyumluluk import end_screen_kontrol as _end_kontrol
+            for _p in (_islenen if '_islenen' in dir() else []):
+                try:
+                    _end_kontrol(_p, log=log)
+                except Exception as _e:
+                    log(f"  End screen kontrolu HATASI ({_p}): {_e}")
+        except Exception as e:
+            log(f"  End screen kontrolu HATASI: {e}")
+            pass
 
 
 

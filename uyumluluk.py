@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Platform politikası uyumluluk kontrolleri — BORU HATTININ İÇİNDE çalışır.
 
 `.claude/agents/icerik-uyumluluk-ajani.md` ile karıştırılmasın: o ajan ELLE
@@ -55,18 +54,16 @@ KOKLER = tuple(os.path.join(_KOK, k) for k in KOK_ADLARI)
 
 def content_id_online_tarama(proje_klasor, log=print):
     """Otomatik Content ID ön tarama.
-    
+
     Her upload'dan önce taranmalı.
     Eşleşme varsa operatöre bildir.
     Otomatik çözüm: eşleşme yoksa devam, varsa durdur.
     Telif kaydı tutarlılığı kontrolü.
     Content ID log'u (her tarama).
     """
-    from upload.youtube_upload import youtube_upload
-    from upload.tiktok_upload import tiktok_upload
-    
+
     sonuclar = {"youtube": None, "tiktok": None, "durum": "baslamadi"}
-    
+
     try:
         # YouTube Content ID check
         if os.path.isdir(proje_klasor):
@@ -74,24 +71,24 @@ def content_id_online_tarama(proje_klasor, log=print):
             if os.path.isfile(state_file):
                 with open(state_file, encoding="utf-8") as f:
                     state = json.load(f)
-                
+
                 video_id = state.get("youtube_video_id", "")
                 if video_id:
                     # YouTube API ile content ID check
                     sonuclar["youtube"] = "kontrol_edildi"
                     log(f"  Content ID - YouTube: {video_id}")
-        
+
         # TikTok Content ID check
         tiktok_id = state.get("tiktok_publish_id", "")
         if tiktok_id:
             sonuclar["tiktok"] = "kontrol_edildi"
             log(f"  Content ID - TikTok: {tiktok_id}")
-        
+
         sonuclar["durum"] = "tamam"
     except Exception as e:
         sonuclar["durum"] = f"hata: {e}"
         log(f"  Content ID tarama hatasi: {e}")
-    
+
     return sonuclar
 
 def proje_klasorleri(kokler=None):
@@ -189,7 +186,7 @@ def _durum(proje: str) -> dict:
     if not os.path.isfile(yol):
         return {}
     try:
-        with open(yol, "r", encoding="utf-8") as f:
+        with open(yol, encoding="utf-8") as f:
             return json.load(f)
     except ValueError as e:
         raise DurumBozuk("state.json var ama JSON olarak okunamiyor (%s)" % e)
@@ -209,7 +206,7 @@ def _meta(proje: str) -> dict:
     if not os.path.isfile(yol):
         return {}
     try:
-        with open(yol, "r", encoding="utf-8") as f:
+        with open(yol, encoding="utf-8") as f:
             return json.load(f)
     except ValueError as e:
         raise DurumBozuk("meta.json var ama JSON olarak okunamiyor (%s)" % e)
@@ -611,3 +608,42 @@ if __name__ == "__main__":
         if h or u:
             rapor_yaz(p, h, u)
     print("tarama bitti")
+
+
+def end_screen_kontrol(proje_klasoru: str, log=print) -> bool:
+    """End screen kontrolu (API desteklemedigi icin uyari + bir kez isaret).
+
+    RETURN True  = islenmis/var (veya kontrol disi) -> sessiz
+    RETURN False = eksik, kullaniciya bildirildi (pipeline durmaz)
+    """
+    try:
+        import config as _cfg
+        _enabled = getattr(_cfg, "END_SCREEN_ENABLED", True)
+        _minutes = getattr(_cfg, "END_SCREEN_MINUTES", 5)
+        _tmpl = getattr(_cfg, "END_SCREEN_LOG_MESSAGE",
+                        "End screen kontrolu: YouTube Studio'da son {min} saniyeye video/playlist eklenmedi")
+    except Exception:
+        _enabled, _minutes = True, 5
+        _tmpl = "End screen kontrolu: YouTube Studio'da son {min} saniyeye video/playlist eklenmedi"
+    if not _enabled:
+        return True
+    try:
+        state = _durum(proje_klasoru)
+    except Exception:
+        return True  # bozuk/okunamaz state -> bu kapiyi kilitleme, diger kapilar bakar
+    if state.get("end_screen_eklendi") is True:
+        return True
+    if not state.get("youtube_video_id"):
+        return True  # henuz yuklenmemis proje -> sessiz gec
+    state["end_screen_eklendi"] = True
+    try:
+        import state_io
+        state_io.durum_yaz(proje_klasoru, state)
+    except Exception:
+        pass
+    try:
+        log("  " + _tmpl.format(min=_minutes) + " (%s)" % os.path.basename(proje_klasoru))
+    except Exception:
+        pass
+    return False
+
