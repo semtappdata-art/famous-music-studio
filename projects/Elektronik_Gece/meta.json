@@ -1,0 +1,20 @@
+{
+  "project": "Elektronik_Gece",
+  "theme": "elektronik",
+  "language": "tr",
+  "character": null,
+  "vocal": "kadın",
+  "style": {
+    "label": "Electronics",
+    "accent": [
+      60,
+      220,
+      255
+    ]
+  },
+  "art_query": "neon night city electronic moody",
+  "yayin_beklet": null,
+  "created": "2026-09-30",
+  "hikaye": "Neon çıklandı gece şehirini. Elektronik ritim atıyor kalbi. Sürüş için ideal bir atmosfer. Gece yarısı, yol ve müzik.",
+  "neden_bu_sarki": "Elektronik müziğin enerjisiyle gece yarısı sürüşü için."
+}
