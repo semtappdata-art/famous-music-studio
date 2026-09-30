@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """YouTube İLK YORUM (kanalın kendi yorumu — Studio/telefondan sabitlenir).
 
 Neden var: açıklama satırlarını neredeyse kimse açmıyor; sabitlenmiş ilk
@@ -40,11 +39,12 @@ def _durum_oku(project_dir: str) -> dict:
 
 def gonder(project_dir: str, log=print) -> bool:
     """İlk yorumu gönderir; gönderildiyse/atlanırsa False, yeni gönderimde True."""
-    import notify
-    import state_io
     import youtube_kota
     from social_text import build_ilk_yorum, resolve_language
     from youtube_auth import get_authenticated_service
+
+    import notify
+    import state_io
 
     try:
         with open(os.path.join(project_dir, "meta.json"), encoding="utf-8") as f:
@@ -67,13 +67,21 @@ def gonder(project_dir: str, log=print) -> bool:
     title = meta.get("title") or os.path.basename(project_dir.rstrip("/\\"))
     metin = build_ilk_yorum(title, resolve_language(meta))
     youtube = get_authenticated_service()
-    youtube.commentThreads().insert(
-        part="snippet",
-        body={"snippet": {"videoId": video_id,
-                          "topLevelComment": {"snippet": {"textOriginal": metin}}}},
-    ).execute()
-    state["youtube_ilk_yorum_at"] = (
-        datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
-    state_io.durum_yaz(project_dir, state)
-    log("  YouTube ilk yorum gönderildi (sabitleme Studio'dan elle)")
-    return True
+    try:
+        youtube.commentThreads().insert(
+            part="snippet",
+            body={"snippet": {"videoId": video_id,
+                              "topLevelComment": {"snippet": {"textOriginal": metin}}}},
+        ).execute()
+        state["youtube_ilk_yorum_at"] = (
+            datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        state_io.durum_yaz(project_dir, state)
+        log("  YouTube ilk yorum gönderildi (sabitleme Studio'dan elle)")
+        return True
+    except Exception as e:
+        hata = str(e)[:100]
+        if "403" in hata or "forbidden" in hata.lower():
+            log(f"  YouTube ilk yorum 403: izin yetersiz (video {video_id})")
+        else:
+            log(f"  YouTube ilk yorum HATA: {hata}")
+        return False
