@@ -55,60 +55,58 @@ def hesapla_metrikler(rapor_data: dict) -> dict:
     if not rapor_data:
         return {}
 
-    videolar = rapor_data.get("videos", [])
+    videolar = list(rapor_data.get("video_bazinda", {}).values())
     if not videolar:
         return {}
 
-    toplam_izlenme = sum(v.get("views", 0) for v in videolar)
-    toplam_abone = sum(v.get("subscribers", 0) for v in videolar)
-    toplam_watch = sum(v.get("watch_time", 0) for v in videolar)
+    # rapor() alanlari: kok, ad, toplam_dakika, ort_izlenme_sn, ort_izlenme_yuzde, izlenme
+    toplam_izlenme = sum(v.get("izlenme", 0) for v in videolar)
+    toplam_watch_dakika = sum(v.get("toplam_dakika", 0) for v in videolar)
 
-    # CTR ortalama (likes/views * 100)
+    # CTR ortalama (ort_izlenme_yuzde / 100)
     ctr_values = []
     for v in videolar:
-        views = v.get("views", 0)
-        likes = v.get("likes", 0)
-        if views > 0:
-            ctr_values.append(likes / views * 100)
+        yuzde = v.get("ort_izlenme_yuzde", 0)
+        if yuzde > 0:
+            ctr_values.append(yuzde)
     ctr_ort = round(sum(ctr_values) / len(ctr_values), 2) if ctr_values else 0
 
-    # Retention ortalama (watch_time / views * 100)
+    # Retention ortalama (ort_izlenme_sn / 60 = dakikalar)
     retention_values = []
     for v in videolar:
-        views = v.get("views", 0)
-        watch = v.get("watch_time", 0)
-        if views > 0:
-            retention_values.append(watch / views * 100)
+        ort_sn = v.get("ort_izlenme_sn", 0)
+        if ort_sn > 0:
+            retention_values.append(ort_sn / 60)
     retention_ort = round(sum(retention_values) / len(retention_values), 2) if retention_values else 0
 
-    # Subs per 1K views (kalite metriği)
-    subs_per_1k = round(toplam_abone / toplam_izlenme * 1000, 2) if toplam_izlenme > 0 else 0
+    # Subs per 1K views (kalite metriği) - abone verisi yok, 0
+    subs_per_1k = 0
 
-    # En iyi video (abone kazanımı)
-    en_iyi = max(videolar, key=lambda v: v.get("subscribers", 0)) if videolar else {}
+    # En iyi video (izlenme)
+    en_iyi = max(videolar, key=lambda v: v.get("izlenme", 0)) if videolar else {}
 
     # En çok görüntülenen
-    en_cok = max(videolar, key=lambda v: v.get("views", 0)) if videolar else {}
+    en_cok = max(videolar, key=lambda v: v.get("izlenme", 0)) if videolar else {}
 
-    # Format performansı (uzun vs shorts)
-    uzun_views = sum(v.get("views", 0) for v in videolar if v.get("duration", 0) > 60)
-    shorts_views = sum(v.get("views", 0) for v in videolar if v.get("duration", 0) <= 60)
+    # Format performansı (toplam_dakika > 1 = uzun format)
+    uzun_views = sum(v.get("izlenme", 0) for v in videolar if v.get("toplam_dakika", 0) > 1)
+    shorts_views = sum(v.get("izlenme", 0) for v in videolar if v.get("toplam_dakika", 0) <= 1)
 
     return {
         "toplam_izlenme": toplam_izlenme,
-        "toplam_abone": toplam_abone,
-        "watch_saat": round(toplam_watch / 3600, 1),
+        "toplam_abone": 0,  # analytics API'de yok
+        "watch_saat": round(toplam_watch_dakika / 60, 1),
         "ctr_ort": ctr_ort,
         "retention_ort": retention_ort,
         "subs_per_1k_views": subs_per_1k,
         "en_iyi_video": {
-            "title": en_iyi.get("title", ""),
-            "subs": en_iyi.get("subscribers", 0),
-            "views": en_iyi.get("views", 0),
+            "title": en_iyi.get("ad", ""),
+            "subs": 0,
+            "views": en_iyi.get("izlenme", 0),
         },
         "en_cok_gorusen": {
-            "title": en_cok.get("title", ""),
-            "views": en_cok.get("views", 0),
+            "title": en_cok.get("ad", ""),
+            "views": en_cok.get("izlenme", 0),
         },
         "format_performansi": {
             "uzun_format_views": uzun_views,
