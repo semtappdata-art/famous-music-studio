@@ -1,6 +1,6 @@
 # Ses ve Tarz Çeşitliliği Takibi
 
-**SON DURUM (2026-09-12) — sıradaki üretim: `Sabah Senin`**
+**SON DURUM (2026-09-30) — sıradaki üretim: `Yükseliş` (paket hazır, ses yok)**
 (rock, 78 BPM, kadın, düet değil, smoky husky low-register). Bir önceki SON DURUM
 (2026-09-11) üç şey istiyordu ve üçü de karşılandı: kadın vokal (son üç üretim erkekti),
 düet olmaması (son ikisi E+E düetti), ve 76-80 BPM aralığı (Sessiz Mektup'tan/76 beri
@@ -26,8 +26,7 @@ no abrupt cutoff` vaadi. İki varyant da 0,16 sn'de sese giriyor: `opens cold on
 vocal with no instrumental intro` kuralı tuttu, katalogda ilk kez `[Intro]`suz bir
 şarkı var. İndirme kotası: bu üretim 2 kilit açtı (27 -> 25), 19 Eylül'de yenilenir.
 
-**Sıradaki (Sabah Senin'den SONRA):** kadın vokal üst üste ikiye çıkmasın; erkek ya da
-düet tarafına dönülebilir. Tempo tarafında 100-110 aralığı hiç kullanılmadı.
+**Sıradaki (2026-09-30 planı, 6 parça):** Yükseliş (erkek rap, paket hazır) → Son Tren (erkek pop 106) → Beşik Boş (anne-kız düet) → Neon Yağmur (erkek elektronik 128) → Pencere Önü (kadın akustik 96) → Barikat (erkek rock 140). 100-110 aralığı Son Tren ile doluyor.
 
 Yeni bir şarkı prompt'u (Suno Style etiketi) yazmadan önce bu listeye bak —
 aynı vokal cinsiyetini/dokusunu art arda tekrarlamamak için. (Kalbim Oynuyor,
@@ -68,6 +67,12 @@ YANSITMIYOR.
 | Bu Gece Kazandık | pop (dance-arabesk-pop) | 118 | **düet: erkek-erkek** — Male 1: tender warm melismatic tenor (vibrato), Male 2: bright energetic nasal-edged voice |
 | Sabah Senin | rock | 78 | smoky husky low-register female vocals — düet DEĞİL |
 | Yükseliş **(ses henüz yok)** | hiphop | (yok) | clear crisp confident mid-range male rap vocals — düet DEĞİL (2026-09-13: smoky kadın vokalden çevrildi) |
+| Son Tren **(paket hazır, ses yok)** | pop | 106 | smooth resonant male baritone — düet DEĞİL |
+
+| Beşik Boş **(paket hazır, ses yok)** | arabesk | 84 | **düet: anne-kız** — mature aching female alto + tender youthful female soprano |
+| Neon Yağmur **(paket hazır, ses yok)** | elektronik | 128 | deep resonant male baritone — düet DEĞİL |
+| Pencere Önü **(paket hazır, ses yok)** | akustik | 96 | warm velvety female alto — düet DEĞİL |
+| Barikat **(paket hazır, ses yok)** | rock | 140 | raw strained male tenor — düet DEĞİL |
 
 **Sütun işaretleri:** `(yok)` = stil etiketi VAR ama içinde BPM yazmıyor.
 `(kayıt yok)` = şarkının hiç arşivlenmiş stil etiketi yok (ilk üç şarkı +
