@@ -492,11 +492,13 @@ def _build_filter_complex(
                 f"color=rainbow:scale=log:fps={fps},format=yuv420p,split[spec][spec1]"
             )
             parts.append(f"[{pre_label}][spec]overlay={mx}:{py}[pf5]")
-            parts.append(f"[spec1]hflip[specr]")
+            parts.append("[spec1]hflip[specr]")
             parts.append(
                 f"[pf5][specr]overlay={width - mx - bw}:{py}[pf6]"
             )
             pre_label = "pf6"
+
+    rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
 
     if title:
         # Künye yazısı (şarkı adı + müzik türü, tekrarlı) kartın ALTINDA, kart
@@ -515,7 +517,6 @@ def _build_filter_complex(
             genre_text = sep.join(genre_labels)
             segment = f"{title}{sep}{genre_text}{sep}"
         marquee_text = _escape_drawtext(segment * config.MARQUEE_REPEAT)
-        rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
         speed = config.MARQUEE_SPEED_PX_S
 
         # Kayan yazının GÖRÜNÜR penceresi artık kart genişliği değil, alttaki sabit
@@ -577,7 +578,7 @@ def _build_filter_complex(
         # sorununu çözüyor hem HUD'a parıltı veriyor.
         # blend RGB uzayında çalışmalı: yuv420p'de kanal başına harmanlama
         # renk kaymasına yol açıyor, o yüzden gbrp'ye geçip geri dönülüyor.
-        parts.append(f"[vbar]format=gbrp[vb_rgb]")
+        parts.append("[vbar]format=gbrp[vb_rgb]")
         if getattr(config, "DJ_HUD_NEFES", False):
             # Nefes alma: HUD katmanının kontrastı kare kare salınıyor
             # (bkz. config.DJ_HUD_NEFES_*). `eval=frame` ŞART: varsayılan `init`
@@ -613,6 +614,19 @@ def _build_filter_complex(
             f"d={config.INTRO_KAPAK_COZULME:.3f}:alpha=1[intro]"
         )
         parts.append(f"[{son_etiket}][intro]overlay=0:0:eof_action=pass[vfinal]")
+
+    # END SCREEN OVERLAY — Shorts/Reels/TikTok için son 3 saniyede
+    # "Abone ol" CTA overlay. Yalnız dikey formatta (width < height)
+    # aktif; yatay videolarda hiçbir etkisi yok.
+    if width < height and duration and duration > 4:
+        _end_start = max(0, duration - 3)
+        _esc_cta = _escape_drawtext("Abone ol 🔔")
+        parts.append(
+            f"[{son_etiket}]drawtext=fontfile={rel_font}:"
+            f"text='{_esc_cta}':"
+            f"fontcolor=white@0.85:fontsize={int(height*0.04)}:"
+            f"x=(w-text_w)/2:y=h-text_h-30:"
+            f"enable='between(t,{_end_start:.3f},{duration:.3f})'[vfinal]")
 
     return ";".join(parts)
 

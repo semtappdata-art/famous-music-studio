@@ -1,140 +1,275 @@
-# -*- coding: utf-8 -*-
-"""Analytics dashboard — günlük KPI takibi.
+#!/usr/bin/env python3
+"""Analytics dashboard - YouTube performans ölçümü ve raporlama.
 
-Her platformdan izlenme, süre, CTR, yeni abone, gelir.
-En iyi performing içerik → o tarza odaklan.
+Profesyonel şirketler haftada bir kez bu dashboard'u çalıştırır:
+1. İzlenme süresi, CTR, retention, abone kazanımı
+2. Hangi video abone kazandı? (subs/1K views)
+3. Hangi format eğlence mi, satış mı?
+4. Sonraki hafta strateji kararları
+
+Kullanım:
+    python analytics_dashboard.py --dry-run    # raporla, yazma
+    python analytics_dashboard.py --apply      # state'e yaz
+    python analytics_dashboard.py --video ID   # tek video detayı
 """
 
-import os, json, time, sys
-from datetime import datetime
+import argparse
+import json
+import os
+import sys
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'upload'))
 
-DASHBOARD_FILE = os.path.join(os.path.dirname(__file__), "raporlar", "dashboard.json")
+# YouTube analytics
+try:
+    from youtube_analytics import get_service, yetkilendir, _video_idler, rapor
+    YT_ANALYTICS_OK = True
+except Exception:
+    YT_ANALYTICS_OK = False
 
+# State
+STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "durum.json")
 
-def oku():
-    """Mevcut dashboard'u oku."""
-    if os.path.isfile(DASHBOARD_FILE):
-        try:
-            with open(DASHBOARD_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {"güncel": None, "gunler": []}
+# ================================================================
+# METRIKLER
+# ================================================================
 
+def hesapla_metrikler(rapor_data: dict) -> dict:
+    """YouTube analytics raporundan ana metrikleri hesaplar.
 
-def yaz(dashboard):
-    os.makedirs(os.path.dirname(DASHBOARD_FILE), exist_ok=True)
-    dashboard["güncel"] = datetime.now().isoformat()
-    # Son 30 günce tut
-    dashboard["gunler"] = (dashboard.get("gunler") or [])[-30:]
-    with open(DASHBOARD_FILE, "w", encoding="utf-8") as f:
-        json.dump(dashboard, f, ensure_ascii=False, indent=2)
+    Returns:
+        {
+            "toplam_izlenme": int,
+            "toplam_abone": int,
+            "watch_saat": float,
+            "ctr_ort": float,
+            "retention_ort": float,
+            "subs_per_1k_views": float,
+            "en_iyi_video": {"title": ..., "subs": ...},
+            "en_cok_gorusen": {"title": ..., "views": ...},
+            "format_performansi": {"uzun": ..., "shorts": ...},
+        }
+    """
+    if not rapor_data:
+        return {}
 
+    videolar = rapor_data.get("videos", [])
+    if not videolar:
+        return {}
 
-def guncelle():
-    """State.json'dan KPI oku, dashboard'a ekle."""
-    import uyumluluk
-    import state_io
+    toplam_izlenme = sum(v.get("views", 0) for v in videolar)
+    toplam_abone = sum(v.get("subscribers", 0) for v in videolar)
+    toplam_watch = sum(v.get("watch_time", 0) for v in videolar)
 
-    dashboard = oku()
-    simdi = time.time()
+    # CTR ortalama (likes/views * 100)
+    ctr_values = []
+    for v in videolar:
+        views = v.get("views", 0)
+        likes = v.get("likes", 0)
+        if views > 0:
+            ctr_values.append(likes / views * 100)
+    ctr_ort = round(sum(ctr_values) / len(ctr_values), 2) if ctr_values else 0
 
-    toplam_izl = 0
-    toplam_sure = 0
-    platformlar = {}
-    projeler = []
+    # Retention ortalama (watch_time / views * 100)
+    retention_values = []
+    for v in videolar:
+        views = v.get("views", 0)
+        watch = v.get("watch_time", 0)
+        if views > 0:
+            retention_values.append(watch / views * 100)
+    retention_ort = round(sum(retention_values) / len(retention_values), 2) if retention_values else 0
 
-    for kok in uyumluluk.KOKLER:
-        if not os.path.isdir(kok):
-            continue
-        for d in os.listdir(kok):
-            state_path = os.path.join(kok, d, "state.json")
-            if not os.path.isfile(state_path):
-                continue
-            try:
-                with open(state_path, encoding="utf-8") as f:
-                    s = json.load(f)
-            except Exception:
-                continue
+    # Subs per 1K views (kalite metriği)
+    subs_per_1k = round(toplam_abone / toplam_izlenme * 1000, 2) if toplam_izlenme > 0 else 0
 
-            ad = d
-            izl = int(s.get("youtube_izlenme") or 0)
-            izl += int(s.get("instagram_izlenme") or 0)
-            izl += int(s.get("tiktok_izlenme") or 0)
-            sure = int(s.get("youtube_izlenme_suresi") or 0)
+    # En iyi video (abone kazanımı)
+    en_iyi = max(videolar, key=lambda v: v.get("subscribers", 0)) if videolar else {}
 
-            toplam_izl += izl
-            toplam_sure += sure
+    # En çok görüntülenen
+    en_cok = max(videolar, key=lambda v: v.get("views", 0)) if videolar else {}
 
-            p = s.get("platform", "youtube")
-            platformlar[p] = platformlar.get(p, 0) + izl
+    # Format performansı (uzun vs shorts)
+    uzun_views = sum(v.get("views", 0) for v in videolar if v.get("duration", 0) > 60)
+    shorts_views = sum(v.get("views", 0) for v in videolar if v.get("duration", 0) <= 60)
 
-            projeler.append({
-                "ad": ad,
-                "izl": izl,
-                "sure_sn": sure,
-                "platform": p,
-                "theme": s.get("theme", ""),
-                "yayin": s.get("youtube_publish_at", "")[:10],
-            })
-
-    # Sırala
-    projeler.sort(key=lambda x: x["izl"], reverse=True)
-
-    entry = {
-        "tarih": datetime.now().strftime("%Y-%m-%d"),
-        "zaman": datetime.now().strftime("%H:%M"),
-        "toplam_izl": toplam_izl,
-        "toplam_sure_sn": toplam_sure,
-        "platformlar": platformlar,
-        "en_iyi_5": projeler[:5],
+    return {
+        "toplam_izlenme": toplam_izlenme,
+        "toplam_abone": toplam_abone,
+        "watch_saat": round(toplam_watch / 3600, 1),
+        "ctr_ort": ctr_ort,
+        "retention_ort": retention_ort,
+        "subs_per_1k_views": subs_per_1k,
+        "en_iyi_video": {
+            "title": en_iyi.get("title", ""),
+            "subs": en_iyi.get("subscribers", 0),
+            "views": en_iyi.get("views", 0),
+        },
+        "en_cok_gorusen": {
+            "title": en_cok.get("title", ""),
+            "views": en_cok.get("views", 0),
+        },
+        "format_performansi": {
+            "uzun_format_views": uzun_views,
+            "shorts_views": shorts_views,
+            "uzun_yuzde": round(uzun_views / max(uzun_views + shorts_views, 1) * 100, 1),
+        },
     }
 
-    dashboard["gunler"].append(entry)
-    dashboard["toplam_izl"] = toplam_izl
-    dashboard["toplam_sure_sn"] = toplam_sure
-    dashboard["platformlar"] = platformlar
-    yaz(dashboard)
 
-    print(f"  Dashboard: {toplam_izl} izlenme, {toplam_sure//3600}h {toplam_sure%3600//60}m")
-    for p, v in platformlar.items():
-        print(f"    {p}: {v}")
-    if projeler:
-        print(f"  En iyi: {projeler[0]['ad']} ({projeler[0]['izl']})")
-    return dashboard
+def rapor_olustur(metrikler: dict) -> str:
+    """Metriklerden okunabilir rapor oluşturur."""
+    if not metrikler:
+        return "Veri yok - YouTube Analytics token kontrol edin."
+
+    satirlar = [
+        "=" * 60,
+        "ANALYTICS DASHBOARD",
+        f"Tarih: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        "=" * 60,
+        "",
+        "── Ana Metrikler ──",
+        f"  Izlenme: {metrikler['toplam_izlenme']:,}",
+        f"  Abone: {metrikler['toplam_abone']:,}",
+        f"  Watch-time: {metrikler['watch_saat']} sn",
+        f"  CTR (ort): %{metrikler['ctr_ort']}",
+        f"  Retention (ort): %{metrikler['retention_ort']}",
+        f"  Subs/1K views: {metrikler['subs_per_1k_views']}",
+        "",
+        "── En İyi Video ──",
+        f"  {metrikler['en_iyi_video']['title'][:50]}...",
+        f"  Abone kazandı: {metrikler['en_iyi_video']['subs']:,}",
+        f"  Izlenme: {metrikler['en_iyi_video']['views']:,}",
+        "",
+        "── En Çok Görüntülenen ──",
+        f"  {metrikler['en_cok_gorusen']['title'][:50]}...",
+        f"  Izlenme: {metrikler['en_cok_gorusen']['views']:,}",
+        "",
+        "── Format Performansı ──",
+        f"  Uzun format: %{metrikler['format_performansi']['uzun_yuzde']}",
+        f"  Shorts: %{round(100 - metrikler['format_performansi']['uzun_yuzde'], 1)}",
+        "",
+        "── Karar Önerileri ──",
+    ]
+
+    # Karar önerileri
+    spk = metrikler.get("subs_per_1k_views", 0)
+    if spk < 1:
+        satirlar.append("  ⚠ Subs/1K views düşük → içerik kalitesi sorunlu")
+        satirlar.append("    → Thumbnail + title iyileştir")
+        satirlar.append("    → Hook 5 saniyede değer sun")
+    elif spk > 5:
+        satirlar.append("  ✓ Subs/1K views yüksek → formatı tekrarla")
+        satirlar.append("    → Aynı yapıda yeni video üret")
+        satirlar.append("    → Playlist'e ekle")
+    else:
+        satirlar.append("  → Subs/1K views orta → A/B test yap")
+        satirlar.append("    → Farklı thumbnail'lar dene")
+        satirlar.append("    → Farklı hook'lar dene")
+
+    ctr = metrikler.get("ctr_ort", 0)
+    if ctr < 2:
+        satirlar.append("  ⚠ CTR düşük → packaging problemi")
+        satirlar.append("    → Başlık + thumbnail revizyonu")
+    elif ctr > 8:
+        satirlar.append("  ✓ CTR yüksek → konu doğru")
+        satirlar.append("    → Aynı konuyla devam et")
+
+    ret = metrikler.get("retention_ort", 0)
+    if ret < 30:
+        satirlar.append("  ⚠ Retention düşük → pacing sorunlu")
+        satirlar.append("    → Hook güçlendir")
+        satirlar.append("    → İlk 30 sn'de değer sun")
+    elif ret > 60:
+        satirlar.append("  ✓ Retention yüksek → içerik kaliteli")
+        satirlar.append("    → Seri formatı dene")
+
+    return "\n".join(satirlar)
 
 
-def karsilastir(gun=7):
-    """Son N günlük karşılaştırma."""
-    dashboard = oku()
-    gunler = dashboard.get("gunler", [])[-gun:]
-    if len(gunler) < 2:
-        print("  Yeterli veri yok")
+# ================================================================
+# STATE GÜNCELLEME
+# ================================================================
+
+def state_guncelle(metrikler: dict):
+    """Son analytics sonuçlarını durum.json'a yazar."""
+    try:
+        with open(STATE_PATH, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        state = {}
+
+    state["analytics_dashboard"] = {
+        "son_calısma": datetime.now(timezone.utc).isoformat(),
+        "metrikler": metrikler,
+    }
+
+    with open(STATE_PATH, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+
+# ================================================================
+# ANA
+# ================================================================
+
+def main():
+    parser = argparse.ArgumentParser(description="Analytics dashboard")
+    parser.add_argument("--dry-run", action="store_true", help="Sadece raporla")
+    parser.add_argument("--apply", action="store_true", help="State'e yaz")
+    parser.add_argument("--video", type=str, help="Tek video ID'si")
+    args = parser.parse_args()
+
+    print("=" * 60)
+    print("ANALYTICS DASHBOARD")
+    print("=" * 60)
+
+    # YouTube Analytics servisi
+    if not YT_ANALYTICS_OK:
+        print("[UYARI] youtube_analytics modulu yuklenemedi")
+        print("  -> pip install google-api-python-client")
         return
 
-    ilk = gunler[0]["toplam_izl"]
-    son = gunler[-1]["toplam_izl"]
-    artis = son - ilk
-    yuzde = (artis / ilk * 100) if ilk else 0
+    try:
+        service = get_service()
+        print("[OK] YouTube Analytics baglantisi")
+    except Exception as e:
+        print(f"[HATA] Analytics API hatasi: {e}")
+        print("  -> python upload/youtube_analytics.py --auth ile yetkilendir")
+        return
 
-    print(f"  Son {gun} gün: {ilk} → {son} (+{artis}, %{yuzde:.1f})")
-    for g in gunler:
-        print(f"    {g['tarih']}: {g['toplam_izl']}")
+    # Video ID'leri
+    video_idler = _video_idler()
+    if not video_idler:
+        print("[UYARI] Video ID bulunamadi")
+        return
+
+    if args.video:
+        video_idler = {args.video: video_idler.get(args.video, "")}
+
+    # Rapor
+    print(f"\n[Rapor] {len(video_idler)} video analiz ediliyor...")
+    rapor_data = rapor()
+
+    if not rapor_data:
+        print("[UYARI] Analytics verisi yok")
+        return
+
+    # Metrik hesapla
+    metrikler = hesapla_metrikler(rapor_data)
+
+    # Rapor yazdır
+    rapor_metin = rapor_olustur(metrikler)
+    print("\n" + rapor_metin)
+
+    # State güncelle
+    if args.apply and metrikler:
+        state_guncelle(metrikler)
+        print(f"\n[OK] State guncellendi ({STATE_PATH})")
+
+    return metrikler
 
 
 if __name__ == "__main__":
-    import argparse
-    ap = argparse.ArgumentParser()
-    ap.add_argument("komut", choices=["guncelle", "karsilastir", "durum"])
-    ap.add_argument("--gun", type=int, default=7)
-    args = ap.parse_args()
-
-    if args.komut == "guncelle":
-        guncelle()
-    elif args.komut == "karsilastir":
-        karsilastir(args.gun)
-    elif args.komut == "durum":
-        d = oku()
-        print(json.dumps(d.get("gunler", [])[-1], ensure_ascii=False, indent=2))
+    main()
