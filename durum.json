@@ -1,0 +1,49 @@
+{
+  "zaman": "2026-09-30T05:07:00+03:00",
+  "canli": true,
+  "son_kosu": "2026-09-30 05:07:29",
+  "kuyruk": 0,
+  "son_kosu_betik": "auto_process.py",
+  "son_kosu_rc": 1,
+  "sorunlar": [
+    "auto_process.py rc=1: uyumluluk.KOKLER NameError (duzeltildi, yeni kosuyi bekleyin)",
+    "social_text.py f-string: build_caption platform parametreli versiyon derleniyor, eski hata belki encoding",
+    "YouTube tokenlar 2026-09-30 03:07'de doldu - invalid_grant hatalari",
+    "Instagram/TikTok token dolmus olabilir (invalid_grant 3x)",
+    "DJ kesit: dj_clips import kuruldu, hata calisma zamaninda cwd'den",
+    "TikTok 2 planli, 1 doğrulanmadı; 12 yorum bekliyor",
+    "Instagram 1 konteyner bekliyor"
+  ],
+  "duzeltmeler": [
+    "auto_process.py satır 2260: KOKLER -> uyumluluk.KOKLER (tamamlandı)",
+    "social_text.py f-string hatasi: dosya derleniyor, muhtemelen eski hata ya da encoding sorunu"
+  ],
+  "ab_test": {
+    "son_calısma": "2026-09-30T08:15:18.332698+00:00",
+    "toplam_test": 2
+  },
+  "trend_uyarlama": {
+    "son_calısma": "2026-09-30T11:30:00Z",
+    "oncelikli_trendler": [
+      "AI music",
+      "electronic",
+      "night drive",
+      "viral sound",
+      "reels"
+    ],
+    "community_cta_sayisi": 4,
+    "ai_music_hook_sayisi": 4
+  },
+  "subscriber_tracker": {
+    "son_calısma": "2026-09-30T08:25:15.648797+00:00",
+    "abone_sayisi": 28,
+    "subs_per_1k_views": 5.6,
+    "yon": "bilinmiyor"
+  },
+  "content_plan": {
+    "son_calısma": "2026-09-30T08:28:32.299181+00:00",
+    "plan_sayisi": 7,
+    "son_durum": "basarili",
+    "son_konu": "lofi beats"
+  }
+}
