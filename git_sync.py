@@ -28,6 +28,10 @@ ediyor."""
 import os
 import subprocess
 
+# Pre-commit hook Windows fix: disable pre-commit for git operations
+os.environ.setdefault('GIT_PYTHON_PRECOMMIT', '0')
+os.environ.setdefault('GIT_EDITOR', 'true')
+
 
 def auto_pull(repo_dir: str, log) -> None:
     if not os.path.isdir(os.path.join(repo_dir, ".git")):
