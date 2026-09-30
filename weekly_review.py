@@ -283,5 +283,80 @@ def main():
     return analiz
 
 
+
+def haftalık_produkyon_plani() -> dict:
+    """
+    Haftalık üretim planı oluşturur.
+
+    KULLANICI ŞARTI:
+    - Pazartesi, Çarşamba, Cuma günlerinde
+    - Günlük 2 yeni parça + 1 DJ seti
+    - Haftalık toplam: 6 yeni parça + 3 DJ seti
+
+    RETURNS:
+        dict with:
+        - "hedef_parça": 6
+        - "hedef_dj_seti": 3
+        - "günlük_plan": {gün: {"parça": 2, "dj_seti": 1}}
+        - "eksik": planlanan_toplam - zaten_var
+    """
+    import os
+    from datetime import datetime, timedelta
+
+    # Hedefler
+    hedef_parça = 6
+    hedef_dj_seti = 3
+
+    # Haftanın günleri (Pazartesi=0, Cuma=4)
+    hafta_günleri = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+    target_günler = ["Pazartesi", "Çarşamba", "Cuma"]
+
+    # Projeler klasöründen already-produced'ı say
+    projects_dir = "projects"
+    already_parça = 0
+    already_dj_seti = 0
+
+    if os.path.isdir(projects_dir):
+        # Sadece ana kataloğundaki (dj_sets dışı) parça say
+        for d in os.listdir(projects_dir):
+            p = os.path.join(projects_dir, d)
+            if not os.path.isdir(p):
+                continue
+            # DJ setlerini saymıyoruz buraya
+            if d.startswith("dj_sets") or d.startswith("derlemeler"):
+                continue
+            state_file = os.path.join(p, "state.json")
+            if os.path.exists(state_file):
+                try:
+                    with open(state_file, encoding="utf-8") as f:
+                        state = json.load(f)
+                    # Yeni parça mı kontrolü (youtube_video_id varsa say)
+                    if state.get("youtube_video_id"):
+                        already_parça += 1
+                except:
+                    pass
+
+    # Basit hesap: hedef - already = eksik
+    eksik_parça = max(0, hedef_parça - already_parça)
+    eksik_dj_seti = max(0, hedef_dj_seti - already_dj_seti)
+
+    plan = {
+        "hedef_parça": hedef_parça,
+        "hedef_dj_seti": hedef_dj_seti,
+        "already_parça": already_parça,
+        "already_dj_seti": already_dj_seti,
+        "eksik_parça": eksik_parça,
+        "eksik_dj_seti": eksik_dj_seti,
+        "günlük_plan": {},
+        "tarih": datetime.now().strftime("%Y-%m-%d"),
+    }
+
+    # Günlük planı oluştur (Pazartesi, Çarşamba, Cuma)
+    for gün in target_günler:
+        plan["günlük_plan"][gün] = {"parça": 2, "dj_seti": 1}
+
+    return plan
+
+
 if __name__ == "__main__":
     main()
