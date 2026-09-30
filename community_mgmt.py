@@ -129,7 +129,7 @@ def rapor_olustur(video_idler: dict, yorum_analizleri: dict) -> str:
         f"Tarih: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         "=" * 60,
         "",
-        "── Video Başına Yorum ──",
+        "-- Video Başına Yorum --",
     ]
 
     for video_id, analiz in yorum_analizleri.items():
@@ -159,22 +159,22 @@ def rapor_olustur(video_idler: dict, yorum_analizleri: dict) -> str:
 
     ort_kalite = round(sum(ortalama_kalite) / len(ortalama_kalite), 1) if ortalama_kalite else 0
 
-    satirlar.append("── Genel Değerlendirme ──")
+    satirlar.append("-- Genel Değerlendirme --")
     satirlar.append(f"  Toplam yorum: {toplam_yorum}")
     satirlar.append(f"  Ortalama kalite: {ort_kalite}/3")
 
     if ort_kalite >= 2.5:
         satirlar.append("  ✓ Topluluk sağlıklı")
-        satirlar.append("    → Yanıtları hızlandır")
-        satirlar.append("    → Soruları video konu olarak kullan")
+        satirlar.append("    -> Yanıtları hızlandır")
+        satirlar.append("    -> Soruları video konu olarak kullan")
     elif ort_kalite >= 1.5:
-        satirlar.append("  → Topluluk gelişimi gerekiyor")
-        satirlar.append("    → CTA'da soru sor")
-        satirlar.append("    → Pinli yorum ekle")
+        satirlar.append("  -> Topluluk gelişimi gerekiyor")
+        satirlar.append("    -> CTA'da soru sor")
+        satirlar.append("    -> Pinli yorum ekle")
     else:
-        satirlar.append("  ⚠ Topluluk zayıf")
-        satirlar.append("    → İçerik uyumu sorunlu")
-        satirlar.append("    → Hedef kitleyi tekrar belirle")
+        satirlar.append("  [UYARI] Topluluk zayıf")
+        satirlar.append("    -> İçerik uyumu sorunlu")
+        satirlar.append("    -> Hedef kitleyi tekrar belirle")
 
     return "\n".join(satirlar)
 
@@ -221,13 +221,11 @@ def main():
         return
 
     try:
-        creds = get_authenticated_service()
-        if creds is None:
+        youtube = get_authenticated_service()
+        if youtube is None:
             print("[UYARI] YouTube auth gerekli")
             print("  python upload/youtube_auth.py --auth")
             return
-        # creds.valid check is unreliable for service accounts
-        youtube = build("youtube", "v3", credentials=creds, cache_discovery=False)
         print("[OK] YouTube baglantisi")
     except Exception as e:
         print(f"[HATA] YouTube API hatasi: {e}")
