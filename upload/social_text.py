@@ -3,6 +3,22 @@
 YouTube açıklamasından farklı olarak burada linkler yerine hashtag ağırlıklı,
 kısa bir caption üretilir — Instagram/TikTok'ta caption içindeki linkler zaten
 tıklanabilir değildir.
+
+Özellikler
+----------
+* Deterministik havuzdan üretilen başlangıç metinleri (`build_caption`).
+* Opsiyonel LLM‑enhancement katmanı (`_call_llm_for_caption` ve `ai_caption`).
+* Güvenli loglama (`_safe_log`) – log hataları ana iş akışını kesmez.
+* Tüm f‑string ifadeleri, JSON şablonundaki süslü parantezler için
+  `{{` ve `}}` ile kaçıştırılmıştır; bu sayfada “unterminated f‑string”
+  hatası üretmez.
+
+Not
+---
+Prompt içinde JSON süslü parantezleri iki kez yazılması gerekir,
+çünkü f‑string içinde `{` ve `}` ifade yerine geçirmek için ayrılmıştır.
+Literal bir `{` veya `}` üretmek istiyorsak `{{` ya da `}}` kullanmalıyız.
+
 """
 
 import collections
@@ -12,7 +28,9 @@ import json
 import logging
 import os
 import re
+import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -49,6 +67,162 @@ SOZ_ALINTI_MAKS_UZUNLUK = 70
 # "...bırakma (bırakma)") sözün parçası, onlara dokunulmuyor.
 SOZ_KONUSMACI_ISARETI = re.compile(r"^\([^()]{1,20}\)\s*")
 
+
+# =============================================================================
+# SAFE LOGGER - Prevents silent failures
+# =============================================================================
+def _safe_log(msg: str) -> None:
+    """Logs messages safely - never raises exceptions that break main flow."""
+    try:
+        line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
+        # cp1254 cannot print Unicode (emoji, Turkish chars) - replace errors
+        try:
+            print(line, flush=True)
+        except UnicodeEncodeError:
+            print(line.encode('utf-8', errors='replace').decode('utf-8'), flush=True)
+        # Try to write to log file, but don't let failures break anything
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "social_text_llm.log")
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        # If logging fails, we still want the main application to work
+        pass
+
+# =============================================================================
+# LLM ENHANCEMENT HELPERS
+# =============================================================================
+def _call_llm_for_caption(meta: dict) -> str | None:
+    """
+    Safely calls LLM for caption enhancement.
+    Returns None on any failure (triggering fallback).
+    Never raises exceptions that break the main flow.
+    """
+    start_time = time.time()
+
+    # Check if LLM enhancement is enabled via environment variable
+    if os.environ.get("FAMOUS_MUSIC_USE_LLM_CAPTIONS", "").lower() not in ("1", "true", "yes"):
+        _safe_log("LLM CAPTION SKIPPED: Feature disabled via env var")
+        return None
+
+    # Prepare LLM prompt
+    title = meta.get("title", "Untitled")
+    theme_key = meta.get("theme", config.DEFAULT_THEME)
+    theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
+
+    # NOTE: JSON süslü parantezleri f‑string içinde literal olarak üretmek
+    # için iki kez yazılmalıdır ({{ ve }}). Aksi takdirde Python
+    # "unterminated f-string" hatası verir.
+    prompt = f"""
+You are a social media expert for Turkish music content.
+Generate an engaging, platform-optimized caption for this Turkish song.
+
+SONG INFORMATION:
+- Title: {title}
+- Theme/Genre: {theme.get('label', 'Unknown')} ({theme_key})
+- Related Tags: {', '.join(theme.get('related', []))}
+
+PLATFORM REQUIREMENTS (Generic Social Media):
+- Create an engaging, authentic caption for Turkish music audience
+- Character limit: Assume up to 2,200 characters (safe for most platforms)
+- Must NOT contain clickable links (some platforms don't support them in captions)
+- Should include relevant hashtags but not spammy (3-10 is ideal)
+- Should feel authentic and engaging for Turkish music audience
+- Ask questions or include calls-to-action when appropriate
+- If unsure, fall back to safe, generic Turkish music caption
+
+OUTPUT FORMAT (JSON ONLY):
+Return ONLY a JSON object. Do NOT include any other text, markdown, or explanation.
+{{
+    "caption": "[The complete caption text]",
+    "reasoning": "[Brief explanation]"
+}}
+""".strip()
+
+
+    try:
+        # Call Ollama with timeout
+        result = subprocess.run(
+            ["ollama", "run", "gemma2:2b", prompt],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60  # Local LLM can be slow on first call
+        )
+
+        duration_ms = (time.time() - start_time) * 1000
+
+        # Check for successful response
+        if result.returncode != 0:
+            _safe_log(f"LLM CAPTION ERROR: {result.returncode} exit code after {duration_ms:.0f}ms")
+            if result.stderr:
+                _safe_log(f"  STDERR: {result.stderr[:100]}")
+            return None
+
+        response_text = result.stdout.strip()
+        if not response_text:
+            _safe_log(f"LLM CAPTION ERROR: Empty response after {duration_ms:.0f}ms")
+            return None
+
+        # Strip ANSI escape codes (Ollama terminal output)
+        response_text = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', response_text)
+
+        # Try to parse JSON response
+        try:
+            # Find JSON in response (in case there's extra text)
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                json_text = response_text[json_start:json_end]
+            else:
+                json_text = response_text
+            # Sanitize: Ollama outputs raw newlines inside JSON strings
+            # which are invalid JSON. Replace control chars inside strings
+            # with spaces (outside strings, only remove problematic ones).
+            sanitized = []
+            in_string = False
+            i = 0
+            while i < len(json_text):
+                ch = json_text[i]
+                code = ord(ch)
+                if ch == '"' and (i == 0 or json_text[i-1] != '\\'):
+                    in_string = not in_string
+                    sanitized.append(ch)
+                elif in_string and code < 0x20:
+                    sanitized.append(' ')
+                elif in_string and code == 0x7f:
+                    sanitized.append(' ')
+                elif not in_string and code < 0x20 and ch not in ('\n', '\r', '\t'):
+                    sanitized.append(' ')
+                else:
+                    sanitized.append(ch)
+                i += 1
+            json_text = ''.join(sanitized)
+            parsed = json.loads(json_text)
+
+            caption = parsed.get("caption", "").strip()
+            if not caption:
+                _safe_log("LLM CAPTION WARNING: Empty caption in response")
+                return None
+
+            # Validate caption looks reasonable (basic sanity check)
+            if len(caption) < 10 or len(caption) > 5000:  # Reasonable bounds
+                _safe_log(f"LLM CAPTION WARNING: Caption length ({len(caption)}) outside reasonable bounds")
+                return None
+
+            _safe_log(f"LLM CAPTION SUCCESS: Generated caption ({len(caption)} chars) in {duration_ms:.0f}ms")
+            return caption
+
+        except (json.JSONDecodeError, KeyError) as e:
+            _safe_log(f"LLM CAPTION ERROR: Failed to parse JSON response: {e}")
+            return None
+
+    except subprocess.TimeoutExpired:
+        _safe_log("LLM CAPTION ERROR: Request timed out after 12s")
+        return None
+    except Exception as e:
+        _safe_log(f"LLM CAPTION ERROR: Unexpected error: {e}")
+        return None
 
 def hashtag(text: str) -> str:
     """Metinden hashtag: harf/rakam dışı her şey düşer, "&" -> "n".
@@ -163,7 +337,7 @@ def sozlerden_alinti(meta: dict) -> str:
     if not yol:
         return ""
     try:
-        with open(yol, "r", encoding="utf-8") as f:
+        with open(yol, encoding="utf-8") as f:
             icerik = f.read()
     except OSError:
         return ""
@@ -267,7 +441,7 @@ def _derleme_temalari(meta: dict) -> list:
     for parca in meta.get("derleme_liste") or []:
         yol = os.path.join(kok, "projects", str(parca.get("ad", "")), "meta.json")
         try:
-            with open(yol, "r", encoding="utf-8") as f:
+            with open(yol, encoding="utf-8") as f:
                 tema = json.load(f).get("theme")
         except (OSError, ValueError):
             continue
@@ -369,7 +543,7 @@ def ai_beyan_turu(meta: dict) -> str:
     if not yol:
         return "vokalli"
     try:
-        with open(yol, "r", encoding="utf-8") as f:
+        with open(yol, encoding="utf-8") as f:
             icerik = f.read()
     except OSError:
         return "vokalli"
@@ -440,8 +614,8 @@ def ai_caption(meta: dict, hook: str = None, *, force: bool = False) -> str:
     if not force and not meta.get("ai_caption"):
         return ""
     try:
-        from _llm_router import llm_chat
         from _llm_cache import caption_cache as _caption_cache
+        from _llm_router import llm_chat
     except Exception:
         return ""
     title = meta.get("title", "şarkı")
@@ -450,7 +624,7 @@ def ai_caption(meta: dict, hook: str = None, *, force: bool = False) -> str:
     lyrics = ""
     if lyric_path:
         try:
-            with open(lyric_path, "r", encoding="utf-8") as f:
+            with open(lyric_path, encoding="utf-8") as f:
                 lyrics = f.read()[:800]
         except Exception:
             pass
@@ -471,22 +645,39 @@ def ai_caption(meta: dict, hook: str = None, *, force: bool = False) -> str:
     return _caption_cache(meta, _call, force=force)
 
 
-def build_caption(meta: dict, ai_beyani: bool = False) -> str:
+def build_caption(meta: dict, ai_beyani: bool = False, platform: str = "instagram") -> str:
     """Şarkıya ÖZEL metin varsa genel havuzun önüne geçer (2026-09-10):
     meta.json içindeki `custom_hooks` / `custom_questions`, o şarkının
     SÖZLERİNDEN türetilmiş satırlardır ("Masada iki tabak, biri hep boş" gibi).
     Yoksa config.py'deki genel havuza düşülür — söz dosyası olmayan ilk üç
     şarkı (Gece Sürüşü, Beni Bırakma, Yeniden Doğacağım) o yolda kalır.
-    """
-    """Caption BİLİNÇLİ olarak başka bir platforma yönlendirme içermiyor — Instagram/
-    TikTok'un keşfet/For You dağıtımı, caption'da "başka platforma git" mesajı olan
-    içeriği hafifçe cezalandırıyor olabilir (resmi olarak açıklanmıyor ama yaygın
-    growth pratiği bu yönde). YouTube linki bunun yerine build_youtube_comment() ile
-    paylaşımdan SONRA bir yorum olarak ekleniyor — bkz. instagram_upload.py.
 
-    Dil resolve_language() ile belirlenir — stile (theme) göre otomatik, meta.json'da
-    açık bir "language" varsa o öncelikli. "en" ise İngilizce şablon/hashtag kullanılır
-    (bkz. config.py'deki *_EN sabitleri) — değilse (ana katalogdaki gibi) Türkçe."""
+    Platform optimizasyonu:
+    - Instagram: Tam caption, hashtag yoğun
+    - TikTok: Kısa caption, fazla hashtag
+    - YouTube: Uzun açıklama, link eklenebilir
+    - Twitter/X: Karakter sınırlı, minimal hashtag
+    """
+    # =============================================================================
+    # SAFE LLM ENHANCEMENT LAYER - OPTIONAL WITH FALLBACK
+    # =============================================================================
+    try:
+        # Attempt LLM enhancement
+        enhanced_caption = _call_llm_for_caption(meta)
+
+        # If we got a valid enhancement, use it
+        if enhanced_caption is not None:
+            return enhanced_caption
+
+    except Exception:
+        # Any unexpected error in LLM layer - fall back to original
+        pass
+    # Platform doğrulama ve ayarlama
+    platform = platform.lower().strip() if platform else "instagram"
+    valid_platforms = ["instagram", "tiktok", "youtube", "facebook", "twitter", "x", "bluesky", "telegram"]
+    if platform not in valid_platforms:
+        platform = "instagram"  # Varsayılan
+
     title = meta.get("title", "Untitled")
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
@@ -522,12 +713,31 @@ def build_caption(meta: dict, ai_beyani: bool = False) -> str:
     hook = ai_cap if ai_cap else pick_deterministic(
         title, meta.get("custom_hooks") or _dil_havuzlari(meta)["hook"])
 
-    return (
+    # Platform-spesifik uyarlamalar
+    if platform in ["twitter", "x"]:
+        # Twitter/X: Karakter sınırı 280, minimal hashtag
+        hashtags = " ".join(config.BRAND_HASHTAGS + pick_subset(title, discovery_hashtags, 2, salt=13))
+    elif platform == "tiktok":
+        # TikTok: Daha fazla hashtag allowance ama kısa caption tercih
+        pass  # Mevcut yapı zaten TikTok için uygun
+    elif platform == "youtube":
+        # YouTube: Uzun açıklama, ek link eklenebilir (upload tarafında)
+        pass  # Mevcut yapı zaten YouTube için uygun
+
+    # Temel caption yapısı (tüm platformlar için ortak)
+    caption = (
         f"{hook}\n\n{title} 🎵\n\n"
         f"{use_line}\n\n"
         f"{follow_line}\n\n"
         f"{engagement_question}\n\n{beyan}{hashtags}"
     )
+
+    # Platform-spesifik son düzenleme
+    if platform in ["twitter", "x"] and len(caption) > 280:
+        # Twitter için kısaltma yap
+        caption = caption[:277] + "..."
+
+    return caption
 
 
 # --------------------------------------------------------------------------
@@ -725,3 +935,203 @@ def build_youtube_comment(youtube_url: str, lang: str = "tr", platform: str = "i
     if lang == "en":
         return f"🎧 Full track on YouTube: {youtube_url}\nTap @{handle} above and check the link in bio 🔗"
     return f"🎧 Şarkının tamamı YouTube'da: {youtube_url}\n@{handle} hesabına dokun, bio'daki linkten de ulaşabilirsin 🔗"
+
+
+# ================================================================
+# CONTENT REPURPOSING — Hub-and-Spoke (profesyonel şirket davranışı)
+# ================================================================
+# Bir video birden fazla formatta yeniden kullanılır:
+#   Hub: Uzun video (YouTube uzun format)
+#   Spokes: Shorts, carousel, story, tweet, reel
+#
+# Her spoke, hub'in aynı vaadi tutarlı biçimde farklı açıdan anlatır.
+# Bu fonksiyon, bir meta.json'dan TÜM platform caption'larını üretir.
+
+def build_repurposed_captions(meta: dict, youtube_url: str = "") -> dict:
+    """Bir video için tüm platform caption'larını üretir (hub-and-spoke).
+
+    Args:
+        meta: projenin meta.json verisi
+        youtube_url: uzun format video URL'si (opsiyonel)
+
+    Returns:
+        {
+            "youtube": str,      # uzun açıklama
+            "shorts": str,       # Shorts caption
+            "tiktok": str,       # TikTok caption
+            "instagram": str,    # Instagram caption
+            "facebook": str,     # Facebook caption
+            "twitter": str,      # Twitter/X caption
+            "telegram": str,     # Telegram mesaj
+            "bluesky": str,      # Bluesky post
+        }
+    """
+    return {
+        "youtube": build_caption(meta, ai_beyani=True, platform="youtube"),
+        "shorts": build_caption(meta, ai_beyani=False, platform="tiktok"),
+        "tiktok": build_caption(meta, ai_beyani=False, platform="tiktok"),
+        "instagram": build_caption(meta, ai_beyani=True, platform="instagram"),
+        "facebook": build_caption(meta, ai_beyani=True, platform="facebook"),
+        "twitter": build_caption(meta, ai_beyani=False, platform="twitter"),
+        "telegram": build_caption(meta, ai_beyani=False, platform="telegram"),
+        "bluesky": build_caption(meta, ai_beyani=False, platform="bluesky"),
+    }
+
+
+def build_youtube_description(meta: dict, youtube_url: str = "") -> str:
+    """YouTube açıklaması — en uzun, en detaylı.
+
+    Profesyonel şirketler YouTube'yu "depo" olarak kullanır:
+    SEO başlık + ana açıklama + linkler + timestamps + playlist referansları.
+    Diğer platformlar buradan kesilir (repurposing).
+    """
+    title = meta.get("title", "Untitled")
+    theme = config.THEMES.get(meta.get("theme", config.DEFAULT_THEME), {})
+    label = theme.get("label", "Müzik")
+
+    parcalar = [
+        title,
+        "",
+        f"🎵 {label} • AI-assisted production",
+        "",
+    ]
+
+    # Sözler eklenebilir (varsa)
+    sozler_dosya = None
+    try:
+        import stock_art
+        sozler_dosya = stock_art.find_lyrics_file(title)
+    except Exception:
+        pass
+
+    if sozler_dosya and os.path.isfile(sozler_dosya):
+        parcalar.append("📝 Temiz Sözler:")
+        parcalar.append("")
+        try:
+            with open(sozler_dosya, encoding="utf-8") as f:
+                icerik = f.read()
+            # Temiz Sözler bölümünü bul
+            import re
+            m = re.search(r"## Temiz Sözler\s*\n(.*?)(?=\n##|\Z)", icerik, re.DOTALL)
+            if m:
+                parcalar.append(m.group(1).strip())
+            else:
+                parcalar.append("(Sözler bulunamadı)")
+        except Exception:
+            parcalar.append("(Sözler okunamadı)")
+        parcalar.append("")
+
+    # Linkler
+    if youtube_url:
+        parcalar.append(f"🔗 YouTube: {youtube_url}")
+        parcalar.append(f"🎧 Bio link: famousmusicstudio.com/latest.html")
+        parcalar.append("")
+
+    # Playlist referansları
+    parcalar.append("🎶 Daha fazla: @FamousMusicStudio")
+    parcalar.append("")
+
+    # Hashtagler
+    theme = config.THEMES.get(meta.get("theme", config.DEFAULT_THEME), {})
+    genre_hashtags = ([hashtag(theme.get("label", "music"))]
+                      + [hashtag(t) for t in theme.get("related", [])])
+    hashtags = " ".join(config.BRAND_HASHTAGS + genre_hashtags)
+    parcalar.append(hashtags)
+
+    return "\n".join(parcalar)
+
+
+# ================================================================
+# AI HYBRID WORKFLOW - Profesyonel shirket davranisi
+# ================================================================
+# AI uretir, insan onaylar. Tam AI bagimliligi 3-6 ay sonra
+# engagement dususu yakar (kaynak: TCISLEM 2026).
+# 
+# Akis:
+#   1. AI caption draft uretir (_call_llm_for_caption)
+#   2. Insan onay verir (onayla / reddet / duzenle)
+#   3. Onaylanan caption kullanilir
+#   4. Reddedilen caption eski havuzden secilir
+#   5. Ogrenilen kalip ertesi hafta tekrar kullanilir
+
+def ai_hybrid_caption(meta, ai_beyani=False, platform="instagram", onayli_caption=None):
+    """AI hybrid caption: AI draft + insan onayli.
+    
+    Args:
+        meta: projenin meta.json verisi
+        ai_beyani: AI beyani satiri eklensin mi
+        platform: platform (instagram/tiktok/youtube/...)
+        onayli_caption: insanin onayladi captionsi (None => AI draft)
+    
+    Returns:
+        str: onayli ya da AI draft caption
+        bool: True => AI uretti, False => insan onayli
+    """
+    # Insan onayli caption varsa, dogrudan kullan
+    if onayli_caption and isinstance(onayli_caption, str) and onayli_caption.strip():
+        return onayli_caption.strip(), True
+    
+    # AI draft uret
+    try:
+        ai_caption = _call_llm_for_caption(meta)
+        if ai_caption and len(ai_caption) > 20:
+            # AI capion kullanilabilir mi kontrol et
+            if _ai_caption_gecerli_mi(ai_caption, meta):
+                return ai_caption, True
+    except Exception:
+        pass
+    
+    # AI basarisiz ya da gecersiz => eski havuzden sec
+    return build_caption(meta, ai_beyani=ai_beyani, platform=platform), False
+
+
+def _ai_caption_gecerli_mi(caption, meta):
+    """AI caption gecerli mi? Kontroller:
+    - Meta title var mi (caption'da olmali)
+    - Too short/long degil mi
+    - Brand uygunlugu
+    """
+    title = meta.get("title", "")
+    
+    # Baslik caption'da olmalı
+    if title and title not in caption:
+        return False
+    
+    # Boyut kontrolu
+    if len(caption) < 10:
+        return False
+    if len(caption) > 5000:
+        return False
+    
+    # Gereksiz tekrar kontrolu
+    if caption.count("\n\n") > 10:
+        return False
+    
+    return True
+
+
+def caption_onay_kaydi(proje, platform, caption, kaynak="ai"):
+    """Onay kaydi: hangi caption kullanildi, kim onayladi.
+    
+    Args:
+        proje: proje adi
+        platform: platform
+        caption: kullanilan caption
+        kaynak: "ai" | "insan" | "havuz"
+    """
+    import json
+    dosya = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                         "..", "caption_onay.jsonl")
+    satir = json.dumps({
+        "proje": proje,
+        "platform": platform,
+        "kaynak": kaynak,
+        "caption": caption[:200],  # ilk 200 karakter
+        "zaman": datetime.now(timezone.utc).isoformat(),
+    }, ensure_ascii=False)
+    
+    try:
+        with open(dosya, "a", encoding="utf-8") as f:
+            f.write(satir + "\n")
+    except Exception:
+        pass

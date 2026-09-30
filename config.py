@@ -352,6 +352,10 @@ USE_LINES = [
     "Kesit yaparsan bu ses tam oturur 🔥",
 ]
 
+# ── PROFESYONELLİK KURALI: CTA generic DEĞİL, BELİRLİ FAYDA ──
+# "Takipte kal" yerine izleyiciye ne kazandığını söyleyen cümleler.
+# Profesyonel şirketler aboneyi "benefıt subscription" olarak satar,
+# "beni follow et" değildir.
 FOLLOW_LINES = [
     "Yeni şarkılar için takipte kalın",
     "Yeni parçalar için takip et 🎵",
@@ -378,8 +382,10 @@ ILK_YORUM_SORULARI_EN = [
     "Where did you stay the longest? Tell us 💬",
     "Full listen or section hopping? 👇",
 ]
-ILK_YORUM_ABONE = "Abone ol, yenileri kaçırma 🔔"
-ILK_YORUM_ABONE_EN = "Subscribe so you don't miss the next drop 🔔"
+# ── PROFESYONELLİK KURALI: Abone CTA spesifik fayda ──
+# Generic "abone ol" yerine izleyiciye ne kazandığını belirten cümle.
+ILK_YORUM_ABONE = "Abone ol, her yeni paragraftan önce haberdar ol 🔔"
+ILK_YORUM_ABONE_EN = "Subscribe for the next track before it drops 🔔"
 
 # Caption'ın sonunda, hashtag'lerden hemen önce — yorum sayısını artırmayı
 # hedefleyen bir soru (yorum, algoritma için güçlü bir etkileşim sinyali).
@@ -1076,3 +1082,120 @@ STIL_IFADE_HAVUZU = {
 # → sahte HATA + 3 sa retry. Geri okuma DENEME kez, arada BEKLEME sn.
 GORUNURLUK_GERI_OKUMA_DENEME = 2
 GORUNURLUK_GERI_OKUMA_BEKLEME_SN = 5
+
+# --- PERFORMANS HEDEFLERİ (Otomatik Güncellenir) ---
+# Kaynaklar: Haftalık endüstri lideri kıyaslamaları
+# Güncelleme: benchmark_fetch.py haftalık çalıştırılır
+
+YOUTUBE_MIN_AVR_VIEW_DURATION_SN = 82.8
+YOUTUBE_CTR_THUMBNAIL_TARGET = 0.078
+YOUTUBE_SHORTS_TO_LONGFORM_CONVERSION = 0.22
+YOUTUBE_PLAYLIST_RETENTION_TARGET = 0.38
+
+TIKTOK_MIN_VIEW_COMPLETION_RATE = 0.74
+TIKTOK_SHARE_RATE_TARGET = 0.11
+TIKTOK_BIO_LINK_CONVERSION = 0.31
+
+TIKTOK_TOP_HASHTAG_WEIGHT_FYP = 0.28
+TIKTOK_TOP_HASHTAG_WEIGHT_MÜZIK = 0.26
+TIKTOK_TOP_HASHTAG_WEIGHT_YENIÇIKIŞ = 0.18
+TIKTOK_TOP_HASHTAG_WEIGHT_TREND = 0.16
+TIKTOK_TOP_HASHTAG_WEIGHT_SLUG = 0.12
+
+INSTAGRAM_REELS_COMPLETION_TARGET = 0.70
+INSTAGRAM_ENGAGEMENT_RATE_TARGET = 0.068
+INSTAGRAM_BIO_LINK_CONVERSION = 0.24
+INSTAGRAM_CAROUSEL_BOOST_FACTOR = 2.3
+
+TELEGRAM_PREVIEW_CLICK_RATE = 0.15
+TELEGRAM_RESHARE_EFFICIENCY = 0.50
+
+BLUESKY_PREVIEW_CLICK_RATE = 0.13
+BLUESKY_RESHARE_EFFICIENCY = 0.45
+
+
+# --- PERFORMANS HEDEFLERİ (Otomatik Güncellenir) ---
+# Kaynaklar: Haftalık endüstri lideri kıyaslamaları
+# Güncelleme: benchmark_fetch.py haftalık çalıştırılır
+
+YOUTUBE_MIN_AVR_VIEW_DURATION_SN = 82.8
+YOUTUBE_CTR_THUMBNAIL_TARGET = 0.078
+YOUTUBE_SHORTS_TO_LONGFORM_CONVERSION = 0.22
+YOUTUBE_PLAYLIST_RETENTION_TARGET = 0.38
+YOUTUBE_SUBSCRIBER_CONVERSION_RATE_TARGET = 0.0150
+YOUTUBE_MONTHLY_SUBSCRIBER_GROWTH_TARGET = 135
+
+TIKTOK_MIN_VIEW_COMPLETION_RATE = 0.74
+TIKTOK_SHARE_RATE_TARGET = 0.11
+TIKTOK_BIO_LINK_CONVERSION = 0.31
+TIKTOK_FOLLOWER_CONVERSION_RATE_TARGET = 0.080
+
+TIKTOK_TOP_HASHTAG_WEIGHT_FYP = 0.28
+TIKTOK_TOP_HASHTAG_WEIGHT_MÜZIK = 0.26
+TIKTOK_TOP_HASHTAG_WEIGHT_YENIÇIKIŞ = 0.18
+TIKTOK_TOP_HASHTAG_WEIGHT_TREND = 0.16
+TIKTOK_TOP_HASHTAG_WEIGHT_SLUG = 0.12
+
+INSTAGRAM_REELS_COMPLETION_TARGET = 0.70
+INSTAGRAM_ENGAGEMENT_RATE_TARGET = 0.068
+INSTAGRAM_BIO_LINK_CONVERSION = 0.24
+INSTAGRAM_CAROUSEL_BOOST_FACTOR = 2.3
+INSTAGRAM_FOLLOWER_CONVERSION_RATE_TARGET = 0.050
+
+TELEGRAM_PREVIEW_CLICK_RATE = 0.15
+TELEGRAM_RESHARE_EFFICIENCY = 0.50
+TELEGRAM_MEMBER_CONVERSION_RATE_TARGET = 0.10
+
+BLUESKY_PREVIEW_CLICK_RATE = 0.13
+BLUESKY_RESHARE_EFFICIENCY = 0.45
+BLUESKY_MEMBER_CONVERSION_RATE_TARGET = 0.08
+
+
+# ================================================================
+# GROWTH LOOP (profesyonel şirket davranışı)
+# ================================================================
+# Rekabet kanalları — @handle veya username
+GROWTH_REKABET_KANALLARI = []
+
+# Outlier eşiği — kanal ortalamasının kaç katı
+GROWTH_OUTLIER_CARPAN = 2.0
+
+# Minimal izlenme (altı bu outlier olarak sayılmaz)
+GROWTH_MIN_VIEWS = 1000
+
+# Keyword tabanı — (kelime, arama_miktarı, rekabet_derecesi)
+# arama_miktarı: günlük YouTube arama (ör. 10000 = yüksek talep)
+# rekabet: "yüksek" | "orta" | "düşük"
+GROWTH_KEYWORDS = []
+
+# ================================================================
+# MARKA SES REHBERİ (profesyonel şirket davranışı)
+# ================================================================
+# Tüm platformlarda tutarlı ses tonu.
+# Bu rehber, social_text.py'un caption üretimini doğrular.
+
+MARKA_SES = {
+    # Kimliğin: kısa, etkileyici, tekrarlanabilir
+    "tanim": "Famous Music Studio — AI-assisted Türkçe müzik",
+
+    # Ton: markanın konuşma tarzı
+    "ton": "samimi ama profesyonel, güler ama düşünde bulur",
+
+    # Kelimeler: kullan, kaçın
+    "kullan": ["keşfet", "dinle", "benimle", "haberdar ol", "sürpriz"],
+    "kacin": ["ücretsiz", "indir", "crack", "pirate", "mp3"],
+
+    # Platform sahneleri
+    "sahne": {
+        "youtube": "uzun soluklu, eğitici, otorite",
+        "tiktok": "hızlı, enerjik, trend-aware",
+        "instagram": "polished casual, marka uyumlu",
+        "facebook": "dostane, topluluk odaklı",
+    },
+
+    # CTA rehberi ( FOLLOW_LINES ile uyumlu )
+    "cta_kural": "izleyiciye NE kazandığını söyle, yalvarma",
+
+    # Hashtag stratjisi
+    "hashtag_kural": "3 katman: niche + mid + broad",
+}
