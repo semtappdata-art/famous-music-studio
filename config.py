@@ -1179,7 +1179,7 @@ MARKA_SES = {
     "tanim": "Famous Music Studio — AI-assisted Türkçe müzik",
 
     # Ton: markanın konuşma tarzı
-    "ton": "samimi ama profesyonel, güler ama düşünde bulur",
+    "ton": "guzel ve sincak, dogrudan ve hicbirsey",
 
     # Kelimeler: kullan, kaçın
     "kullan": ["keşfet", "dinle", "benimle", "haberdar ol", "sürpriz"],
@@ -1197,5 +1197,8 @@ MARKA_SES = {
     "cta_kural": "izleyiciye NE kazandığını söyle, yalvarma",
 
     # Hashtag stratjisi
-    "hashtag_kural": "3 katman: niche + mid + broad",
+    "hashtag_kural": "3 katman: niche + mid + broad, max 5",
+
+    # Community: yorumlara cevap ver, soru sor
+    "community_kural": "her yorumu 24sa icin cevapla, soru sor",
 }

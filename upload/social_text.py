@@ -718,11 +718,23 @@ def build_caption(meta: dict, ai_beyani: bool = False, platform: str = "instagra
         # Twitter/X: Karakter sınırı 280, minimal hashtag
         hashtags = " ".join(config.BRAND_HASHTAGS + pick_subset(title, discovery_hashtags, 2, salt=13))
     elif platform == "tiktok":
-        # TikTok: Daha fazla hashtag allowance ama kısa caption tercih
-        pass  # Mevcut yapı zaten TikTok için uygun
+        # TikTok: max 5 hashtag
+        max_ht = 5
+        all_ht = config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags
+        hashtags = " ".join(pick_subset(title, all_ht, max_ht, salt=13))
+    elif platform == "facebook":
+        # Facebook: max 5 hashtag
+        max_ht = 5
+        all_ht = config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags
+        hashtags = " ".join(pick_subset(title, all_ht, max_ht, salt=13))
     elif platform == "youtube":
         # YouTube: Uzun açıklama, ek link eklenebilir (upload tarafında)
         pass  # Mevcut yapı zaten YouTube için uygun
+    elif platform in ["telegram", "bluesky"]:
+        # Telegram/Bluesky: max 5 hashtag
+        max_ht = 5
+        all_ht = config.BRAND_HASHTAGS + discovery_hashtags + genre_hashtags
+        hashtags = " ".join(pick_subset(title, all_ht, max_ht, salt=13))
 
     # Temel caption yapısı (tüm platformlar için ortak)
     caption = (
@@ -1029,6 +1041,18 @@ def build_youtube_description(meta: dict, youtube_url: str = "") -> str:
 
     # Playlist referansları
     parcalar.append("🎶 Daha fazla: @FamousMusicStudio")
+    parcalar.append("")
+
+    # Schema.org yapısı — AI crawlerlar için GEO optimizasyonu
+    parcalar.append("─" * 40)
+    parcalar.append("@context: https://schema.org")
+    parcalar.append("@type: MusicRecording")
+    parcalar.append(f"name: {title}")
+    parcalar.append(f"genre: {label}")
+    parcalar.append("byArtist: Famous Music Studio")
+    parcalar.append("isAccessibleForFree: True")
+    parcalar.append("inPlaylist: Famous Music Studio")
+    parcalar.append("─" * 40)
     parcalar.append("")
 
     # Hashtagler

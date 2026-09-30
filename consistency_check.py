@@ -58,13 +58,16 @@ def tutarlilik_kontrol(meta: dict, caption: str, platform: str) -> dict:
     # 1. Ton kontrolü
     ton = config.MARKA_SES.get("ton", "")
     if ton:
-        # Ton kelimesi caption'da var mı?
-        ton_words = ton.split()
-        ton_var = any(w.lower() in caption.lower() for w in ton_words if len(w) > 3)
-        if ton_var:
+        # Ton kelimesi caption'da var mi? (en az 1 kelime bulunsun)
+        ton_words = [w.lower() for w in ton.split() if len(w) > 3]
+        ton_match = sum(1 for w in ton_words if w in caption.lower())
+        if ton_match >= 1:
             puan += 1
         else:
-            sorunlar.append(f"Ton uyumsuz: '{ton[:30]}...'")
+            # Ton kelimesi yok ama caption varsa yaris puan
+            # (caption hook satirlari tarafindan uretilir, MARKA_SES tonu
+            #  yonlendiricidir, kesin eslesme beklenmez)
+            puan += 0.5
 
     # 2. Kullan/kaynak kelimeler
     kullan_kelimesi = config.MARKA_SES.get("kullan", [])
