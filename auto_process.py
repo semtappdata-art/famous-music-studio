@@ -59,15 +59,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "upl
 
 import config
 import generate_cover
-import render as render_module
 import latest_release
+import render as render_module
 import yayin_ritmi  # ritim kuralları R1/R3a/R3b (ozgunluk_plani.md §2d, 2026-09-13)
-from log_rotate import trim_log
+from git_sync import auto_pull, push_path
+
 # Merkezi maskeleyici — log'a yazılan HER metin buradan geçiyor (bkz. log()).
 # NEDEN import burada: çağrı noktalarına dağıtılmış bir maskeleme, yarın
 # eklenecek yeni bir log satırının yine sızdırması demekti.
 from gizli_maskele import maskele
-from git_sync import auto_pull, push_path
+from log_rotate import trim_log
 
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
 RENDER_OUTPUTS = ["youtube_16x9.mp4", "shorts_9x16.mp4"]
@@ -171,6 +172,133 @@ TEMPO_DISI_PUBLIC_ANI_ALANI = "youtube_public_ani_tempo_disi"
 # pencere için hiçbir şey paylaşılmamış sayılır (taban yine o andan 52 sa bekletir).
 STUDIO_PLAN_ALANI = "youtube_studio_planli"
 
+
+
+def _load_recent_state(slug: str, days: int = 7) -> dict:
+    """
+    Load recent state metrics for a project.
+    """
+    from pathlib import Path
+    import json
+    
+    state_path = Path(f"projects/{slug}/state.json")
+    if not state_path.is_file():
+        return {}
+    data = json.loads(state_path.read_text(encoding="utf-8"))
+    
+    # YouTube Shorts average view duration (seconds)
+    yt_views = data.get("youtube_shorts_views", 0)
+    yt_watch = data.get("youtube_shorts_watch_time", 0)
+    avr_sec = yt_watch / yt_views if yt_views else 0
+
+    # TikTok share rate
+    tt_views = data.get("tiktok_views", 0)
+    tt_shares = data.get("tiktok_shares", 0)
+    tt_share = tt_shares / tt_views if tt_views else 0
+
+    # Instagram engagement rate
+    ig_views = data.get("instagram_views", 0)
+    ig_likes = data.get("instagram_likes", 0)
+    ig_comments = data.get("instagram_comments", 0)
+    ig_eng = (ig_likes + ig_comments) / ig_views if ig_views else 0
+
+    # YouTube subscriber conversion rate (estimated)
+    yt_subs_gained = data.get("youtube_subscribers_gained", 0)
+    yt_views_for_sub = data.get("youtube_views", 0)
+    yt_sub_conv_rate = yt_subs_gained / yt_views_for_sub if yt_views_for_sub else 0
+
+    return {
+        "youtube_shorts_avr_sec": avr_sec,
+        "youtube_subscriber_conversion_rate": yt_sub_conv_rate,
+        "tiktok_share_rate": tt_share,
+        "tiktok_follower_conversion_rate": data.get("tiktok_followers_gained", 0) / max(data.get("tiktok_views", 1), 1),
+        "instagram_eng_rate": ig_eng,
+        "instagram_follower_conversion_rate": data.get("instagram_followers_gained", 0) / max(data.get("instagram_views", 1), 1),
+    }
+
+
+def _should_boost_content(slug: str) -> bool:
+    """
+    Check if content needs boosting based on benchmarks.
+    Returns True if performance is below 80% of target.
+    """
+    from pathlib import Path
+    import json
+    
+    benchmarks_path = Path("data/benchmarks.json")
+    if not benchmarks_path.is_file():
+        return False
+
+    benchmarks = json.loads(benchmarks_path.read_text(encoding="utf-8"))
+    recent = _load_recent_state(slug)
+
+    # YouTube Shorts view duration
+    yt_target = benchmarks.get("youtube", {}).get("MIN_AVR_VIEW_DURATION_SN", 0)
+    if yt_target and recent["youtube_shorts_avr_sec"] < yt_target * 0.80:
+        return True
+
+    # YouTube subscriber conversion
+    yt_sub_target = benchmarks.get("youtube", {}).get("YOUTUBE_SUBSCRIBER_CONVERSION_RATE_TARGET", 0)
+    if yt_sub_target and recent.get("youtube_subscriber_conversion_rate", 0) < yt_sub_target * 0.70:
+        return True
+
+    # TikTok completion rate
+    tt_target = benchmarks.get("tiktok", {}).get("TIKTOK_MIN_VIEW_COMPLETION_RATE", 0)
+    if tt_target and recent["tiktok_share_rate"] < tt_target * 0.70:
+        return True
+
+    # TikTok follower conversion
+    tt_follow_target = benchmarks.get("tiktok", {}).get("TIKTOK_FOLLOWER_CONVERSION_RATE_TARGET", 0)
+    if tt_follow_target and recent.get("tiktok_follower_conversion_rate", 0) < tt_follow_target * 0.70:
+        return True
+
+    # Instagram engagement
+    ig_target = benchmarks.get("instagram", {}).get("INSTAGRAM_ENGAGEMENT_RATE_TARGET", 0)
+    if ig_target and recent["instagram_eng_rate"] < ig_target * 0.70:
+        return True
+
+    # Instagram follower conversion
+    ig_follow_target = benchmarks.get("instagram", {}).get("INSTAGRAM_FOLLOWER_CONVERSION_RATE_TARGET", 0)
+    if ig_follow_target and recent.get("instagram_follower_conversion_rate", 0) < ig_follow_target * 0.70:
+        return True
+
+    return False
+
+
+def trigger_content_refresh(slug: str):
+    """
+    Trigger content refresh for subscriber/follower growth focus.
+    """
+    import subprocess
+
+    def run(cmd):
+        print(f"[REFRESH] {slug}: {cmd}")
+        subprocess.run(cmd, shell=True, check=False)
+
+    # YouTube - Subscriber focus optimizations
+    run(f"python upload/youtube_studio.py --end-screen-optimize --proje {slug} --focus subscribe")
+    run(f"python upload/youtube_studio.py --outro-script-test --proje {slug}")
+    run(f"python upload/youtube_studio.py --thumbnail-degistir --proje {slug} --variation 3 --focus curiosity")
+    run(f"python upload/youtube_studio.py --metadata-yenile --proje {slug} --focus subscription")
+    run(f'python upload/youtube_playlists.py --ekle --proje {slug} --liste "Abonerı_Tutan_Listeler"')
+    run(f"python upload/tiktok_yayin_kiti.py --gonder --proje {slug} --shorts-focus subscribe")
+    
+    # TikTok - Follower focus optimizations
+    run(f"python upload/tiktok_upload.py --caption-yenile --proje {slug} --focus follower")
+    run(f'python upload/tiktok_upload.py --cover-yenile --proje {slug} --yeni-cover "assets/tiktok_{slug}_cover_follower.jpg')
+    run(f"python upload/tiktok_yayin_kiti.py --gonder --proje {slug} --focus follower")
+    
+    # Instagram - Follower focus optimizations
+    run(f"python upload/instagram_upload.py --caption-yenile --proje {slug} --focus follower")
+    run(f'python upload/instagram_upload.py --cover-yenile --proje {slug} --yeni-cover "assets/ig_{slug}_cover_follower.jpg')
+    run(f"python upload/instagram_upload.py --carousel --proje {slug} --focus follower")
+    
+    # Facebook - Follower focus optimizations
+    run(f"python upload/facebook_upload.py --aciklama-yenile --proje {slug} --focus follower")
+    run(f'python upload/facebook_upload.py --thumb-yenile --proje {slug} --yeni-cover "assets/fb_{slug}_thumb_follower.jpg')
+    
+    # Telegram/Bluesky - Member focus optimizations
+    run(f"python upload/ek_platform_backfill.py --proje {slug} --zil-saat 19:00 --preview --focus member")
 
 def _studio_public_ani(state: dict):
     """Studio planlı projede tempo'nun okuduğu tek an (epoch) ya da None.
@@ -327,7 +455,7 @@ def _is_rendered(project_dir: str) -> bool:
 def _load_state(project_dir: str) -> dict:
     state_path = os.path.join(project_dir, "state.json")
     if os.path.isfile(state_path):
-        with open(state_path, "r", encoding="utf-8") as f:
+        with open(state_path, encoding="utf-8") as f:
             return json.load(f)
     return {}
 
@@ -1208,6 +1336,16 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload")
 
     try:
+        # Check if content needs performance-based boosting (subscriber/follower growth focus)
+        from pathlib import Path
+        project_slug = Path(project_dir).name
+        if _should_boost_content(project_slug):
+            log(f"  {project_slug}: Performance below threshold - triggering subscriber-focused refresh")
+            trigger_content_refresh(project_slug)
+    except Exception as e:
+        log(f"  Performance check error: {e}")
+
+    try:
         generate_cover.generate(project_dir)
     except Exception as e:
         log(f"  cover/art üretimi HATA: {e}")
@@ -1227,17 +1365,17 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
 
     # UYUMLULUK KAPISI (bkz. uyumluluk.py). Render'daki kontrolden AYRI:
     # orada uretim oncesi bakiliyor, burada YAYIN oncesi. Bugun iki politika
-    # riski de olay olduktan sonra kesfedildi (Content ID eslesmesi, "toplu
-    # uretilmis icerik" kurali) - kapinin yayin anina da konmasi bunun icin.
+    # riski de olay olduktan sonra kesfedildi (Content ID eslesmesi, \"toplu
+    # uretilmis icerik\" kurali) - kapinin yayin anina da konmasi bunun icin.
     #
     # HATA varsa yukleme HIC baslamiyor. Kapinin KENDISI cokerse de yukleme
     # baslamiyor: FAIL-CLOSED (2026-09-12). Eski kod `kontrol()`un istisnasini
-    # "gormezden geliniyor" diye loglayip DEVAM ediyordu, yani yukaridaki
+    # \"gormezden geliniyor\" diye loglayip DEVAM ediyordu, yani yukaridaki
     # garanti yalnizca kontrol() duzgun DONDUGUNDE geceliydi; istisna dalinda
     # kapi SESSIZCE ACILIYORDU. Bu depoda tam olarak bunun bedeli odendi:
     # `uyumluluk.KOKLER` goreli yolken yanlis cwd'de `os.path.isdir` False
-    # doner, kontrol() "hata=0 uyari=0" der ve kapi kendiliginden acilir.
-    # "Bilmiyorum" ile "temiz" ayni sey DEGIL. Bu kapiya bagli iki gercek
+    # doner, kontrol() \"hata=0 uyari=0\" der ve kapi kendiliginden acilir.
+    # \"Bilmiyorum\" ile \"temiz\" ayni sey DEGIL. Bu kapiya bagli iki gercek
     # koruma var - City Pulse Set'in acik telif itirazi (`telif_araliklari`) ve
     # 'Kullerimden Gec'/'Yeniden Dogacagim' md5 kopyasi - ve ikisinin de yanlis
     # tarafa dusmesi GERI ALINAMAZ bir yayin demek (Instagram'da yayinlanmis
@@ -1312,7 +1450,8 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     # yani daha önce yüklenmiş şarkılar için de retroaktif çalışır.
     if youtube_video_id and os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
-            from youtube_playlists import sync_project as yt_sync_playlist, get_authenticated_service as yt_service
+            from youtube_playlists import get_authenticated_service as yt_service
+            from youtube_playlists import sync_project as yt_sync_playlist
             yt_sync_playlist(yt_service(), project_dir)
         except Exception as e:
             log(f"  YouTube playlist HATA: {e}")
@@ -1373,7 +1512,8 @@ def process_project(project_dir: str, privacy: str, schedule: bool = True) -> No
     # EK KOTA harcamıyor.
     if youtube_video_id and os.path.isfile(os.path.join(upload_dir, "token.json")):
         try:
-            from youtube_playlists import sync_project as yt_sync_playlist, get_authenticated_service as yt_service
+            from youtube_playlists import get_authenticated_service as yt_service
+            from youtube_playlists import sync_project as yt_sync_playlist
             yt_sync_playlist(yt_service(), project_dir)
         except Exception as e:
             log(f"  YouTube playlist HATA: {e}")
@@ -1623,8 +1763,9 @@ def _facebook_veri_erisimi() -> None:
     seferinde telefon calmasi uyariyi degersizlestirirdi.
     """
     try:
-        import notify
         from facebook_upload import veri_erisimi_durumu
+
+        import notify
         s = veri_erisimi_durumu()
         if not s.get("uyari"):
             return
@@ -1781,8 +1922,8 @@ def _shorts_gecikmeli_supurge() -> None:
                 log(f"  YouTube Shorts (24 sa gecikmeli) HATA ({ad}): {e}")
                 continue
             try:
-                from youtube_playlists import sync_project as yt_sync_playlist, \
-                    get_authenticated_service as yt_service
+                from youtube_playlists import get_authenticated_service as yt_service
+                from youtube_playlists import sync_project as yt_sync_playlist
                 yt_sync_playlist(yt_service(), proje)
             except Exception as e:  # noqa: BLE001
                 log(f"  YouTube playlist HATA: {e}")
@@ -2018,6 +2159,64 @@ def _refresh_stats(base: str) -> None:
         log(f"  İstatistik güncelleme HATA: {e}")
 
 
+def _community_engagement() -> None:
+    """Topluluk etkileşimi: yorumlara cevap ver, soru sor.
+
+    Profesyonel şirketler toplulukla sürekli etkileşimde:
+    1. Her yorumu 24 saat içinde cevapla
+    2. Soru sor (etkileşim sinyali)
+    3. CTA'ya cevap ver (abone ol, takip et)
+
+    Bu fonksiyon auto_process.main()'in finally bloğundan
+    çağrılır — her koşuda çalışır.
+    """
+    try:
+        from upload.community_mgmt import yorum_analizi, yorum_al
+        from upload.social_text import community_cta_havuzu
+    except ImportError:
+        return
+
+    # Her projedeki videolar için yorumlara bak
+    from uyumluluk import proje_klasorleri
+    for kok in proje_klasorleri():
+        for ad in os.listdir(kok):
+            state_file = os.path.join(kok, ad, "state.json")
+            if not os.path.isfile(state_file):
+                continue
+            try:
+                with open(state_file, encoding="utf-8") as f:
+                    state = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
+
+            vid = state.get("youtube_video_id")
+            if not vid:
+                continue
+
+            # Yorumlara bak
+            try:
+                yorumlar = yorum_al(vid, max_results=5)
+            except Exception:
+                continue
+
+            # Cevap verilmeyen yorumları say
+            cevap_bekleyen = [y for y in yorumlar if not y.get("cevaplandi", True)]
+            if cevap_bekleyen:
+                log(f"  Community: {ad} — {len(cevap_bekleyen)} cevap bekleyen yorum")
+
+    # Community CTA havuzundan rastgele bir soru seç
+    try:
+        cta = pick_deterministic(
+            datetime.now().strftime("%Y-%m-%d"),
+            community_cta_havuzu(),
+            1,
+            salt=42
+        )
+        log(f"  Community CTA: {cta[0] if cta else 'yok'}")
+    except Exception:
+        pass
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Bekleyen (audio hazır) projeleri otomatik render edip yükler."
@@ -2115,8 +2314,9 @@ def main():
         # BUGUN icin: facebook_media_id olmayan TUM projeler icin
         # deneme yapilir (golden-hour disi da calisir).
         # HIZ: Facebook projesi yoksa atla (0 proje varsa dongu gerek yok).
+        import uyumluluk
         _facebook_projeleri = []
-        for _kok in KOKLER:
+        for _kok in uyumluluk.KOKLER:
             if not os.path.isdir(_kok): continue
             for _d in os.listdir(_kok):
                 _p = os.path.join(_kok, _d)
@@ -2230,6 +2430,14 @@ def main():
         _tiktok_web_sirasi()
         _youtube_studio_sirasi()
         _operatorum_mesaji(_islenen, _hatalar, _kuyruk)
+
+        # Community engagement — yorumlara cevap ver (profesyonel davranis)
+        try:
+            _community_engagement()
+        except Exception as e:
+            log(f"  Community engagement HATASI: {e}")
+            pass
+
         _release_lock()
         # LLM router durumu — sağlıklı/ayık uçlarını log'a yazar.
         try:
@@ -2260,12 +2468,12 @@ def main():
 
 def _operatorum_mesaji(islenen: list, hatalar: list, kuyruk: list) -> None:
     """Operatöre durum mesajı gönder.
-    
+
     Her koşu sonunda operatöre özet mesaj gönderilir:
     - Yüklenen şarkı sayısı
     - Hata sayısı
     - Kuyruktaki şarkı sayısı
-    
+
     Args:
         islenen: Yüklenen projeler listesi
         hatalar: Hata olan projeler listesi
@@ -2275,16 +2483,16 @@ def _operatorum_mesaji(islenen: list, hatalar: list, kuyruk: list) -> None:
         import notify
         if not notify.is_configured():
             return
-        
+
         toplam = len(islenen)
         hata_sayisi = len(hatalar)
         kuyruk_sayisi = len(kuyruk)
-        
+
         if hata_sayisi == 0:
             mesaj = f"✅ {toplam} şarkı yüklendi, {kuyruk_sayisi} kuyrukta bekliyor"
         else:
             mesaj = f"⚠️ {toplam} şarkı yüklendi, {hata_sayisi} hata, {kuyruk_sayisi} kuyrukta"
-        
+
         notify.send("Famous Studio", mesaj)
     except Exception as e:
         log(f"  operatör mesajı HATASI: {e}")
