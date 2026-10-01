@@ -17,7 +17,6 @@ import hashlib
 import math
 import os
 import subprocess
-from typing import Optional
 
 import config
 from kapak_duzen_onizleme import mood_bul, stil_etiketi
@@ -36,14 +35,6 @@ NABIZ_SINIFLARI = {
     ENERJI_ORTA:    {"amp": 0.20, "f_div": 1},
     ENERJI_ENERJIK: {"amp": 0.30, "f_div": 4},
 }
-
-# Huzme parametreleri (beams)
-BEAM_COUNT_MIN = 3
-BEAM_COUNT_MAX = 5
-BEAM_SHARPNESS = 3.0      # cos^sharpness → dar ışınlar
-BEAM_OPAKLIK = 0.10       # backdrop üzerine blend opacity
-BEAM_RADIAL_R = 0.30      # max(W,H) oranında tepe yarıçapı
-BEAM_RADIAL_SIGMA = 0.18  # max(W,H) oranında gaussian sigma
 
 # Doku (grain)
 GRAIN_AMPLITUDE = 7       # noise alls
@@ -139,7 +130,7 @@ def nabiz_ifadesi(bpm: float) -> tuple[str, float, int]:
 # Mood
 # ---------------------------------------------------------------------------
 
-def mood_olc(title: str) -> Optional[str]:
+def mood_olc(title: str) -> str | None:
     """Şarkı adından stil etiketi → mood çıkarır; bulamazsa None."""
     try:
         return mood_bul(stil_etiketi(title))
@@ -156,7 +147,7 @@ def doku_filtresi(seed: int) -> str:
     return f"noise=alls={GRAIN_AMPLITUDE}:all_seed=0x{seed & 0xFFFF:04x}"
 
 
-def derecelendirme_filtresi(mood: Optional[str], theme_accent: tuple[int, int, int]) -> str:
+def derecelendirme_filtresi(mood: str | None, theme_accent: tuple[int, int, int]) -> str:
     """Mood + tema accent'e göre sinematik renk derecelendirmesi.
 
     Tüm stiller için hafif çapraz tonlama (shadows→soğuk, highlights→sıcak)
@@ -196,119 +187,21 @@ def derecelendirme_filtresi(mood: Optional[str], theme_accent: tuple[int, int, i
     return ",".join(parts)
 
 
-# ---------------------------------------------------------------------------
-# Huzme (Beams) PNG Üretimi
-# ---------------------------------------------------------------------------
-
-def _huzme_aci_degerleri(seed: int, n: int) -> list[float]:
-    """Deterministik huzme açıları (radyan, 0..2π)."""
-    angles = []
-    rng_seed = seed
-    for i in range(n):
-        rng_seed = (rng_seed * 1103515245 + 12345) & 0x7FFFFFFF
-        angles.append((rng_seed / 0x7FFFFFFF) * 2 * math.pi)
-    return angles
-
-
-def huzme_png_uret(out_path: str, width: int, height: int, seed: int) -> str:
-    """Beyaz huzmeler siyah zeminde PNG üretir (ekran blend için).
-
-    Döngüsal cos deseni: ``pow((cos(N*angle + phase)+1)/2, sharp)`` × radyal gauss.
-    Tek seferlik geq çağrısı, backdrop cache ile birlikte pan/hue'da bedava hareket.
-
-    Returns:
-        Üretilen PNG yolu.
-    """
-    if os.path.isfile(out_path):
-        return out_path
-
-    n_beams = BEAM_COUNT_MIN + (seed % (BEAM_COUNT_MAX - BEAM_COUNT_MIN + 1))
-    cx, cy = width / 2.0, height / 2.0
-    phase_degerleri = _huzme_aci_degerleri(seed + 999, n_beams)
-    r_max = max(width, height) * BEAM_RADIAL_R
-    sigma_r = max(width, height) * BEAM_RADIAL_SIGMA
-
-    # cos deseni: her huzme için cos(angle - theta_i) → toplam
-    # Tek ifadede toplamak için literal açıları ekle
-    angle_parts = []
-    for theta in phase_degerleri:
-        angle_parts.append(
-            f"cos({n_beams}*atan2(Y-{cy:.1f},{cx:.1f}-X)+{theta:.4f})"
-        )
-    angular_sum = "+".join(angle_parts)
-
-    # Huzme genliği: (sum + n_beams) / (2 * n_beams) → 0..1 aralığına normalize
-    angular_norm = f"(({angular_sum})+{n_beams})/{2 * n_beams}"
-
-    # Radyal gauss: tepe r_max'te, merkeze ve kenara doğru sönme
-    radial = f"exp(-pow((hypot(X-{cx:.1f},Y-{cy:.1f})-{r_max:.1f})/{sigma_r:.1f},2))"
-
-    # Nihai parlaklık: amp × angular^sharp × radial
-    peak_amp = 220  # 0-255 aralığında tepe parlaklık
-    expr_r = f"clip({peak_amp}*pow(max(0,{angular_norm}),{BEAM_SHARPNESS:.1f})*{radial}\\,0\\,255)"
-    expr_g = f"clip({peak_amp}*pow(max(0,{angular_norm}),{BEAM_SHARPNESS:.1f})*{radial}\\,0\\,255)"
-    expr_b = f"clip({int(peak_amp * 1.05)}*pow(max(0,{angular_norm}),{BEAM_SHARPNESS:.1f})*{radial}\\,0\\,255)"
-
-    vf = f"geq=r='{expr_r}':g='{expr_g}':b='{expr_b}'"
-
-    cmd = [
-        "ffmpeg", "-y",
-        "-f", "lavfi", "-i", f"color=c=black:s={width}x{height}",
-        "-vf", vf,
-        "-frames:v", "1", "-update", "1",
-        out_path,
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True,
-                            encoding="utf-8", errors="replace", timeout=120)
-    if result.returncode != 0:
-        raise RuntimeError(f"Huzme PNG üretilemedi: {result.stderr[-800:]}")
-    return out_path
 
 
 def huzmeli_backdrop_uret(art_path: str, width: int, height: int,
-                          seed: int, cache_dir: Optional[str] = None) -> str:
-    """Backdrop PNG üzerine huzmeleri ekran (screen blend) ile bindirir.
+                          seed: int, cache_dir: str | None = None) -> str:
+    """Blurred art.jpg backdrop + pan/hue → doğrudan döndür.
 
-    Düzenli backdrop + huzme PNG → tek seferlik blend → cache'li sonuç.
-    Pan/hue zaten render sırasında uygulanıyor, huzme bedava hareket ediyor.
+    _backdrop_huzmeli_ cache dosyası oluşturulmuyor — render
+    her seferinde mevcut backdrop'u kullanır. Pan/hue zaten
+    ffmpeg_utils'da uygulanıyor.
 
     Returns:
-        Huzmeli backdrop PNG yolu.
+        Base backdrop PNG yolu.
     """
     from ffmpeg_utils import ensure_art_backdrop
-
-    if cache_dir is None:
-        cache_dir = os.path.dirname(art_path)
-    backdrop_path = os.path.join(cache_dir, f"_backdrop_huzmeli_{width}x{height}.png")
-    if os.path.isfile(backdrop_path):
-        return backdrop_path
-
-    base_backdrop = ensure_art_backdrop(art_path, width, height)
-    # Huzme boyutu TAHMİNİ DEĞİL, GERÇEK: base PNG'nin boyutu "ideal" panned
-    # boyuttan 1px sapabiliyor (gblur/crop yuvarlama) — blend iki girdinin
-    # boyutunun AYNI olmasını şart koşuyor, yoksa "input link parameters do
-    # not match" ile çöker. Huzmeyi base'in GERÇEK boyutunda üretiyoruz.
-    gercek = _video_boyut(base_backdrop) or _panned_size(width, height)
-    bg_w, bg_h = gercek
-    beams_path = os.path.join(cache_dir, f"_beams_{bg_w}x{bg_h}_{seed:08x}.png")
-    huzme_png_uret(beams_path, bg_w, bg_h, seed)
-
-    # Screen blend: backdrop + beams → huzmeli backdrop
-    blend_opacity = BEAM_OPAKLIK
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", base_backdrop,
-        "-i", beams_path,
-        "-filter_complex",
-        f"blend=all_mode=screen:all_opacity={blend_opacity:.2f}",
-        "-frames:v", "1", "-update", "1",
-        backdrop_path,
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True,
-                            encoding="utf-8", errors="replace", timeout=120)
-    if result.returncode != 0:
-        raise RuntimeError(f"Huzmeli backdrop üretilemedi: {result.stderr[-800:]}")
-    return backdrop_path
+    return ensure_art_backdrop(art_path, width, height)
 
 
 def _panned_size(width: int, height: int) -> tuple[int, int]:
