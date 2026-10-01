@@ -121,8 +121,8 @@ BG_CENTER_BRIGHTNESS = 28  # merkezdeki radial falloff parlaklığı (0-255) —
 # (sin/cos ile) kayıyor. Zoom YOK — crop neredeyse ücretsiz ama her karede yeniden
 # ölçekleme (scale/zoom) render'ı ciddi yavaşlatırdı.
 BACKDROP_PAN_MARGIN_RATIO = 0.14  # arka planın hedef boyuttan ne kadar büyük üretileceği
-BACKDROP_PAN_SPEED_X = 0.05  # radyan/saniye, x ekseni salınım hızı
-BACKDROP_PAN_SPEED_Y = 0.035  # radyan/saniye, y ekseni — x'ten farklı, tekrarsız/organik desen için
+BACKDROP_PAN_SPEED_X = 0.12  # radyan/saniye, x ekseni salınım hızı
+BACKDROP_PAN_SPEED_Y = 0.08  # radyan/saniye, y ekseni — x'ten farklı, tekrarsız/organik desen için
 
 # Renk akışı: pan'a ek olarak backdrop'un hue'su zamanla yumuşakça salınıyor.
 # Tam 360° dönmüyor (dar bir açı aralığında ileri-geri akıyor) — şarkının kendi

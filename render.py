@@ -6,7 +6,6 @@ Kullanım:
 """
 
 import argparse
-import traceback
 import hashlib
 import json
 import math
@@ -180,7 +179,7 @@ def find_audio(project_dir: str) -> str | None:
 def load_meta(project_dir: str) -> dict:
     meta_path = os.path.join(project_dir, "meta.json")
     if os.path.isfile(meta_path):
-        with open(meta_path, "r", encoding="utf-8") as f:
+        with open(meta_path, encoding="utf-8") as f:
             return json.load(f)
     return {}
 
@@ -248,7 +247,7 @@ def _gorsel_dil_parametreleri(project_dir: str, audio_path: str, art_path: str,
               f"{flash_per_sn:.2f}/sn (sinif={_gd.enerji_sinifi(bpm)})")
 
     return {
-        "nabiz_expr": nabiz_expr, "grain": grain, "grade": grade,
+        "grain": grain, "grade": grade,
         "seed": seed, "accent": accent, "bpm": bpm,
     }
 
@@ -573,6 +572,7 @@ def render_project(project_dir: str, crf: str | None = None, preset: str | None 
                 except Exception as e:
                     print(f"  UYARI: huzmeli backdrop üretilemedi: {e}")
                     render_dil = None
+            print(f"  DEBUG theme type={type(theme).__name__}, value={theme!r}")
             ffmpeg_utils.render_video(
                 art_path, audio_path, tmp_path, width, height, title, theme,
                 marquee_override=marquee_override,
@@ -588,7 +588,7 @@ def render_project(project_dir: str, crf: str | None = None, preset: str | None 
                 dil_params=render_dil,
                 crf_override=crf, preset_override=preset,
             )
-        except BaseException:
+        except BaseException as e:
             # Hata/iptal durumunda yarım geçici dosyayı bırakma. Süreç
             # ÖLDÜRÜLÜRSE bu dal hiç çalışmaz — sorun değil, o zaman da
             # geride kalan dosyanın adı nihai ad DEĞİL (yukarıdaki nota bak).
@@ -599,7 +599,7 @@ def render_project(project_dir: str, crf: str | None = None, preset: str | None 
             # Hata ayrıntılarını dosyaya yaz (debug için)
             import traceback as _tb
             with open(os.path.join(project_dir, "_render_error.txt"), "w", encoding="utf-8") as _f:
-                _f.write("Render hatası: {}\n".format(type(e).__name__))
+                _f.write(f"Render hatası: {type(e).__name__}\n")
                 _f.write(_tb.format_exc())
             raise
         # ffmpeg 0 ile döndü: dosya artık BÜTÜN, nihai adına atomik geçiş.
