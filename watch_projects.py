@@ -467,6 +467,8 @@ def _check_heartbeat() -> None:
         return  # zaten bir kere uyarıldık, log tazelenene kadar tekrar spam yok
 
     hours = age / 3600
+    if not notify.is_configured():
+        return  # kanal yoksa sessiz gec, spam uretme
     sent = notify.send(
         "FMS: otomasyon sessiz",
         f"auto_process.log {hours:.1f} saattir güncellenmedi — bilgisayar/"
