@@ -35,12 +35,13 @@ def _atomik_metin_yaz(yol: str, metin: str) -> None:
     burasi: atomik yazim deseni bu depoda zaten bir kez cogaltilip sorun
     olmustu, ikinci kez cogaltmanin anlami yok.
     """
-    gecici = yol + ".tmp"
+    yol_str = str(yol)
+    gecici = yol_str + ".tmp"
     with open(gecici, "w", encoding="utf-8") as f:
         f.write(metin)
         f.flush()
         os.fsync(f.fileno())      # icerik diske insin, sadece replace yetmez
-    os.replace(gecici, yol)       # Windows'ta da atomik
+    os.replace(gecici, yol_str)       # Windows'ta da atomik
 
 
 def _atomik_yaz(yol: str, veri: dict) -> None:
@@ -61,7 +62,8 @@ def _atomik_yaz(yol: str, veri: dict) -> None:
     `json.dump`in ORTASINDA olmasi testlerle taklit edilebilsin
     (tests/test_state_io.py). Atomiklik mantigi iki fonksiyonda birebir ayni.
     """
-    gecici = yol + ".tmp"
+    yol_str = str(yol)
+    gecici = yol_str + ".tmp"
     with open(gecici, "w", encoding="utf-8") as f:
         json.dump(veri, f, ensure_ascii=False, indent=2)
         f.flush()
@@ -72,3 +74,8 @@ def _atomik_yaz(yol: str, veri: dict) -> None:
 def durum_yaz(proje: str, veri: dict) -> None:
     """`<proje>/state.json`i atomik yazar (yolu kendi kurar)."""
     _atomik_yaz(os.path.join(proje, "state.json"), veri)
+
+
+def atomic_write(yol: str, veri: dict) -> None:
+    """Tek yetkili atomik state yazicisi (CLAUDE.md kural)."""
+    _atomik_yaz(yol, veri)

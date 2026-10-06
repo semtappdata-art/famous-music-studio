@@ -475,6 +475,9 @@ def _bildir(baslik: str, mesaj: str) -> bool:
     """
     try:
         import notify
+        if not notify.is_configured():
+            print("  bildirim atlandi (kanal yok): %s" % baslik)
+            return False
         notify.send(baslik, mesaj)
         return True
     except Exception as e:
