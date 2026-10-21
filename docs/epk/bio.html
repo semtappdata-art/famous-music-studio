@@ -42,8 +42,17 @@
   footer a { color:var(--accent); }
 </style>
   <script src="i18n.js" defer></script>
+  <link rel="stylesheet" href="../i18n.css">
 </head>
 <body>
+
+<!-- DIL TOGGLE (Madde 31) -->
+<div class="dil-toggle" role="group" aria-label="Dil / Language">
+  <button type="button" data-dil-btn="tr" aria-pressed="true" class="aktif">TR</button>
+  <span class="ayrac" aria-hidden="true"></span>
+  <button type="button" data-dil-btn="en" aria-pressed="false">EN</button>
+</div>
+
 <header>
   <h1 data-i18n="epk.h1">Press Kit (EPK)</h1>
   <p data-i18n="epk.sub2">Famous Music Studio · Medya, promosör ve işbirliği için kaynaklar</p>

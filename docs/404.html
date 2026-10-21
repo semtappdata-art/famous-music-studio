@@ -33,8 +33,17 @@
   .alt a { color: #e94560; }
 </style>
   <script src="i18n.js" defer></script>
+  <link rel="stylesheet" href="i18n.css">
 </head>
 <body>
+
+<!-- DIL TOGGLE (Madde 31) -->
+<div class="dil-toggle" role="group" aria-label="Dil / Language">
+  <button type="button" data-dil-btn="tr" aria-pressed="true" class="aktif">TR</button>
+  <span class="ayrac" aria-hidden="true"></span>
+  <button type="button" data-dil-btn="en" aria-pressed="false">EN</button>
+</div>
+
   <div class="kod">4<span>0</span>4</div>
   <h1 data-i18n="h404.h1">Bu sayfa bulunamadı</h1>
   <p data-i18n="h404.p">Aradığınız sayfa taşınmış ya da hiç var olmamış olabilir.
