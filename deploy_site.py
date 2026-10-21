@@ -126,14 +126,28 @@ def main():
     if args.skip_tests:
         uyari("atlandi (--skip-tests)")
     else:
-        kod, cikti = calistir([sys.executable, "-m", "pytest",
-                                "tests/test_kurallar.py", "tests/test_buyume_onerileri.py",
-                                "-q", "--basetemp=pytest_tmp"])
+        # NEDEN sadece bu dosyalar: tam `pytest tests/` paketi ag + ffmpeg
+        # cagirili testler iceriyor ve dakikalarca asili kalabiliyor
+        # (bluesky_upload/telegram_upload -> requests.get timeout=20).
+        # Buradaki set HIZLIDIR ve uretim kurallarini tamamen kapsar.
+        hizli_testler = [
+            "tests/test_kurallar.py",
+            "tests/test_buyume_onerileri.py",
+            "tests/test_kurtarma_kurallari.py",
+            "tests/test_i18n_pages.py",
+        ]
+        kod, cikti = calistir([sys.executable, "-m", "pytest"] + hizli_testler +
+                              ["-q", "--basetemp=pytest_tmp"])
         if kod != 0:
             hata("Testler basarisiz — deploy iptal")
             print(cikti[-2500:])
             return 1
-        basarili("62 test gecti")
+        gecen = "gecmedi"
+        for satir in cikti.splitlines():
+            if " passed" in satir and "failed" not in satir:
+                gecen = satir.strip()
+                break
+        basarili("kural testleri %s" % gecen)
 
     # --- 2) JS/HTML dengesizligi ---
     adim(2, "JS/HTML yapi kontrolu")
