@@ -37,6 +37,12 @@ audio.wav → generate_cover.py → validate_project.py → render.py → auto_p
 | `validate_project.validate()` | Sağlık + politika (render) | `render.py` her render öncesi |
 | `uyumluluk.kontrol(proje, "render" \| "yukleme")` | Fail-closed politika kapısı | 7 nokta: validate, auto_process, dj_famous, ek_platform_backfill, facebook_backfill, dj_clips.yayina_uygun_mu, dj_clips.kesit_yayinla |
 | `state_io.atomic_write()` | Tek atomik state yazıcısı | **Her state yazan yer** |
+| `generate_cover.py` | Kapak üretimi (16:9 + 9:16) | `auto_process.main()` (render öncesi) |
+| `derleme.py` | Derleme damgası + md5 kopya kapısı | `validate_project.validate()` |
+| `saglik_kontrol.py` | Sağlık kontrolü + proaktif bildirim | `auto_process` finally / haftalık |
+| `weekly_report.py` | Haftalık + günlük izlenme raporu | Haftalık görev / günlük görev |
+| `stock_art.py` | Stok görsel (art) seçimi | `generate_cover.py` |
+| `dj_clips.py` | DJ kesiti üretimi + yayın kısıtları | `dj_famous_process` |
 | `_drain_golden_hour_queue()` | Tamamlama süpürgesi | `auto_process.main()` finally |
 | `gorev_sarmalayici.calistir()` | Görev wrapper (log, nabız, maske) | 3 zamanlayıcı görevi |
 
@@ -122,6 +128,10 @@ python -m pytest -q -p no:cacheprovider --basetemp="C:\pytest_tmp"
 # - gizli_maskele log içinde
 # - yasak AI hashtag yok
 # - kapak iki oran üretiliyor
+# - kritik modüller repoda VAR + import edilebilir (kurtarma_kurallari)
+# - tempo tabanı 52 saat + günlük pencere tüm platformlar
+# - ApprovalResult indekslenebilir + liste tipi
+# - tüm site sayfaları TR/EN (i18n_pages)
 ```
 
 **CI:** GitHub Actions — `windows-latest`, `ruff`, `mypy --strict`, `trufflehog`, `pytest` (basetemp).
@@ -185,6 +195,38 @@ python -m pytest -q -p no:cacheprovider --basetemp="C:\pytest_tmp"
 3. CI geçmeli — geçmezse merge YOK
 
 ---
+
+## 15.5 MODÜL KAYBI KONTROLÜ (2026-10-21)
+
+**Kural:** Repodaki kritik modüller **silinemez**. Silinme ya da kaybolma
+tespit edilirse **derhalde geri getirilir**.
+
+**Neden:** 2026-10-21 incelemesinde, önceki turdaki `git filter-branch` medya
+temizliği sırasında **7 kritik modül + 49 test dosyası (22.270 satır)** yanlışlıkla
+silinmişti. `generate_cover.py`, `weekly_report.py`, `saglik_kontrol.py`,
+`derleme.py`, `stock_art.py`, `dj_clips.py`, `dj_tarama_kontrol.py`.
+Sonuç: "testler geçiyor" izlenimi **yanıltıcıydı** — kaybolan testler kaybolan
+kodu da taşıyamıyor.
+
+**Koruma 1 — `conftest.py` DİNAMİK:** toplanamayan test dosyaları elle liste
+tutmaz; eksik **modül** ve eksik **attribute** (`from X import _yok`) statik
+olarak tespit edilip collection'dan çıkarılır. Yeni test dosyası eklendiğinde
+koruma otomatik devreye girer.
+
+**Koruma 2 — `tests/test_kurtarma_kurallari.py`:** 7 kritik modülün repoda
+**var olduğunu** ve **import edilebildiğini** test eder. Silinirse CI kırılır.
+
+**Koruma 3 — `tests/test_i18n_pages.py`:** yeni site sayfası eklendiğinde
+i18n kontrolü yapılmadıysa test kırılır.
+
+**Kurtarma komutu:**
+```bash
+git checkout <silme-commit>^ -- <dosya.py>
+```
+
+**Sentry opsiyoneldir:** `saglik_kontrol.py` `sentry_sdk`'yı **zorunlu**
+import etmez. `sentry_sdk → eventlet → ssl.wrap_socket` zinciri Python 3.14'te
+patlıyordu ve sağlık kapısı devre dışı kalıyordu.
 
 ## 16. BÜYÜME MOTORU (İzlenme × Kalma × Abone — Kalıcı, Bayraklı)
 

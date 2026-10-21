@@ -52,8 +52,22 @@ LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_proces
 LOCK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".auto_process.lock")
 LOCK_STALE_SECONDS = 4 * 60 * 60
 DAILY_WINDOW_SECONDS = 24 * 60 * 60
-MIN_YAYIN_ARALIGI_SN = 52 * 60 * 60
-UPLOAD_TIMESTAMP_KEYS = ("youtube_uploaded_at", "youtube_shorts_uploaded_at")
+# Tek kaynak: config (CLAUDE.md §14 'Tempo tabanı 52 saat').
+# `yayin_ritmi.sarki_tabani_sn()` bu degeri okur.
+MIN_YAYIN_ARALIGI_SN = config.MIN_YENI_SARKI_ARALIK_SAAT
+# NEDEN (2026-10-21): "Günlük pencere" kuralı "en son ne zaman bir şey
+# PAYLAŞTIK" sorusunu yanitlar. YouTube + Shorts saymak YETMEZ — TikTok ve
+# Instagram'a yapilan bir paylasim da bir paylasimdir. Eksikti: ayni gun
+# 3 farkli platformda paylasim yapilabiliyordu.
+#
+# DIKKAT: `youtube_publish_at` (ZAMANLANMIS yayin) BILerek listede degil —
+# henuz paylasilmis sayilmaz. `YENI_YAYIN_PUBLIC_ANI_KEYS` bunu ayrica tutar.
+UPLOAD_TIMESTAMP_KEYS = (
+    "youtube_uploaded_at",
+    "youtube_shorts_uploaded_at",
+    "tiktok_uploaded_at",
+    "instagram_uploaded_at",
+)
 
 YENI_YAYIN_TIMESTAMP_KEYS = ("youtube_uploaded_at",)
 YENI_YAYIN_PUBLIC_ANI_KEYS = ("youtube_publish_at",)
@@ -262,7 +276,7 @@ def _auto_pace_count(pending: list, ready: list, count: int = 1,
 
     # 5. YENİ ŞARKI kontrolleri
     if batch_yeni:
-        # 5a. 28 saat tabanı
+        # 5a. 52 saat tabanı (şarkı ↔ şarkı, CLAUDE.md §14)
         son_yeni = _son_yeni_yayin_ani(ready)
         if son_yeni is not None:
             taban_kalan = config.MIN_YENI_SARKI_ARALIK_SAAT - (simdi - son_yeni)
@@ -319,11 +333,18 @@ def _auto_pace_count(pending: list, ready: list, count: int = 1,
             return 0
         log(f"  ✓ Geri doldurma için slot müsait ({len(geri_batch)} proje)")
 
-    # 7. Günlük pencere bölüşümü (sadece geri doldurma için)
+    # 7. Günlük pencere bölüşümü
+    # NEDEN (2026-10-21): `and not batch_yeni` koşulu kaldırıldı. Pencere
+    # kuralının sorusu "az önce bir şey PAYLAŞTIK mı" — bu platformdan
+    # bağımsızdır. Geri doldurma da bir paylaşımdır, sayılmalıdır. Koşul
+    # kalırsa aynı gün arka arkaya iki paylaşım yapılabilir hâle geliyordu.
+    #
+    # ÇELİŞKİ YOK: yeni şarkı için 52 saat tabanı (5a) zaten 24 saatten
+    # baskındır; ikisi birlikte daha da sıkı uygulanır, daha gevşek değil.
     pencere_gap = DAILY_WINDOW_SECONDS / (pencere_paydasi or len(pending))
     pencere_kalan = pencere_gap - (simdi - last)
-    if pencere_kalan > 0 and not batch_yeni:
-        log(f"  Günlük pencere: {pencere_kalan/3600:.1f} saat bekleme (geri doldurma)")
+    if pencere_kalan > 0:
+        log(f"  Günlük pencere: {pencere_kalan/3600:.1f} saat bekleme")
         return 0
 
     return min(count, len(batch))

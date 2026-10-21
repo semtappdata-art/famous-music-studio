@@ -723,7 +723,11 @@ TR_TZ = timezone(timedelta(hours=3))
 # YENİ ÜRETİM PLANI (2026-10-05): 6 şarkı/hafta + 3 set/hafta
 HAFTALIK_SARKI_HEDEFI = 6
 HAFTALIK_SET_HEDEFI = 3
-MIN_YENI_SARKI_ARALIK_SAAT = 28 * 3600  # 28 saat
+# NEDEN 52 (2026-10-21): CLAUDE.md §14 'Tempo tabanı = 52 saat minimum ara'.
+# 28 saat degeri CLAUDE.md ile celisiyordu ve `yayin_ritmi`nin ihlal
+# taramasi 52 saati uygularken burasi 28'i uyguluyordu -> tutarsizlik.
+# Duzeltildi: tek kaynak = 52 saat (auto_process.MIN_YAYIN_ARALIGI_SN ile ayni).
+MIN_YENI_SARKI_ARALIK_SAAT = 52 * 3600  # 52 saat
 GUNLUK_MAKS_YENI_SARKI = 2
 YAYIN_GUNLERI = [0, 2, 4]  # Pazartesi, Çarşamba, Cuma
 YAYIN_SAATLERI = [12, 18]  # 12:00, 18:00

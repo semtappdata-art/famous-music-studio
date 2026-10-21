@@ -41,27 +41,37 @@
            border-top:1px solid var(--border); margin-top:auto; }
   footer a { color:var(--accent); }
 </style>
+  <script src="../i18n.js" defer></script>
+  <link rel="stylesheet" href="../i18n.css">
 </head>
 <body>
+
+<!-- DIL TOGGLE (Madde 31) -->
+<div class="dil-toggle" role="group" aria-label="Dil / Language">
+  <button type="button" data-dil-btn="tr" aria-pressed="true" class="aktif">TR</button>
+  <span class="ayrac" aria-hidden="true"></span>
+  <button type="button" data-dil-btn="en" aria-pressed="false">EN</button>
+</div>
+
 <header>
-  <h1>Press Kit (EPK)</h1>
-  <p>Famous Music Studio · Medya, promosör ve işbirliği için kaynaklar</p>
+  <h1 data-i18n="epk.h1">Press Kit (EPK)</h1>
+  <p data-i18n="epk.sub2">Famous Music Studio · Medya, promosör ve işbirliği için kaynaklar</p>
 </header>
 
 <main>
-  <h2>Kısa Biyografi</h2>
-  <p><strong>Famous Music Studio</strong>, Türkiye merkezli; yapay zekâ destekli
-  müzik üretimine odaklanan bir müzik stüdyosudur. Türkçe Pop, R&amp;B, Trap,
-  Arabesk, Elektronik ve Melodic Techno türlerinde özgün parçalar ve DJ setleri
-  üretir. İlk albümü <strong>Gece Masalları</strong> (2026) bu çeşitliliği
-  bir araya getirir: nostaljik arabesk melodileri, modern trap prodüksiyonu ve
-  sinematik melodic techno akışları aynı proje içinde buluşur.</p>
-  <p>Prodüksiyonda yapay zekâ araçları kullanılır; ancak her parçanın söz
-  yazımı, tema kurgusu ve mix kararları stüdyo tarafından elden alınır.
+  <h2 data-i18n="epk.h2_bio">Kısa Biyografi</h2>
+  <p data-i18n="epk.bio_p1"><strong>Famous Music Studio</strong>, Türkiye merkezli; yapay zekâ destekli
+  <span data-i18n="epk.bio_p2">müzik üretimine odaklanan bir müzik stüdyosudur. Türkçe Pop, R&amp;B, Trap,</span>
+  <span data-i18n="epk.bio_p3">Arabesk, Elektronik ve Melodic Techno türlerinde özgün parçalar ve DJ setleri</span>
+  <span data-i18n="epk.bio_p4">üretir. İlk albümü <strong>Gece Masalları</strong> (2026) bu çeşitliliği</span>
+  <span data-i18n="epk.bio_p5">bir araya getirir: nostaljik arabesk melodileri, modern trap prodüksiyonu ve</span>
+  <span data-i18n="epk.bio_p6">sinematik melodic techno akışları aynı proje içinde buluşur.</span></p>
+  <p data-i18n="epk.bio_p7">Prodüksiyonda yapay zekâ araçları kullanılır; ancak her parçanın söz
+  <span data-i18n="epk.bio_p8">yazımı, tema kurgusu ve mix kararları stüdyo tarafından elden alınır.</span>
   Kanal haftalık yeni parça ve DJ setleriyle büyür; <em>DJ Famous</em>
-  kimliğiyle Cuma geceleri yeni şehir konseptli setler yayımlar.</p>
+  <span data-i18n="epk.bio_p10">kimliğiyle Cuma geceleri yeni şehir konseptli setler yayımlar.</span></p>
 
-  <h2>Olgu Dosyası (Fact Sheet)</h2>
+  <h2 data-i18n="epk.h2_fact">Olgu Dosyası (Fact Sheet)</h2>
   <div class="kod">Sanatçı adı      : Famous Music Studio
 Konum           : Türkiye
 Türler          : Turkish Pop, R&amp;B, Trap, Arabesk, Elektronik, Melodic Techno
@@ -78,7 +88,7 @@ Destek          : ko-fi.com/famousmusicstudio
 Booking         : booking@famousmusicstudio.com
 İletişim        : press@famousmusicstudio.com</div>
 
-  <h2>Öne Çıkan Parçalar</h2>
+  <h2 data-i18n="epk.h2_tracks">Öne Çıkan Parçalar</h2>
   <ul>
     <li>Gece Sürüsü — Turkish Pop / R&amp;B</li>
     <li>Kalbim Oynuyor — Turkish Pop</li>
@@ -90,7 +100,7 @@ Booking         : booking@famousmusicstudio.com
     <li>Küllerimden Geç — Arabesk</li>
   </ul>
 
-  <h2>DJ Set Serisi (DJ Famous)</h2>
+  <h2 data-i18n="epk.h2_dj">DJ Set Serisi (DJ Famous)</h2>
   <ul>
     <li>Night Drive — DJ Cut | Cinematic Melodic Techno Mix (21 dk)</li>
     <li>Night Drive — Melodic Techno Mix 2026 | DJ Set (25 dk)</li>
@@ -98,37 +108,37 @@ Booking         : booking@famousmusicstudio.com
     <li>Deep Focus Sessions — organic house / deep focus akışları</li>
   </ul>
 
-  <h2>Kaynak Dosyalar</h2>
+  <h2 data-i18n="epk.h2_files">Kaynak Dosyalar</h2>
   <div class="kartlar">
     <div class="kart">
-      <h3>Biyografi &amp; Olgu Dosyası</h3>
-      <p>Bu sayfadaki metin, <code>bio.md</code> ve <code>bio.json</code> dosyalarıyla aynıdır.</p>
+      <h3 data-i18n="epk.k_bio">Biyografi &amp; Olgu Dosyası</h3>
+      <p data-i18n="epk.k_bio_p">Bu sayfadaki metin, <code>bio.md</code> ve <code>bio.json</code> dosyalarıyla aynıdır.</p>
       <p><a href="bio.md">bio.md indir</a> · <a href="bio.json">bio.json indir</a></p>
     </div>
     <div class="kart">
-      <h3>Fotoğraf Rehberi</h3>
-      <p>Çözünürlük, isimlendirme ve kullanım hakları rehberi.</p>
+      <h3 data-i18n="epk.k_photo">Fotoğraf Rehberi</h3>
+      <p data-i18n="epk.k_photo_p">Çözünürlük, isimlendirme ve kullanım hakları rehberi.</p>
       <p><a href="photos_README.md">Rehberi aç</a></p>
     </div>
     <div class="kart">
-      <h3>Müzik Varlıkları</h3>
-      <p>Stem, instrumental, MIDI ve lisans koşulları.</p>
+      <h3 data-i18n="epk.k_music">Müzik Varlıkları</h3>
+      <p data-i18n="epk.k_music_p">Stem, instrumental, MIDI ve lisans koşulları.</p>
       <p><a href="music_assets_README.md">Rehberi aç</a></p>
     </div>
     <div class="kart">
-      <h3>Booking &amp; İşbirliği</h3>
-      <p>DJ booking, remix, sync lisans ve form şablonu.</p>
+      <h3 data-i18n="epk.k_booking">Booking &amp; İşbirliği</h3>
+      <p data-i18n="epk.k_booking_p">DJ booking, remix, sync lisans ve form şablonu.</p>
       <p><a href="booking.md">Detaylar</a> · <a href="mailto:booking@famousmusicstudio.com">E-posta</a></p>
     </div>
   </div>
 
   <div class="not">
-    <strong>Not:</strong> Basın görselleri ve ses dosyaları için
+    <strong data-i18n="epk.not">Not:</strong> Basın görselleri ve ses dosyaları için
     <a href="mailto:press@famousmusicstudio.com">press@famousmusicstudio.com</a>
     adresine yazın. Talebe 48 saat içinde yanıt verilir.
   </div>
 
-  <h2>İletişim</h2>
+  <h2 data-i18n="epk.h2_contact">İletişim</h2>
   <div class="rota">
     <a href="mailto:press@famousmusicstudio.com">Press</a>
     <a href="mailto:booking@famousmusicstudio.com">Booking</a>
@@ -139,7 +149,7 @@ Booking         : booking@famousmusicstudio.com
 </main>
 
 <footer>
-  <p><a href="./">← Ana sayfa</a> · <a href="privacy.html">Gizlilik</a></p>
+  <p><a href="./" data-i18n="epk.f_ana">← Ana sayfa</a> · <a href="privacy.html" data-i18n="epk.f_privacy">Gizlilik</a></p>
   <p style="margin-top:8px;">Famous Music Studio © 2026</p>
 </footer>
 </body>

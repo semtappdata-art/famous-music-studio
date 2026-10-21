@@ -1,7 +1,7 @@
 """Onay sonucu veri yapısı — uyumluluk kapısı (uyumluluk.py) için."""
 
 from dataclasses import dataclass, field
-from typing import List, Tuple, Iterable
+from typing import List, Iterable
 
 
 @dataclass(frozen=True)
@@ -12,8 +12,8 @@ class ApprovalResult:
     Tuple gibi davranır: `hatalar, uyarilar = result`
     Boolean olarak: `if result:` → hata varsa True (fail-closed)
     """
-    hatalar: Tuple[str, ...] = field(default_factory=tuple)
-    uyarilar: Tuple[str, ...] = field(default_factory=tuple)
+    hatalar: List[str] = field(default_factory=list)
+    uyarilar: List[str] = field(default_factory=list)
     
     def __bool__(self) -> bool:
         """Fail-closed: hata varsa True (yani 'kapanır')."""
@@ -23,6 +23,16 @@ class ApprovalResult:
         """Tuple unpacking: hatalar, uyarilar = result"""
         return iter((self.hatalar, self.uyarilar))
     
+    def __getitem__(self, indeks):
+        """Tuple gibi indeksleme: result[0] -> hatalar, result[1] -> uyarilar.
+        
+        NEDEN (2026-10-21): `uyumluluk.kontrol()` ApprovalResult donduruyor
+        ama eski cagri noktalari (ve 25+ test) `kontrol(proje, asama)[0]`
+        seklinde indeksliyordu. `__iter__` tek basina `r[0]` desteklemez.
+        Bu ekleme geriye uyumludur: hem `a, b = r` hem `r[0]` calisir.
+        """
+        return (self.hatalar, self.uyarilar)[indeks]
+    
     def __len__(self) -> int:
         return len(self.hatalar) + len(self.uyarilar)
     
@@ -30,25 +40,25 @@ class ApprovalResult:
     def from_lists(cls, hatalar: Iterable[str], uyarilar: Iterable[str]) -> "ApprovalResult":
         """Listelerden ApprovalResult oluştur."""
         return cls(
-            hatalar=tuple(hatalar),
-            uyarilar=tuple(uyarilar),
+            hatalar=list(hatalar),
+            uyarilar=list(uyarilar),
         )
     
     @classmethod
     def ok(cls, *uyarilar: str) -> "ApprovalResult":
         """Hatasız başarı sonucu."""
-        return cls(hatalar=(), uyarilar=tuple(uyarilar))
+        return cls(hatalar=[], uyarilar=list(uyarilar))
     
     @classmethod
     def fail(cls, *hatalar: str) -> "ApprovalResult":
         """Hatalı sonuç."""
-        return cls(hatalar=tuple(hatalar), uyarilar=())
+        return cls(hatalar=list(hatalar), uyarilar=[])
     
     def merge(self, other: "ApprovalResult") -> "ApprovalResult":
         """İki sonucu birleştir (hatalar birikir)."""
         return ApprovalResult(
-            hatalar=self.hatalar + other.hatalar,
-            uyarilar=self.uyarilar + other.uyarilar,
+            hatalar=list(self.hatalar) + list(other.hatalar),
+            uyarilar=list(self.uyarilar) + list(other.uyarilar),
         )
     
     def to_dict(self) -> dict:

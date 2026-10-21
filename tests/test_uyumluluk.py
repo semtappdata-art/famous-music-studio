@@ -64,7 +64,9 @@ def test_state_json_yoksa_hata_yok(kok):
     }
     p = _proje(kok, "Yeni", durum=None, meta=meta)
     hatalar, _ = uyumluluk.kontrol(p, "yukleme")
-    assert hatalar == ()
+    # NOT: liste beklenir (`uyumluluk.kontrol` icinde hatalar/uyarilar listeler).
+    # Diger testler de `== []` karsilastirmasi kullanir.
+    assert hatalar == []
 
 
 def test_telif_kaydi_varsa_hata(kok):

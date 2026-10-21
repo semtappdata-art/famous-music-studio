@@ -185,6 +185,25 @@ eklendi.
     Postwire   : https://app.postwire.io
     Runway / Higgsfield / Stability / Luma / Pika / Kling / MiniMax / Haiper
 
+- **Madde 31 (2026-10-21) — TÜM SAYFALAR TR/EN:** `site/privacy.html`,
+  `site/epk/bio.html`, `site/404.html` artık `i18n.js` + `i18n.css` ile
+  iki dilli; ana sayfada 96 olan anahtar sayısı **177**'ye çıktı (TR/EN eşit).
+  - Ortak `site/i18n.css` (toggle tek kaynak) + her sayfaya dil toggle
+  - `i18n.js` artık `textContent` değil **güvenli HTML** yazıyor:
+    `<strong>/<a>/<br>` render edilir, `&amp;` çözülür;
+    `script`/`on*`/`javascript:` temizlenir (XSS koruması)
+  - `epk/bio.html` `../i18n.js` kullanır (alt klasör yolu)
+  - Test: `tests/test_i18n_pages.py` (yeni sayfa eklenince kırılır)
+- **Madde 32 (2026-10-21) — MODÜL KURTARMA:** 7 kritik modül
+  (`generate_cover`, `derleme`, `saglik_kontrol`, `stock_art`, `dj_clips`,
+  `dj_tarama_kontrol`, `weekly_report`) + 49 test dosyası (22.270 satır)
+  `git filter-branch` sırasında silinmişti → geri getirildi.
+  - `conftest.py` artık **dinamik**: eksik modül VE eksik attribute tespiti
+  - `tests/test_kurtarma_kurallari.py` (15 kural) regresyon koruması
+  - Düzeltilen uyumsuzluklar: sentry opsiyonel, `find_highlights` (çoklu),
+    `ApprovalResult.__getitem__`, tempo tabanı 28→**52 saat** (CLAUDE.md §14),
+    `UPLOAD_TIMESTAMP_KEYS` 4 platform, günlük pencere yeni şarkıda da
+
 - Detayli rehber: `site/DEPLOY.md`.
 
 ### Kural notları (29) — Topluluk

@@ -1,0 +1,52 @@
+/* Famous Music Studio — Ortak dil toggle stili (Madde 31)
+ *
+ * index.html icinde gomuluydu; diger sayfalarda (privacy, epk, 404)
+ * kullanilamiyordu. Ortak dosyaya tasindi — her sayfa <link rel="stylesheet"
+ * href="i18n.css"> ile baglar.
+ *
+ * Kullanim:
+ *   <div class="dil-toggle" role="group" aria-label="Dil / Language">
+ *     <button type="button" data-dil-btn="tr" aria-pressed="true" class="aktif">TR</button>
+ *     <span class="ayrac" aria-hidden="true"></span>
+ *     <button type="button" data-dil-btn="en" aria-pressed="false">EN</button>
+ *   </div>
+ */
+.dil-toggle {
+  position: fixed;
+  top: 16px; right: 16px;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(26, 26, 46, 0.92);
+  border: 1px solid #2a2a3e;
+  border-radius: 100px;
+  padding: 4px;
+  backdrop-filter: blur(8px);
+}
+.dil-toggle button {
+  background: transparent;
+  border: none;
+  color: #9a9aa8;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 13px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.dil-toggle button:hover { color: #e0e0e0; }
+.dil-toggle button.aktif {
+  background: #e94560;
+  color: #fff;
+}
+.dil-toggle .ayrac {
+  width: 1px; height: 16px;
+  background: #2a2a3e;
+  margin: 0 2px;
+}
+@media (max-width: 640px) {
+  .dil-toggle { top: 10px; right: 10px; padding: 3px; }
+  .dil-toggle button { padding: 5px 10px; font-size: 0.72rem; }
+}
