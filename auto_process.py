@@ -40,6 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload"))
 
 import config
+import render
 import yayin_ritmi
 from git_sync import auto_pull, push_path
 
@@ -129,6 +130,47 @@ def _release_lock() -> None:
 def _has_any(project_dir: str, names: list) -> bool:
     return any(os.path.isfile(os.path.join(project_dir, n)) for n in names)
 
+
+# =============================================================================
+# RENDER ÇIKTILARI + BÜTÜNLÜK (2026-10-21)
+# =============================================================================
+
+# Render'ın ürettiği çıktı dosyaları (output/ altında).
+# Tek kaynak: config.PLATFORMS — render.py aynı listeyi kullanıyor.
+RENDER_OUTPUTS = ["%s.mp4" % ad for ad in config.PLATFORMS]
+
+
+def _is_rendered(proje: str) -> bool:
+    """Bu projenin TÜM render çıktıları bütün mü? (yarım render "hazır" sayılmasın)
+
+    ARIZA: ffmpeg `-y` ile doğrudan nihai dosyaya yazdığı için yarıda kesilen
+    render diskte "yarım ama VAR" bir .mp4 bırakıyor. `isfile` True diyor,
+    bir sonraki koşu render'ı ATLIYOR ve BOZUK video altı platforma yükleniyor.
+
+    ÖLÇÜT: `render.video_butun_mu()` (0 bayt kapısı + ffprobe süre doğrulaması)
+    — mantık KOPYALANMAZ.
+
+    ffprobe YOKSA (binary bulunamadı): "çalıştıramadım" ile "çalıştırdım,
+    dosya bozuk" AYRI şeyler. Zarif düşüş: dosya varlığına güvenilir ve
+    koşu başına **TEK** uyarı yazılır (sessizce sertleşmek de kötü —
+    ffprobe'suz makinede her koşuda yeniden render boru hattını sonsuz
+    render'a sokardı).
+    """
+    output_dir = os.path.join(proje, "output")
+    for ad in RENDER_OUTPUTS:
+        yol = os.path.join(output_dir, ad)
+        if not os.path.isfile(yol):
+            return False
+        if render._FFPROBE_YOK_UYARILDI:
+            # Zarif düşüş zaten devrede: dosya VAR -> hazır say
+            continue
+        once = render._FFPROBE_YOK_UYARILDI
+        if not render.video_butun_mu(yol):
+            return False
+        if not once and render._FFPROBE_YOK_UYARILDI:
+            log("  UYARI: ffprobe bulunamadı — render bütünlüğü DOĞRULANAMIYOR, "
+                "dosya varlığına güveniliyor.")
+    return True
 
 def _load_state(project_dir: str) -> dict:
     state_path = os.path.join(project_dir, "state.json")

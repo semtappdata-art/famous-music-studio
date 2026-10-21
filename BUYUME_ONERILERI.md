@@ -204,6 +204,31 @@ eklendi.
     `ApprovalResult.__getitem__`, tempo tabanı 28→**52 saat** (CLAUDE.md §14),
     `UPLOAD_TIMESTAMP_KEYS` 4 platform, günlük pencere yeni şarkıda da
 
+- **Madde 33 (2026-10-21) — TRUE-PEAK LIMITER + RENDER BÜTÜNLÜĞÜ:**
+  YouTube algoritması için iki kritik özellik uygulandı (eksik API listesi
+  20 → 11'e indi):
+  - `ffmpeg_utils.ses_olc()` — ebur128 ölçümü (LUFS/TP/LRA). Değerler
+    **"Summary:" bloğundan** okunur (ara satırlar anlamsız). `-inf` (sessiz
+    dosya) geçersiz sayılır.
+  - `ffmpeg_utils.limiter_filtresi()` — `aresample=192000,alimiter=limit=-2dB:
+    level=false:attack=5:release=50,aresample=48000`. **loudnorm/dynaudnorm
+    KULLANILMAZ** (tek geçişli loudnorm pompalamaya yol açar).
+  - `render.limiter_gerekli()` — `tp > SES_TP_ESIK_DBTP` **KATI** (-1.0 dBTP);
+    tam sınırda limiter alınmaz. Ölçüm yoksa limiter **GİRMEZ** (iyileştirme,
+    kapı değil) ama UYARI **görünür**.
+  - Ölçüm **MD5 ile önbelleklenir**; `state.json` **yoksa oluşturulmaz**,
+    bozuksa **üstüne yazılmaz**.
+  - `render.video_butun_mu()` — 0 bayt kapısı + ffprobe süre doğrulaması.
+    "Çalıştıramadım" (FileNotFoundError → zarif düşüş, **tek** uyarı) ile
+    "çalıştırdım, bozuk" (RuntimeError → bozukluk kanıtı) **ayrı**.
+  - `auto_process._is_rendered()` / `dj_famous_process._is_rendered()` —
+    iki üretim girişinde **aynı ölçüt** (kopya mantık yok).
+  - `render.find_highlight()` — **HİÇBİR ZAMAN tanımlı değilmişti**,
+    `render_project` çağırıyordu → NameError. Artık var (enerji penceresi).
+  - `render.PARCALI_SONEK` + `os.replace` — ffmpeg **nihai adı hiç görmüyor**;
+    yarım render diskte `youtube_16x9.mp4` adıyla kalmıyor.
+  - Test: `tests/test_kurtarma_kurallari.py` (+10 kural)
+
 - Detayli rehber: `site/DEPLOY.md`.
 
 ### Kural notları (29) — Topluluk

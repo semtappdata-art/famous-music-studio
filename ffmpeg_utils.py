@@ -12,6 +12,7 @@ kenarlar arka planla dolar (düz siyah değil).
 """
 
 import os
+import re
 import subprocess
 
 import config
@@ -32,6 +33,118 @@ def get_audio_duration(audio_path: str) -> float:
         return float(result.stdout.strip())
     except ValueError:
         raise RuntimeError(f"ffprobe geçersiz süre döndürdü: {result.stdout!r}")
+
+
+# =============================================================================
+# SES ÖLÇÜMÜ (2026-10-21) — true-peak limiter için
+# =============================================================================
+
+def _sayi_bul(metin: str, desen: str):
+    """Desene uyan ilk sayıyı döner; yoksa None."""
+    m = re.search(desen, metin)
+    if not m:
+        return None
+    try:
+        return float(m.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
+def ses_olc(audio_path: str) -> dict:
+    """(lufs, tp, lra) ölçümü — ffmpeg `ebur128=peak=true` çıktısından.
+
+    NEDEN: Suno çıktıları zaten −12,9 … −14,8 LUFS; genel normalizasyon
+    (loudnorm) bir şey kazandırmaz, üstelik TEK geçişli loudnorm pompalayabilir.
+    Gerçek risk TRUE PEAK: iki ses −0,5 dBTP'de ve AAC 192k kodlaması tepesi
+    taşırabilir. Bu yüzden yalnızca ÖLÇÜLEN TP eşiği aşarsa limiter girer.
+
+    DÖNER: {"lufs": float, "tp": float, "lra": float}
+    HATA: ffmpeg başarısız / özet yok / değer okunamaz (sessiz dosya: -inf)
+
+    ÖNEMLİ: Değerler "Summary:" BLOĞUNDAN okunur. ebur128 her kare için
+    satır yazar (I: -70.0 LUFS gibi) — ilk satırdakiler ANLAMLI DEĞİLDİR.
+    """
+    cmd = [
+        "ffmpeg", "-hide_banner", "-nostats",
+        "-i", audio_path,
+        "-filter_complex", "ebur128=peak=true",
+        "-f", "null", "-",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True,
+                            encoding="utf-8", errors="replace")
+    if result.returncode != 0:
+        raise RuntimeError(
+            "ffmpeg ses ölçemedi (ebur128): %s" % (result.stderr or "").strip()[:200])
+    cikti = result.stderr or ""
+    if "Summary:" not in cikti:
+        raise RuntimeError("ebur128 özeti yok — ses ölçülemedi")
+    ozet = cikti.split("Summary:", 1)[1]
+
+    lufs = _sayi_bul(ozet, r"I:\s*(-?[\d.]+)\s*LUFS")
+    lra = _sayi_bul(ozet, r"LRA:\s*(-?[\d.]+)\s*LU")
+    tp = _sayi_bul(ozet, r"Peak:\s*(-?[\d.]+|-inf|-infinity)\s*dBFS")
+    if lufs is None or tp is None or lra is None:
+        raise RuntimeError("ebur128 özeti okunamadı (lufs=%s tp=%s lra=%s)"
+                           % (lufs, tp, lra))
+    # -inf (SESSIZ dosya) gecerli bir olcum DEGIL: float('-inf') parse
+    # olur ama limiter karari verilemez. Sessiz ses -> olcum basarisiz.
+    import math as _math
+    if not (_math.isfinite(lufs) and _math.isfinite(tp) and _math.isfinite(lra)):
+        raise RuntimeError("ebur128 özeti sonlu değil (lufs=%s tp=%s lra=%s) — "
+                           "ses sessiz veya ölçülemedi" % (lufs, tp, lra))
+    return {"lufs": lufs, "tp": tp, "lra": lra}
+
+
+def limiter_filtresi() -> str:
+    """True-peak limiter ses filtresi (ffmpeg `-af` değeri).
+
+    NEDEN 4× AŞIRI ÖRNEKLEME: Düz (1×) alimiter, AAC 192k kodlaması
+    SONRASI true peak'i KÖTÜLEŞTİRİR (resampler yeni tepe üretir). 4× aşırı
+    örneklemeli alimiter ise TP'yi −1 dBTP'nin altına gerçekten çeker —
+    katalog dosyalarıyla elle ölçülmüştür (bkz. config.SES_LIMITER_*).
+
+    NEDEN `level=false`: limiter SADECE tepeyi kıstırır. Seviye/loudness
+    DEĞİŞMEZ — "loudnorm" veya "dynaudnorm" KULLANILMAZ (tek geçişli
+    loudnorm pompalar; loudness hedefi zaten Suno çıktısında doğru).
+
+    Zincir: 192 kHz'e çık → limiter → 48 kHz'e geri in.
+    """
+    tavan = getattr(config, "SES_LIMITER_TAVAN_DBFS", -2.0)
+    asiri = getattr(config, "SES_LIMITER_ASIRI_ORNEKLEME", 192000)
+    cikis = getattr(config, "SES_LIMITER_CIKIS_HZ", 48000)
+    return ("aresample=%d,alimiter=limit=%sdB:level=false:attack=5:release=50,"
+            "aresample=%d" % (asiri, tavan, cikis))
+
+
+def bastaki_sessizlik(audio_path: str) -> float:
+    """Sesi başındaki sessiz bölgenin süresi (saniye). Bulunamazsa 0.0.
+
+    NEDEN: Şarkının başı sessizse cold-open (ön tat) boşluğa denk gelir ve
+    izleyici ilk saniyelerde ses duymaz. Ölçüm, sessizliğin gerçekten
+    BAŞTA olduğunu doğrular (ortadaki sessizlik sayılmaz).
+    """
+    cmd = [
+        "ffmpeg", "-hide_banner", "-nostats",
+        "-i", audio_path,
+        "-af", "silencedetect=noise=-50dB:d=0.3",
+        "-f", "null", "-",
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True,
+                                encoding="utf-8", errors="replace")
+    except (OSError, ValueError):
+        return 0.0
+    if result.returncode != 0:
+        return 0.0
+    cikti = result.stderr or ""
+    bas = _sayi_bul(cikti, r"silence_start:\s*(-?[\d.]+)")
+    if bas is None or bas > 0.5:
+        # Sessizlik ya yok ya da başta değil (ortada bir sessizlik)
+        return 0.0
+    bit = _sayi_bul(cikti, r"silence_end:\s*([\d.]+)")
+    if bit is None:
+        return 0.0
+    return max(0.0, bit - bas)
 
 
 def _escape_drawtext(text: str) -> str:
@@ -721,6 +834,7 @@ def render_video(
     beat_times: list | None = None,
     beat_period: float = 0.0,
     speed_ramp: dict | None = None,
+    ses_limiter: bool = False,
 ) -> None:
     """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
     kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için.
@@ -738,7 +852,10 @@ def render_video(
     (YouTube "Beat sync" karşılığı: görseller ritme kilitlenir).
     speed_ramp verilirse YouTube "speed ramp" efekti uygulanır (yavaş
     başla, beat'te hızlan) — video ve ses aynı zaman eşlemesini kullanır.
-    AI beyanı videoya YAKILMAZ — sadece YouTube metadata/açıklamasında."""
+    AI beyanı videoya YAKILMAZ — sadece YouTube metadata/açıklamasında.
+    ses_limiter=True ise true-peak limiter zinciri eklenir (AAC 192k sonrası
+    taşan tepe koruması). Varsayılan KAPALI: mevcut tüm çağıranların komutu
+    BİREBİR aynı kalır."""
     full_duration = get_audio_duration(audio_path)
     if start_time is not None and end_time is not None:
         duration = min(end_time, full_duration) - start_time
@@ -857,6 +974,23 @@ def render_video(
 
     if chapters_file and os.path.isfile(chapters_file):
         cmd += ["-i", chapters_file]
+    # --- TRUE PEAK LIMITER (2026-10-21) ----------------------------------
+    # NEDEN burada: limiter zinciri SES zincirinin SONUNA eklenir. Ses
+    # filter_complex'te DEĞİLSE (audio_map == "0:a") doğrudan `-af` olarak
+    # verilir; filter_complex'te ses varsa (cold-open / speed ramp) `-af`
+    # ÇAKIŞIR ("Filtergraph ... both -filter_complex and -af") — o durumda
+    # limiter ses zincirinin sonuna filter_complex içinde eklenir.
+    limiter = limiter_filtresi() if ses_limiter else None
+    if limiter and audio_map == "0:a":
+        cmd_extra_audio = ["-af", limiter]
+        audio_map = "0:a"
+    elif limiter:
+        filter_complex += ";[%s]%s[alim]" % (
+            audio_map.strip("[]"), limiter)
+        audio_map = "[alim]"
+    else:
+        cmd_extra_audio = []
+
     cmd += [
         "-filter_complex", filter_complex,
         "-map", "[vfinal]",
@@ -870,6 +1004,11 @@ def render_video(
         "-b:a", config.AUDIO_BITRATE,
         "-shortest",
     ]
+    if cmd_extra_audio:
+        # `-af` çıktı zincirine aittir: kodlayıcı seçeneklerinden SONRA,
+        # dosya adından ÖNCE gelmeli.
+        idx = cmd.index("-shortest")
+        cmd = cmd[:idx] + cmd_extra_audio + cmd[idx:]
     if chapters_file and os.path.isfile(chapters_file):
         # Find the chapters input index
         if is_shorts:

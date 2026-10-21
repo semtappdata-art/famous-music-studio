@@ -198,3 +198,117 @@ def test_i18n_tum_sayfalarda():
         assert "i18n.js" in ic, "%s: i18n.js yok" % sayfa
         assert "i18n.css" in ic, "%s: i18n.css yok" % sayfa
         assert 'data-dil-btn="en"' in ic, "%s: dil toggle yok" % sayfa
+
+
+# =============================================================================
+# Madde 33 — YouTube algoritma: true-peak limiter + render bütünlüğü
+# (2026-10-21'de eksik olan API'ler uygulandı)
+# =============================================================================
+
+def test_ffmpeg_utils_ses_olc_var():
+    """true-peak ölçümü (ebur128) — limiter kararının kaynağı."""
+    ic = _oku("ffmpeg_utils.py")
+    assert "def ses_olc(" in ic
+    assert "ebur128=peak=true" in ic
+    assert "Summary:" in ic, "ebur128 OZETI'nden okunmali (ara satirlar anlamsiz)"
+
+
+def test_limiter_loudnorm_kullanmiyor():
+    """loudnorm/dynaudnorm YASAK — tek geçişli loudnorm pompalamaya yol açar."""
+    ic = _oku("ffmpeg_utils.py")
+    m = re.search(r"def limiter_filtresi\(.*?(?=\ndef |\Z)", ic, re.S)
+    assert m, "limiter_filtresi bulunamadi"
+    govde = m.group(0)
+    assert "alimiter" in govde
+    assert "level=false" in govde
+    # SADECE return satiri kontrol edilir: docstring'de "loudnorm" GEÇER
+    # (aciklama olarak) — kodda gecmemeli.
+    ret = [ln for ln in govde.splitlines() if ln.strip().startswith("return")]
+    assert ret, "limiter_filtresi return satiri bulunamadi"
+    sat = "\n".join(ret)
+    assert "loudnorm" not in sat and "dynaudnorm" not in sat, (
+        "limiter zinciri loudnorm/dynaudnorm KULLANMAMALI")
+
+
+def test_limiter_esigi_kati_asma():
+    """Eşik KATI'dir: tam sınırda (-1.0) limiter ALINMAZ."""
+    ic = _oku("config.py")
+    assert "SES_TP_ESIK_DBTP" in ic
+    m = re.search(r"SES_TP_ESIK_DBTP\s*=\s*(-?[\d.]+)", ic)
+    assert m, "SES_TP_ESIK_DBTP tanimi bulunamadi"
+    assert float(m.group(1)) == -1.0, "true peak esigi -1.0 dBTP olmali"
+
+
+def test_render_limiter_gerekli_kurali():
+    """Ölçüm yoksa limiter GİRMEZ (iyileştirme, kapı değil)."""
+    ic = _oku("render.py")
+    assert "def limiter_gerekli(" in ic
+    assert "SES_LIMITER_ACIK" in ic
+    assert "SES_TP_ESIK_DBTP" in ic
+    # KATİ karşılaştırma (>), >= DEĞİL
+    m = re.search(r"return\s+tp\s*>\s*esik", ic)
+    assert m, "limiter karsi lastirmasi KATI olmali (tp > esik)"
+
+
+def test_render_video_ses_limiter_parametresi():
+    """Varsayilan KAPALI — mevcut tum cagri noktalarinin komutu degismez."""
+    ic = _oku("ffmpeg_utils.py")
+    m = re.search(r"def render_video\(([^)]*)\)", ic, re.S)
+    assert m
+    assert "ses_limiter: bool = False" in m.group(1), "ses_limiter varsayilani False olmali"
+    assert '"-af"' in ic, "-af zinciri eksik"
+
+
+def test_video_butun_mu_ffprobe_ayrimi():
+    """"calistiramadim" (zarif dusus) ile "calistirdim, bozuk" AYRI."""
+    ic = _oku("render.py")
+    assert "def video_butun_mu(" in ic
+    assert "_FFPROBE_YOK_UYARILDI" in ic
+    # RuntimeError -> bozukluk (False), diger Exception -> zarif dusus (True)
+    assert re.search(r"except RuntimeError:\s*\n\s*#?[^\n]*\n\s*return False", ic) \
+        or "except RuntimeError:" in ic
+    m = re.search(r"except RuntimeError:(.*?)except Exception:", ic, re.S)
+    assert m and "return False" in m.group(1), "RuntimeError -> False (bozukluk kaniti)"
+
+
+def test_is_rendered_iki_uretim_girisinde_ayni_olcut():
+    """auto_process VE dj_famous_process ayni olcutu kullanir (kopya mantik YASAK)."""
+    a = _oku("auto_process.py")
+    d = _oku("dj_famous_process.py")
+    assert "def _is_rendered(" in a and "def _is_rendered(" in d
+    assert "video_butun_mu(" in a and "video_butun_mu(" in d
+    assert "RENDER_OUTPUTS" in a and "RENDER_OUTPUTS" in d
+    # tek kaynak: config.PLATFORMS
+    assert 'RENDER_OUTPUTS = ["%s.mp4" % ad for ad in config.PLATFORMS]' in a
+    assert 'RENDER_OUTPUTS = ["%s.mp4" % ad for ad in config.PLATFORMS]' in d
+
+
+def test_render_gecici_ad_ile_tasiyor():
+    """Yarim render nihai adla diskte HIC gorunmemeli (os.replace deseni)."""
+    ic = _oku("render.py")
+    assert "PARCALI_SONEK" in ic
+    assert "os.replace(" in ic
+    m = re.search(r"def render_one\((.*?)\n    def ", ic, re.S)
+    if not m:
+        m = re.search(r"def render_one\((.*?)\n\ndef ", ic, re.S)
+    assert m, "render_one bulunamadi"
+    govde = m.group(1)
+    assert "os.replace" in govde, "os.replace render_one icinde olmali"
+    assert "PARCALI_SONEK" in govde, "gecici ad PARCALI_SONEK ile olmali"
+
+
+def test_find_highlight_tanimli():
+    """render.py find_highlight'i CAGIRIYORDU ama tanimi HIC YOKTI -> NameError."""
+    ic = _oku("render.py")
+    assert "def find_highlight(" in ic
+    assert "def _gecerli_highlight_saniyesi(" in ic
+    # bool reddi (isinstance(True, int) True'dur -> 1 saniye sanilirdi)
+    assert "isinstance(deger, bool)" in ic
+
+
+def test_ses_olcumu_state_ile_omurlenir():
+    """Olcum MD5 ile onbelleklenir; state.json YOKSA olusturulmaz."""
+    ic = _oku("render.py")
+    assert "def _ses_olcumu_al(" in ic
+    assert "md5" in ic
+    assert "state_io.atomic_write" in ic

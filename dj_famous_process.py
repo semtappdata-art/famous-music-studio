@@ -135,9 +135,34 @@ def _has_any(project_dir: str, names: list) -> bool:
     return any(os.path.isfile(os.path.join(project_dir, n)) for n in names)
 
 
+# Render ciktilari (tek kaynak: config.PLATFORMS — auto_process ile ayni)
+RENDER_OUTPUTS = ["%s.mp4" % ad for ad in config.PLATFORMS]
+
 def _is_rendered(project_dir: str) -> bool:
+    """Bu setin TÜM render çıktıları bütün mü? (yarım render "hazır" sayılmasın)
+
+    ARIZA: ffmpeg `-y` ile doğrudan nihai dosyaya yazdığı için yarıda kesilen
+    render diskte "yarım ama VAR" bir .mp4 bırakıyor; `isfile` True diyor,
+    bir sonraki koşu render'ı ATLIYOR ve BOZUK set platformlara yükleniyor.
+
+    ÖLÇÜT: `render.video_butun_mu()` (0 bayt kapısı + ffprobe süre
+    doğrulaması) — mantık KOPYALANMAZ. ffprobe yoksa zarif düşüş
+    (dosya varlığına güven) + koşu başına TEK uyarı.
+    """
     output_dir = os.path.join(project_dir, "output")
-    return all(os.path.isfile(os.path.join(output_dir, n)) for n in RENDER_OUTPUTS)
+    for ad in RENDER_OUTPUTS:
+        yol = os.path.join(output_dir, ad)
+        if not os.path.isfile(yol):
+            return False
+        if render_module._FFPROBE_YOK_UYARILDI:
+            continue
+        once = render_module._FFPROBE_YOK_UYARILDI
+        if not render_module.video_butun_mu(yol):
+            return False
+        if not once and render_module._FFPROBE_YOK_UYARILDI:
+            log("  UYARI: ffprobe bulunamadı — render bütünlüğü DOĞRULANAMIYOR, "
+                "dosya varlığına güveniliyor.")
+    return True
 
 
 def _load_state(project_dir: str) -> dict:

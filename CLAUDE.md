@@ -43,6 +43,10 @@ audio.wav → generate_cover.py → validate_project.py → render.py → auto_p
 | `weekly_report.py` | Haftalık + günlük izlenme raporu | Haftalık görev / günlük görev |
 | `stock_art.py` | Stok görsel (art) seçimi | `generate_cover.py` |
 | `dj_clips.py` | DJ kesiti üretimi + yayın kısıtları | `dj_famous_process` |
+| `ffmpeg_utils.ses_olc()` | True-peak ölçümü (ebur128) | `render.render_project` |
+| `ffmpeg_utils.limiter_filtresi()` | TP limiter zinciri | `render.render_project` |
+| `render.limiter_gerekli()` | Limiter kararı (kapı değil) | `render.render_project` |
+| `render.video_butun_mu()` | Render bütünlüğü (0 bayt + ffprobe) | `auto_process._is_rendered` |
 | `_drain_golden_hour_queue()` | Tamamlama süpürgesi | `auto_process.main()` finally |
 | `gorev_sarmalayici.calistir()` | Görev wrapper (log, nabız, maske) | 3 zamanlayıcı görevi |
 
@@ -223,6 +227,19 @@ koruma otomatik devreye girer.
 
 **Koruma 2 — `tests/test_kurtarma_kurallari.py`:** 7 kritik modülün repoda
 **var olduğunu** ve **import edilebildiğini** test eder. Silinirse CI kırılır.
+
+**Koruma 5 — MADDE 33 (true-peak limiter + render bütünlüğü, 2026-10-21):**
+- `SES_TP_ESIK_DBTP = -1.0` ve karşılaştırma **KATİ** (`tp > esik`).
+- Limiter zinciri **loudnorm/dynaudnorm KULLANMAZ** (tek geçişli loudnorm
+  pompalamaya yol açar; Suno çıktıları zaten doğru LUFS'ta).
+- `aresample=192000 → alimiter → aresample=48000` (4× aşırı örnekleme:
+  düz alimiter AAC 192k sonrası TP'yi **kötüleştirir**).
+- Ölçüm **hatası** render'ı **durdurmaz** (iyileştirme, kapı değil) ama
+  **görünür** biçimde UYARI verir.
+- Render çıktısı **geçici adla** yazılır + `os.replace` ile taşınır:
+  yarım render nihai adla diskte **hiç** görünmez.
+- `video_butun_mu`: "çalıştıramadım" (→ zarif düşüş, tek uyarı) ile
+  "çalıştırdım, bozuk" (→ bozukluk kanıtı) **ayrıdır**.
 
 **Koruma 4 — `EKSIK_OZELLIKLER.md`:** `python eksik_ozellik_raporu.py`
 testlerin beklediği ama repoda olmayan **20 API'yi** listeler (geliştirme

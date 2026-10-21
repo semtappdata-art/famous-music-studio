@@ -6,13 +6,16 @@ Kullanım:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import config
 import ffmpeg_utils
+import state_io
 import validate_project
 from audio_highlight import find_highlight
 from upload.social_text import build_caption, hashtag, pick_subset, _dil_havuzlari
@@ -20,6 +23,215 @@ from upload.social_text import build_caption, hashtag, pick_subset, _dil_havuzla
 COVER_NAMES = ["cover.jpg", "cover.jpeg", "cover.png"]
 ART_NAMES = ["art.jpg", "art.jpeg", "art.png"]
 AUDIO_NAMES = ["audio.wav", "audio.mp3", "audio.m4a"]
+
+
+# =============================================================================
+# SES LIMITER (2026-10-21) — true peak koruması
+# =============================================================================
+
+def limiter_gerekli(olcum: dict | None) -> bool:
+    """Ölçülen true peak eşiği AŞIYORSA limiter gerekir.
+
+    KURAL: `tp > SES_TP_ESIK_DBTP` (KATİ, "aşıyorsa"). Tam sınırda (-1.0)
+    limiter ALINMAZ — sınırda zaten güvenli.
+
+    ÖLÇÜM YOKSA limiter GİRMEZ: limiter bir iyileştirmedir, kapı değil.
+    ffmpeg ölçemezse eski davranış (limitersiz) sürer — ama GÖRÜNÜR biçimde
+    (log'da UYARI), "sessizce limitersiz" değil.
+
+    NEDEN loudnorm DEĞİL: Suno çıktıları zaten doğru LUFS'ta; tek geçişli
+    loudnorm pompalar. Gerçek risk AAC 192k sonrası taşan true peak.
+    """
+    if not getattr(config, "SES_LIMITER_ACIK", True):
+        return False
+    if not olcum:
+        return False
+    tp = olcum.get("tp")
+    if tp is None:
+        return False
+    try:
+        tp = float(tp)
+    except (TypeError, ValueError):
+        return False
+    esik = getattr(config, "SES_TP_ESIK_DBTP", -1.0)
+    return tp > esik
+
+
+# =============================================================================
+# HIGHLIGHT (2026-10-21) — enerjili bölge tespiti
+# =============================================================================
+
+def find_highlight(audio_path: str, target_duration: float) -> tuple[float, float]:
+    """(baslangic_saniyesi, bitis_saniyesi) — sesin EN enerjili bolgesi.
+
+    NEDEN burada: `render_project` bu fonksiyonu CagirIYORDU ama tanimi
+    HIC OLMAYDI -> meta.json'da highlight_start/highlight_end yoksa
+    NameError ile render coktu. Yani "dikey hook / en enerjili chorus
+    kesiti" (CLAUDE.md §6) hic uygulanmiyordu.
+
+    UYGULAMA: `audio_highlight.find_highlight` — RMS enerjisinin kayan
+    ortalamasindan en yuksek ortalamali pencereyi secer.
+    """
+    try:
+        from audio_highlight import find_highlight as _fh
+    except Exception as e:
+        print(f"  UYARI: highlight tespiti yapilamadi ({e}) — kesit varsayilan kullanilacak")
+        return 0.0, float(target_duration)
+    try:
+        bas, bit = _fh(audio_path, float(target_duration))
+    except Exception as e:
+        print(f"  UYARI: highlight tespiti basarisiz ({e}) — kesit varsayilan kullanilacak")
+        return 0.0, float(target_duration)
+    return float(bas), float(bit)
+
+
+def _gecerli_highlight_saniyesi(deger) -> bool:
+    """highlight_start/end gecerli bir saniye degeri mi?
+
+    REDDETILENLER: negatif sayilar, string'ler, None, ve BOOL.
+    NEDEN bool reddi: Python'da `isinstance(True, int)` True'dur — `True`
+    1 saniye olarak kabul edilirdi, oysa meta.json'da `true` yazilmissa
+    bu bir hatadir.
+    """
+    if isinstance(deger, bool):
+        return False
+    if not isinstance(deger, (int, float)):
+        return False
+    try:
+        return float(deger) >= 0.0
+    except (TypeError, ValueError):
+        return False
+
+
+# =============================================================================
+# SES ÖLÇÜMÜ + UYARI (2026-10-21)
+# =============================================================================
+
+_OTURILAN_UYARILAR = set()
+
+
+def _ses_uyarisi(anahtar: str, mesaj: str) -> None:
+    """Ses ölçümü uyarısı — GÖRÜNÜR biçimde log'la, aynı uyarıyı tekrarlama.
+
+    NEDEN `_uyarilanlar` sözlüğü değil de küme: anahtar proje+konu.
+    Limiter bir iyileştirmedir, kapı DEĞİLDİR — ölçüm arizası render'i
+    DURDURMAZ, sadece limitersiz devam eder ve bunu görünür biçimde söyler.
+    """
+    if anahtar in _OTURILAN_UYARILAR:
+        return
+    _OTURILAN_UYARILAR.add(anahtar)
+    print(f"  UYARI: {mesaj}")
+
+
+def _ses_dosyasi_md5(yol: str) -> str:
+    """Ses dosyasının MD5'i (ölçüm önbelleği için)."""
+    h = hashlib.md5()
+    try:
+        with open(yol, "rb") as f:
+            for parca in iter(lambda: f.read(1 << 20), b""):
+                h.update(parca)
+    except OSError:
+        return ""
+    return h.hexdigest()
+
+
+def _ses_olcumu_al(project_dir: str, audio_path: str) -> dict:
+    """Ses ölçümünü al — aynı ses için ÖNBELLEKLENİR (MD5).
+
+    NEDEN önbellek: her render'da ffmpeg ebur128 calistirmak zaman kaybi
+    (10+ sn) ve ayni sonucu verir. Ses DEGISTIGINDE yeniden olculur.
+
+    DONDURDUGU: {"lufs", "tp", "lra"} — state'e yazilan kayit ayrica
+    "olcum_at" ve "md5" icerir.
+    """
+    md5 = _ses_dosyasi_md5(audio_path)
+    state_yolu = os.path.join(project_dir, "state.json")
+    state = None
+    if os.path.isfile(state_yolu):
+        try:
+            state = state_io.load_state(state_yolu)
+        except Exception:
+            state = None          # bozuk state -> HATA (ustune yazilmayacak)
+    if state:
+        kayit = state.get("ses_olcum")
+        if isinstance(kayit, dict) and kayit.get("md5") and kayit.get("md5") == md5:
+            if kayit.get("lufs") is not None and kayit.get("tp") is not None:
+                return {"lufs": kayit["lufs"], "tp": kayit["tp"],
+                        "lra": kayit.get("lra")}
+    olcum = ffmpeg_utils.ses_olc(audio_path)
+    if state is not None:
+        # Mevcut anahtarlar KORUNUR (telif_araliklari gibi kapilar silinmez).
+        yeni = dict(state)
+        yeni["ses_olcum"] = {
+            "lufs": olcum.get("lufs"), "tp": olcum.get("tp"), "lra": olcum.get("lra"),
+            "olcum_at": time.time(), "md5": md5,
+        }
+        try:
+            state_io.atomic_write(state_yolu, yeni)
+        except Exception as e:
+            print(f"  UYARI: ses ölçümü state'e yazılamadı ({e})")
+    return olcum
+
+
+# =============================================================================
+# BÜTÜNLÜK KONTROLÜ (2026-10-21) — yarım render "hazır" sayılmasın
+# =============================================================================
+
+# ffprobe CALISTIRILAMADI (binary yok) — koşu başına TEK uyarı için bayrak.
+# AYRIŞTIRMA: "çalıştıramadım" (FileNotFoundError -> zarif düşüş) ile
+# "çalıştırdım, dosya bozuk" (RuntimeError -> bozukluk kanıtı) FARKLI şeyler.
+_FFPROBE_YOK_UYARILDI = False
+
+
+def video_butun_mu(dosya: str) -> bool:
+    """Bu video TAM render edilmiş mi? (0 bayt + ffprobe süre doğrulaması)
+
+    ARIZA: ffmpeg `-y` ile DOĞRUDAN nihai dosyaya yazdığı için yarıda
+    kesilen render diskte "yarım ama VAR" bir .mp4 bırakıyor. `isfile` True
+    diyor, bir sonraki koşu render'ı ATLIYOR ve BOZUK video altı platforma
+    yükleniyor — log'da yalnızca "Zaten render edilmiş" yazdığı için ariza
+    SESSİZ kalıyor.
+
+    ÖLÇÜTLER (sırayla):
+      1) Dosya yok           -> False
+      2) 0 bayt              -> False (ffprobe'a HİÇ girmemeli — en sık vaka)
+      3) ffprobe "bozuk/yarım" -> False (moov atom yok -> rc!=0 -> RuntimeError)
+      4) ffprobe ÇALIŞTIRILAMIYOR (binary yok) -> True (zarif düşüş: dosyaya güven)
+      5) Süre 0              -> False
+      6) Süre > 0            -> True
+
+    NOT: ffprobe mantığı KOPYALANMADI — `ffmpeg_utils.get_audio_duration`
+    kullanılır (depoda ikinci bir ffprobe kopyası açmak belgelenmiş hata sınıfı).
+    """
+    if not dosya or not os.path.isfile(dosya):
+        return False
+    try:
+        if os.path.getsize(dosya) == 0:
+            return False
+    except OSError:
+        return False
+    try:
+        sure = ffmpeg_utils.get_audio_duration(dosya)
+    except RuntimeError:
+        # ffprobe dosyayı OKUYAMADI (yarım mp4: 'moov atom not found')
+        return False
+    except Exception:
+        # ffprobe CALISTIRILAMADI (binary yok, izin hatası) — zarif düşüş:
+        # mevcut dosyaya güven, render'ı yeniden çalıştırma.
+        global _FFPROBE_YOK_UYARILDI
+        _FFPROBE_YOK_UYARILDI = True
+        return True
+    try:
+        return float(sure) > 0.0
+    except (TypeError, ValueError):
+        return False
+
+
+# Render ciktisinin GECICI ad soneki. ffmpeg NİHAİ adı HİÇ görmemeli —
+# gördüğü an yarım dosya o adla diskte var olabilir demektir (arızanın kökü:
+# "youtube_16x9.mp4" adıyla yarım dosya kalıyor, sonraki koşu onu "hazır"
+# sayıyordu). Çıktı geçici adla yazılır, iş bitince os.replace ile taşınır.
+PARCALI_SONEK = ".parcali"
 
 
 def find_cover(project_dir: str) -> str | None:
@@ -173,24 +385,70 @@ def render_project(project_dir: str) -> bool:
     output_dir = os.path.join(project_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
 
+    # HIGHLIGHT (2026-10-21) — meta.json'daki highlight_start KESIT BASLANGICI
+    # olarak kullanilir (Sadece start verilmis olabilir: end = start + sure).
+    # Gecersiz deger (negatif, string, bool) -> UYARI + otomatik tespite dusulur.
     highlight_start = meta.get("highlight_start")
     highlight_end = meta.get("highlight_end")
-    if (highlight_start is None) != (highlight_end is None):
+    if highlight_start is not None and not _gecerli_highlight_saniyesi(highlight_start):
+        print(f"  UYARI: meta.json'daki highlight_start geçersiz ({highlight_start!r}) "
+              "— otomatik tespite geçiliyor.")
+        highlight_start = None
+    if highlight_end is not None and not _gecerli_highlight_saniyesi(highlight_end):
+        print(f"  UYARI: meta.json'daki highlight_end geçersiz ({highlight_end!r}) "
+              "— otomatik tespite geçiliyor.")
+        highlight_end = None
+    if highlight_start is None and highlight_end is not None:
         print(
             "  UYARI: meta.json'da highlight_start/highlight_end alanlarından sadece biri "
             "belirtilmiş, ikisi de gerekli — göz ardı edilip otomatik tespite geçiliyor."
         )
-        highlight_start = highlight_end = None
-    if highlight_start is None or highlight_end is None:
+        highlight_end = None
+    if highlight_start is not None and highlight_end is None:
+        # YALNIZ START: kesit oradan baslar, sure config.HIGHLIGHT_DURATION
+        highlight_end = float(highlight_start) + float(config.HIGHLIGHT_DURATION)
+        print(f"  highlight (meta.json'dan): {highlight_start:.1f}s - {highlight_end:.1f}s")
+    elif highlight_start is not None:
+        print(f"  highlight (meta.json'dan): {highlight_start:.1f}s - {highlight_end:.1f}s")
+    else:
         if config.HIGHLIGHT_PLATFORMS:
             print("  highlight otomatik tespit ediliyor (en yoğun bölüm)...")
             highlight_start, highlight_end = find_highlight(audio_path, config.HIGHLIGHT_DURATION)
             print(f"  highlight: {highlight_start:.1f}s - {highlight_end:.1f}s")
-    else:
-        print(f"  highlight (meta.json'dan): {highlight_start:.1f}s - {highlight_end:.1f}s")
+
+    # --- SES ÖLÇÜMÜ + TRUE PEAK LIMITER (2026-10-21) --------------------
+    # Ölçüm bir İYİLEŞTİRME, kapı değil: ölçüm arizasında render DURMAZ,
+    # limitersiz devam eder ve bunu GÖRÜNÜR biçimde söyler (UYARI).
+    ses_olcum = None
+    try:
+        ses_olcum = _ses_olcumu_al(project_dir, audio_path)
+    except Exception as e:
+        # UYARI hem EKRANA (görünür olmalı — "sessizce limitersiz" olmaz)
+        # hem _ses_uyarisi'ya (tekrar engeli + test kancası) yazılır.
+        _mesaj = ("limiter ses ölçümü yapılamadı (%s) — limitersiz devam ediliyor."
+                  % (str(e)[:120]))
+        print("  UYARI: %s" % _mesaj)
+        _ses_uyarisi(
+            "ses_olcumu:%s" % os.path.basename(os.path.normpath(project_dir)),
+            "UYARI: %s" % _mesaj,
+        )
+    ses_limiter = limiter_gerekli(ses_olcum)
+    if ses_limiter:
+        print(f"  Ses limiteri AÇIK: true peak {ses_olcum.get('tp')} dBTP "
+              f"(eşik {config.SES_TP_ESIK_DBTP} dBTP)")
+    elif ses_olcum:
+        print(f"  Ses limiteri kapalı: true peak {ses_olcum.get('tp')} dBTP "
+              f"(eşik {config.SES_TP_ESIK_DBTP} dBTP)")
 
     # Chapter dosyasını üret (tracklist varsa)
-    full_duration = ffmpeg_utils.get_audio_duration(audio_path)
+    # NEDEN toleranslı: sure YALNIZCA chapter için gerekli. ffprobe okuyamazsa
+    # (bozuk/placeholder ses dosyası) render'i DÜŞÜRMEMELİ — chapter'siz
+    # render hâlâ geçerlidir. Ölçüm hatası limiter gibi bir iyileştirmedir.
+    try:
+        full_duration = ffmpeg_utils.get_audio_duration(audio_path)
+    except Exception as e:
+        full_duration = 0.0
+        print(f"  UYARI: ses süresi okunamadı ({str(e)[:100]}) — chapter süresi 0 kabul ediliyor.")
     # BÜYÜME cold-open (madde 6): uzun videonun VE Shorts'ün başına highlight'tan
     # kısa ön tat eklenir; chapter'lar (uzun video için) aynı süre kadar ötelenir.
     cold_open_cfg = None
@@ -289,8 +547,12 @@ def render_project(project_dir: str) -> bool:
         # CTA ve End Card: hem uzun format hem Shorts için (Shorts'ta da görünebilir)
         platform_end_card = end_card_cfg
         platform_cta = cta_cfg
-        ffmpeg_utils.render_video(
-            art_path, audio_path, output_path, width, height, title, theme,
+        # GECICI AD + os.replace (2026-10-21) — yarım render nihai adla
+        # diskte ASLA görünmez. Render ölürse geçici dosya da silinir.
+        gecici_yol = output_path + PARCALI_SONEK
+        try:
+            ffmpeg_utils.render_video(
+            art_path, audio_path, gecici_yol, width, height, title, theme,
             marquee_override=marquee_override,
             start_time=highlight_start if use_highlight else None,
             end_time=highlight_end if use_highlight else None,
@@ -305,7 +567,18 @@ def render_project(project_dir: str) -> bool:
             beat_times=beat_times if is_shorts else None,
             beat_period=beat_period if is_shorts else 0.0,
             speed_ramp=speed_ramp if is_shorts else None,
-        )
+            # TRUE PEAK LIMITER (2026-10-21) — olcum eşiği aşıyorsa uygulanır.
+            ses_limiter=ses_limiter,
+            )
+            os.replace(gecici_yol, output_path)
+        except Exception:
+            # Render ÖLDÜ: geçici çıktıyı temizle, nihai ad hiç oluşmasın.
+            try:
+                if os.path.isfile(gecici_yol):
+                    os.remove(gecici_yol)
+            except OSError:
+                pass
+            raise
         return platform_key, output_path
 
     ok = True

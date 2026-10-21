@@ -68,6 +68,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 import state_io
 
+# Enerji penceresi tespiti (tek kaynak: audio_highlight). Daha önce bu
+# import eksikti -> modul ozelligi `dj_clips.find_highlights` olarak
+# YOKTU; testler bu kancaya takiliyordu.
+from audio_highlight import find_highlights
+
 # --- sabitler -------------------------------------------------------------
 
 KLIP_SURESI_SN = 30.0        # her kesitin uzunluğu
