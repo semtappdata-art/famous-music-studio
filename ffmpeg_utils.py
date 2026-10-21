@@ -322,6 +322,7 @@ def _build_filter_complex(
     width: int, height: int, duration: float, title: str | None, has_art: bool,
     theme_key: str, marquee_override: str | None = None,
     end_card_text: str | None = None, cta_text: str | None = None,
+    hud_index: int | None = None, intro_index: int | None = None,
 ) -> str:
     fps = config.FPS
     bg_pan_w, bg_pan_h = _panned_size(width, height)
@@ -502,7 +503,39 @@ def _build_filter_complex(
     bar_expr = f"{empty}+{filled - empty}*lt(X\\,W*T/{duration:.3f})"
     parts.append(f"color=c=black:s={bar_w}x{pbar_h}:d={duration:.3f}:rate={fps}[barbg]")
     parts.append(f"[barbg]geq=r='{bar_expr}':g='{bar_expr}':b='{bar_expr}'[bar]")
-    parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[vfinal]")
+    # --- HUD (2026-10-21) --------------------------------------------------
+    # NEDEN `blend=all_mode=screen`: HUD yarı saydam bir katman; 'screen'
+    # blend altındaki görüntünün parlaklığını korur (alfa karışımı
+    # koyulaştırırdı).
+    if hud_index is not None:
+        parts.append(
+            f"[{hud_index}:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},format=rgba,colorchannelmixer=aa=0.35[hud_img]")
+        parts.append(f"[{pre_label}][hud_img]blend=all_mode=screen[vhud]")
+        pre_label = "vhud"
+
+    # --- AÇILIŞ KAPAK INTRO'SU (2026-10-21) ------------------------------
+    # NEDEN: izleyicinin kaybı büyük ölçüde videonun ilk %1-%3'ünde
+    # (≈2.-7. saniye) oluyor. Açılışta kapak intro'su o boşluğu kapatır.
+    #
+    # ETİKET DENGESİ: her ara etiket TAM OLARAK iki kez geçmeli (bir
+    # üretim, bir tüketim) — dengesizlik ffmpeg'de "Cannot find a matching
+    # stream" hatası verir.
+    if intro_index is not None:
+        bekleme = float(getattr(config, "INTRO_KAPAK_BEKLEME", 0.9))
+        cozulme = float(getattr(config, "INTRO_KAPAK_COZULME", 1.5))
+        intro_sure = bekleme + cozulme
+        parts.append(
+            f"[{intro_index}:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},format=rgba,"
+            f"trim=0:{intro_sure:.3f},setpts=PTS-STARTPTS,"
+            f"fade=t=in:st=0:d={min(0.3, bekleme):.3f}:alpha=1,"
+            f"fade=t=out:st={bekleme:.3f}:d={cozulme:.3f}:alpha=1[intro]")
+        # İlerleme çubuğu -> [vpre]; kapak en ÜSTTE (çubuğun da üstünü örtüyor)
+        parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[vpre]")
+        parts.append("[vpre][intro]overlay=0:0:eof_action=pass[vfinal]")
+    else:
+        parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[vfinal]")
 
     return ";".join(parts)
 
@@ -843,6 +876,8 @@ def render_video(
     beat_period: float = 0.0,
     speed_ramp: dict | None = None,
     ses_limiter: bool = False,
+    intro_cover: str | None = None,
+    backdrop_video: str | None = None,
 ) -> None:
     """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
     kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için.
@@ -863,12 +898,29 @@ def render_video(
     AI beyanı videoya YAKILMAZ — sadece YouTube metadata/açıklamasında.
     ses_limiter=True ise true-peak limiter zinciri eklenir (AAC 192k sonrası
     taşan tepe koruması). Varsayılan KAPALI: mevcut tüm çağıranların komutu
-    BİREBİR aynı kalır."""
+    BİREBİR aynı kalır.
+    intro_cover verilirse (ve config.INTRO_KAPAK açık ise) video BAŞINDA
+    kapak intro'su gösterilir ve başındaki sessizlik kırpılır — izleyici
+    kaybının yoğunlaştığı ilk %1-%3 (yaklaşık 2.-7. saniye) aralığı
+    kapatılır."""
     full_duration = get_audio_duration(audio_path)
+    # --- BAŞTAKİ SESSİZLİK KIRPMA (2026-10-21) --------------------------
+    # NEDEN: sesin başında sessizlik varsa izleyici ilk saniyelerde HİÇ ses
+    # duymaz — videonun en kritik kısmı (ilk 2-7 sn) sessiz geçer. Ölçüm
+    # arızalıysa kırpma YAPILMAZ (0.0) — hiçbir zaman şarkının başını yemez.
+    kirp = 0.0
+    if getattr(config, "INTRO_SESSIZLIK_KIRP", True):
+        try:
+            kirp = float(bastaki_sessizlik(audio_path))
+        except Exception:
+            kirp = 0.0
+    if kirp < 0:
+        kirp = 0.0
+    bas_effective = (start_time or 0.0) + kirp
     if start_time is not None and end_time is not None:
-        duration = min(end_time, full_duration) - start_time
+        duration = max(0.0, min(end_time, full_duration) - start_time - kirp)
     else:
-        duration = full_duration
+        duration = max(0.0, full_duration - kirp)
     preview_dur = 0.0
     if cold_open is not None and start_time is None and end_time is None:
         high_start, high_end, preview_sn = cold_open
@@ -885,6 +937,21 @@ def render_video(
     # plan dict'ini kullanır.
     ramp_video = ""
     ramp_audio = ""
+    # --- INTRO GİRDİ (input indeksi) ---------------------------------------
+    # Input sırası: 0=audio, 1=mask/canvas, 2=canvas, 3=art, 4=intro, 5=chapters
+    # (intro kapağı chapters'TAN ÖNCE eklenir; index'ler buna göre)
+    n_inputs = 1 + (1 if is_shorts else 2) + (1 if has_art else 0)
+    intro_index = None
+    if intro_cover and os.path.isfile(intro_cover):
+        intro_sure = (float(getattr(config, "INTRO_KAPAK_BEKLEME", 0.9))
+                      + float(getattr(config, "INTRO_KAPAK_COZULME", 1.5)))
+        # Çok kısa parçada kapak video'nun yarısından fazlasını kaplardı -> atla
+        if duration > 0 and intro_sure * 2 <= duration:
+            intro_index = n_inputs
+            n_inputs += 1
+        else:
+            print(f"  Intro atlandı: kapak {intro_sure:.1f} sn, video {duration:.1f} sn "
+                  "(çok kısa)")
     base_input = "[1:v]" if is_shorts else "[2:v]"
     if is_shorts and speed_ramp:
         ramp_video, base_label = _build_speed_ramp_video(
@@ -900,7 +967,7 @@ def render_video(
     else:
         # Normal 16:9 filter with card
         mask_path = ensure_card_mask()
-        filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key, marquee_override, end_card_text=end_card_text, cta_text=cta_text)
+        filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key, marquee_override, end_card_text=end_card_text, cta_text=cta_text, intro_index=intro_index)
         pre_label = "vfinal"  # _build_filter_complex returns filter ending with [vfinal]
     
     # DJ Sahne Modu efektleri (DJ setler için) — hem Shorts hem normal için
@@ -937,7 +1004,8 @@ def render_video(
         pre_label = "vfinal"
 
     
-    audio_input = ["-ss", f"{start_time:.3f}"] if start_time is not None else []
+    audio_input = (["-ss", f"{bas_effective:.3f}"]
+                   if (start_time is not None or kirp > 0) else [])
     cmd = [
         "ffmpeg", "-y",
         *audio_input, "-i", audio_path,
@@ -980,6 +1048,9 @@ def render_video(
     if ramp_video:
         filter_complex = ramp_video + ";" + filter_complex
 
+    if intro_index is not None:
+        # Kapak: döngü ile tüm video boyunca tekrarlanır
+        cmd += ["-loop", "1", "-i", intro_cover]
     if chapters_file and os.path.isfile(chapters_file):
         cmd += ["-i", chapters_file]
     # --- TRUE PEAK LIMITER (2026-10-21) ----------------------------------
@@ -1020,11 +1091,12 @@ def render_video(
     if chapters_file and os.path.isfile(chapters_file):
         # Find the chapters input index
         if is_shorts:
-            # inputs: 0=audio, 1=canvas, 2=chapters
-            chapters_idx = 2
+            # inputs: 0=audio, 1=canvas, [2=intro], 2/3=chapters
+            chapters_idx = 2 + (1 if intro_index is not None else 0)
         else:
-            # inputs: 0=audio, 1=mask, 2=canvas, 3=art (if has_art), 4/3=chapters
-            chapters_idx = 4 if has_art else 3
+            # inputs: 0=audio, 1=mask, 2=canvas, 3=art (if has_art),
+            #         [4=intro], 4/5=chapters
+            chapters_idx = (4 if has_art else 3) + (1 if intro_index is not None else 0)
         cmd += ["-map_metadata", f"{chapters_idx}", "-map_chapters", f"{chapters_idx}"]
     cmd.append(output_path)
 

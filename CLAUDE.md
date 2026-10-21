@@ -51,6 +51,8 @@ audio.wav → generate_cover.py → validate_project.py → render.py → auto_p
 | `render.find_intro_cover()` | Açılış kapak seçimi (oran) | `render.render_project` |
 | `youtube_upload.upload_clip()` | Kesit yükleme (ertelenmiş golden hour) | `dj_clips.kesit_yayinla` |
 | `dj_clips.kesit_yayinla()` | Kesit yayını + tekrar engeli | `dj_clips.supur` |
+| `render.find_intro_cover()` | Açılış kapak seçimi (oran) | `render.render_project` |
+| `ffmpeg_utils.bastaki_sessizlik()` | Baştaki sessizlik ölçümü | `ffmpeg_utils.render_video` |
 | `_drain_golden_hour_queue()` | Tamamlama süpürgesi | `auto_process.main()` finally |
 | `gorev_sarmalayici.calistir()` | Görev wrapper (log, nabız, maske) | 3 zamanlayıcı görevi |
 
@@ -244,6 +246,15 @@ koruma otomatik devreye girer.
   yarım render nihai adla diskte **hiç** görünmez.
 - `video_butun_mu`: "çalıştıramadım" (→ zarif düşüş, tek uyarı) ile
   "çalıştırdım, bozuk" (→ bozukluk kanıtı) **ayrıdır**.
+
+**Koruma 6 — MADDE 35 (açılış intro'su, 2026-10-21):**
+- Filtre grafiğinde **her ara etiket tam 2 kez** geçmeli (üretim + tüketim).
+  Dengesizlik ffmpeg'de "Cannot find a matching stream" verir ve TÜM
+  render'ları çöker — `tests/test_acilis_intro.py` bunu render'dan ÖNCE yakalar.
+- `intro_index=None` iken filtre grafiği **birebir** eskisi gibi olmalı
+  (mevcut tüm render'ların çıktısı değişmemeli).
+- Baştaki sessizlik kırpılırken **PAY** (0.12 sn) bırakılır ve **MAKS**
+  (3 sn) tavanı uygulanır — bozuk ölçüm nakaratı yutmasın.
 
 **Koruma 4 — `EKSIK_OZELLIKLER.md`:** `python eksik_ozellik_raporu.py`
 testlerin beklediği ama repoda olmayan **20 API'yi** listeler (geliştirme

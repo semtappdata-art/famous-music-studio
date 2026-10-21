@@ -246,6 +246,22 @@ eklendi.
     düşülür, `INTRO_SESSIZLIK_MAKS` (3 sn) tavanı; bozuk dosyada **0.0**
   - `render.find_intro_cover()` — orana göre `cover.png` / `cover_vertical.png`
 
+- **Madde 35 (2026-10-21) — AÇILIŞ INTRO'SU (kapak + sessizlik kırpma):**
+  İzleyici kaybının büyük kısmı videonun **ilk %1-%3'ünde** (≈2.-7. saniye)
+  yoğunlaşıyor (ölçüm: `olcum_temel_cizgi.json`). Bu aralık artık kapatıldı:
+  - `ffmpeg_utils.bastaki_sessizlik()` — `PAY` (0.12 sn) düşülür, `MAKS` (3 sn)
+    tavanı; ölçüm arızalıysa **kırpma yapılmaz** (şarkının başı yemez)
+  - `render.find_intro_cover()` — orana göre `cover.png` / `cover_vertical.png`
+  - `ffmpeg_utils._build_filter_complex(intro_index, hud_index)` — kapak
+    dalı: `trim → fade(in) → fade(out, alpha=1) → overlay(eof_action=pass)`.
+    **Etiket dengesi** zorunlu (her ara etiket tam 2 kez) — dengesizlik
+    ffmpeg'de "Cannot find a matching stream" verir ve TÜM render'ları öldürür
+  - Çok kısa parçada kapak video'nun yarısından fazlasını kaplayacağı için
+    **intro atlanır** (`intro_sure * 2 <= duration`)
+  - `render_video(intro_cover=...)` + başındaki sessizliğin `-ss` ile kesilmesi
+  - `backdrop_video` — DJ setlerinde (backdrop.mp4) Shorts highlight
+    **kullanılmaz**, tam ekran long format çalışır (2026-09-24 kararı)
+
 - Detayli rehber: `site/DEPLOY.md`.
 
 ### Kural notları (29) — Topluluk

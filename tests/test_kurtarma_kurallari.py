@@ -312,3 +312,85 @@ def test_ses_olcumu_state_ile_omurlenir():
     assert "def _ses_olcumu_al(" in ic
     assert "md5" in ic
     assert "state_io.atomic_write" in ic
+
+
+# =============================================================================
+# Madde 35 — Açılış intro'su (kapak + sessizlik kırpma) + backdrop
+# (2026-10-21'de uygulanan filtre grafiği değişikliği)
+# =============================================================================
+
+def test_bastaki_sessizlik_pay_ve_maks():
+    """Ölçülen sessizlikten PAY (0.12) düşülür, MAKS (3.0) tavanı uygulanır."""
+    ic = _oku("config.py")
+    assert "INTRO_SESSIZLIK_PAY" in ic
+    assert "INTRO_SESSIZLIK_MAKS" in ic
+    f = _oku("ffmpeg_utils.py")
+    m = re.search(r"def bastaki_sessizlik\(.*?(?=\ndef |\Z)", f, re.S)
+    assert m, "bastaki_sessizlik bulunamadi"
+    govde = m.group(0)
+    assert "INTRO_SESSIZLIK_PAY" in govde, "PAY uygulanmiyor"
+    assert "INTRO_SESSIZLIK_MAKS" in govde, "MAKS uygulanmiyor"
+
+
+def test_intro_filter_grafi_etiket_dengesi_kurali():
+    """Filtre grafiğinde her ara etiket TAM OLARAK iki kez geçmeli.
+
+    NEDEN: dengesiz etiket ffmpeg'de "Cannot find a matching stream" hatası
+    verir — TÜM render'lar çöker. Test bunu render'dan ÖNCE yakalar.
+    """
+    ic = _oku("ffmpeg_utils.py")
+    m = re.search(r"def _build_filter_complex\(.*?(?=\ndef |\Z)", ic, re.S)
+    assert m, "_build_filter_complex bulunamadi"
+    govde = m.group(0)
+    assert "intro_index" in govde
+    assert "hud_index" in govde
+    assert "eof_action=pass[vfinal]" in govde, "intro overlay [vfinal] uretmeli"
+    assert "blend=all_mode=screen" in govde, "HUD blend'i screen olmali"
+
+
+def test_intro_olmadan_graf_degismez():
+    """intro_index=None iken filtre grafiği BİREBİR eskisi gibi olmalı."""
+    ic = _oku("ffmpeg_utils.py")
+    m = re.search(r"def _build_filter_complex\(.*?(?=\ndef |\Z)", ic, re.S)
+    govde = m.group(0)
+    # intro dalı ayrı bir `if intro_index is not None:` bloğunda
+    assert "if intro_index is not None:" in govde
+    # ve eski yol korunmuş olmalı
+    assert '[vfinal]"' in govde or "overlay={bar_margin}:{bar_y}[vfinal]" in govde
+
+
+def test_intro_cok_kisa_parcada_atlanir():
+    """Kapak video'nun yarısından fazlasını kaplarsa intro ÇİZİLMEZ."""
+    f = _oku("ffmpeg_utils.py")
+    m = re.search(r"def render_video\(.*?(?=\ndef |\Z)", f, re.S)
+    assert m
+    govde = m.group(0)
+    assert "intro_sure * 2 <= duration" in govde, "cok kisa parcada intro atlanmali"
+    assert "intro_cover" in govde
+
+
+def test_sessizlik_kirpma_render_da_uygulanir():
+    """Baştaki sessizlik render'da da kesilir (-ss ile)."""
+    f = _oku("ffmpeg_utils.py")
+    m = re.search(r"def render_video\(.*?(?=\ndef |\Z)", f, re.S)
+    govde = m.group(0)
+    assert "bastaki_sessizlik(audio_path)" in govde
+    assert "bas_effective" in govde
+
+
+def test_find_intro_cover_orana_gore():
+    """Dikey çıktı -> cover_vertical.png, yatay -> cover.png."""
+    ic = _oku("render.py")
+    assert "def find_intro_cover(" in ic
+    assert "cover_vertical.png" in ic
+    assert "cover.png" in ic
+
+
+def test_backdrop_varken_shorts_highlight_kapalı():
+    """DJ setlerinde (backdrop.mp4) Shorts highlight KULLANILMAZ."""
+    ic = _oku("render.py")
+    assert "backdrop.mp4" in ic
+    assert "backdrop_video" in ic
+    m = re.search(r"use_highlight\s*=\s*\(.*?\)\s*\n", ic, re.S)
+    assert m and "not backdrop_video" in m.group(0), (
+        "backdrop varken use_highlight False olmali")

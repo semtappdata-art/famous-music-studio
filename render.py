@@ -405,6 +405,12 @@ def render_project(project_dir: str) -> bool:
     output_dir = os.path.join(project_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
 
+    # DJ set arka plan videosu (varsa Shorts highlight kullanılmaz)
+    backdrop_video = None
+    _backdrop = os.path.join(project_dir, "backdrop.mp4")
+    if os.path.isfile(_backdrop):
+        backdrop_video = _backdrop
+
     # HIGHLIGHT (2026-10-21) — meta.json'daki highlight_start KESIT BASLANGICI
     # olarak kullanilir (Sadece start verilmis olabilir: end = start + sure).
     # Gecersiz deger (negatif, string, bool) -> UYARI + otomatik tespite dusulur.
@@ -558,7 +564,11 @@ def render_project(project_dir: str) -> bool:
     def render_one(platform_key, width, height):
         output_path = os.path.join(output_dir, f"{platform_key}.mp4")
         print(f"  -> {platform_key} ({width}x{height}) render ediliyor...")
-        use_highlight = platform_key in config.HIGHLIGHT_PLATFORMS
+        # DJ SETLERINDE BACKDROP (2026-09-24 kararı): backdrop.mp4 varsa
+        # Shorts'ta highlight kesiti KULLANILMAZ — tam ekran (long format)
+        # çalışır. Setin arka planı kırpılmış bir kesitten daha güçlü.
+        use_highlight = (platform_key in config.HIGHLIGHT_PLATFORMS
+                         and not backdrop_video)
         is_shorts = platform_key == "shorts_9x16"
         # Cold-open: hem youtube_16x9 hem shorts_9x16 için etkin (config.COLD_OPEN_PLATFORMLAR'a göre)
         platform_cold_open = None
@@ -589,6 +599,16 @@ def render_project(project_dir: str) -> bool:
             speed_ramp=speed_ramp if is_shorts else None,
             # TRUE PEAK LIMITER (2026-10-21) — olcum eşiği aşıyorsa uygulanır.
             ses_limiter=ses_limiter,
+            # AÇILIŞ KAPAK INTRO'SU (2026-10-21) — ilk %1-%3 (2.-7. sn)
+            # izleyici kaybının yoğunlaştığı aralık. Sadece izin verilen
+            # platformlarda (config.INTRO_KAPAK_PLATFORMLAR).
+            backdrop_video=backdrop_video,
+            intro_cover=(
+                find_intro_cover(project_dir, width, height)
+                if (getattr(config, "INTRO_KAPAK", True)
+                    and platform_key in getattr(config, "INTRO_KAPAK_PLATFORMLAR",
+                                                ["youtube_16x9"]))
+                else None),
             )
             os.replace(gecici_yol, output_path)
         except Exception:
