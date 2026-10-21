@@ -137,6 +137,33 @@ eklendi.
   - Statik: `https://semtappdata-art.github.io/famous-music-studio/` (GitHub Pages)
   - Statik + API: `https://famous-music-studio.netlify.app` (Netlify)
   - Site `window.FMS_API_BASE` ile API'yi Netlify'e yonlendirir.
+- **TEK KOMUTLU DEPLOY (2026-10-21):** `python deploy_site.py`
+  1. Testler (62) — hata varsa DURUR
+  2. JS/HTML brace denetimi
+  3. `config` -> `analytics.js` senkronu
+  4. Netlify deploy (statik + API fonksiyonlari)
+  5. Post-deploy smoke test (sayfalar 200 + API 204/200)
+  6. GitHub Pages publish (`docs/`)
+  Sure: ~110 sn. **GitHub Actions'a GEREK YOK.**
+- **GITHUB ACTIONS KULLANILAMAZ (2026-10-21):** PAT'te `workflow` scope yok ->
+  GitHub workflow dosyasi push'unu reddediyor ("refusing to allow an OAuth App to
+  create or update workflow ... without `workflow` scope"). Cozum: PAT'e
+  `workflow` scope ekle VEYA `gh auth refresh -s workflow` (device flow).
+  `deploy_site.py` bu gereksinimi **ortadan kaldirir**.
+- **PUSH ENGELI (cozuldu):** repo 4.4 GB + 872 MB `audio.wav` -> GitHub'in
+  100 MB/dosya limitini asiyordu. `git filter-branch` ile gecmisten uretim
+  medyasi + credential dosyalari (`upload/token.json`, `.env*`) temizlendi.
+  Artik `git push` calisiyor.
+- **`.gitignore` TUZAKI (2026-10-21):** `.github/` kalibi workflow
+  dosyalarinin hic commit edilmesine yol aciyordu (CI hic calismadi).
+- **`pytest.ini` SINIRI:** INI formatinda cok satirlı deger desteklemez ->
+  `collect_ignore` `pytest.ini`'de CALISMAZ; `conftest.py`'ye tasindi.
+- **GIZLI ANAHTAR SIZINTISI (2026-10-21):** `.env.template` icinde 13 gercek
+  API anahtari vardi (OpenRouter, Together, Google, HF, Runway, Higgsfield,
+  Stability, Luma, Pika, Kling, MiniMax, Haiper, Postwire) + history'de
+  YouTube OAuth token'i. Hepsi placeholder yapildi, gecmisten temizlendi.
+  **!! Bu anahtarlar rotate EDILMELI (dashboard'dan yenisi alin).**
+
 - Detayli rehber: `site/DEPLOY.md`.
 
 ### Kural notları (29) — Topluluk
