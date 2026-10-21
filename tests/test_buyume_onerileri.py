@@ -654,3 +654,42 @@ def test_site_js_dengesi_bozulmamis():
     import check_js_braces
     sorunlar = check_js_braces.kontrol()
     assert not sorunlar, "JS brace dengesiz: %s" % sorunlar
+
+
+# ---------------------------------------------------------------------------
+# Madde 30 (devam) — Otomatik deploy tetikleyicisi
+# ---------------------------------------------------------------------------
+
+def test_deploy_site_scripti_tam_adimli():
+    """deploy_site.py: test -> netlify -> smoke test -> GH Pages zinciri."""
+    p = os.path.join(REPO_KOK, "deploy_site.py")
+    assert os.path.isfile(p)
+    with open(p, encoding="utf-8") as f:
+        kod = f.read()
+    for adim in ("Testler", "Netlify deploy", "smoke test", "GitHub Pages publish"):
+        assert adim in kod, f"deploy adimi eksik: {adim}"
+    # testler BASARISIZSA deploy olmamali
+    assert "deploy iptal" in kod
+
+
+def test_site_deploy_tetikleyici_watch_projects_bağli():
+    """watch_projects.py (dakikalik gorev) site deploy tetikleyicisini cagirir."""
+    with open(os.path.join(REPO_KOK, "watch_projects.py"), encoding="utf-8") as f:
+        wp = f.read()
+    assert "site_deploy_watch" in wp
+    assert "site_deploy_watch.kontrol_et()" in wp
+    # YENI GOREV OLUSTURULMADI (CLAUDE.md §2)
+    assert "kontrol_et()" in wp
+
+
+def test_site_deploy_tetikleyici_korumalari():
+    """Asiri dongu ve cakisma korumalari."""
+    p = os.path.join(REPO_KOK, "site_deploy_watch.py")
+    assert os.path.isfile(p)
+    with open(p, encoding="utf-8") as f:
+        kod = f.read()
+    assert "MAKS_DENEME_GUN" in kod      # gunluk limit
+    assert "KILIT_DOSYASI" in kod        # kilit (cakisma)
+    assert "BEKLEME_SN" in kod          # debounce
+    # ilk calistirmada deploy OLMAZ
+    assert "ILK KURULUM" in kod

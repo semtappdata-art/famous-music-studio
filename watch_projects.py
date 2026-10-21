@@ -525,6 +525,18 @@ def main() -> None:
     except Exception as e:
         log(f"HATA (dj_sets/): {e}")
 
+    # SITE DEPLOY TETIKLEYICISI (2026-10-21, Madde 30).
+    # NEDEN BURADA: YENI GOREV OLUSTURMADIK — CLAUDE.md §2 "mevcut gorevlerin
+    # finally bloguna ekle" kurali. watch_projects.py zaten DAKIKLIKTA calisiyor;
+    # site dosyalari degistiginde `deploy_site.py` calistirilir.
+    # Korumalar: gunde maks 12 deneme, 30 dk kilit, debounce, basarisizlikta
+    # sonraki dakikada yeniden deneme.
+    try:
+        import site_deploy_watch
+        site_deploy_watch.kontrol_et()
+    except Exception as e:
+        log(f"HATA (site deploy tetikleyici): {e}")
+
 
 if __name__ == "__main__":
     main()

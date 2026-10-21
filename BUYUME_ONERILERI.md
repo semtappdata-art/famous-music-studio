@@ -164,6 +164,27 @@ eklendi.
   YouTube OAuth token'i. Hepsi placeholder yapildi, gecmisten temizlendi.
   **!! Bu anahtarlar rotate EDILMELI (dashboard'dan yenisi alin).**
 
+- **OTOMATIK DEPLOY TETIKLEYICISI (2026-10-21):** `site_deploy_watch.py`
+  `watch_projects.py` gorevine baglandi (dakikalik calisan mevcut gorev —
+  **YENI GOREV OLUSTURULMADI**, CLAUDE.md §2'ye uygun).
+  - `site/` veya `netlify/functions/` degistiginde `deploy_site.py` calisir
+  - Korumalar: gunde maks 12 deneme · 30 dk kilit · debounce · ilk calistirmada
+    sadece imza kaydeder (deploy yapmaz) · basarisizlikta sonraki dakikada
+    yeniden denenir
+  - Log: `logs/site_deploy.log` · imza: `logs/site_deploy_imza.txt`
+- **GUVENLIK (2026-10-21) — SIZAN ANAHTARLAR ROTATE EDILMELI:**
+  `.env.template` icinde 13 gercek API anahtari vardi (OpenRouter, Together,
+  Google, HuggingFace, Runway, Higgsfield, Stability, Luma, Pika, Kling, MiniMax,
+  Haiper, Postwire) + history'de YouTube OAuth token'i. Hepsi placeholder yapildi
+  ve gecmisten temizlendi, ama **anahtarlar hala gecerli olabilir**.
+  Dashboard'dan yenisini alip degistir:
+    OpenRouter  : https://openrouter.ai/keys
+    Together   : https://api.together.xyz/settings/api-keys
+    Google     : https://aistudio.google.com/app/apikey
+    HuggingFace: https://huggingface.co/settings/tokens
+    Postwire   : https://app.postwire.io
+    Runway / Higgsfield / Stability / Luma / Pika / Kling / MiniMax / Haiper
+
 - Detayli rehber: `site/DEPLOY.md`.
 
 ### Kural notları (29) — Topluluk
