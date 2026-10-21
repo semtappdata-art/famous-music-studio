@@ -434,15 +434,40 @@
     return tablo[anahtar] !== undefined ? tablo[anahtar] : anahtar;
   }
 
+  // ------------------------------------------------- guvenli HTML yazimi
+  // SORUN (Madde 31): textContent kullanildiginda
+  //   (a) degerdeki <strong>/<br>/<a> gibi etiketler EKRANDA metin olarak
+  //       gorunuyordu,
+  //   (b) `&amp;` gibi HTML entity'leri cozulmeyip literal kaliyordu.
+  // COZUM: entity veya etiket iceren degerler icerik-temizlikten gecirilip
+  // innerHTML ile yazilir. Tehlikeli etiketler, on* event attribute'leri ve
+  // javascript: URL'leri silinir (defans katmani).
+  var TEHLIKELI_ETIKET = new RegExp(
+    '<\\s*\\/?\\s*(script|style|iframe|object|embed|link|meta|base|form|input|button|svg|math)\\b[^>]*>', 'gi');
+  var OLAY_ATTR = new RegExp('\\s+on[a-z]+\\s*=\\s*("[^"]*"|\'[^\']*\'|[^\\s>]+)', 'gi');
+  var TEHLIKELI_URL = new RegExp('(href|src)\\s*=\\s*("|\')\\s*javascript:[^"\']*\\2', 'gi');
+
+  function htmlTemizle(v) {
+    return String(v)
+      .replace(TEHLIKELI_ETIKET, '')
+      .replace(OLAY_ATTR, '')
+      .replace(TEHLIKELI_URL, '');
+  }
+
+  function metinYaz(el, v) {
+    if (!/[<&]/.test(v)) { el.textContent = v; return; }
+    el.innerHTML = htmlTemizle(v);
+  }
+
   // ---------------------------------------------------------------- uygula
   function uygula(d) {
     aktifDil = (d === 'en' || d === 'tr') ? d : DIL_VARSAYILAN;
     var tablo = S[aktifDil] || S[DIL_VARSAYILAN];
 
-    // textContent
+    // textContent / guvenli HTML
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
       var v = tablo[el.getAttribute('data-i18n')];
-      if (v !== undefined) el.textContent = v;
+      if (v !== undefined) metinYaz(el, v);
     });
 
     // placeholder
