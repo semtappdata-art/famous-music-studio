@@ -61,7 +61,9 @@ htmlcov/
 .gitignore
 
 # CI
-.github/
+# NOT (2026-10-21): .github/ BURAYA YAZILMAZDI — workflow dosyalari
+# (ci.yml, deploy-site.yml) repoda OLMADIĞI icin GitHub Actions calismiyordu.
+# .gitignore'da tutulmamasi sart.
 
 # Uploads
 uploads/
