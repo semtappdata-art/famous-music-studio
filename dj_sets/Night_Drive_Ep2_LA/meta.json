@@ -1,0 +1,43 @@
+{
+  "title": "DJ Famous @ Mulholland Drive, Los Angeles for Night Drive Series",
+  "series": "night_drive",
+  "episode": 2,
+  "theme": "dj",
+  "set_style": "melodic_techno",
+  "marquee_text": "Night Drive Series • Ep02 • #DJ Famous",
+  "art_query": "los angeles mulholland drive night city lights cinematic",
+  "location": {
+    "city": "Los Angeles",
+    "country": "USA",
+    "route": "Mulholland Drive",
+    "gps": "34.1033,-118.3275",
+    "story": "City lights below, stars above, midnight cruise",
+    "story_tr": "Şehir ışıkları aşağıda, yıldızlar yukarısında, gece yarısı kruvazı. Mulholland Drive'ın virajlarında melodi kaybolur, ritim kalır.",
+    "landmark": "Mulholland Drive"
+  },
+  "playlist_id": "PL_NightDrive",
+  "tags_base": ["melodic techno", "night drive", "dj famous", "driving music", "late night", "mulholland"],
+  "hashtags": "#NightDrive #MelodicTechno #DJFamous #MulhollandDrive",
+  "seo": {
+    "primary_keyword": "melodic techno night drive mix",
+    "secondary_keywords": ["progressive house", "late night driving", "la nights"]
+  },
+  "cross_promo": {
+    "shorts_clips": ["hook_0-30s", "sunrise_transition", "outro_city_lights"],
+    "instagram_reel": "30s_vertical_hook",
+    "tiktok_draft": "60s_best_moment",
+    "bluesky_thread": "track_by_track_breakdown"
+  },
+  "yayin_tarihi": "2026-10-24T22:00:00+03:00",
+  "end_card_text": "Sıradaki rota: Shuto Expressway, Tokyo",
+  "end_card_text_tr": "Sıradaki rota: Shuto Expressway, Tokyo",
+  "tracklist": [
+    {"timestamp": "00:00", "title": "Midnight Departure", "artist": "DJ Famous", "start_sec": 0, "end_sec": 300, "bpm": 122, "key": "Am"},
+    {"timestamp": "05:00", "title": "City Lights Descent", "artist": "DJ Famous", "start_sec": 300, "end_sec": 600, "bpm": 124, "key": "F"},
+    {"timestamp": "10:00", "title": "Neon Visions", "artist": "DJ Famous", "start_sec": 600, "end_sec": 900, "bpm": 126, "key": "C"},
+    {"timestamp": "15:00", "title": "Starlit Corridor", "artist": "DJ Famous", "start_sec": 900, "end_sec": 1200, "bpm": 125, "key": "G"},
+    {"timestamp": "20:00", "title": "Dawn Approach", "artist": "DJ Famous", "start_sec": 1200, "end_sec": 1500, "bpm": 124, "key": "Dm"},
+    {"timestamp": "25:00", "title": "Homeward Bound", "artist": "DJ Famous", "start_sec": 1500, "end_sec": 1800, "bpm": 122, "key": "Am"}
+  ],
+  "tracklist_updated_at": "2026-10-19T00:00:00+03:00"
+}

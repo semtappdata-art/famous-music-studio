@@ -1,0 +1,8 @@
+# Structure for Gece Sürüşü Bridge
+
+00:00 - Midnight Departure | 122 BPM | Am
+05:00 - City Lights Descent | 124 BPM | F
+10:00 - Neon Visions | 126 BPM | C
+15:00 - Starlit Corridor | 125 BPM | G
+20:00 - Dawn Approach | 124 BPM | Dm
+25:00 - Homeward Bound | 122 BPM | Am

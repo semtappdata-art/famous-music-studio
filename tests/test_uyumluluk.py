@@ -56,9 +56,15 @@ def test_bozuk_state_json_hata_uretir(kok):
 
 def test_state_json_yoksa_hata_yok(kok):
     """Dosya yokluğu normal: henüz hiç yayınlanmamış proje."""
-    p = _proje(kok, "Yeni", durum=None)
+    # meta.json'da hikaye kapısı alanları sağlanmalı (2026-09-13 kuralı)
+    meta = {
+        "hikaye": "Bu şarkı bir gecede doğdu. İlk taslak reddedildi. "
+                     "Köprüdeki satır değiştirildi çünkü çok genel kalıyordu.",
+        "neden_bu_sarki": "Bu şarkı duygusal bir anıyı anlatıyor."
+    }
+    p = _proje(kok, "Yeni", durum=None, meta=meta)
     hatalar, _ = uyumluluk.kontrol(p, "yukleme")
-    assert hatalar == []
+    assert hatalar == ()
 
 
 def test_telif_kaydi_varsa_hata(kok):

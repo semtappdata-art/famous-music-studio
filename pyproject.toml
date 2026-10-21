@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "famous-music-studio"
+version = "2.0.0"
+description = "Enterprise automation system for Famous Music Studio - Suno AI music to multi-platform video"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "protobuf>=4.25",
+    "google-auth>=2.25",
+    "google-api-python-client>=2.126",
+    "yt-dlp>=2024.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.3",
+    "mypy>=1.9",
+    "bandit>=1.7",
+    "safety>=3.0",
+]
+cloud = [
+    "boto3>=1.34",
+    "google-cloud-storage>=2.16",
+]
+ml = [
+    "numpy>=1.26",
+    "scikit-learn>=1.4",
+]
+monitoring = [
+    "prometheus-client>=0.20",
+]
+dashboard = [
+    "flask>=3.0",
+]
+all = [
+    "famous-music-studio[dev]",
+    "famous-music-studio[cloud]",
+    "famous-music-studio[ml]",
+    "famous-music-studio[monitoring]",
+    "famous-music-studio[dashboard]",
+]
+
+[project.urls]
+Homepage = "https://github.com/semtappdata-art/famous-music-studio"
+Repository = "https://github.com/semtappdata-art/famous-music-studio"
+
+[tool.setuptools.packages.find]
+include = ["config_lib*", "upload*", "tests*"]
+exclude = ["docs*", "marka*", "derlemeler*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: uzun sureren testler"]
+addopts = "-p no:cacheprovider --basetemp=/tmp/pytest_tmp"

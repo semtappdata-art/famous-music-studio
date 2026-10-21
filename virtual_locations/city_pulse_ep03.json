@@ -1,0 +1,15 @@
+{
+  "series_key": "city_pulse",
+  "episode": 3,
+  "city": "Istanbul",
+  "country": "Turkey",
+  "landmark": "Hagia Sophia",
+  "gps": "41.0082,28.9784",
+  "story": "Sunset over Bosphorus, minarets calling, city waking up",
+  "story_tr": "",
+  "art_query": "",
+  "visual_concept": "urban_rooftop_cinematic",
+  "thumbnail_concept": "artist_silhouette + city_landmark + series_logo",
+  "scheduled_date": "2026-01-30T18:00:00",
+  "created_at": "2026-10-19T08:39:43.416983"
+}

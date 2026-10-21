@@ -73,7 +73,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import state_io
 import ag_yeniden_deneme as ag
-from ffmpeg_utils import get_audio_duration
+import config
+from video_renderer import get_audio_duration
 from social_text import build_caption, resolve_language
 
 UPLOAD_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -110,6 +111,75 @@ def _load_meta(project_dir: str) -> dict:
         with open(meta_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
+
+
+def _is_dj_set(meta: dict) -> bool:
+    """Check if this is a DJ set with series-based metadata."""
+    return "series" in meta and meta.get("series")
+
+
+def _build_dj_set_caption(meta: dict) -> str:
+    """Build Telegram caption for DJ sets using series-based metadata."""
+    series_key = meta.get("series")
+    if not series_key:
+        return build_caption(meta)
+
+    try:
+        from config import get_dj_series, get_series_location
+        series = get_dj_series(series_key)
+        if not series:
+            return build_caption(meta)
+    except Exception:
+        return build_caption(meta)
+
+    title = meta.get("title", "Untitled")
+    episode = meta.get("episode", 1)
+    location = meta.get("location") or get_series_location(series_key)
+    landmark = location.get("landmark", location.get("city", ""))
+    city = location.get("city", "")
+    country = location.get("country", "")
+    story = location.get("story", "")
+
+    tracklist = meta.get("tracklist", [])
+
+    parts = []
+    parts.append(f"DJ Famous @ {landmark}, {city} — {series['brand']} Ep {episode}")
+    parts.append(f"")
+    
+    if story:
+        parts.append(f"📍 {story}")
+        parts.append(f"")
+    
+    if tracklist:
+        parts.append(f"🎧 TRACKLIST:")
+        for track in tracklist[:3]:
+            ts = track.get("timestamp", "00:00")
+            tr_title = track.get("title", "")
+            parts.append(f"{ts} {tr_title}")
+        if len(tracklist) > 3:
+            parts.append(f"... +{len(tracklist) - 3} more")
+        parts.append(f"")
+    
+    parts.append(f"🎬 {series['brand']} Episode {episode}")
+    parts.append(f"🎨 Produced by DJ Famous")
+    parts.append(f"")
+    
+    parts.append(f"🔗 Connect:")
+    parts.append(f"YouTube: {config.SOCIAL_LINKS['youtube']}")
+    parts.append(f"Instagram: https://instagram.com/djfamous")
+    parts.append(f"TikTok: https://tiktok.com/@djfamous")
+    parts.append(f"Bluesky: https://bsky.app/profile/djfamous.bsky.social")
+    parts.append(f"Telegram: https://t.me/djfamous")
+    parts.append(f"")
+    
+    hashtags = series["youtube"].get("hashtags", "")
+    if hashtags:
+        parts.append(hashtags)
+    
+    parts.append(f"")
+    parts.append(f"🤖 AI-generated music & visuals")
+    
+    return "\n".join(parts)
 
 
 def _load_state(project_dir: str) -> dict:
@@ -266,8 +336,13 @@ def _build_telegram_caption(project_dir: str, meta: dict) -> str:
     """Ortak caption şablonuna (social_text.build_caption) YouTube linkini
     ekler. Link, state.json'daki youtube_video_id'den geliyor — yani YouTube
     yüklemesi henüz yapılmadıysa (ya da başarısız olduysa) caption linksiz
-    gider, kanal yine de arşiv işlevini görür."""
-    caption = build_caption(meta)
+    gider, kanal yine de arşiv işlevini görür.
+    DJ Set with series? Use series-based caption."""
+    # DJ Set with series? Use series-based caption
+    if _is_dj_set(meta):
+        caption = _build_dj_set_caption(meta)
+    else:
+        caption = build_caption(meta)
     video_id = _load_state(project_dir).get("youtube_video_id")
     if video_id:
         caption = f"{caption}\n\n{_youtube_link_line(video_id, resolve_language(meta))}"
@@ -492,6 +567,7 @@ def main():
         "--dry-run", action="store_true",
         help="Hiçbir şey göndermez — ne gönderileceğini (dosya, boyut, süre, caption) yazdırır.",
     )
+    parser.add_argument("--dj-set", action="store_true", help="DJ set flag (auto-detected from meta.json, kept for compatibility)")
     args = parser.parse_args()
 
     upload_project(args.project, args.kind, args.dry_run)

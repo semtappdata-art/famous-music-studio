@@ -1,0 +1,33 @@
+Render hatası: RuntimeError
+Traceback (most recent call last):
+  File "C:\Users\ACER\Desktop\ilk-projem\render.py", line 576, in render_one
+    ffmpeg_utils.render_video(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        art_path, audio_path, tmp_path, width, height, title, theme,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+        crf_override=crf, preset_override=preset,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ACER\Desktop\ilk-projem\ffmpeg_utils.py", line 782, in render_video
+    raise RuntimeError(f"ffmpeg render hatası ({output_path}):\n{result.stderr[-2000:]}")
+RuntimeError: ffmpeg render hatası (projects/Elektronik_Gece\output\.youtube_16x9.partial.mp4):
+6.0 size=    6656KiB time=00:00:21.29 bitrate=2561.0kbits/s speed=0.233x elapsed=0:01:31.18    
+frame=  638 fps=7.0 q=26.0 size=    6656KiB time=00:00:21.63 bitrate=2520.6kbits/s speed=0.236x elapsed=0:01:31.70    
+frame=  644 fps=7.0 q=26.0 size=    6656KiB time=00:00:21.63 bitrate=2520.6kbits/s speed=0.235x elapsed=0:01:32.22    
+frame=  648 fps=7.0 q=26.0 size=    6656KiB time=00:00:21.97 bitrate=2481.5kbits/s speed=0.237x elapsed=0:01:32.74    
+frame=  648 fps=6.9 q=26.0 size=    6656KiB time=00:00:21.97 bitrate=2481.5kbits/s speed=0.236x elapsed=0:01:33.26    
+frame=  654 fps=7.0 q=26.0 size=    6656KiB time=00:00:21.97 bitrate=2481.5kbits/s speed=0.234x elapsed=0:01:33.77    
+frame=  656 fps=7.0 q=26.0 size=    6656KiB time=00:00:21.97 bitrate=2481.5kbits/s speed=0.233x elapsed=0:01:34.29    
+frame=  660 fps=7.0 q=26.0 size=    6912KiB time=00:00:22.40 bitrate=2527.8kbits/s speed=0.236x elapsed=0:01:34.81    
+frame=  664 fps=7.0 q=26.0 size=    6912KiB time=00:00:22.40 bitrate=2527.8kbits/s speed=0.235x elapsed=0:01:35.33    
+frame=  666 fps=6.9 q=26.0 size=    6912KiB time=00:00:22.40 bitrate=2527.8kbits/s speed=0.234x elapsed=0:01:35.85    
+frame=  672 fps=7.0 q=26.0 size=    6912KiB time=00:00:22.61 bitrate=2504.0kbits/s speed=0.235x elapsed=0:01:36.37    
+frame=  672 fps=6.9 q=26.0 size=    6912KiB time=00:00:22.82 bitrate=2480.6kbits/s speed=0.236x elapsed=0:01:36.90    
+frame=  678 fps=7.0 q=26.0 size=    6912KiB time=00:00:22.82 bitrate=2480.6kbits/s speed=0.234x elapsed=0:01:37.40    
+frame=  680 fps=6.9 q=26.0 size=    6912KiB time=00:00:22.82 bitrate=2480.6kbits/s speed=0.233x elapsed=0:01:37.92    
+frame=  686 fps=7.0 q=26.0 size=    6912KiB time=00:00:23.16 bitrate=2444.0kbits/s speed=0.235x elapsed=0:01:38.43    
+frame=  690 fps=7.0 q=26.0 size=    6912KiB time=00:00:23.16 bitrate=2444.0kbits/s speed=0.234x elapsed=0:01:38.95    
+frame=  692 fps=7.0 q=26.0 size=    6912KiB time=00:00:23.16 bitrate=2444.0kbits/s speed=0.233x elapsed=0:01:39.48    
+

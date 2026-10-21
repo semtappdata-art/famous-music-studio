@@ -1,0 +1,33 @@
+Render hatası: RuntimeError
+Traceback (most recent call last):
+  File "C:\Users\ACER\Desktop\ilk-projem\render.py", line 576, in render_one
+    ffmpeg_utils.render_video(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        art_path, audio_path, tmp_path, width, height, title, theme,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+        crf_override=crf, preset_override=preset,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ACER\Desktop\ilk-projem\ffmpeg_utils.py", line 780, in render_video
+    raise RuntimeError(f"ffmpeg render hatası ({output_path}):\n{result.stderr[-2000:]}")
+RuntimeError: ffmpeg render hatası (projects/Yükseliş\output\.shorts_9x16.partial.mp4):
+04KiB time=00:00:16.06 bitrate=10966.2kbits/s speed=0.217x elapsed=0:01:13.85    
+frame=  480 fps=6.5 q=26.0 size=   22272KiB time=00:00:16.08 bitrate=11342.8kbits/s speed=0.216x elapsed=0:01:14.38    
+frame=  482 fps=6.4 q=23.0 size=   22272KiB time=00:00:16.42 bitrate=11107.1kbits/s speed=0.219x elapsed=0:01:14.89    
+frame=  488 fps=6.5 q=26.0 size=   22528KiB time=00:00:16.42 bitrate=11234.8kbits/s speed=0.218x elapsed=0:01:15.41    
+frame=  493 fps=6.5 q=26.0 size=   22528KiB time=00:00:16.76 bitrate=11006.1kbits/s speed=0.221x elapsed=0:01:15.92    
+frame=  498 fps=6.5 q=26.0 size=   23296KiB time=00:00:16.76 bitrate=11381.3kbits/s speed=0.219x elapsed=0:01:16.44    
+frame=  504 fps=6.5 q=23.0 size=   23296KiB time=00:00:17.19 bitrate=11098.9kbits/s speed=0.223x elapsed=0:01:16.96    
+frame=  510 fps=6.6 q=26.0 size=   23296KiB time=00:00:17.19 bitrate=11098.9kbits/s speed=0.222x elapsed=0:01:17.48    
+frame=  512 fps=6.6 q=26.0 size=   23296KiB time=00:00:17.19 bitrate=11098.9kbits/s speed=0.22x elapsed=0:01:17.99    
+frame=  518 fps=6.6 q=26.0 size=   24064KiB time=00:00:17.62 bitrate=11187.2kbits/s speed=0.224x elapsed=0:01:18.50    
+frame=  524 fps=6.6 q=26.0 size=   24064KiB time=00:00:17.62 bitrate=11187.2kbits/s speed=0.223x elapsed=0:01:19.01    
+frame=  530 fps=6.7 q=26.0 size=   24064KiB time=00:00:17.96 bitrate=10974.6kbits/s speed=0.226x elapsed=0:01:19.53    
+frame=  536 fps=6.7 q=26.0 size=   25088KiB time=00:00:17.96 bitrate=11441.6kbits/s speed=0.224x elapsed=0:01:20.04    
+frame=  542 fps=6.7 q=26.0 size=   25088KiB time=00:00:18.30 bitrate=11228.2kbits/s speed=0.227x elapsed=0:01:20.57    
+frame=  546 fps=6.7 q=26.0 size=   25088KiB time=00:00:18.30 bitrate=11228.2kbits/s speed=0.226x elapsed=0:01:21.08    
+frame=  552 fps=6.8 q=26.0 size=   25088KiB time=00:00:18.73 bitrate=10972.4kbits/s speed=0.23x elapsed=0:01:21.60    
+frame=  554 fps=6.7 q=26.0 size=   25344KiB time=00:00:18.73 bitrate=11084.4kbits/s speed=0.228x elapsed=0:01:22.11    
+

@@ -921,6 +921,66 @@ def build_ilk_yorum(title: str, lang: str = "tr") -> str:
     return f"{soru}\n{config.ILK_YORUM_ABONE}"
 
 
+def _playlist_idleri_yukle() -> dict:
+    """upload/playlist_ids.json dosyasini okur (tek kaynak).
+
+    NEDEN burada dosya okunuyor (youtube_playlists import edilerek degil):
+    `youtube_playlists` -> `social_text` import dongusu riski var. Duz JSON
+    okumak bu donguyu tamamen ortadan kaldiriyor.
+    """
+    yol = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "playlist_ids.json")
+    try:
+        with open(yol, "r", encoding="utf-8") as f:
+            veri = json.load(f)
+        return veri if isinstance(veri, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def aciklama_abone_bloku(lang: str = "tr", playlist_idler: dict = None) -> str:
+    """Açıklamaya eklenecek ABONE bloğu — TEK KAYNAK.
+
+    NEDEN AYRI FONKSİYON: `youtube_upload.build_snippet` açıklamayı kuruyor
+    ama bu blok ORTAK olmalı (uzun format + Shorts + DJ set). Kopyalanırsa
+    biri güncellenip diğeri eski kalır — depodaki "iki yerde bir kural"
+    hatasının tam kendisi.
+
+    NEDEN "@handle": YouTube'da @mention tıklanabilir abone bağlantısıdır.
+    Düz metin "takipte kalın" ABONE OLUŞTURMAZ.
+
+    NEDEN playlist linkleri: abone olan izleyici "ne izleyeyim?" sorusunu
+    açıklamada cevaplayan tek yer burasıdır. Playlist ID'leri tek kaynaktan
+    (upload/playlist_ids.json) gelir; verilmezse config'e düşülür.
+    """
+    handle = getattr(config, "YOUTUBE_HANDLE", "")
+    etiket = getattr(config, "STATIC_LABEL_TEXT", "Famous Music Studio")
+    idler = playlist_idler if playlist_idler is not None else _playlist_idleri_yukle()
+    ana = idler.get("_tum_sarkilar", "")
+    kisa = idler.get("_shorts", "")
+
+    if lang == "en":
+        satir = (f"\n\U0001f514 Subscribe to {etiket} — a new track every week "
+                 f"👉 @{handle}\n")
+        if ana:
+            satir += (f"\U0001f4cb Full catalogue: "
+                      f"https://youtube.com/playlist?list={ana}\n")
+        if kisa:
+            satir += (f"\U0001f4cb Short clips: "
+                      f"https://youtube.com/playlist?list={kisa}\n")
+        return satir
+
+    satir = (f"\n\U0001f514 {etiket} — her hafta yeni şarkı. "
+             f"Abone ol: @{handle}\n")
+    if ana:
+        satir += (f"\U0001f4cb Tüm şarkılar: "
+                  f"https://youtube.com/playlist?list={ana}\n")
+    if kisa:
+        satir += (f"\U0001f4cb Kısa kesitler: "
+                  f"https://youtube.com/playlist?list={kisa}\n")
+    return satir
+
+
 def build_ai_disclosure_line(lang: str = "tr", meta: dict = None) -> str:
     """ZORUNLU AI beyan satırı — geriye dönük uyumlu giriş.
 

@@ -1,0 +1,5 @@
+uid=4_0 RootWebArea "DistroKid" url="https://distrokid.com/new/"
+  uid=9_0 dialog "Doğrulama Hataları" description="Her şeyi doğru yaptığından emin ol, ardından bu kutuları işaretle." live="assertive" modal relevant="additions text"
+    uid=9_1 heading "Doğrulama Hataları" level="2"
+    uid=9_2 StaticText "Her şeyi doğru yaptığından emin ol, ardından bu kutuları işaretle."
+    uid=9_3 button "TAMAM" focusable focused

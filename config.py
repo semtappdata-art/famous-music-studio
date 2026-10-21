@@ -1,49 +1,32 @@
 """Render ayarları — tüm görünüm/kalite parametreleri burada."""
 
+import importlib
 import os
 from datetime import datetime, timedelta, timezone
 
-FPS = 30
+try:
+    from tools.config_loader import get as _cfg_get
 
-# platform_key -> (genişlik, yükseklik, çıktı dosya adı)
-# NOT: "square_1x1" (1080x1080) daha önce burada vardı ama hiçbir upload script'i
-# onu kullanmıyordu — her render'da boşuna üretiliyordu, kaldırıldı.
+    def get(key, default=None):
+        try:
+            return _cfg_get(key, default)
+        except Exception:
+            return default
+except Exception:
+    def get(key, default=None):
+        return default
+
+FPS = get('FPS', 30)
+
 PLATFORMS = {
     "youtube_16x9": (1920, 1080),
     "shorts_9x16": (1080, 1920),
 }
 
-# Bu platformlar şarkının TAMAMI yerine, audio_highlight.find_highlight() ile
-# bulunan en enerjik/yoğun bölümden kırpılır (viral kısa video için) —
-# meta.json'da "highlight_start"/"highlight_end" (saniye) belirtilirse onlar
-# öncelikli kullanılır, otomatik tespit devreye girmez.
 HIGHLIGHT_PLATFORMS = {"shorts_9x16"}
-HIGHLIGHT_DURATION = 45.0  # saniye — YouTube Shorts/TikTok/Reels limitinin (180s) çok altında
-
-# Aynı anda kaç platform paralel render edilsin (varsayılan: hepsi birden)
+HIGHLIGHT_DURATION = 45.0
 MAX_PARALLEL_RENDERS = len(PLATFORMS)
 
-# Müzik türüne göre renk paletleri — her şarkı meta.json'da "theme" ile birini seçer.
-# accent: art.jpg yoksa (ensure_vignette fallback) kullanılan tema rengi. accent2: şu an
-# kodda hiç KULLANILMIYOR (eski, artık var olmayan bir çerçeve/gradyan tasarımından
-# kalma ölü veri) — kaldırılmadı ama render'ı fiilen etkilemiyor.
-# "language": paylaşım metinlerinin (caption/hashtag/YouTube yorumu, bkz.
-# social_text.resolve_language) hangi dilde üretileceğinin STİLE göre
-# varsayılanı — kullanıcı isteği: Suno'da üretilen müziğin stiline göre dil
-# hazırlığı otomatik olsun, her projede elle "language" yazmaya gerek kalmasın.
-# meta.json'da açık bir "language" varsa o öncelikli (istisna/override için).
-# Ana katalog (6 tarz) tamamen Türkiye pazarına göre kurulu, "tr" — "dj" (DJ
-# Famous, bkz. dj_sets/README.md) markanın global açılımının ilk denemesi
-# olarak "en" (kullanıcı kararı, 2026-09-03).
-#
-# "art_query": art.jpg elle sağlanmadığında stock_art.py'nin Pexels'te arayacağı
-# VARSAYILAN terimler — şarkının tarzına uygun, gerçek bir mekân/atmosfer
-# fotoğrafı gelsin diye (kullanıcı isteği: kapak görseli müzik tarzını ve
-# sözlerin çağrıştırdığı mekânı anımsatsın, düz prosedürel gradyan yerine).
-# Şarkıya ÖZEL bir sahne isteniyorsa meta.json'a "art_query" yazılır, o öncelikli
-# olur — bu alan sadece hiçbir şey yazılmadığındaki tarz-bazlı taban.
-# Sorgular İNGİLİZCE: Pexels'in etiket/arama dizini ezici çoğunlukla İngilizce,
-# Türkçe terimler ("yağmurlu pencere") çok az/alakasız sonuç döndürüyor.
 THEMES = {
     "pop": {"label": "Pop", "related": ["R&B", "Trap"], "accent": (255, 60, 140), "accent2": (80, 120, 255), "language": "tr", "art_mood": "bright vibrant", "art_query": "vibrant sunset city skyline pastel sky"},
     "rock": {"label": "Rock", "related": ["Alternative", "Punk"], "accent": (230, 35, 35), "accent2": (255, 170, 40), "language": "tr", "art_mood": "dark dramatic moody", "art_query": "dramatic stormy sky dark mountains"},
@@ -51,29 +34,14 @@ THEMES = {
     "akustik": {"label": "Akustik", "related": ["Folk", "Indie"], "accent": (230, 150, 60), "accent2": (255, 90, 140), "language": "tr", "art_mood": "warm golden hour", "art_query": "warm golden hour forest sunlight"},
     "hiphop": {"label": "Hip-Hop", "related": ["Trap", "Rap"], "accent": (255, 195, 60), "accent2": (255, 90, 40), "language": "tr", "art_mood": "gritty urban night", "art_query": "urban street night city concrete"},
     "arabesk": {"label": "Arabesk", "related": ["Trap", "Türkçe Rap"], "accent": (200, 40, 90), "accent2": (255, 140, 60), "language": "tr", "art_mood": "melancholy moody rainy", "art_query": "rainy window night melancholy blur"},
-    # Ana kataloğun 6 tarzından AYRI — haftalık DJ Famous setleri için (bkz.
-    # dj_sets/README.md). Kataloğun 6-slotlu tema çeşitlilik takibine dahil değil.
     "dj": {"label": "DJ Set", "related": ["Mix", "Live Set"], "accent": (255, 210, 60), "accent2": (255, 60, 140), "language": "en", "art_mood": "nightclub stage lights", "art_query": "nightclub crowd stage lights"},
 }
-DEFAULT_THEME = "hiphop"  # meta.json'da "theme" belirtilmezse kullanılır
+DEFAULT_THEME = "hiphop"
 
-# --- ŞARKIDAN TÜRETİLEN GÖRSEL DİL (gorsel_dil.py) ---
-# "Aynı iskelet, şarkıdan türetilen parametreler" tasarım sistemi (2026-09-15
-# tasarım kararı, bkz. gorsel_dil.py docstring'i). KAPALIYSA boru hattı mevcut
-# görsel üretimiyle birebir aynı çalışır — bu bayrak yalnızca kabul edilen
-# kapsamda tek şarkıyla (Bu Gece Kazandık) prototip göstermek için açılır.
-# (TIKTOK_KIT_AKTIF deseniyle aynı: kapalıyken hiçbir yeni kod çalışmaz.)
-# 2026-09-15: kullanıcı üç konsept prototipinden SPLIT'i seçti → bayrak açıldı
-# ve kapak konsepti splite sabitlendi.
-GORSEL_DIL_AKTIF = True
-GORSEL_DIL_KAPAK_KONSEPT = "split"
+GORSEL_DIL_AKTIF = get('GORSEL_DIL.AKTIF', True)
+GORSEL_DIL_KAPAK_KONSEPT = get('GORSEL_DIL.KAPAK_KONSEPT', 'split')
 
-# Tema başına sinematik derecelendirme (grade) zinciri — gorsel_dil.
-# derecelendirme_filtresi'nin tema accent çarpanlarına SAHNEsiz hâli değil:
-# bunlar yalnızca tema accent'ine göre sabit kontrast/saturation ayarı.
-# (derecelendirme_filtresi mood'a göre zaten ayarlanıyor; bu sözlük herhangi
-# bir tema için varsayılanın ötesinde ek bir ağırlık istendiğinde kullanılır.)
-TEMA_GRADE = {
+TEMA_GRADE = get('TEMA_GRADE', {
     "pop": {"contrast": 1.06, "saturation": 1.08},
     "rock": {"contrast": 1.10, "saturation": 0.92},
     "elektronik": {"contrast": 1.05, "saturation": 1.10},
@@ -81,118 +49,205 @@ TEMA_GRADE = {
     "hiphop": {"contrast": 1.08, "saturation": 1.00},
     "arabesk": {"contrast": 1.06, "saturation": 0.94},
     "dj": {"contrast": 1.06, "saturation": 1.06},
+})
+
+NABIZ_BUDGET = get('NABIZ_BUDGET', 0.20)
+
+CARD_SIZE_RATIO = get('CARD.SIZE_RATIO', 0.45)
+CARD_CORNER_RATIO = 0.08
+CARD_ASSET_REF_SIZE = get('CARD.ASSET_REF_SIZE', 800)
+CARD_MASK_ASSET_PATH = get('CARD.MASK_ASSET_PATH', "assets/card_mask.png")
+CARD_ART_COLOR = get('CARD.ART_COLOR', "0x151515")
+
+BG_CENTER_BRIGHTNESS = get('BG.CENTER_BRIGHTNESS', 28)
+
+BACKDROP_PAN_MARGIN_RATIO = get('BACKDROP.PAN_MARGIN_RATIO', 0.14)
+BACKDROP_PAN_SPEED_X = get('BACKDROP.PAN_SPEED_X', 0.12)
+BACKDROP_PAN_SPEED_Y = get('BACKDROP.PAN_SPEED_Y', 0.08)
+
+BACKDROP_HUE_AMPLITUDE_DEG = get('BACKDROP.HUE_AMPLITUDE_DEG', 35)
+BACKDROP_HUE_SPEED = get('BACKDROP.HUE_SPEED', 0.025)
+
+EQ_BAR_THICKNESS_RATIO = get('EQ.BAR_THICKNESS_RATIO', 0.15)
+MARQUEE_GAP_RATIO = get('MARQUEE.GAP_RATIO', 0.02)
+FONT_CHAR_WIDTH_RATIO = get('FONT.CHAR_WIDTH_RATIO', 0.55)
+
+INTRO_KAPAK = get('INTRO.KAPAK', True)
+INTRO_KAPAK_BEKLEME = get('INTRO.KAPAK_BEKLEME', 0.9)
+INTRO_KAPAK_COZULME = get('INTRO.KAPAK_COZULME', 1.5)
+INTRO_KAPAK_PLATFORMLAR = get('INTRO.KAPAK_PLATFORMLAR', ["youtube_16x9"])
+
+DIKEY_HOOK_METNI = get('DIKEY_HOOK.METNI', "Sesi A\u00e7")
+DIKEY_HOOK_SURE_SN = get('DIKEY_HOOK.SURE_SN', 2.5)
+
+# ============================================================
+# BÜYÜME MOTORU (BUYUME_ONERILERI.md) — izlenme/kalma/abone kaldıraçları.
+# Hepsi config bayraklı: kapatmak silmek değil, False yapmak.
+# ============================================================
+# Madde 6 — Cold open: uzun videonun ilk saniyelerine highlight'tan kısa bir
+# "ön tat" eklenir (ses concat: önce zirve kesiti, sonra tam şarkı).
+COLD_OPEN_ACIK = get('BUYUME.COLD_OPEN_ACIK', True)
+COLD_OPEN_SURE_SN = get('BUYUME.COLD_OPEN_SURE_SN', 4.0)
+COLD_OPEN_PLATFORMLAR = get('BUYUME.COLD_OPEN_PLATFORMLAR', ["youtube_16x9", "shorts_9x16"])
+# Madde 7 — Görsel nabız: bölüm verisi olmasa bile periyodik renk/pan vurgusu.
+GORSEL_NABIZ_SURE_SN = get('BUYUME.GORSEL_NABIZ_SURE_SN', 25.0)
+GORSEL_NABIZ_GUC = get('BUYUME.GORSEL_NABIZ_GUC', 0.9)
+# Shorts için ayrı nabız gücü (dikey format = daha hızlı dikkat kaybı)
+GORSEL_NABIZ_GUC_SHORTS = get('BUYUME.GORSEL_NABIZ_GUC_SHORTS', 1.35)
+
+# --- YOUTUBE SHORTS EFEKTLERI (beat sync / hız rampası) -------------------
+# YouTube Shorts düzenleyicisindeki "müzikle uyum" efektlerinin karşılığı.
+# Kapatmak silmek değil: False yapmak (CLAUDE.md §16).
+# beat_sync.py: librosa ile beat tespiti (cache'li), ffmpeg'e aktarılır.
+SHORTS_BEAT_SYNC_AKTIF = get('BUYUME.SHORTS_BEAT_SYNC_AKTIF', True)
+# Her beat'te parlaklik flaşı (YouTube "Beat sync" özelliginin görsel izi)
+SHORTS_BEAT_FLASH_AKTIF = get('BUYUME.SHORTS_BEAT_FLASH_AKTIF', True)
+SHORTS_BEAT_FLASH_ALFA = get('BUYUME.SHORTS_BEAT_FLASH_ALFA', 0.14)
+SHORTS_BEAT_FLASH_SURE_SN = get('BUYUME.SHORTS_BEAT_FLASH_SURE_SN', 0.11)
+# Beat'e kilitli renk (hue) sıçraması — görsel "snap" hissi
+SHORTS_BEAT_HUE_AKTIF = get('BUYUME.SHORTS_BEAT_HUE_AKTIF', True)
+SHORTS_BEAT_HUE_DERECE = get('BUYUME.SHORTS_BEAT_HUE_DERECE', 26.0)
+# Beat'e kilitli pan itmesi
+SHORTS_BEAT_PAN_AKTIF = get('BUYUME.SHORTS_BEAT_PAN_AKTIF', True)
+SHORTS_BEAT_PAN_PIXEL = get('BUYUME.SHORTS_BEAT_PAN_PIXEL', 14.0)
+# Beat zoom punch (YouTube "cut on beat" görünümü) — yüzde cinsinden
+SHORTS_BEAT_ZOOM_AKTIF = get('BUYUME.SHORTS_BEAT_ZOOM_AKTIF', True)
+SHORTS_BEAT_ZOOM_YUZDE = get('BUYUME.SHORTS_BEAT_ZOOM_YUZDE', 8.0)
+# Beat nabzının sönüm hızı (üstel) — büyük değer = daha "snap"
+SHORTS_BEAT_HUE_SERTLIK = get('BUYUME.SHORTS_BEAT_HUE_SERTLIK', 9.0)
+# Hız rampası (YouTube "speed ramp"): yavaş başla, beat'te hızlan
+SHORTS_SPEED_RAMP_AKTIF = get('BUYUME.SHORTS_SPEED_RAMP_AKTIF', True)
+SHORTS_SPEED_RAMP_YAVAS_SURE_SN = get('BUYUME.SHORTS_SPEED_RAMP_YAVAS_SURE_SN', 1.6)
+SHORTS_SPEED_RAMP_YAVAS_KAT = get('BUYUME.SHORTS_SPEED_RAMP_YAVAS_KAT', 0.55)
+# Madde 11 — Abone CTA'sı: videonun %40'ında 1 kez, 4sn, emir kipi yok.
+ABONE_CTA_ACIK = get('BUYUME.ABONE_CTA_ACIK', True)
+ABONE_CTA_ORAN = get('BUYUME.ABONE_CTA_ORAN', 0.4)
+ABONE_CTA_SURE_SN = get('BUYUME.ABONE_CTA_SURE_SN', 4.0)
+ABONE_CTA_METIN = {
+    "dj": "Her Cuma yeni \u015fehir \U0001f514",
+    "varsayilan": "Her hafta yeni \u015fark\u0131 \U0001f514",
 }
+# Madde 10 — Bitiş kartı: son 15sn'de sonraki içerik (meta'da end_card_text varsa).
+END_CARD_SURE_SN = get('BUYUME.END_CARD_SURE_SN', 15.0)
 
-# Nabız sınıf bütçeleri (saniye başına flash < 3 = fotoepilepsi güvenli):
-#   sakin    (<85 BPM):  her 2. vuruşta  %12    nabız
-#   orta     (85-110):   her vuruşta     %20    nabız
-#   enerjik  (>=110):    her 4. vuruşta  %30    nabız
-# (detay: gorsel_dil.NABIZ_SINIFLARI — bu sabiti DEĞİŞTİRME, modül okuyor)
-NABIZ_BUDGET = 0.20  # orta sınıf varsayılanı (yukarıdaki sözlükle senkron)
+# ---------------------------------------------------------------------
+# Madde 25 — AI TARZ SEÇİCİ (site + YouTube "Future Record" tarzı)
+# "Hangi ruh halindesin?" -> sanatçı tarzı -> 15sn önizleme dinle.
+# Amaç: ziyaretçi 0 saniyede değer görsün (Suno/Chime/AI-Tool landing
+# blueprint'i). Otomatik oynatma YOK (kullanıcı isteği olmadan ses = spam
+# sinyali); tıklayınca çalar.
+# ---------------------------------------------------------------------
+TARZ_SECICI_ACIK = get('BUYUME.TARZ_SECICI_ACIK', True)
+TARZ_SECICI_ONEK_OGNE = 0.15   # her seçimde önerilen içerik oranı
+# ruh hali -> etiketler + açıklama + (opsiyonel) video_id
+TARZ_SECICI_TONUZLER = [
+    {
+        "id": "gece",
+        "etiket": "Gece Sürüşü",
+        "ikon": "\U0001f319",
+        "aciklama": "Melodic Techno & Night Drive mixleri",
+        "tur": "melodic techno",
+        "playlist": "gece_surusu",
+    },
+    {
+        "id": "arabesk",
+        "etiket": "Arabesk & Trap",
+        "ikon": "\U0001f319",
+        "aciklama": "Türkçe arabesk, trap ve R&B",
+        "tur": "arabesk trap",
+        "playlist": "arabesk_trap_vibes",
+    },
+    {
+        "id": "djset",
+        "etiket": "DJ Set",
+        "ikon": "\U0001f39b",
+        "aciklama": "DJ Famous canlı setleri",
+        "tur": "dj set",
+        "playlist": "dj_setler",
+    },
+    {
+        "id": "chill",
+        "etiket": "Chill",
+        "ikon": "\U0001f634",
+        "aciklama": "Organic House & Deep Focus",
+        "tur": "organic house",
+        "playlist": "yeni_cikanlar",
+    },
+    {
+        "id": "rock",
+        "etiket": "Rock",
+        "ikon": "\U0001f3b8",
+        "aciklama": "Türkçe Rock & Alternative",
+        "tur": "turkish rock",
+        "playlist": "yeni_cikanlar",
+    },
+    {
+        "id": "yeni",
+        "etiket": "Yeni Çıkanlar",
+        "ikon": "\U0001f195",
+        "aciklama": "Bu hafa yayınlananlar",
+        "tur": "new music",
+        "playlist": "yeni_cikanlar",
+    },
+]
 
-# --- Kart tasarımı: Spotify "Now Playing" stili — tam ekran değil, ekranın büyük
-# kısmını kaplayan ("orta alan") yuvarlak köşeli albüm kartı + kartın kendi görselinden
-# (art.jpg) türetilmiş, hareketli (pan+hue) bir backdrop + altında kayan başlık +
-# ilerleme çubuğu. Çerçeve/glow YOK (eski bir tasarımda vardı, kaldırıldı).
-# Kart statik durur (zoom yok) — bu yüzden eski tam ekran/zoom/waveform tasarımına
-# göre çok daha az render maliyeti var.
-CARD_SIZE_RATIO = 0.45  # min(genişlik,yükseklik)'e oran — büyütüldü, daha belirgin görünüm
-CARD_CORNER_RATIO = 0.08  # kart boyutuna oran, köşe yuvarlaklığı
-CARD_ASSET_REF_SIZE = 800  # maske asset üretim çözünürlüğü (render'da ölçeklenir)
-CARD_MASK_ASSET_PATH = "assets/card_mask.png"
+# ---------------------------------------------------------------------
+# Madde 28 — SITE ANALITIK (cookie-less, self-hosted)
+# Ucuncu taraf hesap gerektirmez; ilk ziyaretci (first-party) toplama.
+# Tasarim karari: PII YOK, cookie YOK, localStorage fingerprint YOK.
+# Sadece: tarih, sayfa, referrer, cihaz tipi, dil, saat dilimi.
+# Saglayici secenekleri:
+#   "self_hosted" -> /api/analytics endpoint'i (site/api/analytics.py)
+#   "plausible"  -> data-domain + plausible script
+#   "umami"      -> self-hosted Umami instance (script src)
+#   "yok"        -> kapalı
+# ---------------------------------------------------------------------
+ANALITIK_ACIK = get('BUYUME.ANALITIK_ACIK', True)
+ANALITIK_SAGLAYICI = get('BUYUME.ANALITIK_SAGLAYICI', 'self_hosted')
+ANALITIK_UYGULAMA_ADI = get('BUYUME.ANALITIK_UYGULAMA_ADI', 'famous-music-studio')
+ANALITIK_PLAUSIBLE_DOMAIN = get('BUYUME.ANALITIK_PLAUSIBLE_DOMAIN', 'famousmusicstudio.com')
+ANALITIK_UMAMI_SCRIPT = get('BUYUME.ANALITIK_UMAMI_SCRIPT', '')
+# Beacon endpoint (self_hosted). Uretimde ayni domain oldigi icin goreli yol yeter.
+# Yerel gelistirmede mutlaka adres kullan: http://127.0.0.1:8792
+ANALITIK_ENDPOINT = get('BUYUME.ANALITIK_ENDPOINT', '/api/analytics')
+# Veri nereye yazilsin (self_hosted modunda)
+ANALITIK_VERI_KLASORU = get('BUYUME.ANALITIK_VERI_KLASORU', 'analytics_data/site')
+# Gunluk rapor bu klasorden de okusun
+ANALITIK_RAPOR_DOSYASI = 'site_visits.jsonl'
 
-# Kart içeriği: "Famous Music Studio" logosu SADECE platform thumbnail'inde (cover.jpg)
-# kullanılıyor, video içindeki kartta GÖSTERİLMİYOR. Kart içeriği artık ESNEK —
-# proje klasöründe art.jpg/.jpeg/.png varsa o kullanılır (kare kırpılıp yerleştirilir),
-# yoksa düz renkle dolduruluyor (aşağıdaki renk, "sabit koda" fallback).
-CARD_ART_COLOR = "0x151515"
+# ---------------------------------------------------------------------
+# Madde 29 — TOPLULUK (Discord + Telegram + abonelik listesi)
+# Discord: WEBHOOK (token yok). Telegram: mevcut bot + chat id.
+# Disa aktarim: python topluluk.py disa-aktar --bicim csv
+# ---------------------------------------------------------------------
+TOPLULUK_ACIK = get('BUYUME.TOPLULUK_ACIK', True)
+TOPLULUK_DISCORD_WEBHOOK = get('BUYUME.TOPLULUK_DISCORD_WEBHOOK', '')
+TOPLULUK_VERI_KLASORU = get('BUYUME.TOPLULUK_VERI_KLASORU', 'analytics_data/topluluk')
+TOPLULUK_BILDIRIM_BASLIK = get('BUYUME.TOPLULUK_BILDIRIM_BASLIK', 'Yeni Video')
+# ntfy (Discord bu agdan erisilemez; ntfy token gerektirmez, telefona push)
+TOPLULUK_NTFY_TOPIC = get('BUYUME.TOPLULUK_NTFY_TOPIC', 'fms-t38y77gjd6r7a7h649mb16w2')
+TOPLULUK_NTFY_SUNUCU = get('BUYUME.TOPLULUK_NTFY_SUNUCU', 'https://ntfy.sh')
+TOPLULUK_NTFY_ACIK = get('BUYUME.TOPLULUK_NTFY_ACIK', True)
+# Kanal sirasi: hangi kanallara gonderilecegini belirler.
+TOPLULUK_KANALLAR = get('BUYUME.TOPLULUK_KANALLAR', ['discord', 'telegram', 'ntfy'])
+TOPLULUK_BILDIRIM_MESAJ = get('BUYUME.TOPLULUK_BILDIRIM_MESAJ',
+    "Famous Music Studio'da yeni bir sey var. Dinle, begen, abone ol!")
+SITE_URL = get('SITE_URL', 'https://famousmusicstudio.com')
 
-# Arka plan: ortada hafif aydınlık (merkez falloff, accent tonunda) + asimetrik bokeh blob
-# (complementary cool-blue tonunda) → dramatik derinlik, card "floating" hissi.
-BG_CENTER_BRIGHTNESS = 28  # merkezdeki radial falloff parlaklığı (0-255) — düşürüldü, arka plan daha derin/karanlık
-# BG_BOKEH_POS/RADIUS_RATIO/BRIGHTNESS/COLOR KALDIRILDI (2026-09-11): dördü de
-# hiçbir yerden okunmuyordu — ensure_vignette() bokeh blob'unun konumunu/
-# yarıçapını/parlaklığını/rengini kendi içinde sabit kodluyor, bu sabitler eski
-# bir tasarımdan kalmaydı. (BG_CENTER_BRIGHTNESS yukarıda DURUYOR: o gerçekten
-# okunuyor, bkz. ffmpeg_utils.py:154.)
+KOFI_URL = get('DESTEK.KOFI_URL', "https://ko-fi.com/famousmusicstudio")
 
-# Arka plan artık statik değil, video boyunca yavaşça kayıyor (pan): kaynak görsel
-# hedef çözünürlükten biraz büyük üretiliyor, render sırasında crop x/y zamanla
-# (sin/cos ile) kayıyor. Zoom YOK — crop neredeyse ücretsiz ama her karede yeniden
-# ölçekleme (scale/zoom) render'ı ciddi yavaşlatırdı.
-BACKDROP_PAN_MARGIN_RATIO = 0.14  # arka planın hedef boyuttan ne kadar büyük üretileceği
-BACKDROP_PAN_SPEED_X = 0.12  # radyan/saniye, x ekseni salınım hızı
-BACKDROP_PAN_SPEED_Y = 0.08  # radyan/saniye, y ekseni — x'ten farklı, tekrarsız/organik desen için
+INTRO_SESSIZLIK_KIRP = get('INTRO.SESSIZLIK_KIRP', True)
+INTRO_SESSIZLIK_ESIGI = "-50dB"
+INTRO_SESSIZLIK_PAY = 0.12
+INTRO_SESSIZLIK_MAKS = 3.0
 
-# Renk akışı: pan'a ek olarak backdrop'un hue'su zamanla yumuşakça salınıyor.
-# Tam 360° dönmüyor (dar bir açı aralığında ileri-geri akıyor) — şarkının kendi
-# tema renginden (art.jpg'nin rengi) çok uzaklaşmasın, yine de gözle görülür bir
-# "renk akışı" hissi olsun diye.
-BACKDROP_HUE_AMPLITUDE_DEG = 35  # salınımın genliği (derece) — 0 = orijinal renk, +/- bu kadar kayar
-BACKDROP_HUE_SPEED = 0.025  # radyan/saniye
+PROGRESS_BAR_HEIGHT_RATIO = 0.008
+PROGRESS_BAR_MARGIN_RATIO = 0.08
+PROGRESS_BAR_BOTTOM_RATIO = 0.05
+PROGRESS_BAR_FILLED = 235
+PROGRESS_BAR_EMPTY = 70
 
-# EQ bars (sese duyarlı çubuklar) kaldırıldı — kullanıcı beğenmedi, kaldırıldı.
-# BAR_THICKNESS_RATIO hâlâ layout boşluğu (kart altı/text arası) için kullanılıyor.
-EQ_BAR_THICKNESS_RATIO = 0.15  # kart boyutuna oran, layout spacing için
-
-MARQUEE_GAP_RATIO = 0.02  # kartın altı ile kayan yazı arası (yüksekliğe oran)
-# Pillow gibi ek bir bağımlılık eklemeden (proje bilinçli olarak sadece stdlib +
-# ffmpeg kullanıyor) "Famous Music Studio" yazısının piksel genişliğini kabaca tahmin
-# etmek için ortalama karakter genişliği oranı (Segoe UI, orantılı sans-serif font).
-FONT_CHAR_WIDTH_RATIO = 0.55
-
-# --- AÇILIŞ (ilk saniyeler) ---
-# NEDEN (2026-09-11, olcum_temel_cizgi.json / kitle_tutma_28gun ölçümü):
-# 8 uzun videonun kitle tutma eğrisinde kaybın TAMAMI başta toplanıyor —
-# videonun %1'inden %3'üne (yani ~2. saniyeden ~6,5. saniyeye) ortalama 25
-# puan, oradan %10'a kadar (~22. saniye) sadece ~12 puan daha. Yani sorun
-# "düzgün azalma" değil, 2.-7. saniyede bir uçurum.
-# O saniyelerde ekranda ÖLÇÜLEN değişim (kare(0) ile kare(11) arası ortalama
-# mutlak fark, 0-255 gri): 7,3-8,6 — yani ~%3. Pratikte donmuş bir kare.
-# Üstelik ilk karede şarkı adı HİÇBİR YERDE yazmıyor (kayan künye yazısı
-# t=0'da şeridin sağ dışında başlıyor) ve kadraj, tıklanan küçük resimle
-# uyuşmuyor: küçük resim tam ekran fotoğraf + büyük başlık, video ise aynı
-# fotoğrafın ekranın ~%24'ünü kaplayan küçültülmüş kart hâli.
-# ÇÖZÜM: video projenin KENDİ cover.png'siyle (birebir YouTube küçük resmi)
-# tam ekran açılıyor, kısa bir bekleme sonrası karta çözülüyor (cross-dissolve).
-# Tek değişiklikle üç açık birden kapanıyor: tıklama sürekliliği, ilk karede
-# başlık, ve tam uçurumun olduğu saniyelerde gerçek hareket.
-INTRO_KAPAK = True
-INTRO_KAPAK_BEKLEME = 0.9   # kapak tam ekran sabit kalma süresi (sn)
-INTRO_KAPAK_COZULME = 1.5   # karta çözülme süresi (sn) — bitiş: bekleme+çözülme
-# Sadece uzun formatta. Shorts akışında küçük resim izleyiciye HİÇ gösterilmiyor
-# (bkz. buyume_analizi.md Bulgu 3), yani orada tıklama sürekliliği diye bir şey
-# yok; 45 saniyelik bir kesitte 2,4 saniyeyi kapak ekranına vermek ise net kayıp.
-INTRO_KAPAK_PLATFORMLAR = {"youtube_16x9"}
-
-# Suno çıktıları başta dijital sessizlikle geliyor — 18 projede ölçüldü:
-# 0,15 sn ile 2,65 sn arası, medyan ~1,1 sn (-99 dB, yani mutlak sessizlik).
-# O sürede izleyici ne ses duyuyor ne hareket görüyor. Kırpılıyor.
-# DÜRÜST NOT: sessizlik süresi ile açılış tutması arasında ÖLÇÜLEBİLİR bir
-# ilişki YOK (n=8, Sessiz Mektup en kısa sessizliğe sahip ve en kötü üçte;
-# sıra korelasyonu ~0). Yani bu, veriyle kanıtlanmış bir düzeltme değil —
-# "hiçbir şey olmayan saniyeyi at" mantığıyla yapılmış ucuz bir temizlik.
-# Kapatmak için: INTRO_SESSIZLIK_KIRP = False.
-INTRO_SESSIZLIK_KIRP = True
-INTRO_SESSIZLIK_ESIGI = "-50dB"  # silencedetect eşiği
-INTRO_SESSIZLIK_PAY = 0.12       # atağın başı kesilmesin diye bırakılan pay (sn)
-INTRO_SESSIZLIK_MAKS = 3.0       # güvenlik tavanı: tespit bozulsa bile şarkıdan
-                                 # bundan fazlası ASLA kırpılmaz (sn)
-
-PROGRESS_BAR_HEIGHT_RATIO = 0.008  # yüksekliğe oran — kalınlaştırıldı, görünürlük için
-PROGRESS_BAR_MARGIN_RATIO = 0.08  # kenarlardan içeri, genişliğe oran
-PROGRESS_BAR_BOTTOM_RATIO = 0.05  # alttan yukarı, yüksekliğe oran
-PROGRESS_BAR_FILLED = 235  # dolu kısım parlaklığı (0-255)
-PROGRESS_BAR_EMPTY = 70  # boş kısım parlaklığı (0-255)
-
-# Başlık metni (meta.json'da "title" varsa kullanılır) — kayan, künye/jenerik tarzı
-# küçük ve göze batmayan bir yazı (büyük/kalın başlık değil).
 def _find_font_path() -> str:
-    """İşletim sistemine göre ilk bulunan sistem fontunu döndürür — proje Windows,
-    macOS ve Linux'ta çalışabilsin diye (tek sabit Windows yolu yerine). Segoe UI
-    (Windows) tercih edilir, bulunamazsa her platformda yaygın bir sans-serif
-    alternatife düşülür. Hiçbiri yoksa render.py başlarken açık hata versin diye
-    RuntimeError fırlatılır (drawtext sessizce hatalı/eksik yazı üretmesin diye)."""
     candidates = [
         r"C:\Windows\Fonts\segoeui.ttf",
         r"C:\Windows\Fonts\arial.ttf",
@@ -205,17 +260,9 @@ def _find_font_path() -> str:
     for path in candidates:
         if os.path.isfile(path):
             return path
-    raise RuntimeError(
-        "Sistemde uygun bir font bulunamadı (denenen yollar: "
-        + ", ".join(candidates)
-        + "). config.FONT_PATH'i elle bir .ttf/.ttc dosyasına ayarlayın."
-    )
-
+    raise RuntimeError("Sistemde uygun bir font bulunamadı.")
 
 def _find_bold_font_path() -> str:
-    """Kalın font varyantı — sadece cover.png başlığı için (künye yazısı normal
-    kalınlıkta kalıyor). Bulunamazsa hata vermez, FONT_PATH'e (normal ağırlık)
-    düşer — kalın font kozmetik bir tercih, zorunlu değil."""
     candidates = [
         r"C:\Windows\Fonts\segoeuib.ttf",
         r"C:\Windows\Fonts\arialbd.ttf",
@@ -229,17 +276,10 @@ def _find_bold_font_path() -> str:
             return path
     return FONT_PATH
 
-
 FONT_PATH = _find_font_path()
 FONT_BOLD_PATH = _find_bold_font_path()
 
-
 def _find_logo_path() -> str | None:
-    """Famous Music Studio amblemi (altın sunburst + wordmark, düz siyah zemin
-    üzerinde) — cover.png'de metin marka satırı yerine kullanılır. Gitignored
-    (upload/assets/*.png, assets/*.png) — üretim makinesinde elle konmuş
-    olabilir ama fresh checkout'ta YOK olabilir, bu yüzden bulunamazsa None
-    döner ve generate_cover.py sessizce düz metin satırına düşer (hata vermez)."""
     candidates = [
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload", "assets", "famous_music_studio_logo_v2.png"),
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "assets", "logo.png"),
@@ -249,77 +289,80 @@ def _find_logo_path() -> str | None:
             return path
     return None
 
-
 LOGO_PATH = _find_logo_path()
-FONT_SIZE_RATIO = 0.032  # video yüksekliğine oran — büyütüldü, okunurluk için
+FONT_SIZE_RATIO = 0.032
 FONT_COLOR = "white@0.95"
-# Yazi golgesi - SADECE video arka planli render'da (DJ setleri).
-# Sabit gorsel arka plan koyu oldugu icin orada golgeye gerek yok.
 FONT_SHADOW_COLOR = "black@0.55"
-FONT_SHADOW_OFFSET = 2  # künye yazısı net okunsun diye yüksek opaklık
+FONT_SHADOW_OFFSET = 2
 MARQUEE_SEPARATOR = "  •  "
-MARQUEE_REPEAT = 6  # metnin geniş ekranlarda da kesintisiz görünmesi için tekrar sayısı
+MARQUEE_REPEAT = 6
 MARQUEE_SPEED_PX_S = 60
 
-# Kayan künye yazısının altında duran SABİT (kaymayan) marka satırı — künye yazısıyla
-# AYNI font ve AYNI düz beyaz renk (STATIC_LABEL_FONT_RATIO sadece boyut farkı için).
 STATIC_LABEL_TEXT = "Famous Music Studio"
-STATIC_LABEL_FONT_RATIO = 0.85  # ana font boyutuna oran — biraz daha küçük
-STATIC_LABEL_GAP_RATIO = 0.01  # kayan yazı ile arasındaki boşluk (yüksekliğe oran)
+STATIC_LABEL_FONT_RATIO = 0.85
+STATIC_LABEL_GAP_RATIO = 0.01
 
-# Paylaşım metinleri (YouTube açıklaması, sosyal medya caption şablonları) için
-# tek merkezi marka bilgisi — upload/youtube_upload.py ve ileride
-# instagram_upload.py/tiktok_upload.py bu değerleri kullanır.
+# YouTube kanal handle'ı. SOCIAL_LINKS'ten ÖNCE tanımlanmalı (aşağıda
+# kullanılıyor) — sıra önemli.
+YOUTUBE_HANDLE = "Famous_musics_studio"
+
 SOCIAL_LINKS = {
     "instagram": "https://instagram.com/famous_music_studio",
     "tiktok": "https://www.tiktok.com/@famousmusicstudio",
     "website": "https://famousmusicstudio.com",
+    # YouTube kanalı — ABONE çağrılarında kullanılır.
+    # NEDEN burada: 9 upload modülü aynı linki yazıyordu ve 8'i YANLIŞ
+    # kanala (@DJFamous — başka bir sanatçı) işaret ediyordu. Tek kaynak.
+    "youtube": f"https://youtube.com/@{YOUTUBE_HANDLE}",
+    # Akış (streaming) linkleri — açıklamada "LISTEN ON" bloğu için.
+    # Spotify/Apple Music artist sayfaları; şarkı bazlı linkler DistroKid
+    # dağıtımı sonrası eklenir.
+    "spotify": "https://open.spotify.com/artist/famousmusicstudio",
+    "apple_music": "https://music.apple.com/artist/famousmusicstudio",
 }
 
-# YouTube kanal handle'ı (@ işaretsiz) — DJ Famous açıklama şablonunda
-# "Subscribe ... 👉 @handle" satırı için (bkz. youtube_upload.build_snippet).
-YOUTUBE_HANDLE = "Famous_musics_studio"
+# Kendi Spotify playlist'lerin (Anjunadeep doktrini: önce kendi pazarın).
+# Boşken açıklamaya blok EKLENMEZ — doldurunca otomatik düşer.
+# Format: {"Playlist Adı": "https://open.spotify.com/playlist/..."}
+# Yer tutucu değerler — gerçek playlist ID'leriyle değiştirilmeli
+SPOTIFY_CALMA_LISTELERI = get('SPOTIFY_CALMA_LISTELERI', {
+    "City Pulse Sessions": "https://open.spotify.com/playlist/PL_CityPulse",
+    "Night Drive Series": "https://open.spotify.com/playlist/PL_NightDrive",
+    "Deep Focus Sessions": "https://open.spotify.com/playlist/PL_DeepFocus",
+    "DJ Famous Essentials": "https://open.spotify.com/playlist/PL_DJFamousEssentials"
+})
 
-# @mention handle'ları (SOCIAL_LINKS'teki URL'lerden AYRI tutuluyor) —
-# Instagram/TikTok'ta düz metin linkler caption/yorumda TIKLANAMIYOR ama
-# "@handle" bir hesabı gerçekten ETİKETLİYORSA (mention) tıklanabilir oluyor
-# ve doğrudan o profile açılıyor (WebSearch ile doğrulandı, 2026-09-05) — bkz.
-# social_text.build_youtube_comment(). Bu, düz URL'den FARKLI bir mekanizma.
+# Topluluk sekmesi anket şablonları (500 abone sonrası; haftada 2-3).
+# Tam topluluk modülü (turev_takvimi) ayrı iştir — bunlar sadece metin şablonu.
+TOPLULUK_SABLONLARI = {
+    "siradaki_sehir": "Sıradaki durak hangisi olsun? 🗳️\n1️⃣ {secenek_a}\n2️⃣ {secenek_b}",
+    "kapak_secimi": "Cuma videosunun kapağını sen seç! Hangisi tıklatır? 🖼️\nA ve B yorumda 👇",
+}
+
+# Promo havuzu: her setten önce türdaş DJ'lere ilk-dalga DM (takvim.py).
+PROMO_DM_SABLONU = get('PROMO_DM_SABLONU', "Merhaba {dj} — sana özel ilk dinleme: {parca} {link} Desteklersen setinde çalman bizi uçurur 🙏")
+PROMO_HAVUZ_BOYUTU = get('PROMO_HAVUZ_BOYUTU', 15)
+
+# Kanal kimligi (UC ile baslar) — DistroKid Content ID allowlist icin GEREKLI.
+# 2026-10-19: API'den dogrulandi (channels().list(mine=True)).
+YOUTUBE_KANAL_ID = "UCbbcH8rtQTtz8R66jfKoSZg"
+# Content ID allowlist yapildi mi? (DistroKid Dashboard > Content ID > Whitelist)
+# False ise yeni yuklemeler claim yiyebilir — SOP_yukleme.md ��8.
+CONTENT_ID_ALLOWLIST_AKTIF = get('CONTENT_ID.ALLOWLIST_AKTIF', False)
+
 SOCIAL_HANDLES = {
     "instagram": "famous_music_studio",
     "tiktok": "famousmusicstudio",
 }
-# NOT: "#AIMusic"/"#YapayZekaMüzik"/"#AIMusicChallenge"/"#SunoAI" gibi AI-vurgulu
-# ibareler BİLİNÇLİ olarak burada YOK — kullanıcı kuralı: ürettiğimiz hiçbir
-# içerikte (caption, YouTube tag, video içi kayan yazı) bu ibareler kullanılmasın.
-# AI-üretimi olduğunun ZORUNLU bildirimi (platform politikası gereği) bundan AYRI
-# ve hâlâ yerinde: YouTube'da containsSyntheticMedia API bayrağı
-# (youtube_upload.py); TikTok kit / Instagram / Facebook açıklamasında hashtag'lerden
-# önce tek satır AI_BEYAN_SATIRLARI (2026-09-13 kullanıcı kararı, bkz. dosya sonu) —
-# bunlar hashtag/marka etiketi değil, gerçek zorunlu bildirim mekanizmaları.
+
 BRAND_HASHTAGS = ["#FamousMusicStudio"]
 
-# Keşfet/For You dağıtımını hedefleyen genel hashtag'ler — marka hashtag'lerinden
-# ayrı tutuluyor çünkü bunlar zamanla değişebilir (trend_hashtag_notlari.md'ye bak).
-# 2026-09-10: sabit üçlü yerine HAVUZ. Sebep: her paylaşımda birebir aynı
-# hashtag setini tekrarlamak tekdüzelik sinyali; ayrıca caption'ın yarısı zaten
-# sabitti. build_caption() bu havuzdan şarkıya göre deterministik 3 tane seçer —
-# aynı şarkı hep aynı seti alır (arşiv tutarlılığı), şarkılar arası çeşitlenir.
-# AI-vurgulu hashtag KOYMA (bkz. yukarıdaki not, kullanıcı kararı 2026-09-05).
 DISCOVERY_HASHTAGS = [
     "#keşfet", "#fyp", "#viral", "#keşfetteyiz", "#müzik",
     "#şarkı", "#yenişarkı", "#türkçemüzik", "#foryou",
 ]
 DISCOVERY_HASHTAG_COUNT = 3
 
-# Caption'ın ilk satırı — kaydırmayı durdurmak için merak uyandıran kısa açılış cümlesi.
-# build_caption() şarkı başlığına göre bunlardan birini deterministik seçer (her şarkı
-# için hep aynı hook, ama şarkılar arası çeşitlilik olur).
-# NOT: burada BİLİNÇLİ olarak "yapay zeka/AI ile yapıldı" gibi görünür bir vurgu YOK
-# (kullanıcı kararı, 2026-09-05) — bu içerik hook/etkileşim amaçlı, ZORUNLU bir
-# bildirim değil; zorunlu AI-üretimi bildirimi bundan tamamen ayrı ve hâlâ yerinde
-# (YouTube containsSyntheticMedia bayrağı; TikTok kit/Instagram/Facebook açıklamasında
-# AI_BEYAN_SATIRLARI satırı — hiçbiri buradaki hook/soru metinlerine bağlı değil).
 HOOK_LINES = [
     "Bunu ilk sen keşfet 👀🎶",
     "Kulaklığı tak, bu şarkı tam sana göre 🎧",
@@ -337,10 +380,6 @@ HOOK_LINES = [
     "Bu şarkı gece dinlenir 🌃",
 ]
 
-# Caption'ın orta bölümü de artık sabit değil (2026-09-10). Önceden
-# "Bu sesi edit/kesit videolarında kullanabilirsin 🔥" ve "Yeni şarkılar için
-# takipte kalın" satırları HER paylaşımda birebir aynıydı; caption'ın yarısı
-# şarkıdan bağımsız tekrar ediyordu.
 USE_LINES = [
     "Bu sesi edit/kesit videolarında kullanabilirsin 🔥",
     "Edit'lerinde bu sesi rahatça kullan 🔥",
@@ -352,10 +391,6 @@ USE_LINES = [
     "Kesit yaparsan bu ses tam oturur 🔥",
 ]
 
-# ── PROFESYONELLİK KURALI: CTA generic DEĞİL, BELİRLİ FAYDA ──
-# "Takipte kal" yerine izleyiciye ne kazandığını söyleyen cümleler.
-# Profesyonel şirketler aboneyi "benefıt subscription" olarak satar,
-# "beni follow et" değildir.
 FOLLOW_LINES = [
     "Yeni şarkılar için takipte kalın",
     "Yeni parçalar için takip et 🎵",
@@ -367,11 +402,6 @@ FOLLOW_LINES = [
     "Sıradaki parça için takipte kal 🔔",
 ]
 
-# YouTube İLK YORUM (sabitlenecek kanal yorumu, bkz. youtube_ilk_yorum.py).
-# Açıklamayı kimse açmıyor; sabit yorum herkesin gördüğü ilk satır. İki cümle:
-# bölüm sorusu (setse dakika, şarkıysa kısım) + abone çağrısı. Deterministik
-# seçim (salt 21) — aynı video hep aynı yorumu alır, tekrar gönderimde
-# çift yorum çıkmaz (state bayrağı da var, ikinci kilit). Yalvarma dili YOK.
 ILK_YORUM_SORULARI = [
     "Favori bölümün hangisi? Dakikasıyla yaz 👇",
     "En çok nerede kaldın? Bölümü yaz, konuşalım 💬",
@@ -382,15 +412,9 @@ ILK_YORUM_SORULARI_EN = [
     "Where did you stay the longest? Tell us 💬",
     "Full listen or section hopping? 👇",
 ]
-# ── PROFESYONELLİK KURALI: Abone CTA spesifik fayda ──
-# Generic "abone ol" yerine izleyiciye ne kazandığını belirten cümle.
 ILK_YORUM_ABONE = "Abone ol, her yeni paragraftan önce haberdar ol 🔔"
 ILK_YORUM_ABONE_EN = "Subscribe for the next track before it drops 🔔"
 
-# Caption'ın sonunda, hashtag'lerden hemen önce — yorum sayısını artırmayı
-# hedefleyen bir soru (yorum, algoritma için güçlü bir etkileşim sinyali).
-# HOOK_LINES ile aynı deterministik seçim mantığı ama farklı bir index kullanılır
-# (bkz. social_text._pick_hook) — aynı şarkıda hep aynı ikili tekrarlanmasın diye.
 ENGAGEMENT_QUESTIONS = [
     "Yorumda hangi türü bir sonraki duymak istersin? 👇",
     "Bu şarkı sana neyi hatırlattı, yorumda yaz 💬",
@@ -408,117 +432,25 @@ ENGAGEMENT_QUESTIONS = [
     "Hangi tarzı daha çok yakıştırdın? 🎧",
 ]
 
-# DJ setlerinde arka planı stok videodan kurmak (bkz. stock_video.py).
-# YALNIZCA dj_sets/ için ve yalnızca uzun formatta (16x9) uygulanıyor:
-# 4 dakikalık bir şarkıda tek görsel sorun değil, 80 dakikalık bir sette
-# hiç değişmeyen bir kare izleyiciyi kaçırıyor. Kapatılırsa setler eski
-# bulanık art.jpg arka planına döner — hiçbir şey bozulmaz.
 DJ_ARKA_PLAN_VIDEO = True
-
-# DJ Famous sahnesi: Arda'nın tişörtlü buz-mağarası görsellerinden oluşan
-# 45 saniyelik backdrop, uzun DJ setlerinde Pexels yerine kullanılır.
-# Kapalıysa mevcut stok-video akışı aynen devam eder.
 DJ_ARDA_GORSELLERI = True
-DJ_ARDA_BACKDROP = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "dj_sets", "_arda", "preview", "arda_tshirt_slideshow_45s.mp4",
-)
+DJ_ARDA_BACKDROP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dj_sets", "_arda", "preview", "arda_tshirt_slideshow_45s.mp4")
 
-# DJ setlerinde sci-fi HUD kaplaması (bkz. dj_hud.py). Arka plan videosuyla
-# aynı kapsam: YALNIZCA dj_sets/ ve yalnızca uzun formatta. Dikey 45 saniyelik
-# kesitte köşe ayraçları kadrajı daraltıyor, orada kapalı.
 DJ_HUD = True
-
-# HUD nefes alması: köşe ayraçları render sırasında çok yavaş nabız yapıyor
-# (kontrast 1.0 -> 1+DERINLIK -> 1.0, periyot SURE_SN). PNG sabit üretiliyor,
-# hareket ffmpeg_utils'taki blend öncesi `eq=...:eval=frame` ile veriliyor:
-# kare başına PNG üretmek gerekmez, maliyet ~sıfır. Yön bilerek YUKARI:
-# kontrast 1'in altına inseydi YUV pivotu (128) siyah tabanı griye kaldırır
-# ve `screen` blend tüm kareye nabızla inip kalkan bir peçe basardı; yukarı
-# yönde siyah klipte kalıyor, yalnız çizgiler ışıldıyor. Yalnızca uzun format
-# (HUD'un zaten çalıştığı yer); dikeyde HUD kapalı olduğu için etkisiz.
 DJ_HUD_NEFES = True
-DJ_HUD_NEFES_SURE_SN = 8.0  # aralık: 4-16 (altı telaşlı, üstü donuk)
-DJ_HUD_NEFES_DERINLIK = 0.15  # aralık: 0.05-0.30 (üstü gri-peçe bölgesi)
-
-# SAHNE MODU: arka plan artık kartın ARKASINDAKİ dekor değil, kadrajın
-# KENDİSİ. Kart kaldırılıyor, görüntü bulanıklaştırılmıyor, HUD onu
-# çerçeveliyor - referanstaki ("NOXELUNE HOUSE") düzenin mantığı bu.
-#
-# Neden ayrı bir mod: mevcut tasarım arka planı BİLEREK bulanık ve koyu
-# tutuyor ki ortadaki kart öne çıksın. Aynı kareye hem kart hem net bir
-# sahne koymak ikisini de zayıflatıyor - biri diğerini boğuyor. Bu yüzden
-# ikisi ayrı düzen, aynı anda açılmıyor.
+DJ_HUD_NEFES_SURE_SN = 8.0
+DJ_HUD_NEFES_DERINLIK = 0.15
 DJ_SAHNE_MODU = True
-
-
-# --- DJ setlerinde yayin oncesi Content ID taramasi ----------------------
-# NEDEN: City Pulse Set (4 Eylul 2026) yayinlandiktan SONRA telif itirazi aldi
-# - Suno ciktisi "Bring Me To Life (Tiesto, FORS)" ile eslesti, 4 ayri yerde
-# toplam 106 saniye. Sonuc: para kazanma kapali + 2 ulkede engelli. O anda
-# icerik zaten 6 platformdaydi.
-#
-# YouTube Content ID taramasini videonun gizlilik ayarindan BAGIMSIZ yapiyor.
-# Bu yuzden set once `private` yukleniyor, tarama otursun diye bekleniyor,
-# temizse herkese aciliyor ve diger platformlara ancak o zaman gidiyor.
-#
-# Yalnizca dj_sets/ icin. Ana katalog (gunde 2 sarki, 4 dakikalik tek parca)
-# degismiyor - risk profili farkli ve gunluk akisi 2 saat geciktirmek boru
-# hattini gereksiz karmasiklastirir.
 DJ_ON_TARAMA = True
-
-# Taramanin oturmasi icin beklenecek sure. YouTube genelde 1 saat icinde
-# tamamliyor; 2 saat rahat bir pay.
 DJ_TARAMA_BEKLEME_SN = 2 * 60 * 60
-
-# Sahne modunda blur neredeyse sıfır: görüntünün kendisi gösteriliyor.
-# Tamamen 0 değil - hafif bir yumuşatma stok kliplerin sıkıştırma
-# gürültüsünü bastırıyor ve üstteki yazıları okunur tutuyor.
 DJ_SAHNE_BLUR_SIGMA = 1.5
 DJ_SAHNE_EGRISI = "0/0.02 0.5/0.46 1/0.92"
-
-# Video arka plan, kartın ARKASINDA durmalı — ham stok klip fazla dikkat çekiyor
-# ve koyu art.jpg kartı yutuyordu (ilk denemede kart neredeyse görünmez oldu).
-# Sabit görsel arka planla (ensure_art_backdrop) aynı mantık uygulanıyor:
-# bulanıklaştır + siyahları kaldır, böylece kart ve yazılar öne çıkıyor.
-# Blur sabit görseldekinden (sigma ~48) çok daha HAFİF — hareketin okunması,
-# yani videonun video olduğunun anlaşılması gerekiyor.
 DJ_ARKA_PLAN_BLUR_SIGMA = 14
-# Sabit gorsel arka plandaki (ffmpeg_utils.ensure_art_backdrop) ile AYNI
-# islem: pozitif parlaklik + siyahlari kaldiran egri. Ilk denemede daha
-# zayif bir egri kullanilmisti (0/0.10 0.5/0.62) ve koyu kliplerde -- duman,
-# gece govdesi -- arka plan neredeyse siyaha cokup karti yine yutuyordu.
-# Kullanicinin sabit arka plan icin verdigi karar burada da gecerli:
-# "arka fon kapaktan acik tonda olsun".
 DJ_ARKA_PLAN_PARLAKLIK = "brightness=0.08:saturation=1.2"
-# Ust uc 1/0.88: parlak klipler (altin bokeh, gun batimi) kayan yaziyi
-# yutuyordu - yazi acik renkli ve arka plan beyaza dogru gidince kontrast
-# kalmiyor. Sabit gorsel arka planda bu sorun hic yoktu cunku o goruntu
-# koyu art.jpg'den tureiyordu; video havuzunda ise parlak klipler var.
-# Siyahlar hala kaldiriliyor (kart one ciksin), sadece tepe bastiriliyor.
 DJ_ARKA_PLAN_EGRISI = "0/0.14 0.5/0.70 1/0.88"
-
-# Sahne zoom'u: video backdrop 1.00 -> BITIS'e SET BOYUNCA yavaşça yaklaşıyor
-# (38 dk'da 1.08: anlık farkedilmez, ama kare asla aynı kalmaz — loop'un
-# "bu hareketsiz" hissini kıran şey bu). zoompan tek filtrede yapıyor
-# (ayrı crop+scale ikinci bir tam-kare resample demekti, ~2x canvas maliyeti).
-# YALNIZCA video backdrop dalında; statik PNG dalında pan/hue aynen duruyor,
-# kartta zoom YOK (modül docstring'indeki kural kart içindi, değişmedi).
-# Aralık 1.00-1.15: üstü 1080p'de yumuşama + sarsıntı (zoompan tamsayı
-# yuvarlaması) bölgesi; süre-set boyu oranlı olduğu için periyot ayarı yok.
 DJ_SAHNE_ZOOM = True
 DJ_SAHNE_ZOOM_BITIS = 1.08
 
-
-# --- DJ setlerinin muzik stili -------------------------------------------
-# SORUN: her set `theme: "dj"` kullaniyordu, yani deep house bir set ile
-# techno bir set YouTube/TikTok gozunde birebir ayni sinyali veriyordu -
-# ayni hashtag, ayni etiket, ayni stok goruntu. Iki set de AYNI kitleye
-# dusuyor; ikinci set birinciyi genisletmiyor, tekrar ediyor.
-# COZUM: meta.json'a `set_style` alani. Tema ("dj") marka kimligi olarak
-# kaliyor, stil ise kesif sinyalini ayristiriyor: kendi hashtag'leri, kendi
-# stok video sorgulari, kendi Suno tarifi. Alan YOKSA hicbir sey degismiyor
-# (eski setler aynen calisir) - bu yuzden geriye donuk guvenli.
 SET_STILLERI = {
     "deep_house": {
         "label": "Deep House",
@@ -532,11 +464,6 @@ SET_STILLERI = {
         "suno_stil": "deep house, melodic, warm analog bass, soft female vocal chops, 120 bpm, late night lounge",
     },
     "techno_chill": {
-        # Deep house'un dinleyicisiyle ortusuyor ama aynisi degil: techno
-        # tarafi "focus/work/study" ve "night drive" aramalarini yakaliyor,
-        # deep house daha cok "lounge/relax" tarafinda. Kasitli olarak sert
-        # techno DEGIL - kanalin mevcut sakin tonundan kopmadan komsu bir
-        # kitleye aciliyor.
         "label": "Techno Chill",
         "etiketler": ["Melodic Techno", "Chill Techno", "Focus Music", "Night Drive"],
         "video_sorgulari": [
@@ -552,12 +479,6 @@ SET_STILLERI = {
         "suno_stil": "melodic techno, hypnotic arpeggio, deep sub bass, airy pads, no vocals, 124 bpm, late night drive",
     },
     "organic_morning": {
-        # 2026-09-14 eklendi (kullanıcı onayıyla). Kanaldaki İLK aydınlık/gündüz
-        # seti: mevcut üç setin tamamı (lounge/deep house + gece-üretimli) gece
-        # temalı. "sunrise/morning/organic house" aramaları ayrı bir kitledir;
-        # deep_house'tan BPM ve prodüksiyon (dünya perküsyonu, marimba) ile,
-        # techno_chill'den tamamen farklı mood'la ayrılıyor. Düşük-orta BPM
-        # organik tını, vokalsiz (arka plan/çalışma aramalarına açık).
         "label": "Organic House",
         "etiketler": ["Organic House", "Sunrise Mix", "Balearic House", "Morning Music"],
         "video_sorgulari": [
@@ -569,12 +490,6 @@ SET_STILLERI = {
         "suno_stil": "organic house, warm analog synth, gentle marimba melody, soft latin percussion, no vocals, 118 bpm, sunrise terrace, uplifting calm",
     },
     "progressive_node": {
-        # 2026-09-14 eklendi (kullanıcı onayıyla). Kanaldaki en yüksek enerjili
-        # set: mevcut setler "sakinlik/hipnoz" bandında, bu ise varış noktası
-        # (peak-time club). techno_chill'den BPM (126 vs 124), sürükleyici kick
-        # ve "workout/drive/peak" arama kitlesiyle ayrılıyor. Vokalsiz.
-        # NOT: prodüksiyon "ağırlığı" kasıtlı olarak diğer setlerden yüksek —
-        # enerji çeşitliliği kataloğun açık ihtiyacı (muzik-produksiyon ajani).
         "label": "Progressive House",
         "etiketler": ["Progressive House", "Peak Time House", "Driving House", "Club Mix"],
         "video_sorgulari": [
@@ -587,19 +502,154 @@ SET_STILLERI = {
         ],
         "suno_stil": "melodic progressive house, driving kick, hypnotic lead synth, layered atmosphere, no vocals, 126 bpm, peak time club, forward motion",
     },
+    "arabesk_trap": {
+        "label": "Arabesk Trap",
+        "etiketler": ["Arabesk Trap", "Türkçe Trap", "Damar Mix", "Gece Mix"],
+        "video_sorgulari": [
+            "rainy istanbul street night neon reflections",
+            "car interior night drive city lights bokeh",
+            "smoke dark background slow motion gold",
+            "bosporus bridge night lights long exposure",
+        ],
+        "suno_stil": "arabesk trap fusion, emotional turkish string melody, deep 808 bass, slow tempo 140 bpm half-time, late night damar mood, turkish vocal",
+    },
+    "nineties_nostalji": {
+        "label": "90'lar Nostalji",
+        "etiketler": ["90'lar Türkçe Pop", "Nostalji Mix", "Retro Pop", "Eski Şarkılar"],
+        "video_sorgulari": [
+            "vintage tv static retro living room",
+            "cassette tape close up warm light",
+            "retro istanbul street 90s film grain",
+            "neon retro arcade night glow",
+        ],
+        "suno_stil": "90s turkish pop revival, bright synth brass, nostalgic melody, danceable 118 bpm, retro production with modern mix, turkish vocal",
+    },
 }
 
-
 def set_stili(meta: dict) -> dict | None:
-    """meta.json'daki `set_style` icin stil tanimi; yoksa None."""
     return SET_STILLERI.get(meta.get("set_style") or "")
 
-# --- İngilizce varyantlar (meta.json'da "language": "en" ise kullanılır) ---
-# İlk kullanım: DJ Famous (bkz. dj_sets/README.md) — markanın uzun vadeli global
-# açılımının ilk somut denemesi olarak İngilizce başlık/metin tercih edildi
-# (kullanıcı kararı, 2026-09-03). Ana katalog (`projects/`) meta.json'larında
-# "language" alanı YOK, yani varsayılan ("tr") değişmedi — bu varyantlar sadece
-# language="en" olan projeler için devreye giriyor.
+
+# ============================================================
+# DJ SERIES CONFIGURATION (Best Practices from Cercle/Boiler Room/HÖR)
+# ============================================================
+DJ_SERIES = {
+    "city_pulse": {
+        "brand": "City Pulse Sessions",
+        "tagline": "Urban soundscapes from the world's most iconic rooftops",
+        "visual_theme": "urban_rooftop_cinematic",  # Cercle-style location story
+        "thumbnail_template": "artist_silhouette + city_landmark + series_logo",
+        "description_template": "full_tracklist + city_story + credits + cross_promo",
+        "schedule": "biweekly_friday_18:00_tr",
+        "locations": [
+            {"city": "Istanbul", "country": "Turkey", "landmark": "Hagia Sophia", "gps": "41.0082,28.9784", "story": "Sunset over Bosphorus, minarets calling, city waking up"},
+            {"city": "Berlin", "country": "Germany", "landmark": "TV Tower", "gps": "52.5200,13.4050", "story": "Techno capital, concrete and neon, history in every beat"},
+            {"city": "Tokyo", "country": "Japan", "landmark": "Tokyo Tower", "gps": "35.6762,139.6503", "story": "Neon dreams, Shibuya crossing, future sound"},
+            {"city": "New York", "country": "USA", "landmark": "Empire State", "gps": "40.7484,-73.9857", "story": "City that never sleeps, rooftop stories, concrete jungle"},
+            {"city": "London", "country": "UK", "landmark": "The Shard", "gps": "51.5045,-0.0865", "story": "Thames reflections, underground legacy, global sound"},
+        ],
+        "default_location_idx": 0,
+        "youtube": {
+            "playlist_id": "PLD9oWKZnu0vY",
+            "tags_base": ["melodic techno", "progressive house", "city pulse", "dj famous", "rooftop"],
+            "hashtags": "#CityPulse #MelodicTechno #DJFamous",
+            "title_format": "{artist} @ {landmark}, {city} for City Pulse Sessions",
+        },
+        "seo": {
+            "primary_keyword": "melodic techno rooftop set",
+            "secondary_keywords": ["progressive house", "cityscape", "sunset dj"],
+        },
+    },
+    "deep_focus": {
+        "brand": "Deep Focus Sessions",
+        "tagline": "Immersive organic house from nature's most serene locations",
+        "visual_theme": "nature_immersive_cinematic",
+        "thumbnail_template": "artist_photo + nature_scene + series_logo",
+        "description_template": "full_tracklist + nature_story + wellness_angles + credits",
+        "schedule": "monthly_first_friday_10:00_tr",
+        "locations": [
+            {"city": "Bali", "country": "Indonesia", "landmark": "Rice Terraces", "gps": "-8.4095,115.1889", "story": "Morning mist over Tegallalang, gamelan whispers in the wind"},
+            {"city": "Tulum", "country": "Mexico", "landmark": "Cenote", "gps": "20.2114,-87.4654", "story": "Crystal waters, ancient caves, jungle heartbeat"},
+            {"city": "Santorini", "country": "Greece", "landmark": "Caldera", "gps": "36.3932,25.4615", "story": "White cliffs, azure infinity, cycladic calm"},
+        ],
+        "default_location_idx": 0,
+        "youtube": {
+            "playlist_id": "PLBJq1HPOlly4",
+            "tags_base": ["organic house", "deep house", "deep focus", "dj famous", "nature"],
+            "hashtags": "#DeepFocus #OrganicHouse #DJFamous",
+            "title_format": "{artist} @ {landmark}, {city} for Deep Focus Sessions",
+        },
+        "seo": {
+            "primary_keyword": "organic house nature set",
+            "secondary_keywords": ["deep house", "wellness music", "morning mix"],
+        },
+    },
+    "night_drive": {
+        "brand": "Night Drive Series",
+        "tagline": "Cinematic melodic techno from the driver's seat",
+        "visual_theme": "dashboard_driving_cinematic",  # Existing strength
+        "thumbnail_template": "dashboard_view + artist_silhouette + series_logo",
+        "description_template": "full_tracklist + drive_route_story + credits + cross_promo",
+        "schedule": "monthly_last_friday_22:00_tr",
+        "locations": [
+            {"city": "Los Angeles", "country": "USA", "route": "Mulholland Drive", "gps": "34.1033,-118.3275", "story": "City lights below, stars above, midnight cruise"},
+            {"city": "Dubai", "country": "UAE", "route": "Sheikh Zayed Road", "gps": "25.2048,55.2708", "story": "Futuristic skyline, desert meets neon, endless highway"},
+            {"city": "Tokyo", "country": "Japan", "route": "Shuto Expressway", "gps": "35.6895,139.6917", "story": "Neon tunnels, rain on windshield, cyberpunk reality"},
+        ],
+        "default_location_idx": 0,
+        "youtube": {
+            "playlist_id": "PLWbxoxvoVTa0",
+            "tags_base": ["melodic techno", "night drive", "dj famous", "driving music", "late night"],
+            "hashtags": "#NightDrive #MelodicTechno #DJFamous",
+            "title_format": "{artist} | {route}, {city} for Night Drive Series",
+        },
+        "seo": {
+            "primary_keyword": "melodic techno driving mix",
+            "secondary_keywords": ["night drive", "late night music", "focus driving"],
+        },
+    },
+    "boiler_room_style": {
+        "brand": "DJ Famous Live",
+        "tagline": "Raw energy, real crowd, pure connection",
+        "visual_theme": "crowd_club_raw",  # Boiler Room style
+        "thumbnail_template": "dj_action + crowd_energy + boiler_logo_style",
+        "description_template": "full_tracklist + venue_story + crowd_moments + credits",
+        "schedule": "quarterly_special",
+        "locations": [
+            {"city": "Berlin", "country": "Germany", "venue": "Historic Warehouse", "gps": "52.5200,13.4050"},
+            {"city": "Istanbul", "country": "Turkey", "venue": "Underground Club", "gps": "41.0082,28.9784"},
+        ],
+        "default_location_idx": 0,
+        "youtube": {
+            "playlist_id": "PLMXZSo1En0cg",
+            "tags_base": ["techno", "live set", "boiler room style", "dj famous", "club"],
+            "hashtags": "#DJFamousLive #Techno #LiveSet",
+            "title_format": "{artist} | DJ Famous Live: {city}",
+        },
+        "seo": {
+            "primary_keyword": "techno live set club",
+            "secondary_keywords": ["dj set", "underground", "berlin techno"],
+        },
+    },
+}
+
+def get_dj_series(series_key: str) -> dict | None:
+    return DJ_SERIES.get(series_key)
+
+def list_dj_series() -> list:
+    return list(DJ_SERIES.keys())
+
+def get_series_location(series_key: str, idx: int = None) -> dict | None:
+    series = DJ_SERIES.get(series_key)
+    if not series:
+        return None
+    locations = series.get("locations", [])
+    if not locations:
+        return None
+    if idx is None:
+        idx = series.get("default_location_idx", 0)
+    return locations[idx % len(locations)]
+
 DISCOVERY_HASHTAGS_EN = [
     "#explore", "#fyp", "#viral", "#foryoupage", "#music",
     "#newmusic", "#newsong", "#musicdiscovery", "#indiemusic",
@@ -661,90 +711,52 @@ ENGAGEMENT_QUESTIONS_EN = [
     "Which style suits it best? 🎧",
 ]
 
-# Video/ses kodek ayarları
 VIDEO_CODEC = "libx264"
 AUDIO_CODEC = "aac"
 AUDIO_BITRATE = "192k"
 CRF = "20"
 PRESET = "medium"
 
-# --- YouTube yayın zamanlaması (Türkiye yerel saati — Türkiye DST kullanmıyor,
-# yıl boyunca sabit UTC+3) ---
-# trend_hashtag_notlari.md'ye göre en iyi paylaşım saatleri: 12:00-14:00 ve
-# 18:00-22:00. Eskiden Görev Zamanlayıcı sadece 13:00/19:00'da çalıştığı için
-# her yükleme zaten bu aralıklara denk geliyordu; artık otomatik kademeleme
-# saatte bir SIK çalıştığı için (bkz. auto_process.py) yükleme anı günün her
-# saatine denk gelebilir. YouTube'un status.publishAt özelliği (video
-# privacyStatus="private" + gelecek bir publishAt zamanıyla yüklenir, YouTube
-# o ana gelince otomatik public'e çeviriyor) sayesinde render/upload ANI ile
-# videonun CANLIYA ÇIKTIĞI an birbirinden ayrılabiliyor — auto_process.py
-# kendi kademeleme mantığına göre istediği saatte render+upload yapmaya devam
-# eder, YouTube tarafı ise bir sonraki golden-hour penceresine kadar bekletir.
-# --- Yeni platformlar: OPT-IN -----------------------------------------------
-# Facebook / Telegram / Bluesky modulleri yazildi ama saatlik otomasyona
-# KAPALI baslatiliyor. Iki kapi birden var ve ikisi de gecilmeli:
-#   1. buradaki bayrak True olacak,
-#   2. ilgili kimlik dosyasi (upload/*_token.json | *_client_secrets.json) var olacak.
-#
-# Neden cift kapi: kimlik dosyasi kondugu anda platformun otomatik yayina
-# baslamasi istenmiyor. Once elle bir kez calistirilip ciktisi gozle
-# dogrulanmali (`python upload/<modul>.py --project ... --dry-run`), ancak
-# ondan sonra buradaki bayrak acilmali. Bayragi acmadan once o platformdan
-# hicbir sey yayinlanmaz.
-# DJ Famous setleri icin AYRI bayraklar - EK_PLATFORMLAR'dan kasitli olarak
-# bagimsiz. Sebep dj_sets/README.md'de: setler GERCEK, taninabilir bir kisiyi
-# konu aliyor ve "yeni bir kullanim/platform eklenecekse tekrar teyit edilmeli"
-# kurali var. Tek bir sozluk olsaydi, katalog icin Facebook'u acmak DJ Famous'u
-# da sessizce yeni bir platforma tasirdi - onay bir daha sorulmadan.
-# Onay 2026-09-10'da bu ucu icin ayrica alindi.
-EK_PLATFORMLAR_DJ = {
-    "facebook": True,
-    "telegram": True,
-    "bluesky": True,
-}
-
-EK_PLATFORMLAR = {
-    # 2026-09-10: uçtan uca doğrulandı — Reels yüklendi (video_id
-    # 1421888749896337), YouTube linki yorumu eklendi, state.json yazıldı.
-    "facebook": True,
-    # 2026-09-10: uçtan uca doğrulandı — @hermes_famous_asistan kanalına
-    # (id -1004337174284) uzun format gönderildi, message_id=3. Aynı bot
-    # Hermes asistanı da çalıştırıyor ama kanal gönderilerine tepki
-    # vermiyor (eşleştirme listesinde yalnızca kullanıcının DM'i var).
-    "telegram": True,
-    # 2026-09-10: uçtan uca doğrulandı — famousmusicstudio.bsky.social
-    # hesabına video gönderildi (3mv6owocx562t), aspectRatio ve facet'ler
-    # doğru geldi. E-posta doğrulaması ŞART (video için), yapıldı.
-    "bluesky": True,
-}
-
-
-GOLDEN_HOURS = [(12, 14), (18, 22)]  # (başlangıç, bitiş) — TR yerel saat, [başlangıç, bitiş)
+GOLDEN_HOURS = [(12, 14), (18, 22)]
 TR_TZ = timezone(timedelta(hours=3))
 
-# 2026-09-16 → 2026-09-20: mevcut geri doldurma kuyruğunu pazar gecesine
-# kadar eritmek için geçici telafi penceresi. Yalnız daha önce public olmuş,
-# eksik platform kayıtları için kullanılır; yeni yayınların golden-hour ve
-# tempo kuralları değişmez. Süre dolunca normal kapılar kendiliğinden döner.
+# YENİ ÜRETİM PLANI (2026-10-05): 6 şarkı/hafta + 3 set/hafta
+HAFTALIK_SARKI_HEDEFI = 6
+HAFTALIK_SET_HEDEFI = 3
+MIN_YENI_SARKI_ARALIK_SAAT = 28 * 3600  # 28 saat
+GUNLUK_MAKS_YENI_SARKI = 2
+YAYIN_GUNLERI = [0, 2, 4]  # Pazartesi, Çarşamba, Cuma
+YAYIN_SAATLERI = [12, 18]  # 12:00, 18:00
+HAFTA_SONU_HAZIRLIK_GUN = 4  # Cuma
+HAFTA_SONU_HAZIRLIK_SAAT = 20  # 20:00
+
 BACKFILL_TELAFI_BITIS = datetime(2026, 9, 21, 0, 0, tzinfo=TR_TZ)
 BACKFILL_TELAFI_TAVANLARI = {"telegram": 3, "bluesky": 3, "facebook": 2}
 
+# ============================================================
+# ARŞİV / YEDEKLEME KONFİGÜRASYONU
+# ============================================================
+ARCHIVE_CONFIG = {
+    "enabled": True,
+    "retention_days": 90,           # 90 gün sakla
+    "backup_on_upload": True,       # Upload sonrası yedek al
+    "archive_on_delete": True,      # Silme anında arşivle (hard delete yerine)
+    "storage_paths": {
+        "local": "archives/",       # Yerel
+        "cloud": "",                # Opsiyonel: S3/GDrive/R2 bucket
+    },
+    "auto_archive_after_upload": True,
+}
 
 def backfill_telafi_aktif(now: datetime | None = None) -> bool:
-    """Pazar gecesine kadarki eski geri doldurma telafi penceresi açık mı?"""
     now = (now or datetime.now(TR_TZ)).astimezone(TR_TZ)
     return now < BACKFILL_TELAFI_BITIS
 
-
 def next_golden_publish_time(now: datetime | None = None) -> datetime | None:
-    """Şu an bir golden-hour penceresinin içindeyse None döner (hemen public
-    edilebilir, zamanlamaya gerek yok). Dışındaysa bir sonraki pencerenin
-    başlangıcını (TR yerel, tz-aware) döndürür."""
     now = (now or datetime.now(TR_TZ)).astimezone(TR_TZ)
     for start_hour, end_hour in GOLDEN_HOURS:
         if start_hour <= now.hour < end_hour:
             return None
-
     candidates = []
     for day_offset in (0, 1):
         day = (now + timedelta(days=day_offset)).replace(minute=0, second=0, microsecond=0)
@@ -754,86 +766,26 @@ def next_golden_publish_time(now: datetime | None = None) -> datetime | None:
                 candidates.append(candidate)
     return min(candidates)
 
-
-# --- TikTok YAYIN KİTİ (upload/tiktok_yayin_kiti.py, 2026-09-13) ---
-# Taslak (inbox) akışında API açıklama/gizlilik/AI etiketi/duet-stitch ALAMIYOR
-# (hepsi Direct Post'a özgü); kullanıcı taslağı TikTok uygulamasından ELLE
-# yayınlıyor. Kit bunun eksiksiz kontrol listesini Telegram'dan gönderiyor.
-# Eşikler YALNIZ burada — kit modülü bunları çağrı anında okuyor, kopyalamıyor.
-#
-# TEMPO: bekleyen taslakların çoğu zaten yayında olabilir ve kanalın en büyük
-# riski "toplu üretilmiş AI içerik" politikası; kit, önceki kit ONAYLANMADAN
-# (tiktok_published_at) yenisini zaten göndermiyor, bu tavanlar onun üstünde.
-# ANA ŞALTER: False iken kit sırası HİÇBİR ŞEY göndermez ve state'e yazmaz, yalnız
-# koşu başına tek log satırı ("kit kapalı (config)"). Canlıda KAPALI başlıyor
-# (koordinatör kararı 2026-09-13): tam test takımı yeşil ve commit atıldıktan sonra
-# elle açılacak. Kod canlı checkout'tan saatlik koşuyla çalıştığı için, inceleme
-# bitmeden gerçek Telegram mesajı gitmesin diye. İKİ KAPI okuyor (tek sabit):
-# auto_process._tiktok_kit_sirasi() modülü hiç çağırmaz; kit_gonder_sirasi() da
-# ayrıca kontrol eder (modül başka yoldan çağrılırsa diye).
 TIKTOK_KIT_AKTIF = True
-TIKTOK_KIT_GUNLUK_TAVAN = 1        # TR takvim günü başına en fazla kit
-TIKTOK_KIT_HAFTALIK_TAVAN = 4      # son 7 gün (kayan) içinde en fazla kit
-TIKTOK_KIT_ARALIK_SAAT = 36        # iki kit arası en az (saat)
-TIKTOK_KIT_ONAY_TIMEOUT_SAAT = 48  # 24→48: operator onayina yeter zaman   # onay bekleyen kit timeout (saat)
-TIKTOK_KIT_HATIRLATMA_SAAT = 48    # onaysız kit için TEK hatırlatma eşiği (saat)
-# Kit yalnız API durumu SEND_TO_USER_INBOX olan taslağa gidiyor; okuma bayatsa
-# (kullanıcı bu arada yayınlamış olabilir) gitmiyor. Doğrulama günde bir ve koşu
-# başına 10 taslak sorguluyor (en eski önce) — ~17 taslakta her biri ~2 günde
-# bir tazeleniyor; 72 saat bu döngüye bir gün pay bırakıyor.
+TIKTOK_KIT_GUNLUK_TAVAN = 1
+TIKTOK_KIT_HAFTALIK_TAVAN = 4
+TIKTOK_KIT_ARALIK_SAAT = 36
+TIKTOK_KIT_ONAY_TIMEOUT_SAAT = 48
+TIKTOK_KIT_HATIRLATMA_SAAT = 48
 TIKTOK_KIT_DURUM_TAZELIK_SAAT = 72
 
-# --- TikTok AKIŞI (kullanıcı kararı 2026-09-13): "TikTok'ta tüm işlemleri web'den yap" ---
-# "web_planla": Claude, KULLANICI İSTEDİĞİNDE TikTok Studio web'e yükler ve yerleşik "Planla"
-#   ile ileri bir an seçer; yayını TikTok yapar (upload/tiktok_web.py). Bu modda
-#   auto_process yeni projeye API taslağı YÜKLEMEZ ve `_is_fully_done` TikTok anahtarını
-#   şart koşmaz (TikTok işi tiktok_web'in bekleyen listesinde, kalıp B).
-# "api_taslak": eski yol (inbox taslağı + kit). GERİ ALMAK = bu tek satır.
-# Tanınmayan değer web gibi davranır (fail-closed: istenmeyen API yüklemesi yok).
 TIKTOK_AKIS = "web_planla"
-# TikTok Studio "Planla" en uzak tarih — DOĞRULANMADI, tarayıcı ajanı ekranda görecek.
 TIKTOK_WEB_PLANLA_MAX_GUN = 10
-# Öneri en az bu kadar ileride (yükleme + TikTok'un asgari planlama payı için).
 TIKTOK_WEB_PLANLA_MIN_DAKIKA = 60
-# Planlanan anı geçmiş, onaylanmamış web gönderisi için günde en fazla 1 "TikTok'ta çıktı mı?"
 TIKTOK_WEB_KONTROL_HATIRLATMA = True
-# 24 saat içinde plan anı gelen kayda paket servisi (kapak + açıklama + ayarlar).
 TIKTOK_WEB_PAKET = True
-# Doğrulanmamış planın "bayat" rozeti + yaşlı hatırlatma eşiği (saat).
 TIKTOK_WEB_BAYAT_SAAT = 48
 
-
 def tiktok_web_modu() -> bool:
-    """TikTok web planlama modu mu? Yalnız açıkça "api_taslak" eski yolu seçer."""
     return globals().get("TIKTOK_AKIS") != "api_taslak"
 
-# TikTok'ta AI BEYANI NEREDE:
-#   "etiket"          = uygulamadaki "Yapay zekayla üretilen içerik" anahtarı AÇIK
-#                       (kitin ayar listesinde),
-#   "aciklama"        = açıklamada AI_BEYAN_SATIRLARI satırı; anahtar KAPALI,
-#   "etiket+aciklama" = ikisi birden.
-# VARSAYILAN "aciklama" — kullanıcı kararı 2026-09-13: TikTok kuralları açıklamada
-# yazılı beyanı kabul ediyor (https://www.tiktok.com/community-guidelines/en/integrity-authenticity).
-# Tanınmayan değer fail-closed: ikisi birden (kit uyarısıyla). "Beyan yok" modu
-# BİLEREK YOK.
 TIKTOK_AI_BEYANI = "aciklama"
 
-# ZORUNLU AI BEYAN SATIRI — açıklama metnine giden TEK kaynak (kullanıcı kararı
-# 2026-09-13). Bu bir HASHTAG ya da hook DEĞİL: yukarıdaki "AI-vurgulu ibare yok"
-# kuralının (BRAND_HASHTAGS / HOOK_LINES üstündeki notlar) istisnası olan ZORUNLU
-# beyan kategorisinde; YouTube'daki containsSyntheticMedia bayrağının yazılı eşi.
-# NEREDE: TikTok kit açıklaması + Instagram + Facebook açıklaması, hashtag
-# bloğundan HEMEN ÖNCE ayrı satır (social_text.build_caption(meta, ai_beyani=True),
-# build_tiktok_kit_caption). YouTube açıklamasına EKLENMEZ (bayrak var), Telegram ve
-# Bluesky DEĞİŞMEZ (beyan kuralı yok). Kaynaklar:
-#   https://www.tiktok.com/community-guidelines/en/integrity-authenticity
-#   https://transparency.meta.com/policies/community-standards/manipulated-media/
-#   https://support.google.com/youtube/answer/14328491
-# KURALLAR: söz kısmı ÖNCE; ifade "AI destekli" ("yapay zeka" DEĞİL); kamuya açık
-# HİÇBİR metinde üretim aracının adı geçmez (kullanıcı kararı). Seçim
-# social_text.ai_beyan_turu(): DJ seti -> "dj", derleme -> "vokalli", şarkıda
-# vokalsiz YALNIZ kanıtla (gerekçe orada); belirsizse "vokalli". Dil
-# social_text.resolve_language() ("en" -> İngilizce, diğer her şey Türkçe).
 AI_BEYAN_SATIRLARI = {
     "tr": {
         "vokalli": "Söz: Famous Music Studio · Müzik ve vokal: AI destekli",
@@ -847,386 +799,296 @@ AI_BEYAN_SATIRLARI = {
     },
 }
 
-# Kit açıklamasındaki toplam hashtag hedefi (tekrar elenirse 5'e düşebilir).
 TIKTOK_KIT_ETIKET_SAYISI = 6
 
-# Tema bazlı TÜRKÇE keşif etiketleri — YALNIZ TikTok kit açıklaması (diğer
-# platformlar DISCOVERY_HASHTAGS ile aynen kalıyor, arşiv tutarlılığı).
-# #fyp / #foryou / #viral YOK: TikTok Creator Academy "loosely related
-# keywords/hashtags can work against you" diyor. #keşfet en fazla BİR kez (kod
-# da ayrıca en fazla bir #keşfet* seçiyor). AI vurgulu etiket YOK (bkz.
-# BRAND_HASHTAGS üstündeki kullanıcı kuralı).
 TEMA_KESIF_ETIKETLERI = {
     "pop": ["#türkçepop", "#popmüzik", "#yenişarkı", "#türkçemüzik", "#şarkı", "#keşfet"],
     "rock": ["#türkçerock", "#rockmüzik", "#alternatifrock", "#yenişarkı", "#türkçemüzik", "#keşfet"],
     "elektronik": ["#elektronikmüzik", "#türkçeelektronik", "#synthwave", "#yenişarkı", "#türkçemüzik", "#keşfet"],
     "akustik": ["#akustikmüzik", "#türkçeakustik", "#folk", "#yenişarkı", "#türkçemüzik", "#keşfet"],
-    "hiphop": ["#türkçerap", "#türkçehiphop", "#rap", "#yenişarkı", "#türkçemüzik", "#keşfet"],
-    "arabesk": ["#arabeskrap", "#türkçerap", "#duygusalşarkılar", "#yenişarkı", "#türkçemüzik", "#keşfet"],
-    "derleme": ["#türkçemüzik", "#şarkılar", "#playlist", "#keşfet"],
-    "_varsayilan": ["#türkçemüzik", "#yenişarkı", "#şarkı", "#keşfet"],
+    "hiphop": ["#türkçehiphop", "#hiphoptr", "#rap", "#yenişarkı", "#türkçemüzik", "#keşfet"],
+    "arabesk": ["#arabesk", "#türkçearabesk", "#trap", "#yenişarkı", "#türkçemüzik", "#keşfet"],
+    "dj": ["#djset", "#mix", "#livemix", "#techhouse", "#keşfet"],
 }
 
-# DJ setleri İNGİLİZCE (tema dili "en"): önce SET_STILLERI etiketleri, sonra bu havuz.
-TIKTOK_SET_ETIKETLERI_EN = ["#DJMix", "#LiveSet", "#ElectronicMusic", "#HouseMusic", "#MixSet"]
+EK_PLATFORMLAR_DJ = {
+    "facebook": True,
+    "telegram": True,
+    "bluesky": True,
+}
 
-# Set ve derleme ŞARKI hook'u ALMIYOR: "New track out now" / "Bu şarkıyı
-# bitirmeden geçme" bir sete ya da 13 parçalık bir derlemeye yanlış. Ayrı havuzlar.
-TIKTOK_SET_HOOKS_EN = [
-    "Press play and let the set take over 🎧",
-    "One mix, zero skips 🎧",
-    "Set the mood for the night 🌙",
-    "Headphones on, the mix does the rest 🎧",
-    "A full set, one continuous flow 🔁",
-    "Late-night mix, no interruptions 🌃",
-    "Stay for the drop, then stay for the rest 🔊",
-    "Your next hour, sorted 🎶",
-]
-TIKTOK_SET_SORULARI_EN = [
-    "Where would you play this mix? 👇",
-    "Which moment of the set hit hardest? 💬",
-    "Deep house or techno next? 👇",
-    "Studying, driving or late night — when is this for? 🌙",
-    "Rate the mix from 1 to 10 👇",
-    "Longer set next time? 💬",
-]
-TIKTOK_DERLEME_HOOKS = [
-    "Tek tek arama, hepsi bir arada 🎧",
-    "Uzun bir gece için hazır liste 🌙",
-    "Sıradaki şarkıyı seçme, akış hazır 🔁",
-    "Bir oturuşta baştan sona dinlenir 🎧",
-    "Kulaklığı tak, liste kendiliğinden aksın 🎶",
-    "Gece boyu çalacak bir seçki 🌃",
-]
-TIKTOK_DERLEME_SORULARI = [
-    "Listede en sevdiğin hangisi? 👇",
-    "Hangi parçayla başlamalıydı? 💬",
-    "Bir sonraki derlemeye hangi şarkı girsin? 👇",
-    "Bu listeyi hangi saatte açarsın? 🌙",
-    "Sıralamayı sen yapsan ilk hangisi olurdu? 💬",
-]
+EK_PLATFORMLAR = {
+    "facebook": True,
+    "telegram": True,
+    "bluesky": True,
+}
 
-# YouTube Data API ortak havuzunda (günde 10.000 birim) saatlik yayın hattının
-# bir YENİ yayını için HER ZAMAN ayrılmış kalan pay (kapak + playlist + altyazı
-# ~950 birim; `videos.insert` ayrı kovada). Toplu ELLE betikler
-# (`upload/ai_beyani_onar.py`, `upload/set_privacy.py`) `--zorla` ile bile bu
-# payı yiyemez. Saatlik hat bununla ENGELLENMEZ. Kullanan: upload/youtube_kota.py.
-YOUTUBE_KOTA_YAYIN_REZERVI = 950
+# ============================================================
+# INDIE FLAGSHIP 5-KAMERA VİDEO PRODÜKSİYON CONFIG
+# ============================================================
+INDIE_FLAGSHIP_5CAM = {
+    "cameras": 5,
+    "camera_roles": ["master", "tight", "detail", "wide", "gimbal"],
+    "resolution": "4K",
+    "fps": 23.976,
+    "codec": "XAVC_HS_422_10bit",
+    "picture_profile": "S-Log3",
+    "timecode_sync": "Tentacle_Sync_E",
+    "operators": 2,
+    "static_cameras": 3,
+    "gimbal_camera": True,
+    "vertical_native": True,
+    "songs_per_day": 3,
+    "takes_per_song": {"main": 4, "secondary": 3, "acoustic": 2},
+    "post_days": 3,
+    "deliverables": [
+        "youtube_4k_sdr",
+        "youtube_4k_hdr",
+        "shorts_9x16",
+        "reels_9x16",
+        "tiktok_9x16",
+        "archival_master",
+        "vertical_pack",
+        "thumbnails",
+        "metadata"
+    ],
+    "quality_gates": {
+        "min_bitrate_4k": 35000000,
+        "max_true_peak": -1.0,
+        "target_lufs": -14.0,
+        "frame_drop_tolerance": 0,
+        "audio_sync_tolerance_ms": 5,
+    },
+    "budget_tl": 16300,
+    "crew_count": 5,
 
-# --- YouTube STUDIO PLANLI YÜKLEME (upload/youtube_studio.py, kullanıcı kararı 2026-09-13) ---
-# Tempo tabanı yüzünden bekleyen, render'ı hazır şarkı için saatlik koşuda günde EN FAZLA 1
-# Telegram satırı ("Studio'dan <an>'a planlanabilir"). Tarayıcı otomasyonu YOK (YouTube ToS);
-# işi kullanıcı başlatınca Claude Code Chrome'dan yapar. False = yalnız log satırı.
-YOUTUBE_STUDIO_PLAN_BILDIRIM = True
+    # Kamera eşleştirme ayarları (tüm kameralar aynı olmalı)
+    "camera_matching": {
+        "resolution": "3840x2160",
+        "fps": 23.976,
+        "codec": "XAVC_HS_422_10bit",
+        "picture_profile": "S-Log3",
+        "white_balance": 5600,
+        "shutter": "1/48",
+        "iso": 800,
+        "focus_mode": "MF",
+        "nd_filter": "Variable_ND",
+    },
 
-# --- DJ KESİT SEÇİMİ (dj_clips.py, kullanıcı kararı 2026-09-13) ---
-# `kesit_beklet` state alanı YALNIZ kesit yayınını durdurur (fail-closed: dolu her
-# değer bekletme). `yayin_beklet`'ten farkı: uyumluluk HATASI üretmez, setin diğer
-# akışlarına (geri doldurma, TikTok planı...) dokunmaz.
-DJ_KESIT_BEKLETME_ALANI = "kesit_beklet"
-# Setin ilk N saniyesinden kesit SEÇİLMEZ: City Pulse'ta telif eşleşmelerinin %65'i
-# ilk 6 dakikadaydı (dj_sets/README.md). Kural pencerenin BAŞINA bakar; `bas`
-# bilinmeyen kesit de seçilmez.
-DJ_KESIT_ILK_YASAK_SN = 6 * 60
+    # Platform teslimat spesifikasyonları
+    "deliverable_specs": {
+        "youtube_4k_sdr": {
+            "video_codec": "libx264",
+            "profile": "high",
+            "level": "5.1",
+            "bitrate": "45M",
+            "bitrate_mode": "vbr_2pass",
+            "resolution": "3840x2160",
+            "fps": 23.976,
+            "audio_codec": "aac",
+            "audio_bitrate": "320k",
+            "audio_sample_rate": 48000,
+            "color_space": "bt709",
+            "color_primaries": "bt709",
+            "color_transfer": "bt709",
+        },
+        "youtube_4k_hdr": {
+            "video_codec": "libx265",
+            "profile": "main10",
+            "level": "5.1",
+            "bitrate": "50M",
+            "bitrate_mode": "vbr_2pass",
+            "resolution": "3840x2160",
+            "fps": 23.976,
+            "audio_codec": "aac",
+            "audio_bitrate": "320k",
+            "audio_sample_rate": 48000,
+            "color_space": "bt2020nc",
+            "color_primaries": "bt2020",
+            "color_transfer": "smpte2084",
+            "hdr10": True,
+            "max_cll": "1000,400",
+            "master_display": "G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)",
+        },
+        "shorts_9x16": {
+            "video_codec": "libx264",
+            "profile": "high",
+            "level": "4.1",
+            "bitrate": "20M",
+            "bitrate_mode": "cbr",
+            "resolution": "1080x1920",
+            "fps": 30,
+            "audio_codec": "aac",
+            "audio_bitrate": "256k",
+            "audio_sample_rate": 48000,
+            "color_space": "bt709",
+            "safe_zones": {"top": 0.15, "bottom": 0.20, "sides": 0.10},
+        },
+        "reels_9x16": {
+            "video_codec": "libx264",
+            "profile": "high",
+            "level": "4.1",
+            "bitrate": "20M",
+            "bitrate_mode": "cbr",
+            "resolution": "1080x1920",
+            "fps": 30,
+            "audio_codec": "aac",
+            "audio_bitrate": "256k",
+            "audio_sample_rate": 48000,
+            "color_space": "bt709",
+        },
+        "tiktok_9x16": {
+            "video_codec": "libx264",
+            "profile": "high",
+            "level": "4.1",
+            "bitrate": "16M",
+            "bitrate_mode": "cbr",
+            "resolution": "1080x1920",
+            "fps": 30,
+            "audio_codec": "aac",
+            "audio_bitrate": "128k",
+            "audio_sample_rate": 44100,
+            "color_space": "bt709",
+        },
+        "archival_master": {
+            "video_codec": "prores_ks",
+            "profile": "4444",
+            "resolution": "3840x2160",
+            "fps": 23.976,
+            "audio_codec": "pcm_s32le",
+            "audio_sample_rate": 96000,
+            "audio_channels": "multitrack",
+        },
+    },
 
-# --- TÜREV TAKVİMİ (turev_takvimi.py, Aşama 1, kullanıcı kararları 2026-09-13) ---
-# Türevler 52 saatlik yeni yayın tabanına SAYILMAZ; kendi tavanları bunlar.
-TUREV_GUNLUK_TAVAN = 1                    # TR takvim günü başına, yalnız golden-hour
-TUREV_YOUTUBE_VIDEO_HAFTALIK_TAVAN = 1    # YouTube'a video yükleyen türev, kayan 7 gün
-TUREV_YENI_YAYIN_BANDI_SAAT = 24          # yeni şarkı public anının ±N saatinde türev yok
-TUREV_AYNI_SARKI_ARA_SAAT = 48            # aynı şarkının iki türevi arası en az
-TUREV_PENCERE_GUN = 21                    # T0 + N gün sonra plan kapanır
-TUREV_PLAN_T0_SAAT = 72                   # saatlik süpürge yalnız T0'ı bu kadar yeni projeyi planlar
-TUREV_KOSU_BASINA_PLAN = 3                # süpürge koşu başına en fazla bu kadar projeye plan yazar
-# Şarkılar için YouTube'a ikinci kesit: bu tarihten ÖNCE hiçbir koşulda planlanmaz
-# (K-D Shorts kararı 09 Eki ölçümünden sonra); tarihten sonra da bayrak ister.
-TUREV_SARKI_YOUTUBE_KESIT_KAPI = "2026-10-09"
-TUREV_SARKI_YOUTUBE_KESIT_AKTIF = False
-# Kulis gönderisi: ana katalogda açık; DJ Famous (gerçek kişi) ayrı onay ister.
-TUREV_DJ_KULIS_ONAYLI = False
-# Elle türev hatırlatması (Telegram, operatör DM'i, golden-hour, günde 1, önceki
-# yanıtlanmadan yenisi yok). Canlıda KAPALI başlar; açma kararı ayrı.
-TUREV_HATIRLATMA_AKTIF = False
-TUREV_HATIRLATMA_GUNLUK_TAVAN = 1
-# `elle_islem.py ekle --islem yayinladi` bu kadar saat içindeki türev kaydıyla eşleşir.
-TUREV_ELLE_ESLESME_SAAT = 36
+    # Segment bazlı görsel parametreler (caption_align çıktısıyla kullanılır)
+    "segment_visuals": {
+        "enabled": True,
+        "verse": {"zoom": 1.00, "pan_speed": 1.0, "hue_amp": 35, "nabiz_pct": 12, "grade": "normal"},
+        "chorus": {"zoom": 1.05, "pan_speed": 2.0, "hue_amp": 70, "nabiz_pct": 30, "grade": "intense"},
+        "bridge": {"zoom": 0.98, "pan_speed": 0.5, "hue_amp": -20, "nabiz_pct": 0, "grade": "cool"},
+        "outro": {"zoom": 1.00, "pan_speed": 1.0, "hue_amp": 35, "nabiz_pct": 12, "grade": "normal"},
+    },
 
-# --- İNSAN EMEĞİ GÖNDERİLERİ (turev_takvimi.py kanal kayıtları; TikTok LIVE planı,
-# kullanıcı kararı 2026-09-13) ---
-# "Söz Defteri" / "Kulis": projeye bağlı olmayan, elle çekilen TikTok gönderileri.
-# Şarkı kesiti tavanlarına (TIKTOK_KIT_*, TUREV_GUNLUK_TAVAN) SAYILMAZ; kendi tavanı bu.
-TUREV_INSAN_EMEGI_HAFTALIK_TAVAN = 2      # TR takvim haftası (Pzt-Paz) başına
-TUREV_INSAN_EMEGI_KAYMA_GUN = 2           # çakışmada hedef günden en fazla N gün ileri (aynı hafta)
-TUREV_KANAL_TAKVIMI = "kanal_takvimi.json"  # repo kökü; kanal geneli kayıt yeri
-# YouTube Topluluk sürümü (soz_defteri_topluluk / kulis_topluluk): bağlı TikTok kaydının
-# ÇÖZÜLMÜŞ anından en az bu kadar saat sonra; tavan dışı, elle (Topluluk API'si yok).
-TUREV_TOPLULUK_TIKTOK_SONRASI_SAAT = 24
+    # Backdrop parametreleri
+    "backdrop": {
+        "blur_sigma_ratio": 0.02,  # 0.045 -> 0.02 for faster rendering
+        "pan_margin": 0.14,
+        "pan_speed_x": 0.12,
+        "pan_speed_y": 0.08,
+        "hue_amp": 35,
+        "hue_speed": 0.025,
+        "vignette_strength": 0.4,
+        "brightness": 0.08,
+        "saturation": 1.2,
+        "curves": "0/0.12 0.5/0.68 1/1",
+    },
 
-# --- YAYIN RİTMİ (ozgunluk_plani.md §2d, onaylanan karar 4, 2026-09-13) — okuyan: yayin_ritmi.py
-# R1: DJ seti / derleme ile şarkı arasında kanal geneli ORTAK taban (şarkı↔şarkı 52 sa
-# tabanı auto_process.MIN_YAYIN_ARALIGI_SN'de kalır).
-YAYIN_RITMI_SET_SARKI_ARA_SAAT = 48
-# R3a: YouTube Shorts uzun formatın public anından N saat sonra, AYRI süpürgede
-# (auto_process._shorts_gecikmeli_supurge). Şalter kapalıyken eski akış (uzun + Shorts
-# aynı koşu). Canlıya 2026-09-13 11:35 sonrası (o günkü iki yükleme eski akışla bitti).
-YAYIN_RITMI_SHORTS_GECIKME_SAAT = 24
-YAYIN_RITMI_SHORTS_GECIKMELI = True
-# R3b: bir şarkı aynı TR takvim gününde en fazla N platformda — geri doldurmalar, TikTok
-# web planı, Instagram drain ve Telegram/Bluesky DAHİL. 0 = kapalı.
-YAYIN_RITMI_SARKI_GUNLUK_PLATFORM_TAVANI = 2
-# R2 (yalnız ÖLÇÜM, ozgunluk_skoru): aynı platformda iki farklı şarkı arası en az N saat.
-YAYIN_RITMI_PLATFORM_MIN_ARA_SAAT = 6
+    # Alt bilgi çubuğu (Lower Third) - Kart YOK, tam ekran video üzerine
+    "lower_third": {
+        "enabled": True,
+        "height_ratio": 0.12,
+        "marquee_speed": 60,
+        "marquee_repeat": 6,
+        "font_size_ratio": 0.032,
+        "static_font_ratio": 0.85,
+        "gap_ratio": 0.01,
+        "font_color": "white@0.95",
+        "font_shadow": "black@0.55",
+        "font_shadow_offset": 2,
+        "progress_bar": {
+            "enabled": True,
+            "platforms": ["youtube_16x9"],
+            "height_ratio": 0.008,
+            "margin_ratio": 0.08,
+            "bottom_ratio": 0.05,
+            "filled": 235,
+            "empty": 70,
+        },
+    },
 
-# --- ÖZGÜN METİN (§2c/§2e, kararlar 2-3) — okuyan: ozgun_metin.py
-# Hikâye paragrafı (`meta.hikaye`, 2-4 cümle) + "neden bu şarkı" (`meta.neden_bu_sarki`, 1
-# cümle): bu tarihten önce eksikse UYARI, bu tarihten itibaren yeni şarkıda HATA (yayın durur).
-HIKAYE_KAPISI_TARIHI = "2026-09-21"
-# YouTube başlık kalıbı rotasyonu: yalnız YENİ yüklemede seçilir (state `youtube_baslik_kalibi`),
-# ardışık iki yeni yayında aynı kalıp yok, "Sözleri" hepsinde; eski videolar K1'de kalır.
-YOUTUBE_BASLIK_ROTASYONU_AKTIF = True
-YOUTUBE_BASLIK_KALIPLARI = (
-    {"id": "K1", "sablon": "{title} (Sözleri) | Türkçe {tur} Şarkısı"},
-    {"id": "K2", "sablon": "{title} — Sözleri | Famous Music Studio"},
-    # K3 yalnız meta.json'da `baslik_eki` (şarkıya özgü 2-4 kelime) varsa aday.
-    {"id": "K3", "sablon": "{title} (Sözleri) · {baslik_eki}", "gerekli": "baslik_eki"},
+    # Açılış (Intro) - Sadece YouTube 16:9
+    "intro": {
+        "enabled": True,
+        "hold": 0.9,
+        "dissolve": 1.5,
+        "platforms": ["youtube_16x9"],
+    },
+
+    # Dikey Hook - Sadece Shorts/Reels/TikTok
+    "hook": {
+        "text": "🔊 Sesini Aç",
+        "duration": 2.5,
+        "vertical_only": True,
+        "position": "top_center",
+        "y_ratio": 0.12,
+        "font_size_ratio": 0.045,
+    },
+
+    # CTA (Call to Action) - Sadece dikey
+    "cta": {
+        "text": "Abone ol 🔔",
+        "duration": 3.0,
+        "vertical_only": True,
+        "position": "bottom_center",
+        "font_size_ratio": 0.04,
+    },
+
+    # Loop-friendly (Shorts için son kare cross-dissolve)
+    "loop_friendly": {
+        "enabled": True,
+        "cross_dissolve": 0.5,
+        "vertical_only": True,
+    },
+
+    # DJ Set özel
+    "dj": {
+        "sahne_zoom": 1.08,
+        "hud_nefes": True,
+        "hud_nefes_sure": 8.0,
+        "hud_nefes_derinlik": 0.15,
+        "portre_spektrum": True,
+    },
+
+    # Görsel Dil (gorsel_dil.py entegrasyonu)
+    "gorsel_dil": {
+        "enabled": True,
+        "kapak_konsept": "split",
+        "nabiz_budget": 0.20,
+        "flash_guvenlik_esigi": 3.0,
+    },
+}
+
+# --- GERI UYUMLULUK DOLGUSU (config_mod; 2026-10-09) ---
+# config.py render cekirdegine indirgendi; alan sabitleri config_mod/* altinda.
+# Bu blok YALNIZCA config.py'de OLMAYAN isimleri ekler, mevcut degerleri EZMEZ.
+# Yeni alan config_mod'daki dogru dosyaya yazilir, buraya DEGIL.
+_MODUL_DOLGULARI = (
+    "config_mod.turev_takvimi",
+    "config_mod.insan_emeği",
+    "config_mod.yayin_ritmi",
+    "config_mod.tiktok_kit",
+    "config_mod.tiktok_akis",
+    "config_mod.youtube_studio",
+    "config_mod.youtube_zamanlama",
+    "config_mod.platform_optin",
+    "config_mod.dj_kesit",
+    "config_mod.dj_content_id",
+    "config_mod.dj_muzik_stili",
+    "config_mod.ingilizce",
+    "config_mod.ozgun_metin",
+    "config_mod.ses_limiter",
+    "config_mod.suno_stil",
+    "config_mod.acilis",
 )
-
-
-# --- Ses: render öncesi koşullu true-peak limiter (2026-09-13) ---------------
-# `suno_kalite_onerileri.md` §1 #8 ve §5. Suno çıktıları zaten -12,9 … -14,8
-# LUFS; genel loudnorm/normalizasyon BİLEREK YOK. Tek risk true peak: AAC 192k
-# kodlaması tepeyi taşırabiliyor. render.render_project() sesi ffmpeg
-# `ebur128=peak=true` ile ölçüp `state.json` -> `ses_olcum`a yazıyor (aynı md5
-# için tekrar ölçmüyor); TP bu eşiği AŞARSA render zincirine YALNIZ limiter
-# giriyor. Ölçüm başarısızsa render durmuyor, limitersiz sürüyor, log'a UYARI.
-SES_LIMITER_ACIK = True
-SES_TP_ESIK_DBTP = -1.0          # ölçülen TP bunu AŞARSA (> , eşit değil) limiter
-# NEDEN 4x aşırı örneklemeli alimiter ve NEDEN -2,0 dBFS (-1,5 değil): katalogun
-# sınırdaki gerçek dosyalarında, AAC 192k SONRASI TP ölçüldü (2026-09-13):
-#   Küllerimden Geç (kaynak -0,5): limitersiz -0,7 | düz alimiter -1,5 -> -0,3 (!)
-#                                  | 4x alimiter -1,5 -> -1,0 | 4x alimiter -2,0 -> -1,6
-#   Sokaklar Beni Tanır (-0,7):    limitersiz -0,9 | düz -1,5 -> -1,3 | 4x -2,0 -> -1,3
-# Düz (48 kHz) alimiter yalnız ÖRNEK tepesini görüyor; örnekler arası tepe ve
-# kırpmanın eklediği üst frekans AAC'den sonra TP'yi KÖTÜLEŞTİRDİ. 192 kHz'de
-# sınırlamak örnekler arası tepeyi de yakalıyor. I ve LRA üç dosyada da 0,0
-# değişti. İki geçişli loudnorm (linear, TP=-1,5) da eşdeğer olurdu ama ikinci
-# bir ölçüm geçişi + `measured_*` parametre taşıma demek; bu daha basit.
-SES_LIMITER_TAVAN_DBFS = -2.0
-SES_LIMITER_ASIRI_ORNEKLEME = 192000
-SES_LIMITER_CIKIS_HZ = 48000
-
-# --- Suno stil tarifi: mix / vokal / düzenleme ifadeleri havuzu (2026-09-13) --
-# `suno_kalite_onerileri.md` §2 ve §7: mix cümlesi her şarkıya birebir
-# kopyalanırsa bütün katalogda aynı dizi tekrarlanır (şablon izi, "inauthentic
-# content" riski). Seçim `suno_stil.py --proje "<ad>"` ile: proje adının
-# sha1'inden DETERMİNİSTİK, her şarkıda farklı alt küme ve sıra.
-# KURALLAR (tests/test_suno_stil.py kilitli): sanatçı adı, "Suno" ya da AI
-# vurgusu YOK; yalnız küçük harf ASCII; `wide vocal` YOK (vokal merkezde
-# kalmalı, A/B betiğinin merkez/yan ölçütünü bozar). Suno'nun bu ifadelere
-# tepkisi resmî olarak belgelenmiş değil [YAYGIN].
-# DJ setleri kapsam dışı: onların tarifi `SET_STILLERI` içinde.
-STIL_MIX_ADET = 3
-STIL_IFADE_HAVUZU = {
-    "pop": {
-        "mix": ["polished radio mix", "smooth controlled highs", "punchy tight drums",
-                "modern mastered sound", "warm balanced low end", "clean glossy synths"],
-        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
-                  "crisp vocal consonants", "natural vocal presence with light reverb"],
-        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
-                      "quick hook within the first verse", "dynamic lift into the chorus"],
-    },
-    "rock": {
-        "mix": ["wide stereo guitars", "live drum kit", "no harsh cymbals",
-                "warm analog mix", "punchy tight drums", "controlled guitar distortion"],
-        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
-                  "vocal sits above the guitars", "dry intimate vocal in the verses"],
-        "duzenleme": ["concise radio-length arrangement", "no long guitar solos",
-                      "short instrumental intro", "dynamic build into the final chorus"],
-    },
-    "elektronik": {
-        "mix": ["smooth controlled highs", "tight sidechained low end", "clean punchy kick",
-                "wide stereo synth pads", "modern mastered sound", "no harsh hi-hats"],
-        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
-                  "airy but centered vocal", "crisp vocal consonants"],
-        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
-                      "short build before the drop", "vocal hook returns after the drop"],
-    },
-    "akustik": {
-        "mix": ["warm analog mix", "natural room ambience", "smooth controlled highs",
-                "close-miked acoustic guitar", "gentle dynamic range", "soft rounded low end"],
-        "vokal": ["dry intimate vocal", "intelligible turkish diction",
-                  "clear upfront lead vocal", "breath and texture kept natural"],
-        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
-                      "sparse verses, fuller chorus", "gentle build into the last chorus"],
-    },
-    "hiphop": {
-        "mix": ["punchy tight drums", "deep clean 808", "modern mastered sound",
-                "smooth controlled highs", "crisp snare", "uncluttered low mids"],
-        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
-                  "dry upfront rap delivery", "crisp vocal consonants"],
-        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
-                      "hook arrives early", "beat switch kept short"],
-    },
-    "arabesk": {
-        "mix": ["warm analog mix", "lush strings in the background", "smooth controlled highs",
-                "clear darbuka groove", "no harsh cymbals", "reverb kept on strings, not vocal"],
-        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
-                  "expressive but controlled vibrato", "dry intimate vocal in the verses"],
-        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
-                      "short string intro", "emotional lift into the chorus"],
-    },
-}
-
-# Görünürlük planı geri okuma yarışı (2026-09-13, Küllerimden Geç Shorts): videos.update
-# 200 döndü ama hemen ardından okunan status ESKİ değeri verdi (YouTube yayılma gecikmesi)
-# → sahte HATA + 3 sa retry. Geri okuma DENEME kez, arada BEKLEME sn.
-GORUNURLUK_GERI_OKUMA_DENEME = 2
-GORUNURLUK_GERI_OKUMA_BEKLEME_SN = 5
-
-# --- PERFORMANS HEDEFLERİ (Otomatik Güncellenir) ---
-# Kaynaklar: Haftalık endüstri lideri kıyaslamaları
-# Güncelleme: benchmark_fetch.py haftalık çalıştırılır
-
-YOUTUBE_MIN_AVR_VIEW_DURATION_SN = 82.8
-YOUTUBE_CTR_THUMBNAIL_TARGET = 0.078
-YOUTUBE_SHORTS_TO_LONGFORM_CONVERSION = 0.22
-YOUTUBE_PLAYLIST_RETENTION_TARGET = 0.38
-
-TIKTOK_MIN_VIEW_COMPLETION_RATE = 0.74
-TIKTOK_SHARE_RATE_TARGET = 0.11
-TIKTOK_BIO_LINK_CONVERSION = 0.31
-
-TIKTOK_TOP_HASHTAG_WEIGHT_FYP = 0.28
-TIKTOK_TOP_HASHTAG_WEIGHT_MÜZIK = 0.26
-TIKTOK_TOP_HASHTAG_WEIGHT_YENIÇIKIŞ = 0.18
-TIKTOK_TOP_HASHTAG_WEIGHT_TREND = 0.16
-TIKTOK_TOP_HASHTAG_WEIGHT_SLUG = 0.12
-
-INSTAGRAM_REELS_COMPLETION_TARGET = 0.70
-INSTAGRAM_ENGAGEMENT_RATE_TARGET = 0.068
-INSTAGRAM_BIO_LINK_CONVERSION = 0.24
-INSTAGRAM_CAROUSEL_BOOST_FACTOR = 2.3
-
-TELEGRAM_PREVIEW_CLICK_RATE = 0.15
-TELEGRAM_RESHARE_EFFICIENCY = 0.50
-
-BLUESKY_PREVIEW_CLICK_RATE = 0.13
-BLUESKY_RESHARE_EFFICIENCY = 0.45
-
-
-# --- PERFORMANS HEDEFLERİ (Otomatik Güncellenir) ---
-# Kaynaklar: Haftalık endüstri lideri kıyaslamaları
-# Güncelleme: benchmark_fetch.py haftalık çalıştırılır
-
-YOUTUBE_MIN_AVR_VIEW_DURATION_SN = 82.8
-YOUTUBE_CTR_THUMBNAIL_TARGET = 0.078
-YOUTUBE_SHORTS_TO_LONGFORM_CONVERSION = 0.22
-YOUTUBE_PLAYLIST_RETENTION_TARGET = 0.38
-YOUTUBE_SUBSCRIBER_CONVERSION_RATE_TARGET = 0.0150
-YOUTUBE_MONTHLY_SUBSCRIBER_GROWTH_TARGET = 135
-
-TIKTOK_MIN_VIEW_COMPLETION_RATE = 0.74
-TIKTOK_SHARE_RATE_TARGET = 0.11
-TIKTOK_BIO_LINK_CONVERSION = 0.31
-TIKTOK_FOLLOWER_CONVERSION_RATE_TARGET = 0.080
-
-TIKTOK_TOP_HASHTAG_WEIGHT_FYP = 0.28
-TIKTOK_TOP_HASHTAG_WEIGHT_MÜZIK = 0.26
-TIKTOK_TOP_HASHTAG_WEIGHT_YENIÇIKIŞ = 0.18
-TIKTOK_TOP_HASHTAG_WEIGHT_TREND = 0.16
-TIKTOK_TOP_HASHTAG_WEIGHT_SLUG = 0.12
-
-INSTAGRAM_REELS_COMPLETION_TARGET = 0.70
-INSTAGRAM_ENGAGEMENT_RATE_TARGET = 0.068
-INSTAGRAM_BIO_LINK_CONVERSION = 0.24
-INSTAGRAM_CAROUSEL_BOOST_FACTOR = 2.3
-INSTAGRAM_FOLLOWER_CONVERSION_RATE_TARGET = 0.050
-
-TELEGRAM_PREVIEW_CLICK_RATE = 0.15
-TELEGRAM_RESHARE_EFFICIENCY = 0.50
-TELEGRAM_MEMBER_CONVERSION_RATE_TARGET = 0.10
-
-BLUESKY_PREVIEW_CLICK_RATE = 0.13
-BLUESKY_RESHARE_EFFICIENCY = 0.45
-BLUESKY_MEMBER_CONVERSION_RATE_TARGET = 0.08
-
-
-# ================================================================
-# GROWTH LOOP (profesyonel şirket davranışı)
-# ================================================================
-# Rekabet kanalları — @handle veya username
-GROWTH_REKABET_KANALLARI = []
-
-# Outlier eşiği — kanal ortalamasının kaç katı
-GROWTH_OUTLIER_CARPAN = 2.0
-
-# Minimal izlenme (altı bu outlier olarak sayılmaz)
-GROWTH_MIN_VIEWS = 1000
-
-# ================================================================
-# END SCREEN KONTROLÜ (YouTube video sonu ekranı)
-# ================================================================
-# YouTube Data API end screen eklemeyi desteklemediği için,
-# bu kural: 'yeni yüklenen her video sonuna end screen eklenmedi uyarısı'
-# YouTube Studio'da manuel eklemeyi gerektirir.
-END_SCREEN_ENABLED = True      # Kapı (True/False)
-END_SCREEN_MINUTES = 5         # Videonun son N saniyesi hedef aralığı
-END_SCREEN_LOG_MESSAGE = (    # Kullanıcıya gösterilecek uyarı mesajı
-    'End screen kontrolü: YouTube Studio\'da son {min} saniyeye '
-    'video/playlist eklenmedi'
-)
-
-# Keyword tabanı — (kelime, arama_miktarı, rekabet_derecesi)
-# arama_miktarı: günlük YouTube arama (ör. 10000 = yüksek talep)
-# rekabet: "yüksek" | "orta" | "düşük"
-GROWTH_KEYWORDS = [
-    # Türkçe hip-hop/rap kategorisi
-    ("rap", 8000, "orta"),
-    ("türkçe hip-hop", 3500, "yüksek"),
-    ("sözler", 2000, "düşük"),
-
-    # Duygu/ton kategorisi
-    ("hüzün", 1500, "yüksek"),
-    ("sevgi", 1200, "orta"),
-    ("kader", 800, "düşük"),
-
-    # Format/feature kategorisi
-    ("melodi", 3000, "orta"),
-    ("beats", 1800, "düşük"),
-    ("freestyle", 1000, "yüksek"),
-]
-
-# ================================================================
-# MARKA SES REHBERİ (profesyonel şirket davranışı)
-# ================================================================
-# Tüm platformlarda tutarlı ses tonu.
-# Bu rehber, social_text.py'un caption üretimini doğrular.
-
-MARKA_SES = {
-    # Kimliğin: kısa, etkileyici, tekrarlanabilir
-    "tanim": "Famous Music Studio — AI-assisted Türkçe müzik",
-
-    # Ton: markanın konuşma tarzı
-    "ton": "guzel ve sincak, dogrudan ve hicbirsey",
-
-    # Kelimeler: kullan, kaçın
-    "kullan": ["keşfet", "dinle", "benimle", "haberdar ol", "sürpriz"],
-    "kacin": ["ücretsiz", "indir", "crack", "pirate", "mp3"],
-
-    # Platform sahneleri
-    "sahne": {
-        "youtube": "uzun soluklu, eğitici, otorite",
-        "tiktok": "hızlı, enerjik, trend-aware",
-        "instagram": "polished casual, marka uyumlu",
-        "facebook": "dostane, topluluk odaklı",
-    },
-
-    # CTA rehberi ( FOLLOW_LINES ile uyumlu )
-    "cta_kural": "izleyiciye NE kazandığını söyle, yalvarma",
-
-    # Hashtag stratjisi
-    "hashtag_kural": "3 katman: niche + mid + broad, max 5",
-
-    # Community: yorumlara cevap ver, soru sor
-    "community_kural": "her yorumu 24sa icin cevapla, soru sor",
-}
+try:
+    for _mod_adi in _MODUL_DOLGULARI:
+        try:
+            _mod = importlib.import_module(_mod_adi)
+        except Exception:
+            continue
+        for _ad in dir(_mod):
+            if _ad.isupper() and _ad not in globals():
+                globals()[_ad] = getattr(_mod, _ad)
+except Exception:
+    pass

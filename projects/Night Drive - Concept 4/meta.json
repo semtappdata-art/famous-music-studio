@@ -1,0 +1,83 @@
+{
+  "title": "Night Drive – Melodic Techno (Concept 4: Title Subtitle)",
+  "theme": "elektronik",
+  "set_style": "techno_chill",
+  "marquee_text": "DJ Famous  •  Night Drive – Melodic Techno (Concept 4: Title Subtitle)",
+  "art_query": "rainy city street car taillights reflection night",
+  "location": {
+    "city": "London",
+    "country": "UK",
+    "route": "M25 Orbital",
+    "gps": "51.5074,-0.1278",
+    "story": "Rain on windshield, city lights blur, midnight thoughts",
+    "story_tr": "Yağmurlu camdan şehir ışıkları dans ediyor. Her durakta yeni bir hikaye, her ışıkta yeni bir umut."
+  },
+  "playlist_id": "PL_NIGHTDRIVECONCEPT4",
+  "tags_base": [],
+  "hashtags": "",
+  "seo": {},
+  "cross_promo": {},
+  "yayin_tarihi": "",
+  "end_card_text": "Subscribe — new track every week  •  @Famous_musics_studio",
+  "end_card_text_tr": "Abone ol, her hafta yeni şarkı  •  @Famous_musics_studio",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "title": "Rainy Departure",
+      "artist": "DJ Famous",
+      "start_sec": 0,
+      "end_sec": 300,
+      "bpm": 120,
+      "key": "Gm"
+    },
+    {
+      "timestamp": "05:00",
+      "title": "London Fog",
+      "artist": "DJ Famous",
+      "start_sec": 300,
+      "end_sec": 600,
+      "bpm": 122,
+      "key": "Dm"
+    },
+    {
+      "timestamp": "10:00",
+      "title": "Thames Reflection",
+      "artist": "DJ Famous",
+      "start_sec": 600,
+      "end_sec": 900,
+      "bpm": 124,
+      "key": "Bb"
+    },
+    {
+      "timestamp": "15:00",
+      "title": "Big Ben Chimes",
+      "artist": "DJ Famous",
+      "start_sec": 900,
+      "end_sec": 1200,
+      "bpm": 123,
+      "key": "F"
+    },
+    {
+      "timestamp": "20:00",
+      "title": "Dawn Approach",
+      "artist": "DJ Famous",
+      "start_sec": 1200,
+      "end_sec": 1500,
+      "bpm": 123,
+      "key": "F"
+    },
+    {
+      "timestamp": "25:00",
+      "title": "Foggy Arrival",
+      "artist": "DJ Famous",
+      "start_sec": 1500,
+      "end_sec": 1800,
+      "bpm": 121,
+      "key": "Gm"
+    }
+  ],
+  "tur_ozel": "",
+  "hikaye": "Yağmurlu camdan şehir ışıkları dans ediyor. Her durakta yeni bir hikaye, her ışıkta yeni bir umut. Gece bitmiyor, sadece dönüşüyor.",
+  "neden_bu_sarki": "Gece sürüşünün o sihirli anını, sonsuza dek kilitlemek için.",
+  "story_tr": "Yağmurlu camdan şehir ışıkları dans ediyor. Her durakta yeni bir hikaye, her ışıkta yeni bir umut."
+}

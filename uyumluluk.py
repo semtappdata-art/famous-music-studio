@@ -24,6 +24,12 @@ import hashlib
 import json
 import os
 
+try:
+    from tools.call_guard import guarded_call
+except Exception:
+    def guarded_call(fn=None, **_k):
+        return fn if callable(fn) else (lambda f: f)
+
 # Mutlak yol: goreli birakilirsa yanlis cwd'de os.path.isdir False doner ve
 # HEM md5 tekrar kontrolu HEM gunluk yigilma sayaci SESSIZCE atlanir; kontrol()
 # hata=0 uyari=0 dondugu icin boru hatti "temiz" der, yani kapi kendiliginden
@@ -275,11 +281,14 @@ def _yayin_durumu_sozu(durum) -> str:
     return "YouTube'da %s" % (durum.get("youtube_privacy") or "gizliliği bilinmiyor")
 
 
-def kontrol(proje: str, asama: str = "render") -> tuple:
-    """(hatalar, uyarilar) doner. Hata = devam edilmemeli, uyari = loglanir.
+@guarded_call
+def kontrol(proje: str, asama: str = "render"):
+    """ApprovalResult döner (tuple gibi açılabilir: hatalar, uyarilar = kontrol(...)).
 
-    asama: "render" (uretimden once) veya "yukleme" (yayindan once).
+    Hata = devam edilmemeli, uyarı = loglanır.
+    asama: "render" (üretimden önce) veya "yukleme" (yayından önce).
     """
+    from tools.approval import ApprovalResult
     hatalar, uyarilar = [], []
     try:
         meta = _meta(proje)
@@ -587,7 +596,31 @@ def kontrol(proje: str, asama: str = "render") -> tuple:
                 "bugün zaten %d yükleme yapıldı — toplu üretim deseni "
                 "'inauthentic content' tarifine yaklaşıyor" % sayac)
 
-    return hatalar, uyarilar
+    # --- CONTENT ID ALLOWLIST (SOP_yukleme.md §8) ---------------------------
+    # NEDEN UYARI (fail-closed DEĞİL): allowlist'in gerçekten yapılıp
+    # yapılmadığını YouTube API'den SORGULAMAK mümkün değil (claim'ler
+    # ancak iddia edildiğinde görünür). Yani bu kapı "claim yiyorsun"
+    # diyebilir ama "claim yemedin" diyemez — bu yüzden yüklemeyi
+    # DURDURMAZ, hatırlatır. Bayrak `config.CONTENT_ID_ALLOWLIST_AKTIF`
+    # elle True yapılınca uyarı susar.
+    #
+    # ETKİ: DistroKid claim'i bir sonraki 1-2 günde monetizasyonu keser;
+    # kullanıcı hatırlatmazsa sessizce para kaybeder. Uyarı yeterli.
+    if asama == "yukleme":
+        try:
+            import config as _cfg
+            if not getattr(_cfg, "CONTENT_ID_ALLOWLIST_AKTIF", False):
+                kanal_id = getattr(_cfg, "YOUTUBE_KANAL_ID", "")
+                if kanal_id:
+                    uyarilar.append(
+                        "Content ID allowlist yapılmamış görünüyor "
+                        "(config.CONTENT_ID_ALLOWLIST_AKTIF=False) — DistroKid "
+                        "claim'i yeni yüklemeleri engelleyebilir. Kanal ID: %s "
+                        "→ SOP_yukleme.md §8" % kanal_id)
+        except Exception:
+            pass
+
+    return ApprovalResult.from_lists(hatalar, uyarilar)
 
 
 def rapor_yaz(proje: str, hatalar: list, uyarilar: list, log=print) -> None:

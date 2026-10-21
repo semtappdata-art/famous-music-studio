@@ -1,0 +1,22 @@
+{
+  "title": "Test Song",
+  "description": "Test song for distribution package\n\nFamous Music Studio — Deep House\n\nDinle:\n  Spotify: https://famousmusicstudio.com/spotify\n  Apple Music: https://famousmusicstudio.com/apple\n\nTakip et:\n  YouTube: @FamousMusicStudio\n  Instagram: @famousmusicstudio\n  TikTok: @famousmusicstudio\n\nDestek: https://ko-fi.com/famousmusicstudio\n\n#FamousMusicStudio #DeepHouse #YeniMuzik",
+  "tags": ["test", "deep house", "electronic", "famousmusicstudio", "yenisesarki", "turkcemuzik"],
+  "chapters": [
+    {"start": 0, "end": 30, "title": "Intro"},
+    {"start": 30, "end": 90, "title": "Verse 1"},
+    {"start": 90, "end": 150, "title": "Chorus"},
+    {"start": 150, "end": 210, "title": "Bridge"},
+    {"start": 210, "end": 270, "title": "Outro"}
+  ],
+  "thumbnails": {
+    "default": "cover.png",
+    "variant_a": "cover_variant_a.png",
+    "variant_b": "cover_variant_b.png"
+  },
+  "playlists": ["Deep House", "Live Sessions", "Famous Music Studio"],
+  "privacy": "private",
+  "publish_at": "golden_hour",
+  "category": "Music",
+  "language": "tr"
+}

@@ -1,0 +1,31 @@
+#!/bin/bash
+# Pre-commit hook for Famous Music Studio
+# Runs linting, type checking, and secret scanning before each commit
+
+set -e
+
+echo "=== Pre-commit hooks ==="
+
+# 1. Ruff linter
+echo "[1/4] Ruff linter..."
+python -m ruff check config_lib/ upload/ tests/ || true
+
+# 2. Mypy type checker
+echo "[2/4] Mypy type checker..."
+python -m mypy config_lib/ upload/ --ignore-missing-imports || true
+
+# 3. Bandit security scan
+echo "[3/4] Bandit security scan..."
+python -m bandit -r config_lib/ upload/ -ll || true
+
+# 4. Secret detection (basic)
+echo "[4/4] Secret detection..."
+if grep -rE "(api_key|secret|password|token)\s*=\s*[\"'][^\"']{8,}[\"']" config_lib/ upload/ --include="*.py" 2>/dev/null; then
+    echo "WARNING: Possible secret found in code. Check before committing."
+fi
+
+# 5. Unused call check (rapor amaçlı, commit engellemez)
+echo "[5/5] Unused call check..."
+python tools/check_unused_calls.py || true
+
+echo "=== Pre-commit hooks complete ==="

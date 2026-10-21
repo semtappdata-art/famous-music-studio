@@ -1,42 +1,37 @@
-# Famous Music Studio - Production Dockerfile
-# Multi-stage build for optimal size
-
-# Stage 1: Build
-FROM python:3.12-slim AS builder
-
-WORKDIR /build
-RUN apt-get update && apt-get install -y --no-install-recommends     ffmpeg     git     curl     && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-# Stage 2: Production
-FROM python:3.12-slim AS production
+# Dockerfile for Famous Music Studio
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends     ffmpeg     git     curl     && rm -rf /var/lib/apt/lists/*
+# Install system deps
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy Python packages from builder
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
+# Install Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
 
-# Copy application
+# Copy project
 COPY . .
 
-# Create directories
-RUN mkdir -p /app/projects /app/gorev_izleri /app/upload /app/backup
+# Install Python deps
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Environment variables
-ENV PYTHONUNBUFFERED=1     PYTHONDONTWRITEBYTECODE=1     TZ=Europe/Istanbul
+# Download models
+RUN ollama pull gemma2:2b || true
+RUN ollama pull phi3.5:latest || true
+RUN ollama pull qwen3.5:4b || true
+
+# Env file
+COPY .env .env
+
+# Expose port
+EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=60s --timeout=30s --start-period=10s --retries=3     CMD python -c "import saglik_kontrol; print('OK')" || exit 1
-
-# Non-root user for security
-RUN useradd -m -u 1000 famous && chown -R famous:famous /app
-USER famous
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Run
 CMD ["python", "auto_process.py"]

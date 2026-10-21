@@ -1,0 +1,110 @@
+{
+  "mcp:chrome_devtools": {
+    "tipi": "mcp",
+    "ad": "chrome_devtools",
+    "endpoint": "pageId:1",
+    "durum": "bagli",
+    "yetki": "tam",
+    "son_kullanim": "2026-09-14T18:45:00Z",
+    "notlar": "Instagram/Facebook/Bluesky/HyperFollow/DistroKid sayfalari acildi"
+  },
+  "mcp:postwire": {
+    "tipi": "mcp",
+    "ad": "postwire",
+    "endpoint": "postwire.io",
+    "durum": "bagli_ama_oturum_acik_degil",
+    "yetki": "planlama_yayin",
+    "son_kullanim": "2026-09-14T18:50:00Z",
+    "notlar": "Oturum acik degil - /mcp signin gerekli"
+  },
+  "mcp:yt_studio": {
+    "tipi": "mcp",
+    "ad": "yt_studio",
+    "endpoint": "youtube.com",
+    "durum": "bagli",
+    "yetki": "kanal_bilgisi_okuma",
+    "son_kullanim": "2026-09-14T15:00:00Z",
+    "notlar": "Kanal ID: UCbbcH8rtQTtz8R66jfKoSZG alindi"
+  },
+  "mcp:suno": {
+    "tipi": "mcp",
+    "ad": "suno",
+    "endpoint": "suno.ai",
+    "durum": "bagli",
+    "yetki": "uretim_kotasi_gunluk_12",
+    "son_kullanim": "2026-09-14T10:00:00Z",
+    "notlar": "Gunluk kota 10-12, gunluk hedef 2-3 tamamlanmis"
+  },
+  "api:distrokid": {
+    "tipi": "api",
+    "ad": "distrokid",
+    "endpoint": "distrokid.com",
+    "durum": "bagli",
+    "yetki": "yayin_yukleme_istatistik",
+    "son_kullanim": "2026-09-14T18:30:00Z",
+    "notlar": "Album: 8C68E533-... Gece Masallari - 30+ platforma gonderildi"
+  },
+  "platform:instagram": {
+    "tipi": "platform",
+    "ad": "instagram",
+    "endpoint": "instagram.com/famous_music_studio",
+    "durum": "bagli",
+    "yetki": "paylasim_story_reels",
+    "son_kullanim": "2026-09-14T18:55:00Z",
+    "notlar": "HyperFollow paylasim icin hazir"
+  },
+  "platform:facebook": {
+    "tipi": "platform",
+    "ad": "facebook",
+    "endpoint": "facebook.com/famousmusicstudio",
+    "durum": "bagli",
+    "yetki": "paylasim_sayfa",
+    "son_kullanim": "2026-09-14T18:55:00Z",
+    "notlar": "Sayfa paylasimi, HyperFollow linki"
+  },
+  "platform:bluesky": {
+    "tipi": "platform",
+    "ad": "bluesky",
+    "endpoint": "bsky.app/profile/famousmusicstudio.bsky.social",
+    "durum": "bagli",
+    "yetki": "paylasim_post",
+    "son_kullanim": "2026-09-14T18:55:00Z",
+    "notlar": "HyperFollow linki paylasim icin hazir"
+  },
+  "api:suno": {
+    "tipi": "api",
+    "ad": "suno",
+    "endpoint": "api.suno.ai",
+    "durum": "bagli",
+    "yetki": "muzik_uretimi",
+    "son_kullanim": "2026-09-14T10:00:00Z",
+    "notlar": "Gunluk kota 10-12, gunluk hedef 2-3 parca"
+  },
+  "platform:hyperfollow_instagram": {
+    "tipi": "platform",
+    "ad": "hyperfollow_instagram",
+    "endpoint": "https://instagram.com",
+    "durum": "hazirlaniyor",
+    "yetki": "paylasim",
+    "son_kullanim": "2026-10-07T06:23:57.815039Z",
+    "notlar": "HyperFollow paylasim icin instagram acildi"
+  },
+  "platform:hyperfollow_facebook": {
+    "tipi": "platform",
+    "ad": "hyperfollow_facebook",
+    "endpoint": "https://facebook.com",
+    "durum": "hazirlaniyor",
+    "yetki": "paylasim",
+    "son_kullanim": "2026-10-07T06:23:57.841747Z",
+    "notlar": "HyperFollow paylasim icin facebook acildi"
+  },
+  "platform:hyperfollow_bluesky": {
+    "tipi": "platform",
+    "ad": "hyperfollow_bluesky",
+    "endpoint": "https://bluesky.com",
+    "durum": "hazirlaniyor",
+    "yetki": "paylasim",
+    "son_kullanim": "2026-10-07T06:23:57.865050Z",
+    "notlar": "HyperFollow paylasim icin bluesky acildi"
+  }
+}

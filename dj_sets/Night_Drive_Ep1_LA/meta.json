@@ -1,0 +1,53 @@
+{
+  "title": "DJ Famous | Mulholland Drive, Los Angeles for Night Drive Series",
+  "series": "night_drive",
+  "episode": 1,
+  "theme": "dj",
+  "set_style": "dashboard driving",
+  "marquee_text": "Night Drive Series  •  Ep01  •  #DJFamous",
+  "art_query": "Los Angeles  dashboard driving cinematic cinematic",
+  "location": {
+    "city": "Los Angeles",
+    "country": "USA",
+    "landmark": "Los Angeles",
+    "gps": "34.1033,-118.3275",
+    "story": "City lights below, stars above, midnight cruise",
+    "route": "Mulholland Drive"
+  },
+  "youtube": {
+    "playlist_id": "PL_NightDrive",
+    "tags_base": [
+      "melodic techno",
+      "night drive",
+      "dj famous",
+      "driving music",
+      "late night"
+    ],
+    "hashtags": "#NightDrive #MelodicTechno #DJFamous",
+    "title_format": "{artist} | {route}, {city} for Night Drive Series"
+  },
+  "seo": {
+    "primary_keyword": "melodic techno driving mix",
+    "secondary_keywords": [
+      "night drive",
+      "late night music",
+      "focus driving"
+    ]
+  },
+  "thumbnail_concept": "dashboard_view + artist_silhouette + series_logo",
+  "description_template": "full_tracklist + drive_route_story + credits + cross_promo",
+  "schedule": "monthly_last_friday_22:00_tr",
+  "cross_promo": {
+    "shorts_clips": [
+      "hook_0-30s",
+      "transition_mid",
+      "outro_last_3min"
+    ],
+    "instagram_reel": "30s_vertical_hook",
+    "tiktok_draft": "60s_best_moment",
+    "bluesky_thread": "track_by_track_breakdown"
+  },
+  "created_at": "2026-10-18T22:50:43.341088",
+  "end_card_text": "Subscribe for new sets  •  @Famous_musics_studio",
+  "end_card_text_tr": "Yeni setler için abone ol  •  @Famous_musics_studio"
+}

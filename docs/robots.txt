@@ -1,0 +1,16 @@
+# Famous Music Studio — robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Zararli botlari engelle (kaynak tuketimi)
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+Sitemap: https://famousmusicstudio.com/sitemap.xml

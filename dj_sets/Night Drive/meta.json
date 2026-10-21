@@ -3,5 +3,94 @@
   "theme": "dj",
   "set_style": "techno_chill",
   "marquee_text": "DJ Famous  •  Night Drive (Melodic Techno Mix)  •  #DJFamous",
-  "art_query": "car dashboard night highway rain neon reflection"
+  "art_query": "car dashboard night highway rain neon reflection",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "start_sec": 0,
+      "end_sec": 480,
+      "title": "Intro - Deep Progressive",
+      "artist": "DJ Famous",
+      "bpm": 122,
+      "key": ""
+    },
+    {
+      "timestamp": "08:00",
+      "start_sec": 480,
+      "end_sec": 1200,
+      "title": "Build Up - Melodic Techno",
+      "artist": "DJ Famous",
+      "bpm": 124,
+      "key": ""
+    },
+    {
+      "timestamp": "20:00",
+      "start_sec": 1200,
+      "end_sec": 2100,
+      "title": "First Peak - Progressive House",
+      "artist": "DJ Famous",
+      "bpm": 126,
+      "key": ""
+    },
+    {
+      "timestamp": "35:00",
+      "start_sec": 2100,
+      "end_sec": 3000,
+      "title": "Deep Journey - Organic",
+      "artist": "DJ Famous",
+      "bpm": 120,
+      "key": ""
+    },
+    {
+      "timestamp": "50:00",
+      "start_sec": 3000,
+      "end_sec": 3800,
+      "title": "Second Peak - Driving Techno",
+      "artist": "DJ Famous",
+      "bpm": 128,
+      "key": ""
+    },
+    {
+      "timestamp": "01:03:20",
+      "start_sec": 3800,
+      "end_sec": 4300,
+      "title": "Breakdown - Atmospheric",
+      "artist": "DJ Famous",
+      "bpm": 118,
+      "key": ""
+    },
+    {
+      "timestamp": "01:11:40",
+      "start_sec": 4300,
+      "end_sec": 4764,
+      "title": "Outro - Chill Progressive",
+      "artist": "DJ Famous",
+      "bpm": 116,
+      "key": ""
+    }
+  ],
+  "tracklist_updated_at": "2026-10-19T22:40:00",
+  "series": "night_drive",
+  "episode": 1,
+  "location": {
+    "city": "Los Angeles",
+    "country": "USA",
+    "landmark": "Mulholland Drive",
+    "gps": "34.1033,-118.3275",
+    "story": "City lights below, stars above, midnight cruise",
+    "story_tr": "Gece yarısı Los Angeles, yolun altında şehir ışıkları, üstte yıldızlar",
+    "route": "Mulholland Drive"
+  },
+  "cross_promo": {
+    "shorts_clips": [
+      "hook_0-30s",
+      "transition_mid",
+      "outro_last_3min"
+    ],
+    "instagram_reel": "30s_vertical_hook",
+    "tiktok_draft": "60s_best_moment",
+    "bluesky_thread": "track_by_track_breakdown"
+  },
+  "end_card_text": "Subscribe for new sets  •  @Famous_musics_studio",
+  "end_card_text_tr": "Yeni setler için abone ol  •  @Famous_musics_studio"
 }

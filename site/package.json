@@ -1,0 +1,17 @@
+{
+  "name": "famous-music-studio-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Famous Music Studio — landing site + analitik + topluluk API",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'Statik site — build gerekmez'",
+    "deploy": "netlify deploy --prod"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

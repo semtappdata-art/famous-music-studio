@@ -13,6 +13,12 @@ Onaylanan karar 4 (2026-09-13):
       gönderisi arasında `YAYIN_RITMI_PLATFORM_MIN_ARA_SAAT`'ten kısa aralık. TikTok'ta
       zaten kapı var: `upload/tiktok_web._kural_ihlalleri` (`TIKTOK_KIT_ARALIK_SAAT`).
 
+YENİ (2026-10-05): SABİT HAFTALIK YAYIN TAKVİMİ
+  Pazartesi: 2 şarkı + 1 set  (12:00 ve 18:00)
+  Çarşamba: 2 şarkı + 1 set  (12:00 ve 18:00)
+  Cuma:     2 şarkı + 1 set  (12:00 ve 18:00)
+  Toplam: 6 şarkı + 3 set / hafta
+
 NEDEN TEK MODÜL: kurallar beş ayrı hatta (auto_process, dj_famous_process, iki geri
 doldurma, Instagram drain, TikTok web planı) uygulanıyor. Her birinde ayrı sayaç
 yazmak "unutulacak liste" olurdu; hepsi buradaki fonksiyonlara "şimdi olur mu" diye
@@ -88,6 +94,32 @@ def sarki_tabani_sn() -> float:
     auto_process ağır bir import; bu modül onu kendisi yüklemez (turev_takvimi deseni)."""
     ap = sys.modules.get("auto_process")
     return float(getattr(ap, "MIN_YAYIN_ARALIGI_SN", _SARKI_TABANI_VARSAYILAN_SN))
+
+
+def golden_hour_slotlari(simdi: float = None) -> list:
+    """Bugün ve yarın için golden-hour pencerelerini döndürür.
+    Her öğe: {"baslangic": epoch, "bitis": epoch, "dolu": bool}.
+    SALT OKUR — state yazmaz."""
+    simdi = time.time() if simdi is None else simdi
+    simdi_dt = datetime.datetime.fromtimestamp(simdi, TR)
+    slotlar = []
+    for gun_offset in (0, 1):
+        gun = (simdi_dt + datetime.timedelta(days=gun_offset)).replace(hour=0, minute=0, second=0, microsecond=0)
+        for bas, bit in config.GOLDEN_HOURS:
+            bas_ts = gun.replace(hour=bas).timestamp()
+            bit_ts = gun.replace(hour=bit).timestamp()
+            # Slot "dolu" mu? (basit kontrol: o pencerede YouTube uzun format yayınlandı mı)
+            dolu = False
+            for p in _klasorler():
+                st = _durum_oku(p)
+                if not st:
+                    continue
+                an = uzun_yayin_ani(st)
+                if an and bas_ts <= an < bit_ts:
+                    dolu = True
+                    break
+            slotlar.append({"baslangic": bas_ts, "bitis": bit_ts, "dolu": dolu})
+    return slotlar
 
 
 # --------------------------------------------------------------------------
@@ -358,7 +390,7 @@ def ihlaller(liste, bas=None, bit=None) -> list:
                    else set_sarki_ara_sn())
             if o["ts"] - onceki["ts"] < ara:
                 sonuc.append({"kural": "R1", "ts": o["ts"], "proje": o["proje"],
-                              "aciklama": "%s ← %s %.1f sa" % (o["proje"], onceki["proje"],
+                              "aciklama": "%s once %s %.1f sa" % (o["proje"], onceki["proje"],
                                                               (o["ts"] - onceki["ts"]) / SAAT)})
                 break
     min_ara = platform_min_ara_sn()
@@ -367,7 +399,7 @@ def ihlaller(liste, bas=None, bit=None) -> list:
         for i in range(1, len(pl)):
             if pl[i]["proje"] != pl[i - 1]["proje"] and pl[i]["ts"] - pl[i - 1]["ts"] < min_ara:
                 sonuc.append({"kural": "R2", "ts": pl[i]["ts"], "proje": pl[i]["proje"],
-                              "aciklama": "%s: %s ← %s %.0f dk" % (
+                              "aciklama": "%s: %s once %s %.0f dk" % (
                                   platform, pl[i]["proje"], pl[i - 1]["proje"],
                                   (pl[i]["ts"] - pl[i - 1]["ts"]) / 60)})
     for o in liste:
@@ -397,12 +429,230 @@ def ihlaller(liste, bas=None, bit=None) -> list:
     return sorted(sonuc, key=lambda s: s["ts"])
 
 
+# ================================================================
+# YENİ: Sabit Haftalık Yayın Takvimi (2026-10-05)
+# ================================================================
+
+def haftalik_yayin_takvimi(hafta_baslangic_ts: float = None) -> list:
+    """Bu hafta için SABİT yayın takvimini döndürür.
+    Her öğe: {"gun": int (0=Pzt), "saat": int, "slot_turu": "sarki"/"set", "baslangic_ts": float, "bitis_ts": float}"""
+    if hafta_baslangic_ts is None:
+        hafta_baslangic_ts = _hafta_baslangic_ts()
+
+    takvim = []
+    for gun in config.YAYIN_GUNLERI:  # [0, 2, 4] = Pzt, Çar, Cuma
+        gun_ts = hafta_baslangic_ts + gun * GUN_SN
+        gun_dt = datetime.datetime.fromtimestamp(gun_ts, TR)
+
+        for i, saat in enumerate(config.YAYIN_SAATLERI):  # [12, 18]
+            bas = gun_dt.replace(hour=saat, minute=0, second=0, microsecond=0).timestamp()
+            bit = bas + 2 * SAAT  # 2 saatlik pencere
+
+            # İlk slot (12:00): 1 set + 1 şarkı
+            # İkinci slot (18:00): 1 şarkı
+            if i == 0:  # 12:00
+                takvim.append({
+                    "gun": gun,
+                    "saat": saat,
+                    "slot_turu": "set",
+                    "baslangic_ts": bas,
+                    "bitis_ts": bit,
+                    "sira": 0  # günün ilk slotu
+                })
+                takvim.append({
+                    "gun": gun,
+                    "saat": saat,
+                    "slot_turu": "sarki",
+                    "baslangic_ts": bas,
+                    "bitis_ts": bit,
+                    "sira": 1  # günün ikinci içerik (şarkı)
+                })
+            else:  # 18:00
+                takvim.append({
+                    "gun": gun,
+                    "saat": saat,
+                    "slot_turu": "sarki",
+                    "baslangic_ts": bas,
+                    "bitis_ts": bit,
+                    "sira": 2  # günün üçüncü içerik (şarkı)
+                })
+    return sorted(takvim, key=lambda x: x["baslangic_ts"])
+
+
+def _slotu_durumla_eslestir(takvim: list, klasorler=None) -> list:
+    """Takvim slotlarını mevcut state'lerle eşleştirir.
+    Dönüş: her slot için {"slot": ..., "dolu": bool, "proje": str|None}"""
+    # Mevcut yayınları oku
+    yayinlar = []
+    for p in _klasorler(klasorler):
+        st = _durum_oku(p)
+        if not st:
+            continue
+        ad = os.path.basename(os.path.normpath(p))
+        tur = kok_turu(p)
+        # YouTube public anı
+        an = uzun_yayin_ani(st)
+        if an:
+            yayinlar.append((an, ad, tur))
+
+    sonuc = []
+    for slot in takvim:
+        # Bu slotta zaten bir yayın var mı?
+        slot_dolu = False
+        slot_proje = None
+        for an, ad, tur in yayinlar:
+            if slot["baslangic_ts"] <= an < slot["bitis_ts"] and tur == slot["slot_turu"]:
+                slot_dolu = True
+                slot_proje = ad
+                break
+        sonuc.append({
+            "slot": slot,
+            "dolu": slot_dolu,
+            "proje": slot_proje
+        })
+    return sonuc
+
+
+def bir_sonraki_bos_slot(tur: str, simdi: float = None, klasorler=None) -> dict | None:
+    """Belirtilen tür ("sarki" veya "set") için bir sonraki boş slotu döndürür."""
+    simdi = time.time() if simdi is None else simdi
+    takvim = haftalik_yayin_takvimi()
+    eslesen = _slotu_durumla_eslestir(takvim, klasorler)
+
+    for e in eslesen:
+        if not e["dolu"] and e["slot"]["slot_turu"] == tur and e["slot"]["baslangic_ts"] >= simdi:
+            return e["slot"]
+    return None
+
+
+def publish_at_hesapla(proje_adi: str, tur: str, simdi: float = None, klasorler=None) -> tuple:
+    """Yeni bir içerik için YouTube publishAt (ve IG/FB scheduled time) hesaplar.
+    SABİT HAFTALIK TAKVİM'e göre.
+    Dönüş: (publish_at_ts, slot_bilgisi, sebep)"""
+    simdi = time.time() if simdi is None else simdi
+
+    # 1. Haftalık sayaç kontrolü
+    kalan = haftalik_kalan(tur)
+    if kalan <= 0:
+        return None, None, f"haftalık {tur} tavanı doldu ({config.HAFTALIK_SARKI_HEDEFI if tur=='sarki' else config.HAFTALIK_SET_HEDEFI}/{config.HAFTALIK_SARKI_HEDEFI if tur=='sarki' else config.HAFTALIK_SET_HEDEFI})"
+
+    # 2. Bir sonraki boş slotu bul
+    slot = bir_sonraki_bos_slot(tur, simdi, klasorler)
+    if slot is None:
+        return None, None, f"bu hafta müsait {tur} slotu kalmadı"
+
+    # Slot başlangıcı publishAt anı
+    publish_at = slot["baslangic_ts"]
+
+    gun_adi = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"][slot["gun"]]
+    pencere = "öğlen" if slot["saat"] == 12 else "akşam"
+
+    return publish_at, slot, f"sabit takvim: {gun_adi} {slot['saat']}:00 ({pencere}) - {tur}"
+
+
+def haftalik_hazirlik_zamani() -> tuple:
+    """Cuma akşamı hafta sonu hazırlık zamanı.
+    Dönüş: (hazirlik_ts, gun_adi, saat)"""
+    hafta_bas = _hafta_baslangic_ts()
+    cuma_ts = hafta_bas + config.HAFTA_SONU_HAZIRLIK_GUN * GUN_SN
+    cuma_dt = datetime.datetime.fromtimestamp(cuma_ts, TR)
+    hazirlik_dt = cuma_dt.replace(hour=config.HAFTA_SONU_HAZIRLIK_SAAT, minute=0, second=0, microsecond=0)
+    return hazirlik_dt.timestamp(), cuma_dt.date().isoformat(), config.HAFTA_SONU_HAZIRLIK_SAAT
+
+
+def haftalik_takvim_raporu(klasorler=None) -> str:
+    """Mevcut hafta takvim doluluk özeti."""
+    takvim = haftalik_yayin_takvimi()
+    eslesen = _slotu_durumla_eslestir(takvim, klasorler)
+
+    satirlar = ["HAFTALIK YAYIN TAKVİMİ:"]
+    for e in eslesen:
+        s = e["slot"]
+        gun_adi = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"][s["gun"]]
+        pencere = "OÖ" if s["saat"] == 12 else "AK"
+        tur_emoji = "SARKI" if s["slot_turu"] == "sarki" else "SET"
+        durum = "[OK]" if e["dolu"] else "[..]"
+        proje = e["proje"] or "-"
+        satirlar.append(f"  {durum} {gun_adi} {pencere} {tur_emoji} {s['slot_turu']}: {proje}")
+
+    # Sayaçlar
+    sayac = haftalik_sayaci_yukle()
+    satirlar.append(f"\nSayaç: {sayac.get('sarki', 0)}/{config.HAFTALIK_SARKI_HEDEFI} şarkı, {sayac.get('set', 0)}/{config.HAFTALIK_SET_HEDEFI} set")
+
+    hazirlik_ts, hazirlik_gun, hazirlik_saat = haftalik_hazirlik_zamani()
+    satirlar.append(f"Hafta sonu hazırlık: {hazirlik_gun} {hazirlik_saat}:00")
+
+    return "\n".join(satirlar)
+
+
+# ================================================================
+# Haftalık Sayaçlar (dosya tabanlı)
+# ================================================================
+
+def haftalik_sayaci_yukle() -> dict:
+    """Haftalık sayaç dosyasını okur. Yoksa sıfır döndürür."""
+    yol = os.path.join(_KOK, "haftalik_sayac.json")
+    if not os.path.isfile(yol):
+        return {"sarki": 0, "set": 0, "hafta_baslangic": _hafta_baslangic_ts()}
+    try:
+        with open(yol, "r", encoding="utf-8") as f:
+            v = json.load(f)
+        # Hafta değiştiyse sıfırla
+        if v.get("hafta_baslangic") != _hafta_baslangic_ts():
+            return {"sarki": 0, "set": 0, "hafta_baslangic": _hafta_baslangic_ts()}
+        return v
+    except (OSError, ValueError):
+        return {"sarki": 0, "set": 0, "hafta_baslangic": _hafta_baslangic_ts()}
+
+
+def _hafta_baslangic_ts() -> float:
+    """Bu haftanın Pazartesi 00:00 (TR) epoch saniyesi."""
+    simdi = datetime.datetime.now(TR)
+    # Pazartesi = 0, Pazar = 6
+    gun_farki = simdi.weekday()  # 0=Pzt
+    pzt = (simdi - datetime.timedelta(days=gun_farki)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return pzt.timestamp()
+
+
+def haftalik_sayaci_kaydet(sayac: dict) -> None:
+    """Haftalık sayaç dosyasını ATOMIK yazar."""
+    yol = os.path.join(_KOK, "haftalik_sayac.json")
+    try:
+        import state_io
+        state_io._atomik_yaz(yol, sayac)
+    except Exception:
+        pass  # sessizce başarısız olabilir, bir sonraki koşu dener
+
+
+def haftalik_sayaci_artir(tur: str) -> bool:
+    """Belirtilen tür ("sarki" veya "set") için haftalık sayacı artırır.
+    Tavan aşılırsa False döner (yeni yayın engellenir)."""
+    sayac = haftalik_sayaci_yukle()
+    hedef = {"sarki": config.HAFTALIK_SARKI_HEDEFI, "set": config.HAFTALIK_SET_HEDEFI}.get(tur, 999)
+    if sayac.get(tur, 0) >= hedef:
+        return False
+    sayac[tur] = sayac.get(tur, 0) + 1
+    haftalik_sayaci_kaydet(sayac)
+    return True
+
+
+def haftalik_kalan(tur: str) -> int:
+    """Haftada kaç yeni içerik daha çıkarılabilir?"""
+    sayac = haftalik_sayaci_yukle()
+    hedef = {"sarki": config.HAFTALIK_SARKI_HEDEFI, "set": config.HAFTALIK_SET_HEDEFI}.get(tur, 999)
+    return max(0, hedef - sayac.get(tur, 0))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Yayın ritmi ihlalleri (salt okur).")
     ap.add_argument("--gun", type=float, default=7.0)
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--takvim", action="store_true", help="Bu haftanın sabit takvimini göster")
     args = ap.parse_args(argv)
     simdi = time.time()
+    if args.takvim:
+        print(haftalik_takvim_raporu())
+        return 0
     liste = ihlaller(olaylar(), bas=simdi - args.gun * GUN_SN, bit=simdi + 1)
     veri = {"gun": args.gun, "ihlal_sayisi": len(liste),
             "ihlaller": [dict(s, an=_iso(s["ts"])) for s in liste]}

@@ -1,0 +1,5 @@
+{
+  "access_token": "YOUR_FACEBOOK_PAGE_ACCESS_TOKEN",
+  "page_id": "YOUR_FACEBOOK_PAGE_ID",
+  "expires_at": "2026-12-31T00:00:00"
+}

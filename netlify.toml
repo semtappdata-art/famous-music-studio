@@ -1,0 +1,94 @@
+# Famous Music Studio — Netlify deploy yapilandirmasi
+#
+# Kullanım:
+#   1) GitHub repo (semtappdata-art/famous-music-studio) -> Netlify'e bagla
+#   2) Build komutu: boş birakilir (statik site)
+#   3) Publish dizini: site
+#   4) Functions dizini: site/api
+#
+# Netlify CLI ile:
+#   netlify deploy --prod
+#   netlify dev          # yerel test (API fonksiyonlari dahil)
+
+[build]
+  publish = "site"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+  PYTHON_VERSION = "3.12"
+
+# ------------------------------------------------------------------
+# API yonlendirmeleri
+# site/analytics.js ve site/index.html goreli yol kullanir:
+#   POST /api/analytics   -> site/api/analytics.py
+#   POST /api/topluluk    -> site/api/topluluk.py
+# Netlify fonksiyonlari /.netlify/functions/<isim> altinda yasar;
+# redirect ile temiz /api/* yolu saglanir.
+# ------------------------------------------------------------------
+[[redirects]]
+  from = "/api/analytics"
+  to = "/.netlify/functions/analytics"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/topluluk"
+  to = "/.netlify/functions/topluluk"
+  status = 200
+  force = true
+
+# ------------------------------------------------------------------
+# Sayfa yonlendirmeleri
+# ------------------------------------------------------------------
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/epk"
+  to = "/epk/bio.html"
+  status = 200
+  force = true
+
+# SPA fallback (index.html) — diger yollar 404.html'e duser
+[[redirects]]
+  from = "/*"
+  to = "/404.html"
+  status = 404
+
+# ------------------------------------------------------------------
+# Guvenlik basliklari
+# ------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.youtube.com https://www.youtube-nocookie.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self' data: https://yt3.ggpht.com https://yt3.googleusercontent.com; connect-src 'self' https://*.youtube.com; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'self'"
+
+[[headers]]
+  for = "/analytics.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, immutable"
+
+[[headers]]
+  for = "/epk/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[functions]
+  # Netlify Lambda'da Python desteklenmiyor (yalnizca JS/TS/Go).
+  # Bu yuzden analitik + topluluk fonksiyonlari JS olarak yazildi.
+  # Python surumleri yerel gelistirme icin korunur: site/api/*.py
+  node_bundler = "esbuild"
+  included_files = []

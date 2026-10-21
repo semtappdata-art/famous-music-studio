@@ -1,0 +1,42 @@
+{
+  "title": "DJ Famous @ TV Tower, Berlin for City Pulse Sessions",
+  "series": "city_pulse",
+  "episode": 4,
+  "theme": "dj",
+  "set_style": "melodic_techno",
+  "marquee_text": "City Pulse Sessions • Ep04 • #DJ Famous",
+  "art_query": "berlin tv tower blue hour rooftop cinematic night lights",
+  "location": {
+    "city": "Berlin",
+    "country": "Germany",
+    "landmark": "TV Tower",
+    "gps": "52.5200,13.4050",
+    "story": "Techno capital, concrete and neon, history in every beat",
+    "story_tr": "Tekno başkenti, beton ve neon, her vuruşta tarih hiss edilir. TV Tower'ın ışıkları Alexanderplatz üzerinde yanarken 60 dakika — beton ve neonun başkentinde gece sürüşü."
+  },
+  "playlist_id": "PL_CityPulse",
+  "tags_base": ["melodic techno", "progressive house", "city pulse", "dj famous", "rooftop", "berlin"],
+  "hashtags": "#CityPulse #MelodicTechno #DJFamous #Berlin",
+  "seo": {
+    "primary_keyword": "melodic techno rooftop set berlin",
+    "secondary_keywords": ["progressive house", "cityscape", "sunset dj", "tv tower"]
+  },
+  "cross_promo": {
+    "shorts_clips": ["hook_0-30s", "transition_mid", "outro_last_3min"],
+    "instagram_reel": "30s_vertical_hook",
+    "tiktok_draft": "60s_best_moment",
+    "bluesky_thread": "track_by_track_breakdown"
+  },
+  "yayin_tarihi": "2026-10-24T18:00:00+03:00",
+  "end_card_text": "Sıradaki durak: Tokyo",
+  "end_card_text_tr": "Sıradaki durak: Tokyo",
+  "tracklist": [
+    {"timestamp": "00:00", "title": "Opening - Atmospheric Intro", "artist": "DJ Famous", "start_sec": 0, "end_sec": 323, "bpm": 122, "key": "Am"},
+    {"timestamp": "05:23", "title": "Bosphorus Breeze - Melodic Groove", "artist": "DJ Famous", "start_sec": 323, "end_sec": 645, "bpm": 123, "key": "F"},
+    {"timestamp": "10:45", "title": "Minaret Dreams - Deep Progressive", "artist": "DJ Famous", "start_sec": 645, "end_sec": 972, "bpm": 124, "key": "C"},
+    {"timestamp": "16:12", "title": "Golden Hour - Peak Energy", "artist": "DJ Famous", "start_sec": 972, "end_sec": 1290, "bpm": 126, "key": "G"},
+    {"timestamp": "21:30", "title": "City Lights - Driving Rhythm", "artist": "DJ Famous", "start_sec": 1290, "end_sec": 1620, "bpm": 125, "key": "Dm"},
+    {"timestamp": "27:00", "title": "Sunrise Over Bosphorus - Outro", "artist": "DJ Famous", "start_sec": 1620, "end_sec": 1800, "bpm": 122, "key": "Am"}
+  ],
+  "tracklist_updated_at": "2026-10-19T00:00:00+03:00"
+}

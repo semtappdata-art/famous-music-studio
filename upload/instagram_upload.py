@@ -5,7 +5,7 @@ Kullanım:
 
 ÖNEMLİ — Instagram Graph API dosya upload'ı değil, HERKESE AÇIK bir video_url
 bekliyor. İki seçenek var:
-  1. --video-url ile zaten barındırılan (örn. bir CDN/hosting'deki) bir URL ver.
+  1. --video-url ile zaten barındırılan (örn. bir CDN/hostingdeki) bir URL ver.
   2. upload/netlify_client_secrets.json dosyasını doldur ({"token": "...",
      "site_id": "..."}) — bu durumda script, projedeki shorts_9x16.mp4 dosyasını
      otomatik olarak ayrı bir Netlify sitesine deploy edip URL'i kendisi üretir.
@@ -264,6 +264,85 @@ def _load_meta(project_dir: str) -> dict:
         with open(meta_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
+
+
+def _is_dj_set(meta: dict) -> bool:
+    """Check if this is a DJ set with series-based metadata."""
+    return "series" in meta and meta.get("series")
+
+
+def _build_dj_set_caption(meta: dict) -> str:
+    """Build Instagram Reels caption for DJ sets using series-based metadata (Cercle/HÖR style)."""
+    series_key = meta.get("series")
+    if not series_key:
+        return build_caption(meta, ai_beyani=True)
+
+    try:
+        from config import get_dj_series, get_series_location
+        series = get_dj_series(series_key)
+        if not series:
+            return build_caption(meta, ai_beyani=True)
+    except Exception:
+        return build_caption(meta, ai_beyani=True)
+
+    title = meta.get("title", "Untitled")
+    episode = meta.get("episode", 1)
+    location = meta.get("location") or get_series_location(series_key)
+    landmark = location.get("landmark", location.get("city", ""))
+    city = location.get("city", "")
+    country = location.get("country", "")
+    story = location.get("story", "")
+
+    # Get tracklist for preview
+    tracklist = meta.get("tracklist", [])
+
+    # Build caption (Cercle style for Instagram)
+    parts = []
+    
+    # Hook line
+    parts.append(f"DJ Famous @ {landmark}, {city} — {series['brand']} Ep {episode}")
+    parts.append(f"")
+    
+    # Location story
+    if story:
+        parts.append(f"📍 {story}")
+        parts.append(f"")
+    
+    # Track preview (first 3)
+    if tracklist:
+        parts.append(f"🎧 TRACKLIST:")
+        for track in tracklist[:3]:
+            ts = track.get("timestamp", "00:00")
+            tr_title = track.get("title", "")
+            parts.append(f"{ts} {tr_title}")
+        if len(tracklist) > 3:
+            parts.append(f"... +{len(tracklist) - 3} more")
+        parts.append(f"")
+    
+    # Credits
+    parts.append(f"🎬 {series['brand']} Episode {episode}")
+    parts.append(f"🎨 Produced by DJ Famous")
+    parts.append(f"")
+    
+    # Connect
+    parts.append(f"🔗 Connect:")
+    parts.append(f"YouTube: {config.SOCIAL_LINKS['youtube']}")
+    parts.append(f"Instagram: https://instagram.com/djfamous")
+    parts.append(f"TikTok: https://tiktok.com/@djfamous")
+    parts.append(f"Bluesky: https://bsky.app/profile/djfamous.bsky.social")
+    parts.append(f"Telegram: https://t.me/djfamous")
+    parts.append(f"")
+    
+    # Series hashtags
+    hashtags = series["youtube"].get("hashtags", "")
+    if hashtags:
+        parts.append(hashtags)
+    
+    # AI disclosure (required by Meta)
+    parts.append(f"")
+    parts.append(f"🤖 AI-generated music & visuals")
+    
+    return "\n".join(parts)
 
 
 def _upload_to_netlify(file_paths: list[str]) -> dict[str, str]:
@@ -532,7 +611,8 @@ def _publish_container(ig_user_id: str, access_token: str, creation_id: str, pro
 def try_publish_pending(project_dir: str, sebep_out: dict | None = None) -> str | None:
     """state.json'da bekleyen (henüz yayınlanmamış) bir instagram_creation_id
     varsa kontrol eder: konteyner hâlâ işleniyorsa ya da golden-hour dışındaysak
-    None döner (bir sonraki çalıştırmada tekrar denenir). Konteynerin süresi
+    None döner (bir sonraki çalıştırma (auto_process.py, saatlik) golden-hour'a
+    girdiğimizde try_publish_pending() ile bunu bulup yayınlar). Konteynerin süresi
     dolmuşsa (Instagram: 24 saat) bekleyen kaydı temizler — upload_video() bir
     sonraki çağrıda sıfırdan yeni bir konteyner oluşturur. Golden-hour
     penceresindeyse ve konteyner hazırsa yayınlar, media_id döner.
@@ -689,7 +769,11 @@ def upload_video(project_dir: str, video_url: str | None = None, caption: str | 
         # Zorunlu AI beyan satırı hashtag'lerden önce (2026-09-13 kullanıcı kararı,
         # config.AI_BEYAN_SATIRLARI). YALNIZ yeni gönderi — mevcut gönderileri
         # düzenleyen kod YOK ve yazılmamalı.
-        caption = build_caption(meta, ai_beyani=True)
+        # DJ Set with series? Use series-based caption (Cercle/HÖR style)
+        if _is_dj_set(meta):
+            caption = _build_dj_set_caption(meta)
+        else:
+            caption = build_caption(meta, ai_beyani=True)
 
     # AÇIK MADDE: Meta, gerçekçi AI-üretimi içerik için "AI Info" etiketlemesini
     # zorunlu kılıyor (about.fb.com/news/2024/02 ve 2024/04 duyuruları). Graph API
@@ -756,6 +840,7 @@ def main():
     parser.add_argument("--project", required=True, help="Proje klasörü (örn. projects/sarki-adi)")
     parser.add_argument("--video-url", default=None, help="Herkese açık video URL'si (verilmezse Netlify'a otomatik yüklenir)")
     parser.add_argument("--caption", default=None, help="Gönderi açıklaması (verilmezse meta.json'daki title kullanılır)")
+    parser.add_argument("--dj-set", action="store_true", help="DJ set flag (auto-detected from meta.json, kept for compatibility)")
     args = parser.parse_args()
 
     upload_video(args.project, args.video_url, args.caption)

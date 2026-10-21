@@ -1,0 +1,17 @@
+# City Pulse Ep04 - Berlin Structure
+# Total Duration: ~30:00 (1800 seconds)
+
+00:00 - 05:23 | Opening - Atmospheric Intro | 122 BPM | Am
+05:23 - 10:45 | Bosphorus Breeze - Melodic Groove | 123 BPM | F
+10:45 - 16:12 | Minaret Dreams - Deep Progressive | 124 BPM | C
+16:12 - 21:30 | Golden Hour - Peak Energy | 126 BPM | G
+21:30 - 27:00 | City Lights - Driving Rhythm | 125 BPM | Dm
+27:00 - 30:00 | Sunrise Over Bosphorus - Outro | 122 BPM | Am
+
+# Section markers for visual changes
+# 00:00-05:23: VERSE (atmospheric, zoom 1.00)
+# 05:23-10:45: CHORUS (groove, zoom 1.05, hue +30)
+# 10:45-16:12: VERSE (deep, zoom 1.00)
+# 16:12-21:30: CHORUS (peak, zoom 1.08, hue +70)
+# 21:30-27:00: BRIDGE (driving, zoom 1.02)
+# 27:00-30:00: OUTRO (calm, zoom 1.00, hue -20)

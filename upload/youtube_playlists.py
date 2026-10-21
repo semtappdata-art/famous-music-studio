@@ -534,6 +534,19 @@ def beklenen_anahtarlar(project_dir: str, state: dict = None,
             # bir KÜRATÖRLÜK sinyali: "toplu üretilmiş AI içerik" politikasına
             # karşı kanalın en güçlü varlıkları burada bir arada duruyor.
             anahtarlar.append(DERLEME_ANAHTARI)
+        # DJ SET SERİSİ: meta.json'da 'series' varsa, ilgili seri playlist'ine de ekle
+        # (Cercle/HÖR best practices: her set kendi seri playlist'inde olmalı)
+        series_key = meta.get("series")
+        if series_key and not derleme:
+            # Seri playlist anahtarı: meta'dan playlist_id al veya series config'ten
+            playlist_id = meta.get("playlist_id", "")
+            if not playlist_id:
+                from config import get_dj_series
+                series = get_dj_series(series_key)
+                if series:
+                    playlist_id = series.get("youtube", {}).get("playlist_id", "")
+            if playlist_id:
+                anahtarlar.append(playlist_id)
         # Ana dinleme zinciri SADECE ana katalog (projects/) şarkıları için:
         # dj_sets/ İngilizce ve 40-79 dakikalık setler, derlemeler/ ise zaten
         # aynı şarkıların birleşimi — ikisi de bu zincirde tekrara yol açar.
@@ -835,6 +848,54 @@ def durum(base_list=uyumluluk.KOKLER) -> None:
                 mukerrer += 1
                 print(f"  {anahtar:15s} {v}  x{n}")
     print(f"toplam mükerrer: {mukerrer}")
+
+
+def add_to_series_playlist(youtube, project_dir: str, video_id: str) -> str | None:
+    """DJ set videosunu ilgili seri playlist'ine ekler (City Pulse, Night Drive, vb.).
+    `meta.json`'da `series` ve `playlist_id` (root level) veya `series_config.youtube.playlist_id` varsa o playlist'e ekler.
+    Playlist yoksa otomatik oluşturur.
+    Dönüş: playlist_id veya None."""
+    meta = _load_meta(project_dir)
+    series_key = meta.get("series")
+    if not series_key:
+        return None
+
+    # Önce root level'dan playlist_id kontrol et (meta.json yapısına göre)
+    playlist_id = meta.get("playlist_id", "")
+    if not playlist_id:
+        # Fallback: series config altından dene
+        from config import get_dj_series
+        series = get_dj_series(meta.get("series", ""))
+        if series:
+            playlist_id = series.get("youtube", {}).get("playlist_id", "")
+    if not playlist_id:
+        return None
+
+    try:
+        # Playlist varsa ID'sini al, yoksa oluştur
+        ids = _load_playlist_ids()
+        if playlist_id not in ids.values():
+            # Playlist ID'si önbellekte yoksa YouTube'da da yok demektir — oluştur
+            from config import get_dj_series
+            series = get_dj_series(series_key)
+            if series:
+                brand = series.get("brand", "DJ Famous")
+                playlist_id = _olustur(youtube, playlist_id, f"{brand}", "", dry_run=False)
+        
+        # Video zaten playlist'te mi kontrol et
+        existing = playlist_videolari(youtube, playlist_id)
+        if video_id in existing:
+            return playlist_id
+        # Sona ekle
+        ekle(youtube, playlist_id, video_id, dry_run=False)
+        # State'e kaydet
+        state = _load_state(project_dir)
+        listeler = sorted(set(state.get("youtube_playlists", []) + [playlist_id]))
+        _update_state(project_dir, {"youtube_playlists": listeler})
+        return playlist_id
+    except Exception as e:
+        print(f"  Seri playlist ekleme HATA ({playlist_id}): {e}")
+        return None
 
 
 def main():

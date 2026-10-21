@@ -1,0 +1,66 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "enabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:/Users/ACER/Desktop/ilk-projem/projects"
+      ],
+      "cwd": "C:/Users/ACER/Desktop/ilk-projem"
+    },
+    "postwire": {
+      "enabled": true
+    },
+    "suno": {
+      "enabled": true
+    },
+    "yt-studio": {
+      "enabled": true
+    },
+    "muapi": {
+      "enabled": true
+    },
+    "chrome-devtools": {
+      "enabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--categoryInput",
+        "true",
+        "--categoryNavigation",
+        "true",
+        "--categoryEmulation",
+        "true",
+        "--categoryPerformance",
+        "true",
+        "--categoryNetwork",
+        "true",
+        "--categoryDebugging",
+        "true",
+        "--categoryExtensions",
+        "true",
+        "--categoryExperimentalThirdParty",
+        "true",
+        "--categoryMemory",
+        "true",
+        "--categoryExperimentalWebmcp",
+        "true",
+        "--autoConnect",
+        "true",
+        "--channel",
+        "stable",
+        "--headless",
+        "false",
+        "--acceptInsecureCerts",
+        "true",
+        "--screenshotFormat",
+        "jpeg",
+        "--screenshotQuality",
+        "85"
+      ]
+    }
+  }
+}

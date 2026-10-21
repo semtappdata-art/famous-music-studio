@@ -153,6 +153,75 @@ def _load_meta(project_dir: str) -> dict:
     return {}
 
 
+def _is_dj_set(meta: dict) -> bool:
+    """Check if this is a DJ set with series-based metadata."""
+    return "series" in meta and meta.get("series")
+
+
+def _build_dj_set_caption(meta: dict) -> str:
+    """Build Bluesky post text for DJ sets using series-based metadata."""
+    series_key = meta.get("series")
+    if not series_key:
+        return build_caption(meta)
+
+    try:
+        from config import get_dj_series, get_series_location
+        series = get_dj_series(series_key)
+        if not series:
+            return build_caption(meta)
+    except Exception:
+        return build_caption(meta)
+
+    title = meta.get("title", "Untitled")
+    episode = meta.get("episode", 1)
+    location = meta.get("location") or get_series_location(series_key)
+    landmark = location.get("landmark", location.get("city", ""))
+    city = location.get("city", "")
+    country = location.get("country", "")
+    story = location.get("story", "")
+
+    tracklist = meta.get("tracklist", [])
+
+    parts = []
+    parts.append(f"DJ Famous @ {landmark}, {city} — {series['brand']} Ep {episode}")
+    parts.append(f"")
+    
+    if story:
+        parts.append(f"📍 {story}")
+        parts.append(f"")
+    
+    if tracklist:
+        parts.append(f"🎧 TRACKLIST:")
+        for track in tracklist[:3]:
+            ts = track.get("timestamp", "00:00")
+            tr_title = track.get("title", "")
+            parts.append(f"{ts} {tr_title}")
+        if len(tracklist) > 3:
+            parts.append(f"... +{len(tracklist) - 3} more")
+        parts.append(f"")
+    
+    parts.append(f"🎬 {series['brand']} Episode {episode}")
+    parts.append(f"🎨 Produced by DJ Famous")
+    parts.append(f"")
+    
+    parts.append(f"🔗 Connect:")
+    parts.append(f"YouTube: {config.SOCIAL_LINKS['youtube']}")
+    parts.append(f"Instagram: https://instagram.com/djfamous")
+    parts.append(f"TikTok: https://tiktok.com/@djfamous")
+    parts.append(f"Bluesky: https://bsky.app/profile/djfamous.bsky.social")
+    parts.append(f"Telegram: https://t.me/djfamous")
+    parts.append(f"")
+    
+    hashtags = series["youtube"].get("hashtags", "")
+    if hashtags:
+        parts.append(hashtags)
+    
+    parts.append(f"")
+    parts.append(f"🤖 AI-generated music & visuals")
+    
+    return "\n".join(parts)
+
+
 def _load_state(project_dir: str) -> dict:
     state_path = os.path.join(project_dir, "state.json")
     if os.path.isfile(state_path):
@@ -394,7 +463,11 @@ def build_post_text(meta: dict, youtube_url: str | None = None) -> str:
     gerekirse kelime sınırından kırpılıyor — kırpılan şey CAPTION oluyor, link
     her zaman korunuyor (link, gönderinin tek dönüşüm sağlayan parçası).
     """
-    caption = build_caption(meta)
+    # DJ Set with series? Use series-based caption
+    if _is_dj_set(meta):
+        caption = _build_dj_set_caption(meta)
+    else:
+        caption = build_caption(meta)
     if not youtube_url:
         return _hashtaglerden_kirp(caption, POST_GRAPHEME_LIMIT)
 
@@ -783,7 +856,6 @@ def upload_video(project_dir: str, caption: str | None = None, dry_run: bool = F
     boyut_mb = os.path.getsize(video_path) / (1024 * 1024)
 
     print(f"  gönderi metni ({grapheme_len(caption)}/{POST_GRAPHEME_LIMIT} karakter):")
-    print("  " + caption.replace("\n", "\n  "))
     print(f"  video: {width}x{height}, {boyut_mb:.1f} MB"
           + (f", {süre:.1f} sn" if süre else ""))
 
@@ -871,6 +943,57 @@ def upload_video(project_dir: str, caption: str | None = None, dry_run: bool = F
     return post.uri
 
 
+def _create_bluesky_thread(project_dir: str, parent_uri: str, parent_cid: str) -> None:
+    """Bluesky thread oluştur (track-by-track breakdown).
+    Her track için bir reply gönderir, parent gönderi thread halinde oluşur."""
+    try:
+        meta = _load_meta(project_dir)
+        tracklist = meta.get("tracklist", [])
+        if not tracklist:
+            return
+        
+        from atproto_client import models
+        from atproto_client import Client
+        
+        creds = _load_credentials()
+        
+        client = Client(base_url=_load_credentials()["service"])
+        creds = _load_credentials()
+        client.login(creds["handle"], creds["app_password"])
+        
+        # Parent gönderi referansı
+        from atproto_client.models import models as at_models
+        parent_ref = at_models.ComAtprotoRepoStrongRef.Main(uri=parent_uri, cid=parent_cid)
+        
+        # Tracklist'ten her parça için reply oluştur
+        for i, track in enumerate(meta.get("tracklist", [])):
+            ts = track.get("timestamp", "00:00")
+            title = track.get("title", f"Track {i+1}")
+            artist = track.get("artist", "DJ Famous")
+            bpm = track.get("bpm", "")
+            key = track.get("key", "")
+            
+            # Thread içeriği
+            thread_text = f"{i+1}. {title} - {artist}"
+            if bpm:
+                thread_text += f" [{bpm} BPM" + (f", {key}" if key else "") + "]"
+            thread_text += f" ({ts})"
+            
+            # Reply gönder
+            client.send_post(
+                text=thread_text,
+                reply=models.AppBskyFeedPost.ReplyRef(
+                    root=at_models.ComAtprotoRepoStrongRef.Main(uri=parent_uri, cid=parent_cid),
+                    parent=at_models.ComAtprotoRepoStrongRef.Main(uri=parent_uri, cid=parent_cid),
+                ),
+            )
+            time.sleep(0.5)  # Rate limiting
+        
+        print(f"  Bluesky thread oluşturuldu: {len(meta.get('tracklist', []))} parçalı")
+    except Exception as e:
+        print(f"  Bluesky thread oluşturma HATA: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Render edilmiş bir projeyi Bluesky'a video gönderisi olarak yükler."
@@ -882,6 +1005,7 @@ def main():
                         help="Gönderi metni (verilmezse social_text.build_caption'dan üretilir)")
     parser.add_argument("--no-link", action="store_true",
                         help="YouTube linkini gönderi metnine EKLEME (varsayılan: ekler)")
+    parser.add_argument("--dj-set", action="store_true", help="DJ set flag (auto-detected from meta.json, kept for compatibility)")
     args = parser.parse_args()
 
     upload_video(args.project, caption=args.caption, dry_run=args.dry_run,

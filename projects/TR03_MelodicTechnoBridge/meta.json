@@ -1,0 +1,75 @@
+{
+  "title": "Gece Sürüşü Bridge",
+  "theme": "elektronik",
+  "set_style": "melodic_techno",
+  "marquee_text": "Gece Sürüşü Bridge • Elektronik • #DJFamous",
+  "art_query": "night highway lights motion blur tunnel lights driving",
+  "location": {},
+  "playlist_id": "PL_TR03MELODICTECHNOBRIDGE",
+  "tags_base": [],
+  "hashtags": "",
+  "seo": {},
+  "cross_promo": {},
+  "yayin_tarihi": "",
+  "end_card_text": "Subscribe — new track every week  •  @Famous_musics_studio",
+  "end_card_text_tr": "Abone ol, her hafta yeni şarkı  •  @Famous_musics_studio",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "title": "Midnight Departure",
+      "artist": "DJ Famous",
+      "start_sec": 0,
+      "end_sec": 300,
+      "bpm": 122,
+      "key": "Am"
+    },
+    {
+      "timestamp": "05:00",
+      "title": "City Lights Descent",
+      "artist": "DJ Famous",
+      "start_sec": 300,
+      "end_sec": 600,
+      "bpm": 124,
+      "key": "F"
+    },
+    {
+      "timestamp": "10:00",
+      "title": "Neon Visions",
+      "artist": "DJ Famous",
+      "start_sec": 600,
+      "end_sec": 900,
+      "bpm": 126,
+      "key": "C"
+    },
+    {
+      "timestamp": "15:00",
+      "title": "Starlit Corridor",
+      "artist": "DJ Famous",
+      "start_sec": 900,
+      "end_sec": 1200,
+      "bpm": 125,
+      "key": "G"
+    },
+    {
+      "timestamp": "20:00",
+      "title": "Dawn Approach",
+      "artist": "DJ Famous",
+      "start_sec": 1200,
+      "end_sec": 1500,
+      "bpm": 124,
+      "key": "Dm"
+    },
+    {
+      "timestamp": "25:00",
+      "title": "Homeward Bound",
+      "artist": "DJ Famous",
+      "start_sec": 1500,
+      "end_sec": 1800,
+      "bpm": 122,
+      "key": "Am"
+    }
+  ],
+  "tur_ozel": "",
+  "hikaye": "Tünelin ucundaki ışık, hayatın en karanlık anlarında bile umut olduğunu fısıldıyor. Her viraj bir dönüşüm, her düz yol bir meditasyon.",
+  "neden_bu_sarki": "Gece sürüşlerinin o meditatif halini, melodik tekno'nun derinliğiyle yakalamak için."
+}

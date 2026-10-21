@@ -71,6 +71,74 @@ def _atomik_yaz(yol: str, veri: dict) -> None:
     os.replace(gecici, yol)       # Windows'ta da atomik
 
 
+class DurumBozuk(Exception):
+    """state.json bozuk/okunamaz - CLAUDE.md §4: sessizce {} DONDURME, HATA üret."""
+    pass
+
+
+def load_state(yol: str) -> dict:
+    """Tek yetkili atomik state okuyucu (CLAUDE.md §4).
+
+    Bozuk/okunamaz JSON -> DurumBozuk HATA (sessizce {} DONDURME).
+    Dosya yok -> {} döner (yeni proje için).
+    """
+    try:
+        with open(yol, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError as e:
+        raise DurumBozuk(f"state.json bozuk: {e}") from e
+
+
+def _atomik_metin_yaz(yol: str, metin: str) -> None:
+    """Hazir bir METIN'i `yol`a atomik yazar (bkz. `_atomik_yaz`).
+
+    NEDEN AYRI: bazi cagirilar JSON'u kendileri URETIYOR ve elimize sozluk
+    degil STRING olarak veriyor — ornegi `upload/youtube_analytics.py`de
+    `creds.to_json()`. Onu `json.loads` ile sozluge cevirip tekrar `json.dump`
+    etmek kutuphanenin urettigi gosterimi bizim bicimlendirmemizle DEGISTIRIR
+    (google-auth token dosyasini kendisi de yazip okuyor); token gibi bir
+    dosyada bu gereksiz bir risk. Yerel bir tmp+replace kopyasi yazmak yerine
+    burasi: atomik yazim deseni bu depoda zaten bir kez cogaltilip sorun
+    olmustu, ikinci kez cogaltmanin anlami yok.
+    """
+    yol_str = str(yol)
+    gecici = yol_str + ".tmp"
+    with open(gecici, "w", encoding="utf-8") as f:
+        f.write(metin)
+        f.flush()
+        os.fsync(f.fileno())      # icerik diske insin, sadece replace yetmez
+    os.replace(gecici, yol_str)       # Windows'ta da atomik
+
+
+def _atomik_yaz(yol: str, veri: dict) -> None:
+    """`veri`yi `yol`a atomik yazar: ya tam eski hali ya tam yeni hali kalir.
+
+    Once komsu bir `.tmp` dosyasina yazilip `os.replace` ile hedefin uzerine
+    TASINIYOR. Hedef dosya bu sirada hic sifirlanmiyor — yazim yarida kesilirse
+    yarim veri `.tmp`'de kalir, hedef ESKI (gecerli) halini korur.
+
+    `flush` + `fsync` SART: `os.replace` tek basina sadece dizin girdisini
+    degistirir; icerik hala isletim sistemi onbellegindeyse ani bir guc
+    kesintisinde adi degismis ama ICI BOS/yarim bir dosya kalabilir.
+    `os.replace` Windows'ta da atomik (MoveFileEx + REPLACE_EXISTING).
+
+    `_atomik_metin_yaz`e DELEGE EDILMIYOR (kardes fonksiyon, asagida): yazim
+    `json.dump` ile dogrudan dosyaya akiyor ki cok buyuyen bir durum sozlugu
+    once tamamen bellekte string'e cevrilmek zorunda kalmasin — ve kesintinin
+    `json.dump`in ORTASINDA olmasi testlerle taklit edilebilsin
+    (tests/test_state_io.py). Atomiklik mantigi iki fonksiyonda birebir ayni.
+    """
+    yol_str = str(yol)
+    gecici = yol_str + ".tmp"
+    with open(gecici, "w", encoding="utf-8") as f:
+        json.dump(veri, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())      # icerik diske insin, sadece replace yetmez
+    os.replace(gecici, yol)       # Windows'ta da atomik
+
+
 def durum_yaz(proje: str, veri: dict) -> None:
     """`<proje>/state.json`i atomik yazar (yolu kendi kurar)."""
     _atomik_yaz(os.path.join(proje, "state.json"), veri)

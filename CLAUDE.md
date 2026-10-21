@@ -157,6 +157,10 @@ python -m pytest -q -p no:cacheprovider --basetemp="C:\pytest_tmp"
 - **Türkçe lower:** `İ→i, I→ı` ÖNCE, sonra `lower()` — `caption_align._norm_word` deseni
 - **Atomik yazım:** Her `state.json` yazımı `state_io` — `ast` kontrolü CI'da
 - **Import sırası:** stdlib → third-party → local — `ruff` zorlar
+- **Art zorunluluğu:** Her proje için `meta.json` içinde `art_query` alanı zorunlu ve boş olmamalı.
+- **Ştir belgesi zorunluluğu:** Her DJ seti için `config.SET_STILLERI` altına yeni stil eklenirse, o stilin belgesi ve örnek bir referans seti olmalı.
+- **Agent zorunluluğu:** Eğer ekipte lyric‑yazar, melodi‑üretmeni veya mix‑master yetkisi yoksa, ilgili AI‑agent (lyric_agent, melody_agent, mix_agent) tanımlanmalı ve kullanım kuralı olarak projeye eklenmelidir.
+- **Ön‑kontrol listesi:** Her proje başlamadan önce aşağıdaki maddeleri kontrol etmelidir: `meta.json` eksiksizliği (title, theme, set_style, marquee_text‑“DJ Famous”, art_query), `sozler.md` varlığı, `structure.txt` varlığı, `state.json` temizliği (render_kilit yok). Eksik bir madde varsa proses durdurulup bildirim verilmelidir.
 
 ---
 
@@ -182,4 +186,48 @@ python -m pytest -q -p no:cacheprovider --basetemp="C:\pytest_tmp"
 
 ---
 
-**Son güncelleme:** 2026-09-14 — Tüm eski kurallar silindi, bu plan onaylandı.
+## 16. BÜYÜME MOTORU (İzlenme × Kalma × Abone — Kalıcı, Bayraklı)
+
+Kayıt: `BUYUME_ONERILERI.md` (17 madde, durum+kod+test tablosu). Kilit testler:
+`tests/test_buyume_onerileri.py`. Yeni madde = kayıt satırı + test (kural §9).
+Kapatmak silmek değil — `config.py` BÜYÜME bayrağını `False` yapmaktır.
+
+- **Cold-open:** Uzun videonun başına highlight'tan ön tat (`COLD_OPEN_SURE_SN`, varsayılan 4sn) — ses concat, chapter'lar aynı süre ötelenir. Sadece `youtube_16x9`, highlight kırpmasına YOK.
+- **Görsel nabız:** Bölüm verisi olmasa bile ~25sn'de hue/pan vurgusu (`GORSEL_NABIZ_SURE_SN`) — ana + Shorts filtresinde.
+- **Abone CTA:** Videonun %40'ında 1 kez 4sn, emir kipi YOK — rutin vaat (`ABONE_CTA_METIN`: dj → "Her Cuma yeni şehir", diğer → "Her hafta yeni şarkı").
+- **Bitiş kartı:** `meta.json`'da `end_card_text` varsa son 15sn'de (`END_CARD_SURE_SN`) — yoksa çizilmez.
+- **Chapter:** `tracklist` varsa `chapters.ffmeta` üretilir + tam boy videoya gömülür + açıklamada timestamp satırları (YouTube chapter'ı). Yer tutucu başlık (`Track 3`) = UYARI, render durmaz.
+- **Seri kapağı:** `series` varsa `SERIES_THUMBNAIL_TEMPLATES` şablonu — `{Brand} • Ep01` + landmark (≤4 kelime) + logo.
+- **Shorts native:** `shorts_9x16` = tam ekran art + hook + lower-third — kart squeeze YOK.
+- **Başlık:** Seri kalıbı `{artist}` ile başlar (mobil ilk 35 karakter). **Funnel:** Shorts, uzun video ID'siyle yüklenir (tam sürüm linki şart).
+- **AI beyanı videoya YAKILMAZ (kırmızı çizgi):** Sadece `containsSyntheticMedia=True` bayrağı + açıklama satırı. Pikselde rozet/overlay YASAK — CI'da test edilir.
+- **Kültür-kod:** `SET_STILLERI`'ne yeni stil eklenebilir (`arabesk_trap`, `nineties_nostalji` örnek) — belge + referans set şartı (§13) aynen geçerli.
+- **Ölçüm:** Tek seferde tek değişiklik; öncesi `olcum_temel_cizgi.py --cek`.
+
+---
+
+## 17. SITE BÜYÜME MOTORU (2026-10-20) — Madde 25-28
+
+YouTube Studio 5 manuel görev (banner, trailer, 4 playlist, açıklama, bağlantılar)
+API + tarayıcı ile **otomatikleştirildi**. `site/index.html` production-ready
+hale getirildi. Kayıt: `BUYUME_ONERILERI.md` §"Site Büyüme Motoru".
+
+- **Madde 25 — AI Tarz Seçici:** `config.TARZ_SECICI_ACIK` + `TARZ_SECICI_TONUZLER` (6 ruh hali) → `site/index.html` `#tarz-secici`. **Otomatik oynatma YOK** (spam sinyali) — tıklayınca çalar. config↔site senkron kilitli.
+- **Madde 26 — Kanal bağlantıları (5):** `youtube_studio_setup_api.py::CHANNEL_LINKS`. **DIKKAT:** `brandingSettings.channel.links` Data API'de **yazılmıyor** (sessizce yok sayılıyor) → UI gerekli.
+- **Madde 27 — Kanal açıklaması:** `youtube_studio_setup_api.py::CHANNEL_DESCRIPTION` (6 satır). `channels.update(part=snippet)` → **400 ERROR_PART_UNEXPECTED**; `brandingSettings.channel.description` ile yazılır.
+- **Madde 28 — Site analitik:** `site/analytics.js` + `site/api/analytics.py` — **cookie-less, PII-yok, first-party**. `text/plain` beacon (preflight yok) + `credentials:'omit'`. Veri: `analytics_data/site/site_visits.jsonl`. `config.py` tek kaynak → `python sync_site_analytics.py`.
+- **Madde 29 — Topluluk:** 3 kanal: **Discord** (webhook) + **Telegram** (bot token) + **ntfy** (token gerektirmez, telefona anlik push, bu agdan erisilebilir — Discord bu agdan engelli, Telegram icin gercek token gerekli). `topluluk.py` + `netlify/functions/topluluk.js` + `site/api/topluluk.py`. Topluluk verisi analitikten **AYRI** (`analytics_data/topluluk/`). Placeholder Telegram token tespit edilir (404 yerine net mesaj). `python topluluk.py durum | bildir | disa-aktar`.
+- **Madde 29b — Otomatik bildirim:** `auto_process.py` + `dj_famous_process.py`, `upload_video` başarılı olunca `_topluluk_bildir()` çağırır (yeni görev YOK). **FAIL-SAFE:** bildirim hatası yayını geri almaz — fail-closed kuralı YAYIN içindir, bildirim fail-OPEN olmalıdır.
+- **Madde 30 — Site deploy:** ✅ **CANLIDA** — statik: `https://semtappdata-art.github.io/famous-music-studio/` (GitHub Pages) · statik+API: `https://famous-music-studio.netlify.app` (Netlify). ⚠️ **Netlify Lambda Python desteklemiyor** → fonksiyonlar JS (`netlify/functions/`) + Netlify Blobs v1; Python surumler yerel icin `site/api/`. `netlify.toml` (publish=`site`, functions=`site/api`) + `/api/*` redirect'leri + `privacy.html` / `404.html` / `epk/bio.html` + CSP/güvenlik başlıkları + `.github/workflows/deploy-site.yml`. **GitHub Pages alt-yol servis eder** → mutlak yollar 404 verir, iç linkler **göreli** olmalı. API ucu `window.FMS_API_BASE` ile ayarlanabilir. **GitHub Pages statiktir** → API fonksiyonları için Netlify/Vercel şart. Repo 4.4 GB → `git push` timeout verir; `publish_site_github.py` (GitHub API, blob→tree→commit) kullanılır. Rehber: `site/DEPLOY.md`.
+- **Madde 31 — Dil toggle (TR/EN):** `site/i18n.js` (sözlük) + `index.html` `data-i18n` + sağ üstte TR/EN düğmesi. Varsayılan TR; tarayıcı dili EN ise ilk açılışta EN. Secim `localStorage`'da (`fms_dil`) — **yalnızca kullanıcı tercihi**, analitik toplamaz. JS ile üretilen içerik (tarz seçici) `dil:degisti` olayında yeniden çizilir. **REGRESYON:** i18n sırasında fazla `}` ile ana script çöktü (testler yeşil, sayfa ölü) → `check_js_braces.py` + `test_site_js_dengesi_bozulmamis` kilitler.
+
+**REGRESYON (2026-10-20) — 3 sessiz hata, testle kilitli:**
+1. `<title>` `</meta>` ile kapanmıştı → 57KB `<head>`'e gömüldü, **sayfa tamamen beyaz** render oldu. → `test_site_html_yapisi_dengeli`
+2. `window.MUSIC_DATA` → top-level `const` window'a eklenmez → **4 müzik kartı hiç oluşmadı** (konsolda hata yok). → `test_site_music_data_window_hatasi_yok`
+3. `sendBeacon` + `application/json` → preflight + `credentials:'include'` → `Access-Control-Allow-Origin: *` ile **CORS reddi**, POST hiç ulaşmadı. → `text/plain` + `credentials:'omit'`
+
+**DERS:** Testler yeşil olsa bile **tarayıcıda görsel doğrulama** yap — DOM boş kalabilir.
+
+---
+
+**Son güncelleme:** 2026-10-20 — §17 Site Büyüme Motoru eklendi (Madde 25-31, 4 regresyon kilitli). Site canlıda.

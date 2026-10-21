@@ -1,0 +1,10 @@
+{
+  "request_id": "2628dd19-ed63-4f67-9bdc-0f82ca1bdee1",
+  "status": "processing",
+  "cost": {
+    "amount_usd": 0.09,
+    "amount_credits": 7,
+    "bonus_credits_used": 0,
+    "refunded": false
+  }
+}

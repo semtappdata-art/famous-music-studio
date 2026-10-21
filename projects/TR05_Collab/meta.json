@@ -1,0 +1,70 @@
+{
+  "title": "Collab: Progressive Horizons",
+  "theme": "elektronik",
+  "art_query": "progressive house collab studio session rikodisco style",
+  "custom_hooks": [
+    "İki ruh, bir ritim, sonsuz yol 🤝",
+    "Rikodisco ile ortak üretim 🤝",
+    "İki stil birleşince sihir olur ✨"
+  ],
+  "custom_questions": [
+    "Hangi DJ ile collab yapmak istersin? 🤝",
+    "Progressive house'ta en sevdiğin collab hangisi? 🎧"
+  ],
+  "yayin_tarihi": "2026-11-01T18:00:00+03:00",
+  "end_card_text": "Sıradaki set: Deep Focus Ep01 Bali",
+  "end_card_text_tr": "Sıradaki set: Deep Focus Ep01 Bali",
+  "marquee_text": "Progressive Horizons • Elektronik • #DJFamous",
+  "set_style": "progressive_house",
+  "collab": true,
+  "collab_partner": "Rikodisco",
+  "not": "Collab onayı bekleniyor - onay gelmezse solo versiyon TR05b olarak planlanacak",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "start_sec": 0,
+      "end_sec": 300,
+      "title": "Progressive Intro",
+      "artist": "DJ Famous",
+      "bpm": 126,
+      "key": "Cm"
+    },
+    {
+      "timestamp": "05:00",
+      "start_sec": 300,
+      "end_sec": 600,
+      "title": "Horizon Blend",
+      "artist": "DJ Famous",
+      "bpm": 128,
+      "key": "Gm"
+    },
+    {
+      "timestamp": "10:00",
+      "start_sec": 600,
+      "end_sec": 900,
+      "title": "Progressive Merge",
+      "artist": "DJ Famous",
+      "bpm": 127,
+      "key": "F"
+    },
+    {
+      "timestamp": "15:00",
+      "start_sec": 900,
+      "end_sec": 1200,
+      "title": "Rikodisco Fusion",
+      "artist": "DJ Famous",
+      "bpm": 127,
+      "key": "Dm"
+    },
+    {
+      "timestamp": "20:00",
+      "start_sec": 1200,
+      "end_sec": 1500,
+      "title": "Unified Horizon",
+      "artist": "DJ Famous",
+      "bpm": 126,
+      "key": "Cm"
+    }
+  ],
+  "tracklist_updated_at": "2026-10-19T22:40:00"
+}

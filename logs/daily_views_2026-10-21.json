@@ -1,0 +1,21 @@
+{
+  "tarih": "2026-10-21",
+  "olusturma_zamani": "2026-10-21T10:49:12.856131+03:00",
+  "veri": {
+    "video_bazinda": {},
+    "ozet": {}
+  },
+  "site": {
+    "tarih": "2026-10-21",
+    "toplam_ziyaret": 1,
+    "sayfalar": {
+      "/index.html": 1
+    },
+    "cihazlar": {
+      "masaustu": 1
+    },
+    "referrer": {
+      "-": 1
+    }
+  }
+}

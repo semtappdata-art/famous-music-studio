@@ -1,0 +1,98 @@
+{
+  "title": "DJ Famous @ Hagia Sophia, Istanbul for City Pulse Sessions",
+  "series": "city_pulse",
+  "episode": 1,
+  "theme": "dj",
+  "set_style": "urban rooftop",
+  "marquee_text": "City Pulse Sessions  •  Ep01  •  #DJFamous",
+  "art_query": "Istanbul Hagia Sophia urban rooftop cinematic cinematic",
+  "location": {
+    "city": "Istanbul",
+    "country": "Turkey",
+    "landmark": "Hagia Sophia",
+    "gps": "41.0082,28.9784",
+    "story": "Sunset over Bosphorus, minarets calling, city waking up",
+    "route": ""
+  },
+  "youtube": {
+    "playlist_id": "PL_CityPulse",
+    "tags_base": [
+      "melodic techno",
+      "progressive house",
+      "city pulse",
+      "dj famous",
+      "rooftop"
+    ],
+    "hashtags": "#CityPulse #MelodicTechno #DJFamous",
+    "title_format": "{artist} @ {landmark}, {city} for City Pulse Sessions"
+  },
+  "seo": {
+    "primary_keyword": "melodic techno rooftop set",
+    "secondary_keywords": [
+      "progressive house",
+      "cityscape",
+      "sunset dj"
+    ]
+  },
+  "thumbnail_concept": "artist_silhouette + city_landmark + series_logo",
+  "description_template": "full_tracklist + city_story + credits + cross_promo",
+  "schedule": "biweekly_friday_18:00_tr",
+  "cross_promo": {
+    "shorts_clips": [
+      "hook_0-30s",
+      "transition_mid",
+      "outro_last_3min"
+    ],
+    "instagram_reel": "30s_vertical_hook",
+    "tiktok_draft": "60s_best_moment",
+    "bluesky_thread": "track_by_track_breakdown"
+  },
+  "created_at": "2026-10-18T22:50:31.009003",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "title": "Opening - Atmospheric Intro",
+      "artist": "DJ Famous",
+      "start_sec": 0,
+      "end_sec": 323
+    },
+    {
+      "timestamp": "05:23",
+      "title": "Bosphorus Breeze - Melodic Groove",
+      "artist": "DJ Famous",
+      "start_sec": 323,
+      "end_sec": 645
+    },
+    {
+      "timestamp": "10:45",
+      "title": "Minaret Dreams - Deep Progressive",
+      "artist": "DJ Famous",
+      "start_sec": 645,
+      "end_sec": 972
+    },
+    {
+      "timestamp": "16:12",
+      "title": "Golden Hour - Peak Energy",
+      "artist": "DJ Famous",
+      "start_sec": 972,
+      "end_sec": 1290
+    },
+    {
+      "timestamp": "21:30",
+      "title": "City Lights - Driving Rhythm",
+      "artist": "DJ Famous",
+      "start_sec": 1290,
+      "end_sec": 1620
+    },
+    {
+      "timestamp": "27:00",
+      "title": "Sunrise Over Bosphorus - Outro",
+      "artist": "DJ Famous",
+      "start_sec": 1620,
+      "end_sec": 1800
+    }
+  ],
+  "tracklist_updated_at": "2026-10-18T23:26:51.814946",
+  "end_card_text": "Subscribe for new sets  •  @Famous_musics_studio",
+  "end_card_text_tr": "Yeni setler için abone ol  •  @Famous_musics_studio"
+}

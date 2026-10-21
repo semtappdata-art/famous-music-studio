@@ -1,0 +1,5 @@
+{
+  "access_token": "YOUR_LONG_LIVED_ACCESS_TOKEN",
+  "user_id": "YOUR_INSTAGRAM_BUSINESS_ACCOUNT_ID",
+  "expires_at": "2026-12-31T00:00:00"
+}

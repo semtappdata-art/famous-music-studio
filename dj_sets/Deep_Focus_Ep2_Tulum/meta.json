@@ -1,0 +1,53 @@
+{
+  "title": "DJ Famous @ Rice Terraces, Bali for Deep Focus Sessions",
+  "series": "deep_focus",
+  "episode": 2,
+  "theme": "dj",
+  "set_style": "nature immersive",
+  "marquee_text": "Deep Focus Sessions  •  Ep02  •  #DJFamous",
+  "art_query": "Bali Rice Terraces nature immersive cinematic cinematic",
+  "location": {
+    "city": "Bali",
+    "country": "Indonesia",
+    "landmark": "Rice Terraces",
+    "gps": "-8.4095,115.1889",
+    "story": "Morning mist over Tegallalang, gamelan whispers in the wind",
+    "route": ""
+  },
+  "youtube": {
+    "playlist_id": "PL_DeepFocus",
+    "tags_base": [
+      "organic house",
+      "deep house",
+      "deep focus",
+      "dj famous",
+      "nature"
+    ],
+    "hashtags": "#DeepFocus #OrganicHouse #DJFamous",
+    "title_format": "{artist} @ {landmark}, {city} for Deep Focus Sessions"
+  },
+  "seo": {
+    "primary_keyword": "organic house nature set",
+    "secondary_keywords": [
+      "deep house",
+      "wellness music",
+      "morning mix"
+    ]
+  },
+  "thumbnail_concept": "artist_photo + nature_scene + series_logo",
+  "description_template": "full_tracklist + nature_story + wellness_angles + credits",
+  "schedule": "monthly_first_friday_10:00_tr",
+  "cross_promo": {
+    "shorts_clips": [
+      "hook_0-30s",
+      "transition_mid",
+      "outro_last_3min"
+    ],
+    "instagram_reel": "30s_vertical_hook",
+    "tiktok_draft": "60s_best_moment",
+    "bluesky_thread": "track_by_track_breakdown"
+  },
+  "created_at": "2026-10-18T23:26:13.350506",
+  "end_card_text": "Subscribe for new sets  •  @Famous_musics_studio",
+  "end_card_text_tr": "Yeni setler için abone ol  •  @Famous_musics_studio"
+}

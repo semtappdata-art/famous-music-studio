@@ -1,0 +1,29 @@
+{
+  "segments": [
+    {
+      "start": 0,
+      "end": 180,
+      "text": "Tokyo Nights - Atmospheric Intro"
+    },
+    {
+      "start": 180,
+      "end": 420,
+      "text": "Shibuya Crossing - Deep Groove"
+    },
+    {
+      "start": 420,
+      "end": 680,
+      "text": "Neon Dreams - Melodic Progressive"
+    },
+    {
+      "start": 680,
+      "end": 950,
+      "text": "Peak Hour - Driving Energy"
+    },
+    {
+      "start": 950,
+      "end": 1220,
+      "text": "After Hours - Chill Outro"
+    }
+  ]
+}

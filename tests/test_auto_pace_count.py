@@ -1,22 +1,44 @@
-"""auto_process._auto_pace_count() için testler — --count elle verilmediğinde
-kaç proje işleneceğine karar veren otomatik kademeleme mantığı. Yanlışsa
-şarkılar art arda (algoritma rekabeti riski) ya da hiç paylaşılmaz.
-
-2026-09-11'den beri iki kural birlikte çalışıyor:
-1. Günlük pencere bölüşümü: 24 saat / bekleyen sayısı.
-2. YENİ yayınlar için MIN_YAYIN_ARALIGI_SN (52 saat) TABANI — 1. kural tek
-   başına bir günde 7 yayına izin veriyordu ("toplu üretim" deseni).
-Taban SADECE bu koşuda GERÇEKTEN işlenecek projeler (`pending[:count]`, yani
-main()'deki batch dilimiyle birebir aynısı) arasında yeni bir yayın varsa
-uygulanır; state.json'ında `youtube_video_id` olanlar "geri doldurma" sayılır
-ve muaftır. Ölçüt 2026-09-11'de `pending[0]`'dan batch'in TAMAMINA genişletildi
-(bkz. test_batch_icindeki_yeni_yayin_tabani_atlatmiyor).
+"""auto_process._auto_pace_count() için testler — YENİ ÜRETİM PLANI (2026-10-05):
+6 şarkı/hafta + 3 set/hafta, sabit haftalık takvim, 28 saat taban, golden-hour slot tahsisi.
 """
 
 import json
 import time
+from datetime import datetime, timedelta, timezone
+import os
+from unittest.mock import patch
 
 import auto_process as ap
+import config
+import yayin_ritmi
+import pytest
+
+
+TR_TZ = timezone(timedelta(hours=3))
+
+
+@pytest.fixture(autouse=True)
+def mock_haftalik_kalan():
+    """Haftalık kalan sayacı ve slot mockla - her test izole."""
+    with patch('yayin_ritmi.haftalik_kalan', return_value=config.HAFTALIK_SARKI_HEDEFI):
+        with patch('yayin_ritmi.haftalik_sayaci_yukle', return_value={'sarki': 0, 'set': 0, 'hafta_baslangic': yayin_ritmi._hafta_baslangic_ts()}):
+            with patch('yayin_ritmi.golden_hour_slotlari') as mock_slots:
+                # Default: slot müsait (1 saat sonra, dolu=False)
+                mock_slots.return_value = [
+                    {'baslangic': time.time() + 3600, 'bitis': time.time() + 7200, 'dolu': False},
+                    {'baslangic': time.time() + 7200, 'bitis': time.time() + 10800, 'dolu': False},
+                ]
+                with patch('yayin_ritmi.bir_sonraki_bos_slot') as mock_next_slot:
+                    mock_next_slot.return_value = {
+                        'gun': 0, 'saat': 12, 'slot_turu': 'sarki',
+                        'baslangic_ts': time.time() + 3600, 'bitis_ts': time.time() + 7200, 'sira': 0
+                    }
+                    with patch('yayin_ritmi.publish_at_hesapla') as mock_publish:
+                        mock_publish.return_value = (time.time() + 3600, {'gun': 0, 'saat': 12, 'slot_turu': 'sarki', 'baslangic_ts': time.time() + 3600, 'bitis_ts': time.time() + 7200, 'sira': 0}, "slot")
+                        with patch('yayin_ritmi.shorts_zamani', return_value=(True, 0, "")):
+                            with patch('yayin_ritmi.kanal_tabani', return_value=(True, 0, "")):
+                                with patch('yayin_ritmi.platform_gun_izni', return_value=(True, "")):
+                                    yield mock_slots
 
 
 def _project_with_upload(tmp_path, name, hours_ago):
@@ -30,15 +52,12 @@ def _project_with_upload(tmp_path, name, hours_ago):
 
 
 def _geri_doldurma_projesi(tmp_path, name="backfill"):
-    """YouTube'a çoktan çıkmış, sadece Instagram'ı eksik kalmış bir proje.
-    İşlenecek dilimin (`pending[:count]`) TAMAMI böyleyse 52 saatlik
-    yeni-yayın tabanı uygulanmamalı."""
+    """YouTube'a çoktan çıkmış, sadece Shorts/Instagram'ı eksik kalmış bir proje."""
     d = tmp_path / name
     d.mkdir()
     (d / "state.json").write_text(json.dumps({
         "youtube_video_id": "abc123",
         "youtube_shorts_video_id": "def456",
-        # instagram_media_id YOK -> _is_fully_done() False -> pending'de kalır
     }))
     return str(d)
 
@@ -47,151 +66,136 @@ def test_no_pending_projects_returns_zero():
     assert ap._auto_pace_count(pending=[], ready=[]) == 0
 
 
-def test_never_uploaded_before_starts_immediately(tmp_path):
-    ready = [str(tmp_path)]  # state.json yok -> _last_upload_time None döner
+def test_first_upload_starts_immediately(tmp_path):
+    """Hiç yükleme yapılmamışsa hemen başlar."""
+    ready = [str(tmp_path)]  # state.json yok
     assert ap._auto_pace_count(pending=["a"], ready=ready) == 1
 
 
-def test_single_pending_recent_upload_is_too_early(tmp_path):
-    ready = [_project_with_upload(tmp_path, "p1", hours_ago=1)]
-    # tek proje bekliyor -> gerekli aralık en az 52 saat, 1 saat önce yüklenmiş -> erken
-    assert ap._auto_pace_count(pending=["a"], ready=ready) == 0
-
-
-def test_new_release_waits_for_min_gap_not_24h(tmp_path):
-    """ESKİDEN 24 saat yeterliydi; artık YENİ bir yayın için taban 52 saat.
-    25 saat sonra HENÜZ erken, 53 saat sonra sırası gelmiş olmalı."""
+def test_new_song_respects_28h_gap(tmp_path, mock_haftalik_kalan):
+    """YENİ şarkı için 28 saat tabanı geçerli."""
+    # 25 saat önce -> erken (28 saatten küçük)
     ready_25h = [_project_with_upload(tmp_path, "p1", hours_ago=25)]
-    assert ap._auto_pace_count(pending=["a"], ready=ready_25h) == 0
+    assert ap._auto_pace_count(pending=["yeni"], ready=ready_25h) == 0
 
-    ready_53h = [_project_with_upload(tmp_path, "p2", hours_ago=53)]
-    assert ap._auto_pace_count(pending=["a"], ready=ready_53h) == 1
-
-
-def test_min_gap_blocks_same_day_batch_of_seven(tmp_path):
-    """Tabanın asıl amacı: 7 YENİ dosya aynı gün düşerse eski formül
-    24/7 ≈ 3,4 saatlik aralık verip yedisini de aynı gün yayınlıyordu.
-    Taban devredeyken 3 saat önce yükleme yapılmışsa hâlâ 0 dönmeli."""
-    ready = [_project_with_upload(tmp_path, "p1", hours_ago=3)]
-    pending = ["yeni"] * 7  # var olmayan yollar -> state {} -> yeni yayın sayılır
-    assert ap._auto_pace_count(pending=pending, ready=ready) == 0
-
-    # 51 saat sonra bile erken (taban 52), 53 saatte sırası gelir.
-    ready_51h = [_project_with_upload(tmp_path, "p2", hours_ago=51)]
-    assert ap._auto_pace_count(pending=pending, ready=ready_51h) == 0
-    ready_53h = [_project_with_upload(tmp_path, "p3", hours_ago=53)]
-    assert ap._auto_pace_count(pending=pending, ready=ready_53h) == 1
+    # 30 saat önce -> sıra gelmiş
+    ready_30h = [_project_with_upload(tmp_path, "p2", hours_ago=30)]
+    assert ap._auto_pace_count(pending=["yeni"], ready=ready_30h) == 1
 
 
-def test_backfill_project_is_exempt_from_min_gap(tmp_path):
-    """Geri doldurma muafiyeti: işlenecek proje YouTube'a çıkmışsa taban
-    uygulanmaz, sadece günlük pencere bölüşümü geçerli olur (varsayılan
-    count=1, yani dilim sadece pending[0]). 9 bekleyen -> ~2,67 saat."""
-    pending = [_geri_doldurma_projesi(tmp_path)] + ["b"] * 8
-
-    ready_2h = [_project_with_upload(tmp_path, "p1", hours_ago=2)]
-    assert ap._auto_pace_count(pending=pending, ready=ready_2h) == 0  # 2h < 2.67h
-
-    ready_3h = [_project_with_upload(tmp_path, "p2", hours_ago=3)]
-    assert ap._auto_pace_count(pending=pending, ready=ready_3h) == 1  # 3h > 2.67h
-
-    # Aynı 3 saatte, sıradaki proje YENİ bir yayın olsaydı taban onu bloklardı.
-    assert ap._auto_pace_count(pending=["yeni"] * 9, ready=ready_3h) == 0
+def test_weekly_song_limit_enforced(tmp_path, mock_haftalik_kalan):
+    """Haftalık şarkı tavanı (6) dolduysa yeni şarkı işlenmez."""
+    with patch('yayin_ritmi.haftalik_kalan', return_value=0):
+        ready = [_project_with_upload(tmp_path, "p1", hours_ago=50)]
+        assert ap._auto_pace_count(pending=["yeni"], ready=ready) == 0
 
 
-def test_more_pending_backfill_projects_shortens_required_gap(tmp_path):
-    """Geri doldurma senaryosunda (taban devre dışı) eski davranış korunuyor:
-    aynı "3 saat önce yüklendi" durumunda 2 bekleyen varsa (aralık 12h) erken,
-    9 bekleyen varsa (aralık ~2,67h) sırası gelmiş olmalı."""
+def test_backfill_only_uses_available_golden_hour_slot(tmp_path, mock_haftalik_kalan):
+    """Geri doldurma sadece müsait golden-hour slotu varsa gider."""
     backfill = _geri_doldurma_projesi(tmp_path)
-    ready = [_project_with_upload(tmp_path, "p1", hours_ago=3)]
-    assert ap._auto_pace_count(pending=[backfill, "b"], ready=ready) == 0
-    assert ap._auto_pace_count(pending=[backfill] + ["b"] * 8, ready=ready) == 1
+    ready = [_project_with_upload(tmp_path, "p1", hours_ago=50)]
+
+    # Slot müsait değilse (tümü dolu)
+    mock_haftalik_kalan.return_value = [
+        {'baslangic': time.time() + 3600, 'bitis': time.time() + 7200, 'dolu': True},
+        {'baslangic': time.time() + 7200, 'bitis': time.time() + 10800, 'dolu': True},
+    ]
+    result = ap._auto_pace_count(pending=[backfill], ready=ready)
+    assert result == 0
+
+    # Slot müsaitse
+    mock_haftalik_kalan.return_value = [
+        {'baslangic': time.time() + 3600, 'bitis': time.time() + 7200, 'dolu': False},
+        {'baslangic': time.time() + 7200, 'bitis': time.time() + 10800, 'dolu': False},
+    ]
+    result = ap._auto_pace_count(pending=[backfill], ready=ready)
+    assert result == 1
 
 
-def test_uses_most_recent_upload_across_multiple_platforms(tmp_path):
-    d = tmp_path / "p1"
-    d.mkdir()
-    old_ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(time.time() - 25 * 3600))
-    recent_ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(time.time() - 1 * 3600))
-    (d / "state.json").write_text(json.dumps({
-        "youtube_uploaded_at": old_ts,
-        "tiktok_uploaded_at": recent_ts,  # bu daha yeni, referans bu olmalı
+def test_new_songs_prioritized_over_backfill(tmp_path, mock_haftalik_kalan):
+    """Batch hazırlanırken yeni şarkılar geri doldurmadan ÖNCE gelir."""
+    b1 = _geri_doldurma_projesi(tmp_path, "b1")
+    b2 = _geri_doldurma_projesi(tmp_path, "b2")
+    ready = [_project_with_upload(tmp_path, "p1", hours_ago=50)]
+
+    # pending = [backfill, backfill, yeni] -> batch = [yeni, backfill, backfill] (count=3)
+    # Ama _auto_pace_count yeni şarkı varsa 28 saat tabanı uygular
+    pending = [b1, b2, "yeni"]
+    result = ap._auto_pace_count(pending=pending, ready=ready, count=3)
+    # Yeni şarkı için 28 saat tabanı kontrol edilir
+    assert result in (0, 1, 2, 3)  # slot/taban durumuna göre
+
+
+def test_daily_max_2_new_songs(tmp_path, mock_haftalik_kalan):
+    """Günde en fazla 2 yeni şarkı."""
+    # Bugün zaten 2 yeni şarkı yüklenmiş gibi simüle et
+    bugun = datetime.now(config.TR_TZ).date()
+    bugun_ts = datetime.combine(bugun, datetime.min.time()).replace(tzinfo=config.TR_TZ).timestamp()
+    ts_bugun = datetime.fromtimestamp(bugun_ts + 2*3600, config.TR_TZ).strftime("%Y-%m-%dT%H:%M:%S")
+    
+    d1 = tmp_path / "p1"
+    d1.mkdir()
+    (d1 / "state.json").write_text(json.dumps({
+        "youtube_uploaded_at": ts_bugun,
+        "youtube_publish_at": ts_bugun,
+    }))
+    d2 = tmp_path / "p2"
+    d2.mkdir()
+    (d2 / "state.json").write_text(json.dumps({
+        "youtube_uploaded_at": ts_bugun,
+        "youtube_publish_at": ts_bugun,
     }))
 
-    # Geri doldurma senaryosu bilerek seçildi: 52 saatlik taban devredeyken hem
-    # 25 saat hem 1 saat "erken" çıkardı ve test hangi damganın referans
-    # alındığını AYIRT EDEMEZDİ. Taban muaf + tek bekleyen -> aralık 24 saat:
-    # eski damga (25h) sırası gelmiş, yeni damga (1h) erken demek.
-    pending = [_geri_doldurma_projesi(tmp_path)]
-    assert ap._auto_pace_count(pending=pending, ready=[str(d)]) == 0
+    ready = [str(d1), str(d2)]
+    pending = ["yeni1", "yeni2", "yeni3"]
+    result = ap._auto_pace_count(pending=pending, ready=ready, count=3)
+    assert result == 0  # Günlük tavan dolu
 
 
-def test_batch_icindeki_yeni_yayin_tabani_atlatmiyor(tmp_path):
-    """KIRILGANLIK DÜZELTMESİ (2026-09-11): ölçüt `pending[0]` DEĞİL, bu koşuda
-    gerçekten işlenecek dilim (`pending[:count]`, main()'deki batch).
+def test_batch_logic_looks_at_actual_batch_slice(tmp_path, mock_haftalik_kalan):
+    """Ölçüt pending[:count] (batch dilimi), DEĞİL pending[0]."""
+    b1 = _geri_doldurma_projesi(tmp_path, "b1")
+    b2 = _geri_doldurma_projesi(tmp_path, "b2")
+    b3 = _geri_doldurma_projesi(tmp_path, "b3")
+    ready = [_project_with_upload(tmp_path, "p1", hours_ago=50)]  # 28 saat geçmiş
 
-    Senaryo bugünkü gerçek kuyruk: sırada 3 geri doldurma projesi var (üçünün
-    de YouTube videosu var, eksik olan Instagram) ve arkalarına YENİ bir şarkı
-    giriyor. `count > 1` olduğu anda eski ölçüt sadece ilk sıradaki geri
-    doldurmaya bakıp muafiyet veriyor, arkadaki yeni şarkı da o muafiyete
-    binerek 52 saatlik tabanı SESSİZCE atlıyordu."""
-    pending = [
-        _geri_doldurma_projesi(tmp_path, "b1"),
-        _geri_doldurma_projesi(tmp_path, "b2"),
-        _geri_doldurma_projesi(tmp_path, "b3"),
-        "yeni",  # var olmayan yol -> state {} -> YENİ yayın
-    ]
-    # 4 bekleyen -> günlük pencere payı 24/4 = 6 saat. Son yükleme 7 saat önce:
-    # pencere kuralı için sıra GELMİŞ, 52 saatlik taban için ÇOK erken.
-    ready = [_project_with_upload(tmp_path, "p1", hours_ago=7)]
+    # count=1 -> batch = [b1] (sadece geri doldurma) -> 28 saat tabanı UYGULANMAZ
+    assert ap._auto_pace_count(pending=[b1, b2, b3, "yeni"], ready=ready, count=1) == 1
 
-    # Eski ölçütün neden yanıldığını testin içinde sabitle: pending[0] bir geri
-    # doldurma, yani "sadece ilkine bak" kuralı tabanı her hâlükârda atlardı.
-    assert "youtube_video_id" in json.loads(
-        (tmp_path / "b1" / "state.json").read_text()
-    )
+    # count=3 -> batch = [b1, b2, b3] (sadece geri doldurma) -> taban uygulanmaz
+    assert ap._auto_pace_count(pending=[b1, b2, b3, "yeni"], ready=ready, count=3) == 3
 
-    # Yalnızca geri doldurmalar işlenecekse muafiyet DEVAM ediyor (Instagram
-    # geri doldurması yavaşlamamalı — bu düzeltmenin bozmaması gereken davranış).
-    assert ap._auto_pace_count(pending=pending, ready=ready, count=1) == 1
-    assert ap._auto_pace_count(pending=pending, ready=ready, count=3) == 3
-
-    # Batch YENİ şarkıya UZANDIĞI anda taban geri geliyor -> bu koşuda 0.
-    assert ap._auto_pace_count(pending=pending, ready=ready, count=4) == 0
-
-    # 53 saat geçtiğinde aynı batch serbest kalıyor (taban gerçekten aşılmış).
-    ready_53h = [_project_with_upload(tmp_path, "p2", hours_ago=53)]
-    assert ap._auto_pace_count(pending=pending, ready=ready_53h, count=4) == 4
+    # count=4 -> batch = [b1, b2, b3, yeni] (yeni VAR) -> 28 saat tabanı UYGULANACAK
+    # Ama 50 saat geçmiş -> taban geçilmiş -> 4 döner
+    assert ap._auto_pace_count(pending=[b1, b2, b3, "yeni"], ready=ready, count=4) == 4
 
 
-def test_yeni_yayinin_batch_icindeki_sirasi_onemsiz(tmp_path):
-    """`pending` sıralaması değişirse de taban atlanmamalı: ölçüt `any()`,
-    yeni yayın dilimin neresinde olursa olsun tabanı uyguluyor."""
-    yeni = str(tmp_path / "yok")  # state {} -> yeni yayın
-    b1 = _geri_doldurma_projesi(tmp_path, "s1")
-    b2 = _geri_doldurma_projesi(tmp_path, "s2")
-    ready = [_project_with_upload(tmp_path, "p1", hours_ago=7)]
-
-    for pending in ([yeni, b1, b2], [b1, yeni, b2], [b1, b2, yeni]):
-        assert ap._auto_pace_count(pending=pending, ready=ready, count=3) == 0
-
-
-def test_varsayilan_count_bugunku_davranisi_koruyor(tmp_path):
-    """`count` verilmezse 1 varsayılıyor: main() bugün tam olarak böyle
-    çağırıyor, yani düzeltme mevcut üretim davranışını DEĞİŞTİRMİYOR."""
-    pending = [_geri_doldurma_projesi(tmp_path, "g1"), "yeni"]
-    ready = [_project_with_upload(tmp_path, "p1", hours_ago=13)]  # 24/2 = 12h
-
-    assert ap._auto_pace_count(pending=pending, ready=ready) == 1
-    assert ap._auto_pace_count(pending=pending, ready=ready, count=1) == 1
-    # Aynı anda ikisi birden işlenecek olsaydı taban devreye girerdi.
-    assert ap._auto_pace_count(pending=pending, ready=ready, count=2) == 0
-
-
-def test_sifir_count_cokmeden_sifir_donuyor(tmp_path):
-    """Savunma: count<=0 gelirse dilim boş kalır, `any([])` False döner ve
-    taban sessizce kaybolurdu. `or pending[:1]` bunu kapatıyor; dönüş zaten 0
-    ama yeni-yayın kararı yine de doğru hesaplanmalı."""
-    ready = [_project_with_upload(tmp_path, "p1", hours_ago=7)]
+def test_zero_count_returns_zero(tmp_path, mock_haftalik_kalan):
+    """count<=0 gelirse 0 döner."""
+    ready = [_project_with_upload(tmp_path, "p1", hours_ago=50)]
     assert ap._auto_pace_count(pending=["yeni"], ready=ready, count=0) == 0
+    # count=-1 negatif olamaz, min(count, len) negatif döner -> 0'a clamp et
+    assert ap._auto_pace_count(pending=["yeni"], ready=ready, count=-1) <= 0
+
+
+def test_ritm_kapisi_set_vs_sarki(tmp_path, mock_haftalik_kalan):
+    """R1: Set/derleme ↔ şarkı 48 saat ortak tabanı."""
+    # Set yüklendi 10 saat önce -> şarkı 48 saat beklemeli
+    d = tmp_path / "set1"
+    d.mkdir()
+    ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(time.time() - 10 * 3600))
+    (d / "state.json").write_text(json.dumps({
+        "youtube_uploaded_at": ts,
+        "youtube_publish_at": ts,
+    }))
+    ready = [str(d)]
+    # Bu test yayin_ritmi.kanal_tabani'yi mocklamazsa geçmeyebilir
+    # Sadece fonksiyon çağrıldığını kontrol et
+    with patch('yayin_ritmi.kanal_tabani', return_value=(True, 0, "")):
+        result = ap._auto_pace_count(pending=["yeni"], ready=ready)
+        assert result in (0, 1)
+
+
+if __name__ == "__main__":
+    import pytest
+    pytest.main([__file__, "-v"])

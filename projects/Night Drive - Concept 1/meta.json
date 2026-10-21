@@ -1,0 +1,83 @@
+{
+  "title": "Night Drive – Melodic Techno (Concept 1: The Poster)",
+  "theme": "elektronik",
+  "set_style": "techno_chill",
+  "marquee_text": "DJ Famous  •  Night Drive – Melodic Techno (Concept 1: The Poster)",
+  "art_query": "POV car dashboard night highway rain neon lights",
+  "location": {
+    "city": "Berlin",
+    "country": "Germany",
+    "landmark": "TV Tower",
+    "gps": "52.5200,13.4050",
+    "story": "Techno capital, concrete and neon, history in every beat",
+    "story_tr": "Tekno başkenti, beton ve neon, her vuruşta tarih hiss edilir."
+  },
+  "playlist_id": "PL_NIGHTDRIVECONCEPT1",
+  "tags_base": [],
+  "hashtags": "",
+  "seo": {},
+  "cross_promo": {},
+  "yayin_tarihi": "",
+  "end_card_text": "Subscribe — new track every week  •  @Famous_musics_studio",
+  "end_card_text_tr": "Abone ol, her hafta yeni şarkı  •  @Famous_musics_studio",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "title": "Midnight Departure",
+      "artist": "DJ Famous",
+      "start_sec": 0,
+      "end_sec": 300,
+      "bpm": 122,
+      "key": "Am"
+    },
+    {
+      "timestamp": "05:00",
+      "title": "City Lights Descent",
+      "artist": "DJ Famous",
+      "start_sec": 300,
+      "end_sec": 600,
+      "bpm": 124,
+      "key": "F"
+    },
+    {
+      "timestamp": "10:00",
+      "title": "Neon Visions",
+      "artist": "DJ Famous",
+      "start_sec": 600,
+      "end_sec": 900,
+      "bpm": 126,
+      "key": "C"
+    },
+    {
+      "timestamp": "15:00",
+      "title": "Starlit Corridor",
+      "artist": "DJ Famous",
+      "start_sec": 900,
+      "end_sec": 1200,
+      "bpm": 125,
+      "key": "G"
+    },
+    {
+      "timestamp": "20:00",
+      "title": "Dawn Approach",
+      "artist": "DJ Famous",
+      "start_sec": 1200,
+      "end_sec": 1500,
+      "bpm": 124,
+      "key": "Dm"
+    },
+    {
+      "timestamp": "25:00",
+      "title": "Homeward Bound",
+      "artist": "DJ Famous",
+      "start_sec": 1500,
+      "end_sec": 1800,
+      "bpm": 122,
+      "key": "Am"
+    }
+  ],
+  "tur_ozel": "",
+  "hikaye": "Gece yarısı, sadece sen ve yol. Farların ışığı tünelin içinde dans ediyor, ritim kalbinle senkronize oluyor. Bu gece sadece sürmek için sürüyorsun, varış noktası önemli değil.",
+  "neden_bu_sarki": "Gece sürüşlerinin o eşsiz huzurunu ve özgürlük hissini paylaşmak için.",
+  "story_tr": "Tekno başkenti, beton ve neon, her vuruşta tarih hiss edilir."
+}

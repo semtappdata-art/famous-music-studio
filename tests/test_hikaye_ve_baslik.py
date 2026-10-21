@@ -195,6 +195,13 @@ def test_varsayilan_kalip_k1_bugunku_baslik():
         "Deneme Şarkı — Sözleri | Famous Music Studio"
 
 
+def test_dj_temasi_baslik_kalbindan_muaf():
+    m = _meta(theme="dj", title="Night Drive")
+    assert Y.build_snippet(m)["title"] == "Night Drive"
+    assert Y.build_snippet(m, baslik_kalibi="K1")["title"] == "Night Drive"
+    assert Y.build_snippet(m, baslik_kalibi="K2")["title"] == "Night Drive"
+
+
 def test_k3_baslik_eki_yoksa_secilmez():
     ids = [k["id"] for k in OM.uygun_kaliplar(_meta())]
     assert "K3" not in ids

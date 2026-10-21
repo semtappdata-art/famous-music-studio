@@ -1,0 +1,83 @@
+{
+  "title": "Night Drive – Melodic Techno (Concept 3: Negative Space)",
+  "theme": "elektronik",
+  "set_style": "techno_chill",
+  "marquee_text": "DJ Famous  •  Night Drive – Melodic Techno (Concept 3: Negative Space)",
+  "art_query": "futuristic car dashboard turquoise pink speedometer glow",
+  "location": {
+    "city": "Tokyo",
+    "country": "Japan",
+    "landmark": "Tokyo Tower",
+    "gps": "35.6762,139.6503",
+    "story": "Neon dreams, Shibuya crossing, future sound",
+    "story_tr": "Neon rüyalar, Shibuya kavşağı, gelecek sesi."
+  },
+  "playlist_id": "PL_NIGHTDRIVECONCEPT3",
+  "tags_base": [],
+  "hashtags": "",
+  "seo": {},
+  "cross_promo": {},
+  "yayin_tarihi": "",
+  "end_card_text": "Subscribe — new track every week  •  @Famous_musics_studio",
+  "end_card_text_tr": "Abone ol, her hafta yeni şarkı  •  @Famous_musics_studio",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "title": "Neon Entry",
+      "artist": "DJ Famous",
+      "start_sec": 0,
+      "end_sec": 320,
+      "bpm": 124,
+      "key": "Cm"
+    },
+    {
+      "timestamp": "05:20",
+      "title": "Shibuya Crossing",
+      "artist": "DJ Famous",
+      "start_sec": 320,
+      "end_sec": 640,
+      "bpm": 126,
+      "key": "Gm"
+    },
+    {
+      "timestamp": "10:40",
+      "title": "Neon Dreams",
+      "artist": "DJ Famous",
+      "start_sec": 640,
+      "end_sec": 960,
+      "bpm": 128,
+      "key": "Dm"
+    },
+    {
+      "timestamp": "16:00",
+      "title": "Tokyo Drift",
+      "artist": "DJ Famous",
+      "start_sec": 960,
+      "end_sec": 1280,
+      "bpm": 127,
+      "key": "Bb"
+    },
+    {
+      "timestamp": "21:20",
+      "title": "Mount Fuji Sunrise",
+      "artist": "DJ Famous",
+      "start_sec": 1280,
+      "end_sec": 1600,
+      "bpm": 125,
+      "key": "F"
+    },
+    {
+      "timestamp": "26:40",
+      "title": "Sayonara Tokyo",
+      "artist": "DJ Famous",
+      "start_sec": 1600,
+      "end_sec": 1800,
+      "bpm": 123,
+      "key": "Cm"
+    }
+  ],
+  "tur_ozel": "",
+  "hikaye": "Bazen en güçlü ses, sessizliktir. Ara aralıktaki boşluklar, notalar kadar önemli. Gece sessizliğinde, ritim kendi kendini bulur.",
+  "neden_bu_sarki": "Negatif boşluğun gücünü ve boşluklarda doğan melodiyi keşfetmek için.",
+  "story_tr": "Neon rüyalar, Shibuya kavşağı, gelecek sesi."
+}

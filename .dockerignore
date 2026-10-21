@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+gorev_izleri/
+
+# Secrets (already in .gitignore)
+upload/*token*.json
+upload/*client_secrets*.json
+notify_config.json
+stock_art_config.json
+
+# Large files
+*.wav
+*.mp3
+*.mp4
+*.png
+*.jpg
+
+# State files
+projects/*/state.json
+**/state.json
+
+# Temporary files
+*.tmp
+*.bak
+
+# Docker
+Dockerfile
+docker-compose.yml
+.docker/
+
+# CI/CD
+.github/workflows/ci_cd.yml
+
+# Documentation (not needed in image)
+docs/
+*.md
+
+# Tests (not needed in production image)
+tests/
+
+# Config for development
+config_lib/feature_flags.json

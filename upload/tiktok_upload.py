@@ -93,6 +93,74 @@ def _load_meta(project_dir: str) -> dict:
     return {}
 
 
+def _is_dj_set(meta: dict) -> bool:
+    """Check if this is a DJ set with series-based metadata."""
+    return "series" in meta and meta.get("series")
+
+
+def _build_dj_set_caption(meta: dict) -> str:
+    """Build TikTok caption for DJ sets using series-based metadata."""
+    series_key = meta.get("series")
+    if not series_key:
+        return build_caption(meta, ai_beyani=True)
+
+    try:
+        from config import get_dj_series, get_series_location
+        series = get_dj_series(series_key)
+        if not series:
+            return build_caption(meta, ai_beyani=True)
+    except Exception:
+        return build_caption(meta, ai_beyani=True)
+
+    title = meta.get("title", "Untitled")
+    episode = meta.get("episode", 1)
+    location = meta.get("location") or get_series_location(series_key)
+    landmark = location.get("landmark", location.get("city", ""))
+    city = location.get("city", "")
+    story = location.get("story", "")
+
+    tracklist = meta.get("tracklist", [])
+
+    parts = []
+    parts.append(f"DJ Famous @ {landmark}, {city} — {series['brand']} Ep {episode}")
+    parts.append(f"")
+    
+    if story:
+        parts.append(f"📍 {story}")
+        parts.append(f"")
+    
+    if tracklist:
+        parts.append(f"🎧 TRACKLIST:")
+        for track in tracklist[:3]:
+            ts = track.get("timestamp", "00:00")
+            tr_title = track.get("title", "")
+            parts.append(f"{ts} {tr_title}")
+        if len(tracklist) > 3:
+            parts.append(f"... +{len(tracklist) - 3} more")
+        parts.append(f"")
+    
+    parts.append(f"🎬 {series['brand']} Episode {episode}")
+    parts.append(f"🎨 Produced by DJ Famous")
+    parts.append(f"")
+    
+    parts.append(f"🔗 Connect:")
+    parts.append(f"YouTube: {config.SOCIAL_LINKS['youtube']}")
+    parts.append(f"Instagram: https://instagram.com/djfamous")
+    parts.append(f"TikTok: https://tiktok.com/@djfamous")
+    parts.append(f"Bluesky: https://bsky.app/profile/djfamous.bsky.social")
+    parts.append(f"Telegram: https://t.me/djfamous")
+    parts.append(f"")
+    
+    hashtags = series["youtube"].get("hashtags", "")
+    if hashtags:
+        parts.append(hashtags)
+    
+    parts.append(f"")
+    parts.append(f"🤖 AI-generated music & visuals")
+    
+    return "\n".join(parts)
+
+
 def upload_video(project_dir: str) -> str:
     """App'de sadece video.upload scope'u varsa (video.publish yok), TikTok'un
     "Upload to TikTok" (inbox/draft) akışı kullanılır: video kullanıcının TikTok
@@ -125,14 +193,24 @@ def upload_video(project_dir: str) -> str:
         video_id = existing_state.get("youtube_video_id")
         if video_id:
             youtube_url = f"https://youtu.be/{video_id}"
-    suggested_caption = build_caption(meta, ai_beyani=True)   # AI beyanı açıklamada (config.AI_BEYAN_SATIRLARI)
+    # DJ Set with series? Use series-based caption
+    if _is_dj_set(meta):
+        suggested_caption = _build_dj_set_caption(meta)
+    else:
+        suggested_caption = build_caption(meta, ai_beyani=True)   # AI beyanı açıklamada (config.AI_BEYAN_SATIRLARI)
     suggested_comment = build_youtube_comment(youtube_url, resolve_language(meta), platform="tiktok") if youtube_url else None
     print("  --- TikTok'ta yayınlarken caption olarak yapıştır ---")
-    print(f"  {suggested_caption}")
+    try:
+        print(f"  {suggested_caption}")
+    except UnicodeEncodeError:
+        print("  [caption contains non-ASCII chars]")
     print("  ------------------------------------------------------")
     if suggested_comment:
         print("  --- Paylaşımdan SONRA ilk yorum olarak ekle ---")
-        print(f"  {suggested_comment}")
+        try:
+            print(f"  {suggested_comment}")
+        except UnicodeEncodeError:
+            print("  [comment contains non-ASCII chars]")
         print("  -------------------------------------------------")
     # TikTok, gerçekçi AI-üretimi içerik için "AI-generated content" etiketinin
     # (Content Credentials/AIGC) açılmasını zorunlu kılıyor (newsroom.tiktok.com/
@@ -411,6 +489,7 @@ def main():
         help="Yüklemez — TikTok'a zaten yüklü TÜM projeler için elle yapılması gereken "
              "kapak düzeltmesini (dosya yolu) listeler (API'den ayarlanamadığı için).",
     )
+    parser.add_argument("--dj-set", action="store_true", help="DJ set flag (auto-detected from meta.json, kept for compatibility)")
     args = parser.parse_args()
 
     if args.pending_covers:

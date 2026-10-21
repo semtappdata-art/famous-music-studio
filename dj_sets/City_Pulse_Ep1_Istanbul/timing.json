@@ -1,0 +1,10 @@
+{
+  "segments": [
+    {"start": 0, "end": 323, "text": "Opening - Atmospheric Intro"},
+    {"start": 323, "end": 645, "text": "Bosphorus Breeze - Melodic Groove"},
+    {"start": 645, "end": 972, "text": "Minaret Dreams - Deep Progressive"},
+    {"start": 972, "end": 1290, "text": "Golden Hour - Peak Energy"},
+    {"start": 1290, "end": 1620, "text": "City Lights - Driving Rhythm"},
+    {"start": 1620, "end": 1800, "text": "Sunrise Over Bosphorus - Outro"}
+  ]
+}

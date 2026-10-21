@@ -9,14 +9,8 @@ _build_filter_complex'teki pan_x/pan_y/hue_shift). Kartın altında kayan künye
 statik durur (zoom yok, sadece backdrop hareketli) — waveform/eşitleyici çubuğu YOK
 (önceki bir tasarımda vardı, kaldırıldı). Sadece kart alanı + backdrop işlenir,
 kenarlar arka planla dolar (düz siyah değil).
-
-AÇILIŞ (2026-09-11 eklendi): uzun formatta video bu kompozisyonla DEĞİL, projenin
-cover.png'siyle (birebir YouTube küçük resmi) tam ekran başlıyor ve ~2,4 saniyede
-karta çözülüyor; ayrıca sesin başındaki dijital sessizlik kırpılıyor. Gerekçe ve
-ölçüm config.INTRO_KAPAK / config.INTRO_SESSIZLIK_KIRP yorumlarında.
 """
 
-import math
 import os
 import subprocess
 
@@ -31,7 +25,7 @@ def get_audio_duration(audio_path: str) -> float:
         "-of", "default=noprint_wrappers=1:nokey=1",
         audio_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"ffprobe süre okuyamadı: {result.stderr.strip()}")
     try:
@@ -40,109 +34,23 @@ def get_audio_duration(audio_path: str) -> float:
         raise RuntimeError(f"ffprobe geçersiz süre döndürdü: {result.stdout!r}")
 
 
-def limiter_filtresi() -> str:
-    """Koşullu true-peak limiter'ın `-af` zinciri (bkz. config.SES_LIMITER_*).
-
-    4x aşırı örneklemede alimiter: düz 48 kHz alimiter yalnız ÖRNEK tepesini
-    görüyor ve katalogda AAC sonrası TP'yi KÖTÜLEŞTİRDİ (Küllerimden Geç
-    -0,7 -> -0,3); ölçümler config.py yorumunda. `level=false` otomatik
-    kazancı kapatıyor (loudness DEĞİŞMEMELİ), `latency=true` lookahead
-    gecikmesini telafi ediyor (altyazı/görüntü senkronu kaymasın).
-    loudnorm/dynaudnorm BİLEREK YOK."""
-    tavan = 10 ** (config.SES_LIMITER_TAVAN_DBFS / 20)
-    return (f"aresample={config.SES_LIMITER_ASIRI_ORNEKLEME},"
-            f"alimiter=limit={tavan:.6f}:level=false:latency=true,"
-            f"aresample={config.SES_LIMITER_CIKIS_HZ}")
-
-
-def ses_olc(audio_path: str) -> dict:
-    """ffmpeg `ebur128=peak=true` ile `{"lufs", "tp", "lra"}` ölçer.
-
-    Yalnız son `Summary:` bloğu okunuyor: ebur128 ondan önce her 100 ms'de
-    `I:`/`LRA:` içeren ara satırlar basıyor, onları okumak yanlış sayı verirdi.
-    ffmpeg hata dönerse, özet yoksa ya da değer sonlu değilse (tamamen sessiz
-    dosyada TP `-inf`) RuntimeError; ffmpeg HİÇ çalıştırılamazsa OSError aynen
-    yükseliyor. İkisini de çağıran (render.ses_olcumu) yakalayıp render'ı
-    DURDURMADAN UYARI basıyor."""
-    cmd = [
-        "ffmpeg", "-hide_banner", "-nostats", "-i", audio_path,
-        "-af", "ebur128=peak=true", "-f", "null", "-",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    if result.returncode != 0:
-        raise RuntimeError(f"ebur128 ölçümü başarısız: {(result.stderr or '')[-300:]}")
-    stderr = result.stderr or ""
-    bas = stderr.rfind("Summary:")
-    if bas < 0:
-        raise RuntimeError("ebur128 çıktısında Summary bloğu yok")
-    degerler = {}
-    for satir in stderr[bas:].splitlines():
-        parca = satir.strip().split()
-        if len(parca) < 2 or parca[0] not in ("I:", "LRA:", "Peak:") or parca[0] in degerler:
-            continue
-        try:
-            degerler[parca[0]] = float(parca[1])
-        except ValueError:
-            raise RuntimeError(f"ebur128 değeri okunamadı: {satir.strip()!r}")
-    eksik = [k for k in ("I:", "LRA:", "Peak:") if k not in degerler]
-    if eksik:
-        raise RuntimeError(f"ebur128 özetinde eksik alan: {eksik}")
-    if not all(math.isfinite(v) for v in degerler.values()):
-        raise RuntimeError(f"ebur128 sonlu olmayan değer döndü: {degerler}")
-    return {"lufs": degerler["I:"], "tp": degerler["Peak:"], "lra": degerler["LRA:"]}
-
-
-def bastaki_sessizlik(audio_path: str) -> float:
-    """Ses dosyasının BAŞINDAKİ dijital sessizliğin süresini (saniye) döndürür.
-
-    NEDEN: Suno çıktıları başta sessizlikle geliyor (18 projede ölçüldü: 0,15-2,65
-    sn, medyan ~1,1 sn). Render bunu aynen kopyaladığı için video ilk saniyesinde
-    hem donmuş hem sessiz başlıyordu. Bulunamazsa / ffmpeg hata verirse 0.0 döner
-    (kırpma yapılmaz) — bu fonksiyonun bir arızası şarkıyı ASLA kesmemeli.
-    Dönen değer config.INTRO_SESSIZLIK_MAKS ile tavanlanmıştır."""
-    cmd = [
-        "ffmpeg", "-hide_banner", "-nostats", "-i", audio_path,
-        "-af", f"silencedetect=noise={config.INTRO_SESSIZLIK_ESIGI}:d=0.05",
-        "-f", "null", "-",
-    ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    except OSError:
-        return 0.0
-    if result.returncode != 0:
-        return 0.0
-
-    # silencedetect stderr'e şu çiftleri basar:
-    #   silence_start: 0
-    #   silence_end: 1.10525 | silence_duration: 1.10525
-    # Bizi SADECE 0'dan (ya da ona çok yakından) başlayan ilk blok ilgilendiriyor;
-    # şarkının ortasındaki duraklamalar kırpılacak bir şey değil.
-    basta = False
-    for line in result.stderr.splitlines():
-        if "silence_start:" in line:
-            try:
-                start = float(line.split("silence_start:")[1].split("|")[0].strip())
-            except (ValueError, IndexError):
-                return 0.0
-            if start > 0.05:
-                return 0.0  # ilk sessizlik başta değil → kırpacak bir şey yok
-            basta = True
-        elif basta and "silence_end:" in line:
-            try:
-                end = float(line.split("silence_end:")[1].split("|")[0].strip())
-            except (ValueError, IndexError):
-                return 0.0
-            kirp = end - config.INTRO_SESSIZLIK_PAY
-            return max(0.0, min(kirp, config.INTRO_SESSIZLIK_MAKS))
-    return 0.0
-
-
 def _escape_drawtext(text: str) -> str:
     text = text.replace("\\", "\\\\")
     text = text.replace(":", "\\:")
     text = text.replace("'", "’")  # tipografik kesme işareti — filtre sözdizimini bozmasın
     text = text.replace("%", "\\%")
     return text
+
+
+def _format_hashtag_titlecase(tag: str) -> str:
+    """Hashtag'i Title Case'e çevir: #keşfet -> #Keşfet, #fyp -> #Fyp.
+    Türkçe karakterler için str.title() uygun çalışır."""
+    if not tag:
+        return ""
+    if tag.startswith("#"):
+        tag = tag[1:]
+    # '&' ve diğer özel karakterler zaten hashtag() fonksiyonunda temizlenmiş olmalı
+    return "#" + tag.title()
 
 
 def get_theme_key(theme: str | None) -> str:
@@ -171,7 +79,7 @@ def ensure_card_mask() -> str:
             "-frames:v", "1", "-update", "1",
             mask_path,
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"Kart maskesi üretilemedi: {result.stderr[-1000:]}")
 
@@ -209,22 +117,12 @@ def ensure_art_backdrop(art_path: str, width: int, height: int) -> str:
             f"scale={bg_w}:{bg_h}:force_original_aspect_ratio=increase,"
             f"crop={bg_w}:{bg_h},"
             f"gblur=sigma={sigma},"
-            # Eskiden sabit eq=brightness=-0.12 kullanılıyordu — bu, koyu/gece
-            # temalı art.jpg'lerde (Pexels stok fotoğrafları çoğunlukla gece/
-            # yağmur/atmosfer imgeleri, bkz. stock_art.py) güçlü blur'la
-            # birleşince arka planı neredeyse tamamen siyaha çöktürüyordu
-            # (kullanıcı geri bildirimi: "kapak arkası çok koyu oluyor").
-            # Artık pozitif bir brightness + siyahları belirgin şekilde
-            # kaldıran bir curves eğrisi kullanılıyor — arka plan kasıtlı
-            # olarak KARTIN kendisinden (art.jpg, ham hâli) daha AÇIK tonda
-            # duruyor (kullanıcı isteği: "arka fon kapaktan açık tonda olsun")
-            # — kart öne çıkıyor, arka plan geride/loş bir hale bürünüyor.
-            f"eq=brightness=0.08:saturation=1.2,curves=all='0/0.12 0.5/0.68 1/1'"
+            f"eq=brightness=-0.12:saturation=1.15"
         ),
         "-frames:v", "1", "-update", "1",
         backdrop_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"Kart arka planı (blur) üretilemedi: {result.stderr[-1000:]}")
     return backdrop_path
@@ -291,7 +189,7 @@ def ensure_vignette(width: int, height: int, theme_key: str) -> str:
         "-frames:v", "1", "-update", "1",
         path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"Arka plan üretilemedi: {result.stderr[-1000:]}")
     return path
@@ -302,12 +200,7 @@ def ensure_vignette(width: int, height: int, theme_key: str) -> str:
 def _build_filter_complex(
     width: int, height: int, duration: float, title: str | None, has_art: bool,
     theme_key: str, marquee_override: str | None = None,
-    backdrop_video: bool = False,
-    hud_index: int | None = None,
-    kart_goster: bool = True,
-    intro_index: int | None = None,
-    dil_params: dict | None = None,
-    portre_index: int | None = None,
+    end_card_text: str | None = None, cta_text: str | None = None,
 ) -> str:
     fps = config.FPS
     bg_pan_w, bg_pan_h = _panned_size(width, height)
@@ -334,14 +227,8 @@ def _build_filter_complex(
     card_y = max(0, (height - total_h) // 2)
     card_x = (width - card_size) // 2
 
-    if kart_goster:
-        marquee_y = card_y + card_size + bar_thick + marquee_gap
-        label_y = marquee_y + marquee_strip_h + label_gap
-    else:
-        # Kart yokken yazılar dikey ortada asılı kalırdı; sahne modunda
-        # alt şeride iniyorlar - kadrajın ortası görüntüye bırakılıyor.
-        label_y = height - int(height * 0.085)
-        marquee_y = label_y - label_gap - marquee_strip_h
+    marquee_y = card_y + card_size + bar_thick + marquee_gap
+    label_y = marquee_y + marquee_strip_h + label_gap
 
     # Arka plan: art.jpg varsa onun bulanıklaştırılmış hâli (ensure_art_backdrop),
     # yoksa (kart art.jpg'siz düz renge düştüğünde) sabit vignette fallback'i
@@ -355,64 +242,23 @@ def _build_filter_complex(
     # aralığında ileri-geri salınıyor (tam 360° dönmüyor — şarkının kendi tema
     # renginden çok uzaklaşmasın diye), pan ile birlikte "hareketli + renk akan"
     # bir arka plan hissi veriyor. hue de ucuz bir filtre, performans maliyeti yok.
+    # BÜYÜME NABZI (madde 7): GORSEL_NABIZ_SURE_SN'de bir hue vurgusu + pan'a
+    # hafif ikinci harmonik — bölüm verisi olmasa bile ~25sn'de bir "bir şey
+    # oluyor" hissi; virgülsüz ifade (filtre ayrıştırıcıyla çakışmasın diye).
+    nabiz_w = 6.283185 / max(1.0, float(getattr(config, 'GORSEL_NABIZ_SURE_SN', 25.0)))
+    nabiz_guc = float(getattr(config, 'GORSEL_NABIZ_GUC', 0.9))
+    nabiz_pulse = (
+        f"(0.5+0.5*sin(t*{nabiz_w:.6f}))*(0.5+0.5*sin(t*{nabiz_w:.6f}))"
+    )
     pan_x_range = (bg_pan_w - width) / 2
     pan_y_range = (bg_pan_h - height) / 2
-    pan_x = f"{pan_x_range:.1f}+{pan_x_range:.1f}*sin(t*{config.BACKDROP_PAN_SPEED_X})"
+    pan_x = f"{pan_x_range:.1f}+{pan_x_range:.1f}*sin(t*{config.BACKDROP_PAN_SPEED_X})+{pan_x_range * 0.25:.1f}*sin(t*{2 * nabiz_w:.6f})"
     pan_y = f"{pan_y_range:.1f}+{pan_y_range:.1f}*cos(t*{config.BACKDROP_PAN_SPEED_Y})"
-    hue_shift = f"{config.BACKDROP_HUE_AMPLITUDE_DEG}*sin(t*{config.BACKDROP_HUE_SPEED})"
-    if backdrop_video:
-        # DJ setlerinde arka plan statik bir PNG değil, stok kliplerden kurulmuş
-        # gerçek bir video (bkz. stock_video.arka_plan_kur). Kendi hareketi
-        # olduğu için pan/hue UYGULANMIYOR: üstüne bir de kayan crop penceresi
-        # ve ton salınımı eklemek görüntüyü yorucu hale getiriyor. Video
-        # _panned_size kadar büyük de değil (1920x1080), o yüzden crop yerine
-        # scale+crop ile hedef çerçeveye oturtuluyor.
-        # Bulanıklık ve siyah kaldırma BURADA DEĞİL, backdrop.mp4 üretilirken
-        # bir kez uygulanıyor (stock_video.arka_plan_kur). Sebep: gblur her
-        # karede çalışıyor ve 80 dakikalık bir sette render'a ~%30 ekliyordu;
-        # arka plan zaten tek seferlik bir dosya, orada pişirmek bedava.
-        # Sahne zoom'u (config.DJ_SAHNE_ZOOM): set boyunca 1.00 -> BİTİŞ.
-        # zoompan TEK filtrede yapıyor; ayrı crop+scale ikinci bir tam-kare
-        # resample demekti. `time` GİRDİ damgası: -ss ile kesilmiş girdide
-        # sıfırdan başlar, burada girdi her zaman baştan oynadığı için sorun yok.
-        # x/y MERKEZ SABİTLİ: varsayılan (0,0) sol-üst köşeyi sabitler, kadraj
-        # sağa-aşağı kayar ve göz bunu "sola zoom" diye okur (demoda görüldü).
-        if getattr(config, "DJ_SAHNE_ZOOM", False) and duration > 0:
-            _zbit = float(config.DJ_SAHNE_ZOOM_BITIS)
-            canvas = (
-                f"[2:v]fps={fps},scale={width}:{height}:force_original_aspect_ratio=increase,"
-                f"crop={width}:{height},setsar=1,"
-                f"zoompan=z='min({_zbit},1+({_zbit}-1)*time/{duration:.3f}')"
-                f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-                f":d=1:s={width}x{height}:fps={fps},setsar=1[canvas]"
-            )
-        else:
-            canvas = (
-                f"[2:v]fps={fps},scale={width}:{height}:force_original_aspect_ratio=increase,"
-                f"crop={width}:{height},setsar=1[canvas]"
-            )
-    else:
-        canvas = (
-            f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}',"
-            f"hue=h='{hue_shift}'[canvas]"
-        )
-
-    # GÖRSEL DİL (gorsel_dil.py, dil_params verildiğinde): nabız + doku + derecelendirme
-    # yalnızca ARKA PLAN tuvaline uygulanır — kart içi art.jpg'ye ASLA dokunulmaz
-    # (kural 2). Açık değilken zincir üretimdekiyle birebir aynıdır.
-    if dil_params:
-        nabiz_expr = dil_params.get("nabiz_expr")
-        grain = dil_params.get("grain")
-        grade = dil_params.get("grade")
-        if canvas.endswith("[canvas]"):
-            canvas = canvas[:-len("[canvas]")]
-            if nabiz_expr:
-                canvas += f",eq=brightness='{nabiz_expr}':eval=frame"
-            if grain:
-                canvas += f",{grain}"
-            if grade:
-                canvas += f",{grade}"
-            canvas += "[canvas]"
+    hue_shift = f"{config.BACKDROP_HUE_AMPLITUDE_DEG}*sin(t*{config.BACKDROP_HUE_SPEED})*(1+{nabiz_guc:.2f}*{nabiz_pulse})"
+    canvas = (
+        f"[2:v]fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}',"
+        f"hue=h='{hue_shift}'[canvas]"
+    )
 
     # "Famous Music Studio" logosu sadece platform thumbnail'inde (cover.jpg) kullanılıyor —
     # video içindeki kartta GÖSTERİLMİYOR. art_path verilmişse o görsel kare kırpılıp
@@ -430,75 +276,11 @@ def _build_filter_complex(
     mask_scaled = f"[1:v]scale={card_size}:{card_size}[mask_s]"
     card = "[card_raw][mask_s]alphamerge[card]"
 
-    if kart_goster:
-        parts = [
-            canvas, card_raw, mask_scaled, card,
-            f"[canvas][card]overlay={card_x}:{card_y}[bg2]",
-        ]
-        pre_label = "bg2"
-    else:
-        # SAHNE MODU: kart yok, görüntünün kendisi kadraj (config.DJ_SAHNE_MODU).
-        # card_raw/mask zinciri hiç kurulmuyor - kurulup gizlenseydi her karede
-        # boşuna ölçeklenip alphamerge edilirdi.
-        parts = [canvas]
-        pre_label = "canvas"
-
-    if portre_index is not None:
-        # PORTRE SAHNE (2026-09-14, meta "sahne": "portre"): ortada SABİT
-        # gerçek portre (AI yüz yok, kredi yok), dış kenarlarda sesten beslenen
-        # CANLI grafikler. Kart düzeniyle birleşmez — sahne modunun dalı.
-        # Kenar grafikleri `showspectrum` (scroll): seçenekler uzun yıllık,
-        # belgeli (s/slide/mode/color/scale) — deneysel showcqt hacim
-        # seçenekleri bilerek YOK (bilinmeyen seçenek filtreyi kurdurtmuyor).
-        theme = config.THEMES.get(theme_key, {})
-        accent = theme.get("accent", (255, 210, 60))
-        accent_hex = "0x%02X%02X%02X" % tuple(accent)
-        S = int(height * 0.76) - int(height * 0.76) % 2
-        alt_pay = int(height * 0.16)  # kayan yazı + marka + progress bar
-        px = (width - S) // 2
-        py = max(0, (height - alt_pay - S) // 2)
-        mx = int(width * 0.03)
-        bw = (width - S) // 2 - 2 * mx
-        parts.append(
-            f"[{portre_index}:v]fps={fps},scale={S}:{S}:"
-            f"force_original_aspect_ratio=increase,crop={S}:{S},"
-            f"setsar=1,format=rgba[portre]"
-        )
-        # Çift neon çerçeve: dışta kalın-soluk, içte ince-parlak.
-        parts.append(
-            f"[{pre_label}]drawbox=x={px - 16}:y={py - 16}:w={S + 32}:h={S + 32}:"
-            f"color={accent_hex}@0.22:t=14[pf1]"
-        )
-        parts.append(
-            f"[pf1]drawbox=x={px - 4}:y={py - 4}:w={S + 8}:h={S + 8}:"
-            f"color={accent_hex}@0.9:t=4[pf2]"
-        )
-        parts.append(f"[pf2][portre]overlay={px}:{py}[pf3]")
-        # Işık süpürmesi: ~8 sn'de bir portrenin üstünden geçen ince bant.
-        # SÜPÜRME BOYU SAYI olarak gömülüyor: filtre dilinde `S` diye bir
-        # değişken YOK (w/h/text_w var), harf bırakmak filtreyi kurdurtmaz.
-        supur_boy = S + 180
-        parts.append(
-            f"[pf3]drawbox=x='{px - 90}+mod(t*140\\,{supur_boy})':y={py}:w=90:h={S}:"
-            f"color=white@0.10:t=fill[pf4]"
-        )
-        pre_label = "pf4"
-        if bw >= 140:
-            # Renk: `rainbow` (bu ffmpeg derlemesinde adlandırılmış renkler
-            # ifade diye yorumlanıp filtreyi kurdurtmuyor — ölçüldü).
-            edge_h = S
-            parts.append(
-                f"[0:a]showspectrum=s={bw}x{edge_h}:slide=1:mode=separate:"
-                f"color=rainbow:scale=log:fps={fps},format=yuv420p,split[spec][spec1]"
-            )
-            parts.append(f"[{pre_label}][spec]overlay={mx}:{py}[pf5]")
-            parts.append("[spec1]hflip[specr]")
-            parts.append(
-                f"[pf5][specr]overlay={width - mx - bw}:{py}[pf6]"
-            )
-            pre_label = "pf6"
-
-    rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
+    parts = [
+        canvas, card_raw, mask_scaled, card,
+        f"[canvas][card]overlay={card_x}:{card_y}[bg2]",
+    ]
+    pre_label = "bg2"
 
     if title:
         # Künye yazısı (şarkı adı + müzik türü, tekrarlı) kartın ALTINDA, kart
@@ -517,22 +299,12 @@ def _build_filter_complex(
             genre_text = sep.join(genre_labels)
             segment = f"{title}{sep}{genre_text}{sep}"
         marquee_text = _escape_drawtext(segment * config.MARQUEE_REPEAT)
+        rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
         speed = config.MARQUEE_SPEED_PX_S
 
         # Kayan yazının GÖRÜNÜR penceresi artık kart genişliği değil, alttaki sabit
         # "Famous Music Studio" satırıyla aynı genişlikte (ikisi aynı fontta/boyutta
         # olduğu için karakter sayısına göre piksel genişliği kabaca tahmin ediliyor).
-        # Yazi golgesi SADECE video arka planda. Sabit gorsel arka plan her
-        # zaman koyu (kaynak art.jpg koyu bir kapak) ve beyaz yazi orada zaten
-        # net okunuyor - oraya golge eklemek gereksiz bir gorsel degisiklik
-        # olurdu. Video havuzunda ise parlak klipler var (altin bokeh, gun
-        # batimi) ve white@0.95 yazi onlarin uzerinde kayboluyordu; egrinin
-        # tepesini bastirmak yetmedi cunku sorun arka planin parlakligi degil,
-        # yazi ile zemin arasinda kontrast olmamasi.
-        golge = (f":shadowcolor={config.FONT_SHADOW_COLOR}"
-                 f":shadowx={config.FONT_SHADOW_OFFSET}"
-                 f":shadowy={config.FONT_SHADOW_OFFSET}") if backdrop_video else ""
-
         label_width_est = int(len(config.STATIC_LABEL_TEXT) * label_fontsize * config.FONT_CHAR_WIDTH_RATIO)
         marquee_w = min(card_size, max(1, label_width_est))
         marquee_x = card_x + (card_size - marquee_w) // 2
@@ -540,7 +312,7 @@ def _build_filter_complex(
         parts.append(
             f"color=c=black@0.0:s={marquee_w}x{marquee_strip_h}:d={duration:.3f}:rate={fps},format=rgba,"
             f"drawtext=fontfile={rel_font}:text='{marquee_text}':"
-            f"fontcolor={config.FONT_COLOR}:fontsize={fontsize}{golge}:"
+            f"fontcolor={config.FONT_COLOR}:fontsize={fontsize}:"
             f"x='w-mod(t*{speed}\\,(w+text_w))':y=0[marquee_strip]"
         )
         parts.append(f"[{pre_label}][marquee_strip]overlay={marquee_x}:{marquee_y}[bgm]")
@@ -551,10 +323,54 @@ def _build_filter_complex(
         label_escaped = _escape_drawtext(config.STATIC_LABEL_TEXT)
         parts.append(
             f"[{pre_label}]drawtext=fontfile={rel_font}:text='{label_escaped}':"
-            f"fontcolor={config.FONT_COLOR}:fontsize={label_fontsize}{golge}:"
+            f"fontcolor={config.FONT_COLOR}:fontsize={label_fontsize}:"
             f"x=(w-text_w)/2:y={label_y}[bglabel]"
         )
         pre_label = "bglabel"
+
+    # BÜYÜME CTA (madde 11): videonun %40'ında 1 kez, kısa süre, emir kipi yok —
+    # rutin vaat eder ("Her Cuma yeni şehir"). cta_text verilmezse çizilmez.
+    if cta_text:
+        cta_oran = float(getattr(config, 'ABONE_CTA_ORAN', 0.4))
+        cta_sure = float(getattr(config, 'ABONE_CTA_SURE_SN', 4.0))
+        cta_start = duration * cta_oran
+        cta_end = min(duration, cta_start + cta_sure)
+        cta_fs = int(height * 0.022)
+        cta_y = int(height * 0.78)
+        cta_escaped = _escape_drawtext(cta_text)
+        rel_font_cta = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
+        parts.append(
+            f"color=c=black@0.0:s={width}x{int(cta_fs * 1.6)}:d={duration:.3f}:rate={fps},format=rgba,"
+            f"drawtext=fontfile={rel_font_cta}:text='{cta_escaped}':"
+            f"fontcolor=white@0.9:fontsize={cta_fs}:"
+            f"shadowcolor=black@0.7:shadowx=2:shadowy=2:"
+            f"x=(w-text_w)/2:y=(h-text_h)/2[cta_strip]"
+        )
+        parts.append(
+            f"[{pre_label}][cta_strip]overlay=0:{cta_y}:enable='between(t,{cta_start:.3f},{cta_end:.3f})'[vcta]"
+        )
+        pre_label = "vcta"
+
+    # BİTİŞ KARTI (madde 10): son END_CARD_SURE_SN saniyede sonraki içerik —
+    # end_card_text meta'dan gelir (yoksa çizilmez, oynatma listesinde tutma).
+    if end_card_text:
+        end_sure = float(getattr(config, 'END_CARD_SURE_SN', 15.0))
+        end_start = max(0.0, duration - end_sure)
+        end_fs = int(height * 0.028)
+        end_y = int(height * 0.12)
+        end_escaped = _escape_drawtext(end_card_text)
+        rel_font_end = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
+        parts.append(
+            f"color=c=black@0.55:s={width}x{int(end_fs * 2.2)}:d={duration:.3f}:rate={fps},format=rgba,"
+            f"drawtext=fontfile={rel_font_end}:text='{end_escaped}':"
+            f"fontcolor=white:fontsize={end_fs}:"
+            f"shadowcolor=black@0.8:shadowx=2:shadowy=2:"
+            f"x=(w-text_w)/2:y=(h-text_h)/2[end_strip]"
+        )
+        parts.append(
+            f"[{pre_label}][end_strip]overlay=0:{end_y}:enable='gte(t,{end_start:.3f})'[vend]"
+        )
+        pre_label = "vend"
 
     # İlerleme çubuğu: T (mutlak zaman) kullanan bir geq ile dolu/boş kısmı çiziyoruz.
     bar_margin = int(width * config.PROGRESS_BAR_MARGIN_RATIO)
@@ -565,68 +381,321 @@ def _build_filter_complex(
     bar_expr = f"{empty}+{filled - empty}*lt(X\\,W*T/{duration:.3f})"
     parts.append(f"color=c=black:s={bar_w}x{pbar_h}:d={duration:.3f}:rate={fps}[barbg]")
     parts.append(f"[barbg]geq=r='{bar_expr}':g='{bar_expr}':b='{bar_expr}'[bar]")
-    # Açılış katmanı varsa nihai çıktı bir adım sonra kuruluyor; kompozisyon
-    # buraya kadar [vpre] olarak toplanıyor.
-    son_etiket = "vpre" if intro_index is not None else "vfinal"
-    if hud_index is None:
-        parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[{son_etiket}]")
-    else:
-        parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[vbar]")
-        # HUD opak SİYAH üzerine çizilmiş bir PNG (bkz. dj_hud modül notu:
-        # drawbox şeffaf zeminde alfaya yazmıyor). `screen` modunda siyah
-        # hiçbir şey katmıyor, parlak çizgiler ekleniyor — hem şeffaflık
-        # sorununu çözüyor hem HUD'a parıltı veriyor.
-        # blend RGB uzayında çalışmalı: yuv420p'de kanal başına harmanlama
-        # renk kaymasına yol açıyor, o yüzden gbrp'ye geçip geri dönülüyor.
-        parts.append("[vbar]format=gbrp[vb_rgb]")
-        if getattr(config, "DJ_HUD_NEFES", False):
-            # Nefes alma: HUD katmanının kontrastı kare kare salınıyor
-            # (bkz. config.DJ_HUD_NEFES_*). `eval=frame` ŞART: varsayılan `init`
-            # ifadeyi bir kez hesaplayıp dondurur, nabız durur. Yön yukarı
-            # (1.0 -> 1+derinlik): siyah taban klipte kalıyor, screen blend'e
-            # gri peçe binmiyor. blend `all_opacity` KULLANILMIYOR: o alan bu
-            # ffmpeg sürümünde sayı (double), ifade kabul etmiyor.
-            _derinlik = float(config.DJ_HUD_NEFES_DERINLIK)
-            _sure = float(config.DJ_HUD_NEFES_SURE_SN)
-            parts.append(
-                f"[{hud_index}:v]scale={width}:{height},"
-                f"eq=contrast='1+{_derinlik}*(0.5+0.5*sin(2*PI*t/{_sure}))':eval=frame,"
-                f"format=gbrp[hud_rgb]")
-        else:
-            parts.append(f"[{hud_index}:v]scale={width}:{height},format=gbrp[hud_rgb]")
-        parts.append(
-            f"[vb_rgb][hud_rgb]blend=all_mode=screen,format=yuv420p[{son_etiket}]")
+    parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[vfinal]")
 
-    if intro_index is not None:
-        # AÇILIŞ: projenin kendi cover.png'si (birebir YouTube küçük resmi) tam
-        # ekran, sonra karta çözülüyor. Gerekçe config.INTRO_KAPAK'ta yazılı.
-        # `trim` ŞART: girdi `-loop 1` ile sonsuz bir akış; çözülme bittikten
-        # sonra dalın bitmesi lazım — `eof_action=pass` sayesinde ondan sonrası
-        # ana akış olarak devam ediyor ve kalan dakikalarda bu katman için
-        # tek bir kare bile işlenmiyor (render maliyeti ~sıfır).
-        toplam = config.INTRO_KAPAK_BEKLEME + config.INTRO_KAPAK_COZULME
+    return ";".join(parts)
+
+
+def _build_speed_ramp_video(base_input: str, plan: dict, duration: float
+                            ) -> tuple[str, str]:
+    """YouTube "speed ramp" — video zinciri (yavaş → beat'te hızlan).
+
+    Dönüş: (eklenen filtre_metni, temel_video_etiketi)
+
+    NEDEN split+trim+concat (setpts tek ifade yerine): FFmpeg'in `setpts`
+    ifadesi zaman eşlemesini tek başına ifade edebilir ama
+    `trim`+`concat` yaklaşımı SES tarafıyla birebir aynı zaman eşlemesini
+    paylaşır → video/ses kayması imkansız olur.
+
+    NEDEN base_input ikiye bölünüyor: `split` filtresi TEK input'u iki
+    çıktıya böler (extra ffmpeg input'u gerekmez).
+
+    Zaman eşlemesi:
+        girdi [0, T_in)  -> çıktı [0, t_snap)  hız = kat
+        girdi [T_in, ..) -> çıktı [t_snap, ..) hız = 1.0
+
+    NEDEN setpts='T/kat': girdi karesi T anında çıktının T/kat
+    konumuna gider → girdi [0,T_in) çıktı [0, T_in/kat) olur.
+    atempo=kat ile aynı eşleme (birebir aynı hız çarpanı).
+    (Ölçüldü: 'T*kat' + atempo='kat' ters yönde çalışıyordu.)
+    """
+    T_in = float(plan["T_in"])
+    t_snap = float(plan["t_snap"])
+    kat = float(plan["kat"])
+    rest = max(0.0, duration - t_snap)
+    if rest <= 0.0:
+        return "", base_input.strip("[]")
+    metin = (
+        f"{base_input}split=2[ramp_a][ramp_b];"
+        f"[ramp_a]trim=0:{T_in:.4f},setpts='T/{kat:.4f}'[ramp_slow];"
+        f"[ramp_b]trim=start={T_in:.4f}:end={T_in + rest:.4f},"
+        f"setpts=PTS-STARTPTS[ramp_fast];"
+        f"[ramp_slow][ramp_fast]concat=n=2:v=1:a=0[canvas_ramp]"
+    )
+    return metin, "canvas_ramp"
+
+
+def _build_speed_ramp_audio(audio_label: str, plan: dict, duration: float
+                            ) -> tuple[str, str]:
+    """YouTube "speed ramp" — ses zinciri (videoyla aynı zaman eşlemesi).
+
+    Dönüş: (eklenen filtre_metni, ses_etiketi)
+
+    NEDEN atempo: `atempo=kat` → çıktı süresi girdi/kat, içerik kat
+    hızında çalar. Video tarafındaki `setpts='T/kat'` ile BİREBİR aynı
+    zaman eşlemesini üretir (birebir aynı hız çarpanı).
+    atempo aralığı [0.5, 2.0] — kat bu aralıkta olmalı.
+    """
+    T_in = float(plan["T_in"])
+    t_snap = float(plan["t_snap"])
+    kat = float(plan["kat"])
+    rest = max(0.0, duration - t_snap)
+    if rest <= 0.0:
+        return "", audio_label
+    tempo = min(2.0, max(0.5, kat))
+    metin = (
+        f"[{audio_label}]asplit=2[ramp_aa][ramp_ab];"
+        f"[ramp_aa]atrim=0:{T_in:.4f},asetpts=PTS-STARTPTS,"
+        f"atempo={tempo:.4f}[ramp_aslow];"
+        f"[ramp_ab]atrim=start={T_in:.4f}:end={T_in + rest:.4f},"
+        f"asetpts=PTS-STARTPTS[ramp_afast];"
+        f"[ramp_aslow][ramp_afast]concat=n=2:v=0:a=1[aout_ramp]"
+    )
+    return metin, "aout_ramp"
+
+
+def _build_shorts_filter_complex(
+    width: int, height: int, duration: float, title: str | None,
+    has_art: bool, theme_key: str, marquee_override: str | None = None,
+    end_card_text: str | None = None, cta_text: str | None = None,
+    hashtags: list | None = None,
+    beat_times: list | None = None, beat_period: float = 0.0,
+    base_input: str = "[1:v]",
+) -> str:
+    """Shorts 9:16 native filter — tam ekran art.jpg + lower third overlay.
+    Kart YOK, kart squeeze YOK. Cercle/Boiler Room Shorts stilinde:
+    - Tam ekran art.jpg (blur+pan+hue) arka plan
+    - Lower third: şarkı adı + sanatçı (alt 1/3, yarı saydam)
+    - İlerleme çubuğu (ince, alt)
+    - Hook metni (ilk 2.5sn, üst kısım): "🔊 Sesini Aç"
+    - Hashtag overlay — Title Case + Mavi renk (alt 1/3'ün üstünde)
+    - CTA (Abone CTA) — video %40'ında, 4sn
+    - Bitiş kartı — son 15sn'de end_card_text varsa
+    - BEAT SYNC (YouTube efekti) — renk/pan ritme kilitli + beat flaşı
+    """
+    fps = config.FPS
+    bg_pan_w, bg_pan_h = _panned_size(width, height)
+
+    # Arka plan: tam ekran art.jpg (blur + pan + hue)
+    # BÜYÜME NABZI (Shorts): Shorts'ta daha güçlü nabız (dikey format = hızlı dikkat kaybı)
+    nabiz_w_s = 6.283185 / max(1.0, float(getattr(config, 'GORSEL_NABIZ_SURE_SN', 25.0)))
+    nabiz_guc_s = float(getattr(config, 'GORSEL_NABIZ_GUC_SHORTS', 1.35))
+    nabiz_pulse_s = (
+        f"(0.5+0.5*sin(t*{nabiz_w_s:.6f}))*(0.5+0.5*sin(t*{nabiz_w_s:.6f}))"
+    )
+    pan_x_range = (bg_pan_w - width) / 2
+    pan_y_range = (bg_pan_h - height) / 2
+
+    # --- BEAT SYNC (YouTube Shorts efekti) ---------------------------------
+    # NEDEN: YouTube'un "Beat sync" özelligi görselleri ritme kilitler.
+    # Müzik videosunda (Cercle/HÖR/Boiler Room) görselin ritimle "snap"
+    # yapmasi izleyicide profesyonel izlenimi yaratir.
+    #
+    # NEDEN iki katman:
+    #   1) Sürekli ifade (hue/pan) — beat periyoduna göre üstel sönüm.
+    #      Gerçek beat listesi yerine periyot kullanilir; boylece ifade
+    #      kisa ve ffmpeg bunu hizli hesaplar.
+    #   2) Kesin beat listesi (flash) — her beat'te 0.11sn parlaklik.
+    #      Bu icin `enable` ifadesi beat listesiyle kurulur.
+    beat_pulse_expr = "0"
+    beat_hue_extra = ""
+    beat_pan_extra = ""
+    if getattr(config, 'SHORTS_BEAT_SYNC_AKTIF', True) and beat_period and beat_period > 0:
+        import beat_sync as _bs
+        beat_pulse_expr = _bs.beat_nabzi_ifadesi(
+            beat_period, sertlik=float(getattr(config, 'SHORTS_BEAT_HUE_SERTLIK', 9.0)))
+        if getattr(config, 'SHORTS_BEAT_HUE_AKTIF', True):
+            beat_hue_extra = (f"+{float(getattr(config, 'SHORTS_BEAT_HUE_DERECE', 26.0)):.1f}"
+                              f"*({beat_pulse_expr})")
+        if getattr(config, 'SHORTS_BEAT_PAN_AKTIF', True):
+            _pan_px = float(getattr(config, 'SHORTS_BEAT_PAN_PIXEL', 14.0))
+            beat_pan_extra = (f"+{_pan_px:.1f}*({beat_pulse_expr})"
+                              f"*{_pan_px * 0.6:.1f}")
+
+    pan_x = f"{pan_x_range:.1f}+{pan_x_range:.1f}*sin(t*{config.BACKDROP_PAN_SPEED_X})+{pan_x_range * 0.25:.1f}*sin(t*{2 * nabiz_w_s:.6f}){beat_pan_extra}"
+    pan_y = f"{pan_y_range:.1f}+{pan_y_range:.1f}*cos(t*{config.BACKDROP_PAN_SPEED_Y})"
+    hue_shift = f"{config.BACKDROP_HUE_AMPLITUDE_DEG}*sin(t*{config.BACKDROP_HUE_SPEED})*(1+{nabiz_guc_s:.2f}*{nabiz_pulse_s}){beat_hue_extra}"
+
+    # --- BEAT ZOOM PUNCH (YouTube "cut on beat" görünümü) -----------------
+    # NEDEN scale+crop: `crop`'un w/h ifadesi FFmpeg 9'da PER-FRAME
+    # değerlendirilmiyor (sadece init'te). `scale` ise `eval=frame`
+    # destekliyor: kare başına farklı boyuta ölçekler. Çıktıyı SABİT
+    # tutmak için scale'dan sonra SABİT crop geliyor (merkezi alır).
+    # Sonuç: beat'te "punch" (zoom into) — gerçek bir kes hissi.
+    #
+    # NEDEN zoompan DEĞİL: zoompan zinciri yeniden yazıyor ve repoda
+    # daha önce sorun çıkarmıştı (bkz. DJ sahne zoom yorum satırı).
+    beat_zoom_expr = ""
+    if (getattr(config, 'SHORTS_BEAT_SYNC_AKTIF', True)
+            and getattr(config, 'SHORTS_BEAT_ZOOM_AKTIF', True)
+            and beat_pulse_expr != "0"):
+        _zoom_yuzde = float(getattr(config, 'SHORTS_BEAT_ZOOM_YUZDE', 8.0))
+        if _zoom_yuzde > 0:
+            beat_zoom_expr = (
+                f",scale=w='{width}*(1+{_zoom_yuzde / 100:.4f}*({beat_pulse_expr}))'"
+                f":h='{height}*(1+{_zoom_yuzde / 100:.4f}*({beat_pulse_expr}))'"
+                f":eval=frame:flags=bicubic,crop={width}:{height}"
+            )
+
+    canvas = (
+        f"{base_input}fps={fps},crop={width}:{height}:x='{pan_x}':y='{pan_y}'"
+        f"{beat_zoom_expr},"
+        f"hue=h='{hue_shift}'[canvas]"
+    )
+
+    parts = [canvas]
+    pre_label = "canvas"
+
+    # Hook metni (ilk DIKEY_HOOK_SURE_SN saniye, üst kısım)
+    hook_text = getattr(config, "DIKEY_HOOK_METNI", "🔊 Sesini Aç")
+    hook_duration = getattr(config, "DIKEY_HOOK_SURE_SN", 2.5)
+    hook_y_ratio = 0.12
+    hook_fs_ratio = 0.045
+    hook_escaped = _escape_drawtext(hook_text)
+    rel_font = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
+    hook_fs = int(height * hook_fs_ratio)
+    hook_y = int(height * hook_y_ratio)
+
+    parts.append(
+        f"color=c=black@0.0:s={width}x{int(height*0.15)}:d={hook_duration:.3f}:rate={fps},format=rgba,"
+        f"drawtext=fontfile={rel_font}:text='{hook_escaped}':"
+        f"fontcolor=white@0.95:fontsize={hook_fs}:"
+        f"shadowcolor=black@0.8:shadowx=3:shadowy=3:"
+        f"x=(w-text_w)/2:y=(h-text_h)/2[hook_strip]"
+    )
+    parts.append(
+        f"[{pre_label}][hook_strip]overlay=0:{hook_y}:enable='between(t,0,{hook_duration:.3f})'[vhook]"
+    )
+    pre_label = "vhook"
+
+    # Lower third (alt 1/3) — şarkı adı + sanatçı
+    if title:
+        lt_h = int(height * 0.33)  # alt 1/3
+        lt_y = height - lt_h
+        lt_bg_alpha = 0.6
+        title_fs = int(height * 0.035)
+        artist_fs = int(height * 0.028)
+        title_y = lt_y + int(lt_h * 0.25)
+        artist_y = title_y + int(title_fs * 1.4)
+
+        title_escaped = _escape_drawtext(title)
+        artist = "DJ Famous" if theme_key == "dj" else config.STATIC_LABEL_TEXT
+        artist_escaped = _escape_drawtext(artist)
+
         parts.append(
-            f"[{intro_index}:v]fps={fps},"
-            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
-            f"crop={width}:{height},setsar=1,format=rgba,"
-            f"trim=0:{toplam:.3f},setpts=PTS-STARTPTS,"
-            f"fade=t=out:st={config.INTRO_KAPAK_BEKLEME:.3f}:"
-            f"d={config.INTRO_KAPAK_COZULME:.3f}:alpha=1[intro]"
+            f"color=c=black@{lt_bg_alpha}:s={width}x{lt_h}:d={duration:.3f}:rate={fps},format=rgba,"
+            f"drawtext=fontfile={rel_font}:text='{title_escaped}':"
+            f"fontcolor=white:fontsize={title_fs}:"
+            f"shadowcolor=black@0.7:shadowx=2:shadowy=2:"
+            f"x=(w-text_w)/2:y={title_y},"
+            f"drawtext=fontfile={rel_font}:text='{artist_escaped}':"
+            f"fontcolor=white@0.8:fontsize={artist_fs}:"
+            f"shadowcolor=black@0.6:shadowx=2:shadowy=2:"
+            f"x=(w-text_w)/2:y={artist_y}[lt_strip]"
         )
-        parts.append(f"[{son_etiket}][intro]overlay=0:0:eof_action=pass[vfinal]")
+        parts.append(f"[{pre_label}][lt_strip]overlay=0:{lt_y}[vlt]")
+        pre_label = "vlt"
 
-    # END SCREEN OVERLAY — Shorts/Reels/TikTok için son 3 saniyede
-    # "Abone ol" CTA overlay. Yalnız dikey formatta (width < height)
-    # aktif; yatay videolarda hiçbir etkisi yok.
-    if width < height and duration and duration > 4:
-        _end_start = max(0, duration - 3)
-        _esc_cta = _escape_drawtext("Abone ol 🔔")
+    # HASHTAG OVERLAY (Shorts için) — Title Case + Mavi renk
+    # hashtags parametresi: ['#keşfet', '#fyp', '#viral'] formatında liste
+    if hashtags:
+        # Title Case'e çevir: #keşfet -> #Keşfet
+        formatted_tags = [_format_hashtag_titlecase(tag) for tag in hashtags]
+        hashtag_text = " " + " ".join(formatted_tags)
+        hashtag_escaped = _escape_drawtext(hashtag_text)
+        
+        # Hashtag konumu: lower third'in üstünde, ortalanmış
+        ht_fs = int(height * 0.025)
+        ht_y = lt_y - int(ht_fs * 1.8)  # lower third'in biraz üstünde
+        
         parts.append(
-            f"[{son_etiket}]drawtext=fontfile={rel_font}:"
-            f"text='{_esc_cta}':"
-            f"fontcolor=white@0.85:fontsize={int(height*0.04)}:"
-            f"x=(w-text_w)/2:y=h-text_h-30:"
-            f"enable='between(t,{_end_start:.3f},{duration:.3f})'[vfinal]")
+            f"color=c=black@0.0:s={width}x{int(ht_fs * 2)}:d={duration:.3f}:rate={fps},format=rgba,"
+            f"drawtext=fontfile={rel_font}:text='{hashtag_escaped}':"
+            f"fontcolor=0x00BFFF@0.95:fontsize={ht_fs}:"  # Mavi (Deep Sky Blue)
+            f"shadowcolor=black@0.8:shadowx=2:shadowy=2:"
+            f"x=(w-text_w)/2:y=(h-text_h)/2[ht_strip]"
+        )
+        parts.append(
+            f"[{pre_label}][ht_strip]overlay=0:{ht_y}[vht]"
+        )
+        pre_label = "vht"
+
+    # BÜYÜME CTA (madde 11): videonun %40'ında 1 kez, kısa süre, emir kipi yok —
+    # rutin vaat eder ("Her Cuma yeni şehir"). cta_text verilmezse çizilmez.
+    if cta_text:
+        cta_oran = float(getattr(config, 'ABONE_CTA_ORAN', 0.4))
+        cta_sure = float(getattr(config, 'ABONE_CTA_SURE_SN', 4.0))
+        cta_start = duration * cta_oran
+        cta_end = min(duration, cta_start + cta_sure)
+        cta_fs = int(height * 0.022)
+        cta_y = int(height * 0.78)
+        cta_escaped = _escape_drawtext(cta_text)
+        rel_font_cta = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
+        parts.append(
+            f"color=c=black@0.0:s={width}x{int(cta_fs * 1.6)}:d={duration:.3f}:rate={fps},format=rgba,"
+            f"drawtext=fontfile={rel_font_cta}:text='{cta_escaped}':"
+            f"fontcolor=white@0.9:fontsize={cta_fs}:"
+            f"shadowcolor=black@0.7:shadowx=2:shadowy=2:"
+            f"x=(w-text_w)/2:y=(h-text_h)/2[cta_strip]"
+        )
+        parts.append(
+            f"[{pre_label}][cta_strip]overlay=0:{cta_y}:enable='between(t,{cta_start:.3f},{cta_end:.3f})'[vcta]"
+        )
+        pre_label = "vcta"
+
+    # BİTİŞ KARTI (madde 10): son END_CARD_SURE_SN saniyede sonraki içerik —
+    # end_card_text meta'dan gelir (yoksa çizilmez, oynatma listesinde tutma).
+    if end_card_text:
+        end_sure = float(getattr(config, 'END_CARD_SURE_SN', 15.0))
+        end_start = max(0.0, duration - end_sure)
+        end_fs = int(height * 0.028)
+        end_y = int(height * 0.12)
+        end_escaped = _escape_drawtext(end_card_text)
+        rel_font_end = os.path.relpath(config.FONT_PATH, os.getcwd()).replace("\\", "/")
+        parts.append(
+            f"color=c=black@0.55:s={width}x{int(end_fs * 2.2)}:d={duration:.3f}:rate={fps},format=rgba,"
+            f"drawtext=fontfile={rel_font_end}:text='{end_escaped}':"
+            f"fontcolor=white:fontsize={end_fs}:"
+            f"shadowcolor=black@0.8:shadowx=2:shadowy=2:"
+            f"x=(w-text_w)/2:y=(h-text_h)/2[end_strip]"
+        )
+        parts.append(
+            f"[{pre_label}][end_strip]overlay=0:{end_y}:enable='gte(t,{end_start:.3f})'[vend]"
+        )
+        pre_label = "vend"
+
+    # BEAT FLASH (YouTube "Beat sync" efekti) — her beat'te kısa parlaklık.
+    # NEDEN TEK overlay: 30sn'de ~70 beat var; her beat için ayrı filtre
+    # filter_complex'i patlatırdı. `enable` ifadesi beat'lerin toplamıdır
+    # (o anda en az bir beat penceresi açıksa >0 = truthy).
+    if (getattr(config, 'SHORTS_BEAT_SYNC_AKTIF', True)
+            and getattr(config, 'SHORTS_BEAT_FLASH_AKTIF', True)
+            and beat_times):
+        import beat_sync as _bs
+        _flash_sure = float(getattr(config, 'SHORTS_BEAT_FLASH_SURE_SN', 0.11))
+        _enable = _bs.flash_enable_ifadesi(beat_times, _flash_sure)
+        if _enable != "0":
+            _flash_alfa = float(getattr(config, 'SHORTS_BEAT_FLASH_ALFA', 0.14))
+            parts.append(
+                f"color=c=white@{_flash_alfa}:s={width}x{height}:"
+                f"d={duration:.3f}:rate={fps},format=rgba[flash_strip]"
+            )
+            parts.append(
+                f"[{pre_label}][flash_strip]overlay=0:0:"
+                f"enable='{_enable}'[vflash]"
+            )
+            pre_label = "vflash"
+
+    # İlerleme çubuğu (ince, alt)
+    bar_margin = int(width * config.PROGRESS_BAR_MARGIN_RATIO)
+    bar_w = width - 2 * bar_margin
+    pbar_h = max(2, int(height * config.PROGRESS_BAR_HEIGHT_RATIO))
+    bar_y = height - int(height * config.PROGRESS_BAR_BOTTOM_RATIO) - pbar_h - 10
+    filled, empty = config.PROGRESS_BAR_FILLED, config.PROGRESS_BAR_EMPTY
+    bar_expr = f"{empty}+{filled - empty}*lt(X\\,W*T/{duration:.3f})"
+    parts.append(f"color=c=black:s={bar_w}x{pbar_h}:d={duration:.3f}:rate={fps}[barbg]")
+    parts.append(f"[barbg]geq=r='{bar_expr}':g='{bar_expr}':b='{bar_expr}'[bar]")
+    parts.append(f"[{pre_label}][bar]overlay={bar_margin}:{bar_y}[vfinal]")
 
     return ";".join(parts)
 
@@ -642,15 +711,16 @@ def render_video(
     start_time: float | None = None,
     end_time: float | None = None,
     marquee_override: str | None = None,
-    backdrop_video: str | None = None,
-    hud_path: str | None = None,
-    kart_goster: bool = True,
-    intro_cover: str | None = None,
-    ses_limiter: bool = False,
-    dil_params: dict | None = None,
-    portre_path: str | None = None,
-    crf_override: str | None = None,
-    preset_override: str | None = None,
+    chapters_file: str | None = None,
+    is_shorts: bool = False,
+    cold_open: tuple[float, float, float] | None = None,
+    end_card_text: str | None = None,
+    cta_text: str | None = None,
+    is_dj_set: bool = False,
+    hashtags: list | None = None,
+    beat_times: list | None = None,
+    beat_period: float = 0.0,
+    speed_ramp: dict | None = None,
 ) -> None:
     """start_time/end_time verilirse (saniye), sesin/videonun sadece o aralığı
     kullanılır — kısa (Shorts/Reels/TikTok) "highlight" kırpması için.
@@ -658,123 +728,159 @@ def render_video(
     oluşur (ana katalog); verilirse (ör. DJ Famous için "DJ Famous  •  Hafta 1
     Seti  •  #DJFamous ...") kayan yazı olarak AYNEN kullanılır — sabit alt
     satır ("Famous Music Studio") HER ZAMAN aynı kalır, bundan etkilenmez.
-    backdrop_video verilirse arka plan bulanık art.jpg yerine O VİDEO olur
-    (`-stream_loop -1` ile süre boyunca döngüye alınır); kart, künye ve marka
-    satırı aynen üstünde kalır. Uzun DJ setlerinde tek bir sabit görselin
-    sıkıcı olmaması için — kısa formatlarda kullanılmıyor.
-    intro_cover verilirse video AÇILIŞTA o görselle (projenin cover.png'si, yani
-    birebir YouTube küçük resmi) tam ekran başlayıp karta çözülür — gerekçesi ve
-    süreleri config.INTRO_KAPAK'ta. Çok kısa parçalarda (süre < 2× açılış)
-    kendiliğinden atlanır.
-    ses_limiter=True ise ses çıkışına YALNIZ limiter_filtresi() eklenir (karar
-    render.render_project'te, ölçülen TP'ye göre). Varsayılan False: DJ
-    kesitleri (dj_clips) ve diğer bütün çağıranlar eskisi gibi filtresiz.
-    portre_path verilirse (dosya VARSA) ve tam-boy daldaysa (highlight
-    kırpması yok) sahneye PORTRE düzeni kurulur: ortada sabit portre + çift
-    neon çerçeve + ışık süpürmesi + yanlarda sesten beslenen spektrum.
-    crf_override/preset_override YALNIZ elle test içindir (üretim hattı
-    config değerlerini kullanır)."""
+    chapters_file verilirse (chapters.ffmeta), YouTube chapter metadata olarak gömülür.
+    is_shorts=True ise Shorts 9:16 native filter kullanılır (tam ekran art + lower third).
+    cold_open=(high_start, high_end, preview_sn) ise sesin başına highlight'tan
+    kısa bir "ön tat" eklenir (concat: önce zirve, sonra tam şarkı) — video
+    süresi de o kadar uzar; chapter dosyası render.py tarafında ötelenir.
+    end_card_text/cta_text verilirse ilgili overlay'ler çizilir (yoksa çizilmez).
+    beat_times/beat_period verilirse Shorts BEAT SYNC efekti uygulanır
+    (YouTube "Beat sync" karşılığı: görseller ritme kilitlenir).
+    speed_ramp verilirse YouTube "speed ramp" efekti uygulanır (yavaş
+    başla, beat'te hızlan) — video ve ses aynı zaman eşlemesini kullanır.
+    AI beyanı videoya YAKILMAZ — sadece YouTube metadata/açıklamasında."""
     full_duration = get_audio_duration(audio_path)
     if start_time is not None and end_time is not None:
         duration = min(end_time, full_duration) - start_time
     else:
-        # Baştaki dijital sessizliği kırp (bkz. config.INTRO_SESSIZLIK_KIRP):
-        # ilk saniyede ekran zaten donuk, bir de ses yoksa o saniye tamamen boş
-        # geçiyor. Shorts bu yola HİÇ girmiyor — orada start_time/end_time zaten
-        # highlight kırpmasından geliyor.
-        if config.INTRO_SESSIZLIK_KIRP and start_time is None:
-            kirpilan = bastaki_sessizlik(audio_path)
-            if kirpilan > 0:
-                start_time = kirpilan
-        duration = full_duration - (start_time or 0.0)
+        duration = full_duration
+    preview_dur = 0.0
+    if cold_open is not None and start_time is None and end_time is None:
+        high_start, high_end, preview_sn = cold_open
+        preview_dur = max(0.0, min(preview_sn, high_end - high_start, full_duration))
+        duration = full_duration + preview_dur
     theme_key = get_theme_key(theme)
-    mask_path = ensure_card_mask()
     has_art = bool(art_path)
-    use_backdrop_video = bool(backdrop_video) and os.path.isfile(backdrop_video)
-    if use_backdrop_video:
-        canvas_path = backdrop_video
-    elif dil_params and dil_params.get("backdrop") and has_art:
-        # GÖRSEL DİL: çağıran huzmeli arka planı (gorsel_dil.huzmeli_backdrop_uret)
-        # kendisi üretip path olarak veriyor — aşağıdaki PNG dalı (pan/hue) aynen
-        # üzerinde çalışır. Panned boyutta olduğu için pan payı korunur.
-        canvas_path = dil_params["backdrop"]
-    else:
-        canvas_path = ensure_art_backdrop(art_path, width, height) if has_art else ensure_vignette(width, height, theme_key)
-    # Sahne modunda art.jpg hiç OKUNMUYOR: kart çizilmiyor, arka plan da
-    # videodan geliyor. Girdiyi açık bırakmak HUD'un indeksini kaydırırdı.
-    if not kart_goster:
-        has_art = False
-    use_hud = bool(hud_path) and os.path.isfile(hud_path)
-    # HUD girdi indeksi: 0=ses, 1=maske, 2=tuval, (3=art varsa). Sıra
-    # aşağıdaki cmd kurulumuyla BİREBİR aynı olmalı - yanlış indeks sessizce
-    # yanlış akışı harmanlar.
-    hud_index = (4 if has_art else 3) if use_hud else None
-    # Açılış kapağı girdisi EN SONA ekleniyor — araya girseydi hud_index'i
-    # kaydırırdı (yukarıdaki nota bak: yanlış indeks sessizce yanlış akışı harmanlar).
-    # Çok kısa parçalarda açılış atlanıyor: 2,4 saniyelik bir kapak, 6 saniyelik
-    # bir videonun yarısı demek olurdu (testlerde/sentetik seslerde olan tam bu).
-    intro_toplam = config.INTRO_KAPAK_BEKLEME + config.INTRO_KAPAK_COZULME
-    use_intro = (
-        config.INTRO_KAPAK
-        and bool(intro_cover)
-        and os.path.isfile(intro_cover)
-        and duration >= intro_toplam * 2
-    )
-    # PORTRE girdi indeksi EN SONDA (açılış kapağı gibi): araya girseydi
-    # hud_index/intro_index kayar, yanlış akış harmanlanırdı. YALNIZ tam-boy
-    # dalda (end_time None): Shorts/highlight kırpması kendi kart düzeninde.
-    use_portre = bool(portre_path) and os.path.isfile(portre_path or "") \
-        and end_time is None and not kart_goster
-    if use_intro:
-        intro_index = (hud_index + 1) if hud_index is not None else (4 if has_art else 3)
-    else:
-        intro_index = None
-    if use_portre:
-        portre_index = (intro_index + 1) if intro_index is not None \
-            else ((hud_index + 1) if hud_index is not None else (4 if has_art else 3))
-    else:
-        portre_index = None
-    filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key,
-                                           marquee_override, use_backdrop_video, hud_index,
-                                           kart_goster, intro_index, dil_params, portre_index)
+    canvas_path = ensure_art_backdrop(art_path, width, height) if has_art else ensure_vignette(width, height, theme_key)
 
+    # Build base filter complex (Shorts or normal)
+    # --- HIZ RAMPASI (YouTube efekti) --------------------------------------
+    # NEDEN burada: video zinciri (canvas) ve ses zinciri AYNI zaman
+    # eşlemesini paylaşmalı, yoksa a/v kayması olur. İkisi de aynı
+    # plan dict'ini kullanır.
+    ramp_video = ""
+    ramp_audio = ""
+    base_input = "[1:v]" if is_shorts else "[2:v]"
+    if is_shorts and speed_ramp:
+        ramp_video, base_label = _build_speed_ramp_video(
+            base_input, speed_ramp, duration)
+        base_input = f"[{base_label}]"
+    if is_shorts:
+        # Shorts 9:16 native filter — kart yok, mask yok
+        filter_complex = _build_shorts_filter_complex(width, height, duration, title, has_art, theme_key, marquee_override,
+                                                      end_card_text=end_card_text, cta_text=cta_text, hashtags=hashtags,
+                                                      beat_times=beat_times, beat_period=beat_period,
+                                                      base_input=base_input)
+        pre_label = "vfinal"  # _build_shorts_filter_complex returns filter ending with [vfinal]
+    else:
+        # Normal 16:9 filter with card
+        mask_path = ensure_card_mask()
+        filter_complex = _build_filter_complex(width, height, duration, title, has_art, theme_key, marquee_override, end_card_text=end_card_text, cta_text=cta_text)
+        pre_label = "vfinal"  # _build_filter_complex returns filter ending with [vfinal]
+    
+    # DJ Sahne Modu efektleri (DJ setler için) — hem Shorts hem normal için
+    if is_dj_set:
+        # DJ HUD Nefes efekti
+        if getattr(config, 'DJ_HUD_NEFES', True):
+            nefes_sure = getattr(config, 'DJ_HUD_NEFES_SURE_SN', 8.0)
+            filter_complex += (
+                f";color=c=white@0.0:s={width}x{int(height*0.15)}:d={duration:.3f}:rate={config.FPS},format=rgba,"
+                f"drawtext=fontfile={os.path.relpath(config.FONT_PATH, os.getcwd()).replace(chr(92), chr(47))}:text='🫁':"
+                f"fontcolor=white@0.9:fontsize={int(height*0.05)}:"
+                f"shadowcolor=black@0.8:shadowx=2:shadowy=2:"
+                f"x=(w-tw)/2:y={int(height*0.05)}[hud];"
+                f"[{pre_label}][hud]overlay=0:0:enable='between(t,0,{getattr(config, 'DJ_HUD_NEFES_SURE_SN', 8.0):.1f})'[hud]"  
+            )
+            pre_label = "hud"
+        
+        # DJ Sahne Zoom efekti - geçici devre dışı (zoompan filtresi sorunu)
+        # if getattr(config, 'DJ_SAHNE_ZOOM', True):
+        #     zoom_bitis = getattr(config, 'DJ_SAHNE_ZOOM_BITIS', 1.08)
+        #     zoom_expr = f"zoompan=z='if(lte(t,{duration}),1+({zoom_bitis}-1)*t/{duration},1)':d={duration}:s={width}x{height}"
+        #     filter_complex += f";[{pre_label}]zoompan={zoom_expr}[zoom]" 
+        #     pre_label = "zoom"
+        
+        # DJ Sahne Blur efekti
+        if getattr(config, 'DJ_SAHNE_BLUR_SIGMA', 0) > 0:
+            blur_sigma = getattr(config, 'DJ_SAHNE_BLUR_SIGMA', 1.5)
+            filter_complex += f";[{pre_label}]gblur=sigma={blur_sigma}[blur]"
+            pre_label = "blur"
+    
+    # Ensure final output is vfinal
+    if pre_label != "vfinal":
+        filter_complex += f";[{pre_label}]copy[vfinal]"
+        pre_label = "vfinal"
+
+    
     audio_input = ["-ss", f"{start_time:.3f}"] if start_time is not None else []
     cmd = [
         "ffmpeg", "-y",
         *audio_input, "-i", audio_path,
-        "-loop", "1", "-i", mask_path,
     ]
-    # Sabit PNG için `-loop 1`, video arka plan için `-stream_loop -1`:
-    # ikincisi dosyayı baştan sona tekrar tekrar çalar, `-t` ile setin süresine
-    # kırpılır. `-loop 1` bir videoda ilk kareyi dondururdu (asıl tuzak bu).
-    if use_backdrop_video:
-        cmd += ["-stream_loop", "-1", "-i", canvas_path]
+    
+    if is_shorts:
+        cmd += [
+            "-loop", "1", "-i", canvas_path,
+        ]
     else:
-        cmd += ["-loop", "1", "-i", canvas_path]
+        cmd += [
+            "-loop", "1", "-i", mask_path,
+            "-loop", "1", "-i", canvas_path,
+        ]
     if has_art:
         cmd += ["-loop", "1", "-i", art_path]
-    if use_hud:
-        cmd += ["-loop", "1", "-i", hud_path]
-    if use_intro:
-        cmd += ["-loop", "1", "-i", intro_cover]
-    if use_portre:
-        cmd += ["-loop", "1", "-i", portre_path]
+
+    if preview_dur > 0.0 and cold_open is not None:
+        high_start, high_end, _preview_sn = cold_open
+        filter_complex += (
+            f";[0:a]asplit=2[afull][ahigh]"
+            f";[ahigh]atrim=start={high_start:.3f}:end={high_end:.3f},asetpts=PTS-STARTPTS,atrim=0:{preview_dur:.3f}[cold]"
+            f";[cold][afull]concat=n=2:v=0:a=1[aout]"
+        )
+        audio_map = "[aout]"
+    else:
+        audio_map = "0:a"
+
+    # --- HIZ RAMPASI: ses zinciri (videoyla aynı zaman eşlemesi) ---------
+    # NEDEN ses de warp ediliyor: video yavaşladığında ses de yavaşlamazsa
+    # konuşma/melodi ile görsel uyumsuzlaşır (a/v kayması).
+    #
+    # NEDEN audio_map üzerinden: cold-open varsa ses zinciri [aout] ile
+    # biter; ramp ONDAN sonra uygulanmalı (cold-open da yavaşlasın).
+    if speed_ramp and is_shorts:
+        ramp_audio, audio_label = _build_speed_ramp_audio(
+            audio_map, speed_ramp, duration)
+        filter_complex += ";" + ramp_audio
+        audio_map = f"[{audio_label}]"
+    if ramp_video:
+        filter_complex = ramp_video + ";" + filter_complex
+
+    if chapters_file and os.path.isfile(chapters_file):
+        cmd += ["-i", chapters_file]
     cmd += [
         "-filter_complex", filter_complex,
         "-map", "[vfinal]",
-        "-map", "0:a",
-        *(["-af", limiter_filtresi()] if ses_limiter else []),
+        "-map", audio_map,
         "-t", f"{duration:.3f}",
         "-c:v", config.VIDEO_CODEC,
-        "-preset", preset_override or config.PRESET,
-        "-crf", crf_override or config.CRF,
+        "-preset", config.PRESET,
+        "-crf", config.CRF,
         "-pix_fmt", "yuv420p",
         "-c:a", config.AUDIO_CODEC,
         "-b:a", config.AUDIO_BITRATE,
         "-shortest",
-        output_path,
     ]
+    if chapters_file and os.path.isfile(chapters_file):
+        # Find the chapters input index
+        if is_shorts:
+            # inputs: 0=audio, 1=canvas, 2=chapters
+            chapters_idx = 2
+        else:
+            # inputs: 0=audio, 1=mask, 2=canvas, 3=art (if has_art), 4/3=chapters
+            chapters_idx = 4 if has_art else 3
+        cmd += ["-map_metadata", f"{chapters_idx}", "-map_chapters", f"{chapters_idx}"]
+    cmd.append(output_path)
 
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"ffmpeg render hatası ({output_path}):\n{result.stderr[-2000:]}")

@@ -1,0 +1,66 @@
+{
+  "title": "Gece Sürüşünde Hasret",
+  "theme": "arabesk",
+  "set_style": "arabesk_trap",
+  "marquee_text": "Gece Sürüşünde Hasret • Arabesk Trap • #DJFamous",
+  "art_query": "rainy istanbul street night neon reflections car interior",
+  "location": {},
+  "playlist_id": "PL_TR01ARABESKTRAP",
+  "tags_base": [],
+  "hashtags": "",
+  "seo": {},
+  "cross_promo": {},
+  "yayin_tarihi": "",
+  "end_card_text": "Subscribe — new track every week  •  @Famous_musics_studio",
+  "end_card_text_tr": "Abone ol, her hafta yeni şarkı  •  @Famous_musics_studio",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "title": "Istanbul Nights",
+      "artist": "DJ Famous",
+      "start_sec": 0,
+      "end_sec": 180,
+      "bpm": 140,
+      "key": "Fm"
+    },
+    {
+      "timestamp": "03:00",
+      "title": "Bosphorus Breeze",
+      "artist": "DJ Famous",
+      "start_sec": 180,
+      "end_sec": 360,
+      "bpm": 142,
+      "key": "Cm"
+    },
+    {
+      "timestamp": "06:00",
+      "title": "Minaret Dreams",
+      "artist": "DJ Famous",
+      "start_sec": 360,
+      "end_sec": 540,
+      "bpm": 138,
+      "key": "Gm"
+    },
+    {
+      "timestamp": "09:00",
+      "title": "Golden Horn",
+      "artist": "DJ Famous",
+      "start_sec": 540,
+      "end_sec": 720,
+      "bpm": 144,
+      "key": "Ebm"
+    },
+    {
+      "timestamp": "12:00",
+      "title": "Istanbul Dawn",
+      "artist": "DJ Famous",
+      "start_sec": 720,
+      "end_sec": 900,
+      "bpm": 138,
+      "key": "Bbm"
+    }
+  ],
+  "tur_ozel": "",
+  "hikaye": "Gece sürüşünde şehrin ışıklarıyla dans eden gölgeler, hasretin ritmiyle dans ediyor. Beton elleri içinde, kalbin o eski sokaklarda hala yürüyor.",
+  "neden_bu_sarki": "Gece sürüşlerinin o eşsiz huzurunu ve özgürlük hissini, arabesk trap'in derinliğiyle anlatmak için."
+}

@@ -1,0 +1,11 @@
+{
+  "projects": {
+    "collab_60d784a9": {
+      "title": "Test Collab",
+      "partner": "Test Partner",
+      "status": "pending",
+      "created_at": "2026-10-19T08:38:34.722131",
+      "dir": "collabs\\collab_082db330"
+    }
+  }
+}

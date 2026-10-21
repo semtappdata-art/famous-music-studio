@@ -1,0 +1,10 @@
+{
+  "name": "famous-music-studio-functions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Famous Music Studio — analitik + topluluk Netlify Functions",
+  "dependencies": {
+    "@netlify/blobs": "^1.0.0"
+  }
+}

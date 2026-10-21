@@ -1,0 +1,274 @@
+{
+  "hafta": "2026-W42",
+  "baslangic": "2026-10-19T00:00:00+03:00",
+  "bitis": "2026-10-24T23:59:59+03:00",
+  "durum": "PLANLANDI",
+  "olusturma_zamani": "2026-10-19T00:00:00+03:00",
+  "onaylayan": "SISTEM",
+  "dj_setler": [
+    {
+      "id": "CP04",
+      "seri": "city_pulse",
+      "episode": 4,
+      "sehir": "Berlin",
+      "ulke": "Germany",
+      "mekan": "TV Tower",
+      "gps": "52.5200,13.4050",
+      "hikaye": "Techno capital, concrete and neon, history in every beat",
+      "hikaye_tr": "Tekno başkenti, beton ve neon, her vuruşta tarih hiss edilir. TV Tower'ın ışıkları Alexanderplatz üzerinde yanarken 60 dakika — beton ve neonun başkentinde gece sürüşü.",
+      "set_style": "melodic_techno",
+      "marquee_text": "City Pulse Sessions • Ep04 • #DJFamous",
+      "art_query": "berlin tv tower blue hour rooftop cinematic night lights",
+      "playlist_id": "PL_CityPulse",
+      "tags_base": ["melodic techno", "progressive house", "city pulse", "dj famous", "rooftop", "berlin"],
+      "hashtags": "#CityPulse #MelodicTechno #DJFamous #Berlin",
+      "seo": {
+        "primary_keyword": "melodic techno rooftop set berlin",
+        "secondary_keywords": ["progressive house", "cityscape", "sunset dj", "tv tower"]
+      },
+      "cross_promo": {
+        "shorts_clips": ["hook_0-30s", "transition_mid", "outro_last_3min"],
+        "instagram_reel": "30s_vertical_hook",
+        "tiktok_draft": "60s_best_moment",
+        "bluesky_thread": "track_by_track_breakdown"
+      },
+      "yayin_tarihi": "2026-10-24T18:00:00+03:00",
+      "takvim": {
+        "t_minus_5": "2026-10-13",
+        "t_minus_4": "2026-10-14",
+        "t_minus_3": "2026-10-15",
+        "t_minus_2": "2026-10-16",
+        "t_minus_1": "2026-10-17",
+        "t_0": "2026-10-24T18:00:00+03:00",
+        "t_plus_1": "2026-10-25",
+        "t_plus_8": "2026-11-14"
+      },
+      "durum": "HAZIR",
+      "oncelik": 1
+    },
+    {
+      "id": "ND02",
+      "seri": "night_drive",
+      "episode": 2,
+      "sehir": "Los Angeles",
+      "ulke": "USA",
+      "rota": "Mulholland Drive",
+      "gps": "34.1033,-118.3275",
+      "hikaye": "City lights below, stars above, midnight cruise",
+      "hikaye_tr": "Şehir ışıkları aşağıda, yıldızlar yukarısında, gece yarısı kruvazı. Mulholland Drive'ın virajlarında melodi kaybolur, ritim kalır.",
+      "set_style": "melodic_techno",
+      "marquee_text": "Night Drive Series • Ep02 • #DJFamous",
+      "art_query": "los angeles mulholland drive night city lights cinematic",
+      "playlist_id": "PL_NightDrive",
+      "tags_base": ["melodic techno", "night drive", "dj famous", "driving music", "late night", "mulholland"],
+      "hashtags": "#NightDrive #MelodicTechno #DJFamous #MulhollandDrive",
+      "seo": {
+        "primary_keyword": "melodic techno night drive mix",
+        "secondary_keywords": ["progressive house", "late night driving", "la nights"]
+      },
+      "cross_promo": {
+        "shorts_clips": ["hook_0-30s", "sunrise_transition", "outro_city_lights"],
+        "instagram_reel": "30s_vertical_hook",
+        "tiktok_draft": "60s_best_moment",
+        "bluesky_thread": "track_by_track_breakdown"
+      },
+      "yayin_tarihi": "2026-10-24T22:00:00+03:00",
+      "takvim": {
+        "t_minus_5": "2026-10-13",
+        "t_minus_4": "2026-10-14",
+        "t_minus_3": "2026-10-15",
+        "t_minus_2": "2026-10-16",
+        "t_minus_1": "2026-10-17",
+        "t_0": "2026-10-24T22:00:00+03:00",
+        "t_plus_1": "2026-10-25",
+        "t_plus_8": "2026-11-14"
+      },
+      "durum": "HAZIR",
+      "oncelik": 2
+    },
+    {
+      "id": "DF01",
+      "seri": "deep_focus",
+      "episode": 1,
+      "sehir": "Ubud",
+      "ulke": "Indonesia",
+      "mekan": "Rice Terraces",
+      "gps": "-8.4095,115.1889",
+      "hikaye": "Morning mist over Tegallalang, gamelan whispers in the wind",
+      "hikaye_tr": "Tegallalang'ın sabah püskülü, gamelan fısıltısı rüzgarda. Doğanın kalbi atar, melodi nefes alır.",
+      "set_style": "organic_house",
+      "marquee_text": "Deep Focus Sessions • Ep01 • #DJFamous",
+      "art_query": "bali rice terraces tegallalang morning mist cinematic organic",
+      "playlist_id": "PL_DeepFocus",
+      "tags_base": ["organic house", "deep house", "deep focus", "dj famous", "nature", "bali", "morning"],
+      "hashtags": "#DeepFocus #OrganicHouse #DJFamous #Bali",
+      "seo": {
+        "primary_keyword": "organic house nature set bali",
+        "secondary_keywords": ["deep house", "wellness music", "morning mix", "meditation"]
+      },
+      "cross_promo": {
+        "shorts_clips": ["hook_0-30s", "mist_transition", "outro_sunrise"],
+        "instagram_reel": "30s_vertical_hook",
+        "tiktok_draft": "60s_best_moment",
+        "bluesky_thread": "track_by_track_breakdown"
+      },
+      "yayin_tarihi": "2026-11-07T10:00:00+03:00",
+      "takvim": {
+        "t_minus_5": "2026-10-27",
+        "t_minus_4": "2026-10-28",
+        "t_minus_3": "2026-10-29",
+        "t_minus_2": "2026-10-30",
+        "t_minus_1": "2026-10-31",
+        "t_0": "2026-11-07T10:00:00+03:00",
+        "t_plus_1": "2026-11-08",
+        "t_plus_8": "2026-11-28"
+      },
+      "durum": "PLANLANDI",
+      "oncelik": 3
+    }
+  ],
+  "parcalar": [
+    {
+      "id": "TR01",
+      "baslik": "Gece Sürüşünde Hasret",
+      "tema": "Gece sürüşünde hasret, şehrin ışıklarıyla iç içe",
+      "tur": "arabesk_trap",
+      "bpm": 140,
+      "ton": "Fm",
+      "sure_sn": 210,
+      "suno_prompt": "arabesk trap fusion, emotional turkish string melody, deep 808 bass, slow tempo 140 bpm half-time, late night damar mood, turkish vocal, emotional breakdown, city lights atmosphere",
+      "yayin_tarihi": "2026-10-24T12:00:00+03:00",
+      "takvim": {
+        "t_minus_5": "2026-10-13",
+        "t_minus_4": "2026-10-14",
+        "t_minus_3": "2026-10-15",
+        "t_minus_2": "2026-10-16",
+        "t_minus_1": "2026-10-17",
+        "t_0": "2026-10-24T12:00:00+03:00",
+        "t_plus_1": "2026-10-25",
+        "t_plus_8": "2026-11-14"
+      },
+      "durum": "HAZIR",
+      "oncelik": 1,
+      "tur_ozel": "kultur_kod"
+    },
+    {
+      "id": "TR02",
+      "baslik": "90'lar Nostalji Rooftop",
+      "tema": "90'ların unutulmaz melodileri, gece gökyüzü altında",
+      "tur": "nineties_nostalji",
+      "bpm": 118,
+      "ton": "Am",
+      "sure_sn": 195,
+      "suno_prompt": "90s turkish pop revival, bright synth brass, nostalgic melody, danceable 118 bpm, retro production with modern mix, turkish vocal, rooftop party vibe, euphoric chorus",
+      "yayin_tarihi": "2026-10-24T18:00:00+03:00",
+      "takvim": {
+        "t_minus_5": "2026-10-13",
+        "t_minus_4": "2026-10-14",
+        "t_minus_3": "2026-10-15",
+        "t_minus_2": "2026-10-16",
+        "t_minus_1": "2026-10-17",
+        "t_0": "2026-10-24T18:00:00+03:00",
+        "t_plus_1": "2026-10-25",
+        "t_plus_8": "2026-11-14"
+      },
+      "durum": "HAZIR",
+      "oncelik": 2,
+      "tur_ozel": "kultur_kod"
+    },
+    {
+      "id": "TR03",
+      "baslik": "Gece Sürüşü Bridge",
+      "tema": "Gece sürüşünün ritmi, ışıklar arasındaki geçişler",
+      "tur": "melodic_techno",
+      "bpm": 124,
+      "ton": "Cm",
+      "sure_sn": 240,
+      "suno_prompt": "melodic techno, hypnotic arpeggio, deep sub bass, airy pads, no vocals, 124 bpm, late night drive, hypnotic groove, progressive energy, tunnel lights atmosphere",
+      "yayin_tarihi": "2026-10-25T10:00:00+03:00",
+      "takvim": {
+        "t_minus_5": "2026-10-14",
+        "t_minus_4": "2026-10-15",
+        "t_minus_3": "2026-10-16",
+        "t_minus_2": "2026-10-17",
+        "t_minus_1": "2026-10-18",
+        "t_0": "2026-10-25T10:00:00+03:00",
+        "t_plus_1": "2026-10-26",
+        "t_plus_8": "2026-11-15"
+      },
+      "durum": "HAZIR",
+      "oncelik": 3
+    },
+    {
+      "id": "TR04",
+      "baslik": "Gün Doğumu Umudu",
+      "tema": "İlk ışığın getirdiği yeni başlangıç hissi",
+      "tur": "organic_house",
+      "bpm": 118,
+      "ton": "G",
+      "sure_sn": 220,
+      "suno_prompt": "organic house, warm analog synth, gentle marimba melody, soft latin percussion, no vocals, 118 bpm, sunrise terrace, uplifting calm, golden hour warmth, nature awakening",
+      "yayin_tarihi": "2026-10-25T18:00:00+03:00",
+      "takvim": {
+        "t_minus_5": "2026-10-14",
+        "t_minus_4": "2026-10-15",
+        "t_minus_3": "2026-10-16",
+        "t_minus_2": "2026-10-17",
+        "t_minus_1": "2026-10-18",
+        "t_0": "2026-10-25T18:00:00+03:00",
+        "t_plus_1": "2026-10-26",
+        "t_plus_8": "2026-11-15"
+      },
+      "durum": "PLANLANDI",
+      "oncelik": 4
+    },
+    {
+      "id": "TR05",
+      "baslik": "Collab: Progressive Horizons",
+      "tema": "Rikodisco ile ortak üretim, progressive evreni",
+      "tur": "progressive_house",
+      "bpm": 126,
+      "ton": "Dm",
+      "sure_sn": 250,
+      "suno_prompt": "progressive house, driving kick, hypnotic lead synth, layered atmosphere, no vocals, 126 bpm, peak time club, forward motion, collab energy, rikodisco style, melodic journey",
+      "yayin_tarihi": "2026-11-01T18:00:00+03:00",
+      "takvim": {
+        "t_minus_5": "2026-10-21",
+        "t_minus_4": "2026-10-22",
+        "t_minus_3": "2026-10-23",
+        "t_minus_2": "2026-10-24",
+        "t_minus_1": "2026-10-25",
+        "t_0": "2026-11-01T18:00:00+03:00",
+        "t_plus_1": "2026-11-02",
+        "t_plus_8": "2026-11-22"
+      },
+      "durum": "PLANLANDI",
+      "oncelik": 5,
+      "collab": true,
+      "collab_partner": "Rikodisco",
+      "not": "Collab onayı bekleniyor - onay gelmezse solo versiyon TR05b olarak planlanacak"
+    }
+  ],
+  "uydu_paketi": {
+    "her_yayin": "1_uzun_format + 3_shorts + 2_topluluk_postu + 1_playlist_ekleme",
+    "shorts_formati": "45sn_maksimum_hook_lowerthird_progressbar",
+    "topluluk_postu_sablonlari": ["siradaki_sehir", "kapak_secimi"],
+    "playlist_ekleme": "niyet_listeleri + seri_playlistleri"
+  },
+  "riskler": [
+    {"risk": "Suno API yavaşlama", "onlem": "3 saat buffer + manuel prompt yedek", "sorumlu": "A3"},
+    {"risk": "DistroKid allowlist gecikme", "onlem": "10sn unlisted test + manuel claim release", "sorumlu": "A4"},
+    {"risk": "Collab onayı (TR05) gelmez", "onlem": "Solo versiyon TR05b hazır bekletme", "sorumlu": "A3"}
+  ],
+  "kpi_hedefleri": {
+    "dj_set_sayisi": 3,
+    "parca_sayisi": 5,
+    "youtube_yukleme": 8,
+    "shorts_45sn_limiti": "100%",
+    "content_id_claim": 0,
+    "ctr_ortalama": "> 4%",
+    "avd_ortalama": "> 50%",
+    "abone_artisi": "> 50/hafta",
+    "cross_promo_trafik": "> 5%"
+  }
+}

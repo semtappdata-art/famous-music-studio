@@ -1,0 +1,17 @@
+# Night Drive Ep02 - LA Structure
+# Total Duration: ~30:00 (1800 seconds)
+
+00:00 - 05:00 | Midnight Departure | 122 BPM | Am
+05:00 - 10:00 | City Lights Descent | 124 BPM | F
+10:00 - 15:00 | Neon Visions | 126 BPM | C
+15:00 - 20:00 | Starlit Corridor | 125 BPM | G
+20:00 - 25:00 | Dawn Approach | 124 BPM | Dm
+25:00 - 30:00 | Homeward Bound | 122 BPM | Am
+
+# Section markers for visual changes
+# 00:00-05:00: VERSE (departure, zoom 1.00)
+# 05:00-10:00: CHORUS (descent, zoom 1.05)
+# 10:00-15:00: CHORUS (neon, zoom 1.08)
+# 15:00-20:00: VERSE (starlit, zoom 1.02)
+# 20:00-25:00: BRIDGE (dawn, zoom 0.98)
+# 25:00-30:00: OUTRO (homeward, zoom 1.00)

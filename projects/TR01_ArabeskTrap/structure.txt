@@ -1,0 +1,7 @@
+# Structure for Gece Sürüşünde Hasret
+
+00:00 - Istanbul Nights | 140 BPM | Fm
+03:00 - Bosphorus Breeze | 142 BPM | Cm
+06:00 - Minaret Dreams | 138 BPM | Gm
+09:00 - Golden Horn | 144 BPM | Ebm
+12:00 - Istanbul Dawn | 138 BPM | Bbm

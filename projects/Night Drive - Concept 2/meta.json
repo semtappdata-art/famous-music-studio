@@ -1,0 +1,83 @@
+{
+  "title": "Night Drive – Melodic Techno (Concept 2: The Aspirational Billboard)",
+  "theme": "elektronik",
+  "set_style": "techno_chill",
+  "marquee_text": "DJ Famous  •  Night Drive – Melodic Techno (Concept 2: The Aspirational Billboard)",
+  "art_query": "illuminated tunnel night highway light trails symmetrical",
+  "location": {
+    "city": "Los Angeles",
+    "country": "USA",
+    "route": "Mulholland Drive",
+    "gps": "34.1033,-118.3275",
+    "story": "City lights below, stars above, midnight cruise",
+    "story_tr": "Şehir ışıkları aşağıda, yıldızlar yukarısında, gece yarısı kruvazı. Mulholland Drive'ın virajlarında melodi kaybolur, ritim kalır."
+  },
+  "playlist_id": "PL_NIGHTDRIVECONCEPT2",
+  "tags_base": [],
+  "hashtags": "",
+  "seo": {},
+  "cross_promo": {},
+  "yayin_tarihi": "",
+  "end_card_text": "Subscribe — new track every week  •  @Famous_musics_studio",
+  "end_card_text_tr": "Abone ol, her hafta yeni şarkı  •  @Famous_musics_studio",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "title": "Midnight Departure",
+      "artist": "DJ Famous",
+      "start_sec": 0,
+      "end_sec": 300,
+      "bpm": 122,
+      "key": "Am"
+    },
+    {
+      "timestamp": "05:00",
+      "title": "City Lights Descent",
+      "artist": "DJ Famous",
+      "start_sec": 300,
+      "end_sec": 600,
+      "bpm": 124,
+      "key": "F"
+    },
+    {
+      "timestamp": "10:00",
+      "title": "Neon Visions",
+      "artist": "DJ Famous",
+      "start_sec": 600,
+      "end_sec": 900,
+      "bpm": 126,
+      "key": "C"
+    },
+    {
+      "timestamp": "15:00",
+      "title": "Starlit Corridor",
+      "artist": "DJ Famous",
+      "start_sec": 900,
+      "end_sec": 1200,
+      "bpm": 125,
+      "key": "G"
+    },
+    {
+      "timestamp": "20:00",
+      "title": "Dawn Approach",
+      "artist": "DJ Famous",
+      "start_sec": 1200,
+      "end_sec": 1500,
+      "bpm": 124,
+      "key": "Dm"
+    },
+    {
+      "timestamp": "25:00",
+      "title": "Homeward Bound",
+      "artist": "DJ Famous",
+      "start_sec": 1500,
+      "end_sec": 1800,
+      "bpm": 122,
+      "key": "Am"
+    }
+  ],
+  "tur_ozel": "",
+  "hikaye": "Tünelin ucundaki ışık, hayallerin kapısı. Her virajda yeni bir hayal, her çıkışta yeni bir umut. Billboard'un ışıkları sana fısıldıyor: \"Devam et, ulaşıyorsun.\"",
+  "neden_bu_sarki": "Hedeflere ulaşırken yolculuğun kendisinin ne kadar değerli olduğunu hatırlatmak için.",
+  "story_tr": "Şehir ışıkları aşağıda, yıldızlar yukarısında, gece yarısı kruvazı. Mulholland Drive'ın virajlarında melodi kaybolur, ritim kalır."
+}

@@ -1,0 +1,40 @@
+{
+  "playlists": {
+    "city_pulse": {
+      "playlist_key": "city_pulse",
+      "playlist_id": "",
+      "name": "City Pulse Sessions",
+      "tracks": [],
+      "last_updated": "",
+      "total_tracks": 0,
+      "last_synced": ""
+    },
+    "night_drive": {
+      "playlist_key": "night_drive",
+      "playlist_id": "",
+      "name": "Night Drive Series",
+      "tracks": [],
+      "last_updated": "",
+      "total_tracks": 0,
+      "last_synced": ""
+    },
+    "deep_focus": {
+      "playlist_key": "deep_focus",
+      "playlist_id": "",
+      "name": "Deep Focus Sessions",
+      "tracks": [],
+      "last_updated": "",
+      "total_tracks": 0,
+      "last_synced": ""
+    },
+    "dj_famous_essentials": {
+      "playlist_key": "dj_famous_essentials",
+      "playlist_id": "",
+      "name": "DJ Famous Essentials",
+      "tracks": [],
+      "last_updated": "",
+      "total_tracks": 0,
+      "last_synced": ""
+    }
+  }
+}

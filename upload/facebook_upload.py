@@ -111,6 +111,75 @@ def _load_meta(project_dir: str) -> dict:
     return {}
 
 
+def _is_dj_set(meta: dict) -> bool:
+    """Check if this is a DJ set with series-based metadata."""
+    return "series" in meta and meta.get("series")
+
+
+def _build_dj_set_caption(meta: dict) -> str:
+    """Build Facebook caption for DJ sets using series-based metadata."""
+    series_key = meta.get("series")
+    if not series_key:
+        return build_caption(meta, ai_beyani=True)
+
+    try:
+        from config import get_dj_series, get_series_location
+        series = get_dj_series(series_key)
+        if not series:
+            return build_caption(meta, ai_beyani=True)
+    except Exception:
+        return build_caption(meta, ai_beyani=True)
+
+    title = meta.get("title", "Untitled")
+    episode = meta.get("episode", 1)
+    location = meta.get("location") or get_series_location(series_key)
+    landmark = location.get("landmark", location.get("city", ""))
+    city = location.get("city", "")
+    country = location.get("country", "")
+    story = location.get("story", "")
+
+    tracklist = meta.get("tracklist", [])
+
+    parts = []
+    parts.append(f"DJ Famous @ {landmark}, {city} — {series['brand']} Ep {episode}")
+    parts.append(f"")
+    
+    if story:
+        parts.append(f"📍 {story}")
+        parts.append(f"")
+    
+    if tracklist:
+        parts.append(f"🎧 TRACKLIST:")
+        for track in tracklist[:3]:
+            ts = track.get("timestamp", "00:00")
+            tr_title = track.get("title", "")
+            parts.append(f"{ts} {tr_title}")
+        if len(tracklist) > 3:
+            parts.append(f"... +{len(tracklist) - 3} more")
+        parts.append(f"")
+    
+    parts.append(f"🎬 {series['brand']} Episode {episode}")
+    parts.append(f"🎨 Produced by DJ Famous")
+    parts.append(f"")
+    
+    parts.append(f"🔗 Connect:")
+    parts.append(f"YouTube: {config.SOCIAL_LINKS['youtube']}")
+    parts.append(f"Instagram: https://instagram.com/djfamous")
+    parts.append(f"TikTok: https://tiktok.com/@djfamous")
+    parts.append(f"Bluesky: https://bsky.app/profile/djfamous.bsky.social")
+    parts.append(f"Telegram: https://t.me/djfamous")
+    parts.append(f"")
+    
+    hashtags = series["youtube"].get("hashtags", "")
+    if hashtags:
+        parts.append(hashtags)
+    
+    parts.append(f"")
+    parts.append(f"🤖 AI-generated music & visuals")
+    
+    return "\n".join(parts)
+
+
 def _load_state(project_dir: str) -> dict:
     state_path = os.path.join(project_dir, "state.json")
     if os.path.isfile(state_path):
@@ -419,9 +488,14 @@ def upload_reels(project_dir: str, description: str | None = None, schedule: boo
     access_token = token["page_access_token"]
 
     if description is None:
+        meta = _load_meta(project_dir)
         # Zorunlu AI beyan satırı (2026-09-13, config.AI_BEYAN_SATIRLARI) — yalnız
         # yeni gönderi; mevcut gönderileri düzenleyen kod yok.
-        description = build_caption(_load_meta(project_dir), ai_beyani=True)
+        # DJ Set with series? Use series-based caption
+        if _is_dj_set(meta):
+            description = _build_dj_set_caption(meta)
+        else:
+            description = build_caption(meta, ai_beyani=True)
 
     # 1) Yukleme oturumu baslat (bitirilmeyen oturum Sayfa'ya CIKMAZ -> guvenli)
     start_resp = ag.guvenli_istek(
@@ -535,7 +609,11 @@ def upload_long(project_dir: str, description: str | None = None, schedule: bool
 
     meta = _load_meta(project_dir)
     if description is None:
-        description = build_caption(meta, ai_beyani=True)   # AI beyanı: bkz. upload_reels
+        # AI beyanı: bkz. upload_reels
+        if _is_dj_set(meta):
+            description = _build_dj_set_caption(meta)
+        else:
+            description = build_caption(meta, ai_beyani=True)
 
     scheduled_ts, scheduled_at = _compute_scheduled_time(schedule)
     data = {
@@ -815,6 +893,7 @@ def main():
         "--no-schedule", action="store_true",
         help="Golden-hour zamanlamasını kapat, hemen yayınla (youtube_upload.py ile aynı bayrak).",
     )
+    parser.add_argument("--dj-set", action="store_true", help="DJ set flag (auto-detected from meta.json, kept for compatibility)")
     args = parser.parse_args()
 
     schedule = not args.no_schedule

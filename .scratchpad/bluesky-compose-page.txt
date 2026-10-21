@@ -1,0 +1,6 @@
+uid=15_0 RootWebArea "bsky.app" url="chrome-error://chromewebdata/"
+  uid=15_1 heading "Bu bsky.app sayfası bulunamıyor" level="1"
+  uid=15_2 StaticText "Şu web adresi için web sayfası bulunamadı:"
+  uid=15_3 StaticText "https://bsky.app/compose"
+  uid=15_4 StaticText "HTTP ERROR 404"
+  uid=15_5 button "Yeniden Yükle"

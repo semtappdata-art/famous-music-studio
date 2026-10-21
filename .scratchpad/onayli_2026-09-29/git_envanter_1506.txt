@@ -1,0 +1,187 @@
+ M .gitignore
+ M audio_highlight.py
+ M auto_process.py
+ M caption_align.py
+ M config.py
+ M derleme.py
+ M "derlemeler/Gece Seans\304\261 Vol. 1/state.json"
+ M dj_clips.py
+ M dj_famous_process.py
+ M dj_hud.py
+ M "dj_sets/City Pulse Set/state.json"
+ M "dj_sets/Just Relax/state.json"
+ M "dj_sets/Night Drive/state.json"
+ M dj_tarama_kontrol.py
+ M elle_islem.py
+ M elle_islemler.jsonl
+ M ffmpeg_utils.py
+ M generate_character_portraits.py
+ M generate_cover.py
+ M git_sync.py
+ M gizli_maskele.py
+ M gorev_sarmalayici.py
+ M gorsel_dil.py
+ M gorsel_prototip.py
+ M kapak_duzen_onizleme.py
+ M latest_release.py
+ M log_rotate.py
+ M merge_dj_set_segments.py
+ M netlify_kontrol.py
+ M notify.py
+ M olcum_temel_cizgi.py
+ M ozgun_metin.py
+ M ozgunluk_olcum.json
+ M ozgunluk_skoru.py
+ M "projects/Beni B\304\261rakma/state.json"
+ M "projects/Beton Krall\304\261\304\237\304\261/state.json"
+ M "projects/Bir Bahar Daha/state.json"
+ M "projects/Bu Gece Kazand\304\261k/state.json"
+ M "projects/Gece S\303\274r\303\274\305\237\303\274/state.json"
+ M "projects/Kader Ortaklar\304\261/state.json"
+ M "projects/Kalbim Oynuyor/state.json"
+ M "projects/Kumdan Denize/state.json"
+ M "projects/K\303\274llerimden Ge\303\247/state.json"
+ M "projects/K\304\261r\304\261k Zincir/state.json"
+ M "projects/Sabah Senin/state.json"
+ M "projects/Sabaha Kadar/state.json"
+ M "projects/Sessiz Mektup/state.json"
+ M "projects/Sofraya Gelmedin/state.json"
+ M "projects/Sokaklar Beni Tan\304\261r/state.json"
+ M "projects/Son Kez/state.json"
+ M "projects/Yeniden Do\304\237aca\304\237\304\261m/state.json"
+ M "projects/Yeralt\304\261/state.json"
+ M "projects/Y\303\274rek Yaras\304\261/state.json"
+ M render.py
+ M requirements.txt
+ M run_pipeline.py
+ M saglik_kontrol.py
+ M ses_takip_denetimi.py
+ M state_io.py
+ M stock_art.py
+ M stock_video.py
+ M suno_cdp.py
+ M suno_stil.py
+ M tests/build_snippet_arsivi_2026-09-13.json
+ M tests/test_ai_beyani_onar.py
+ M tests/test_auto_process_kilit.py
+ M tests/test_entegrasyon_duman.py
+ M tests/test_entegrasyon_duman3.py
+ M tests/test_gizli_maskele.py
+ M tests/test_ses_limiter_ve_highlight.py
+ M tests/test_validate_project.py
+ M tests/test_watch_images.py
+ M turev_takvimi.py
+ M upload/instagram_upload.py
+ M upload/social_text.py
+ M upload/tiktok_yayin_kiti.py
+ M upload/youtube_kota.py
+ M upload/youtube_upload.py
+ M uyumluluk.py
+ M validate_project.py
+ M watch_projects.py
+ M weekly_report.py
+ M yayin_ritmi.py
+ M yeni_parca.py
+?? .env.example
+?? .git_commit_msg.txt
+?? .github/workflows/ci_cd.yml
+?? .scratchpad/
+?? Dockerfile
+?? LICENSE
+?? RUNBOOK.md
+?? _backdrop_build.err
+?? _backdrop_build.log
+?? _durum_haritasi.py
+?? _llm_cache.py
+?? _llm_durum.py
+?? _llm_router.py
+?? _nerve_test.py
+?? _render_dm.err
+?? _render_dm.log
+?? _shorts_frames/
+?? _video_frames/
+?? algoritma_kontrol.py
+?? api_gateway.py
+?? api_key_manager.py
+?? api_versioning.py
+?? api_versions.json
+?? auth.py
+?? auto_approval.py
+?? auto_deploy.py
+?? auto_notification.py
+?? auto_scaling.py
+?? backup.py
+?? belgeler/
+?? business_continuity.py
+?? cache.py
+?? ci_cd_pipeline.py
+?? ci_geri_donusum.py
+?? cok_dilli.py
+?? dashboard.py
+?? database.py
+?? deep_episodes/
+?? disaster_recovery_test.py
+?? "dj_sets/Deep Night Session/"
+?? dj_sets/Deep-Medusa/
+?? dj_sets/Helipad-Dawn/
+?? dj_sets/Midnight-Deck/
+?? dj_sets/Neon-Tide/
+?? "dj_sets/Peak District/state.json"
+?? "dj_sets/Slow Down Mix/"
+?? doc_automation.py
+?? docker-compose.yml
+?? docs/durum.html
+?? durum.json
+?? durum_sayfasi.py
+?? eksik_analiz.md
+?? eksik_analiz_tum.md
+?? failover.py
+?? finansal_takip.py
+?? git-session-2026-09-17.md
+?? gorev_backup_kontrol.py
+?? grep.exe.stackdump
+?? jarvis-desktop/
+?? lisans_yonetimi.py
+?? metrics.jsonl
+?? metrics.py
+?? monitoring.py
+?? monitoring/
+?? multi_region.py
+?? nul
+?? omniroute/
+?? otomasyon.py
+?? professor_analiz.md
+?? "projects/Sofraya Gelmedin/sofraya_gelmedin_sozler.md"
+?? "projects/Sokaklar Beni Tan\304\261r/sokaklar_beni_tanir_sozler.md"
+?? "projects/Son Kez/son_kez_sozler.md"
+?? "projects/Yeniden Do\304\237aca\304\237\304\261m/yeniden_dogacagim_sozler.md"
+?? "projects/Yeralt\304\261/yeralti_sozler.md"
+?? "projects/Y\303\274kseli\305\237/yukselis_sozler.md"
+?? "projects/Y\303\274kseli\305\237/yurek_yarasi_sozler.md"
+?? rate_limit.py
+?? referans_videolar.md
+?? reports/
+?? scratchpad/
+?? security_audit.py
+?? self_heal.py
+?? suno_api.py
+?? task_queue.py
+?? tests/test_ai_beyan_social_text.py
+?? tests/test_bolum_sahne.py
+?? tests/test_dj_arka_plan_onceligi.py
+?? tests/test_entegrasyon_duman4.py
+?? tests/test_hud_nefes.py
+?? tests/test_llm_cache.py
+?? tests/test_llm_router.py
+?? tests/test_mekan_etiketi.py
+?? tests/test_sahne_parti_wavespeed.py
+?? tests/test_sahne_zoom.py
+?? tests/test_set_bolumleri.py
+?? tests/test_youtube_ilk_yorum.py
+?? upload/instagram_story.py
+?? upload/youtube_ilk_yorum.py
+?? user_analytics.jsonl
+?? user_analytics.py
+?? video_perf.py
+?? vps_setup.py
+?? youtube_mcp_notlari.md

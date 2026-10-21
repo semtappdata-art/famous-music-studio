@@ -1,0 +1,75 @@
+{
+  "title": "Gün Doğumu Umudu",
+  "theme": "akustik",
+  "set_style": "organic_house",
+  "marquee_text": "Gün Doğumu Umudu • Akustik • #DJFamous",
+  "art_query": "sunrise terrace warm light nature awakening golden hour",
+  "location": {},
+  "playlist_id": "PL_TR04ORGANICHOUSE",
+  "tags_base": [],
+  "hashtags": "",
+  "seo": {},
+  "cross_promo": {},
+  "yayin_tarihi": "",
+  "end_card_text": "Subscribe — new track every week  •  @Famous_musics_studio",
+  "end_card_text_tr": "Abone ol, her hafta yeni şarkı  •  @Famous_musics_studio",
+  "tracklist": [
+    {
+      "timestamp": "00:00",
+      "title": "Dawn Awakening",
+      "artist": "DJ Famous",
+      "start_sec": 0,
+      "end_sec": 280,
+      "bpm": 116,
+      "key": "G"
+    },
+    {
+      "timestamp": "04:40",
+      "title": "Morning Mist",
+      "artist": "DJ Famous",
+      "start_sec": 280,
+      "end_sec": 560,
+      "bpm": 117,
+      "key": "D"
+    },
+    {
+      "timestamp": "09:20",
+      "title": "Gamelan Whispers",
+      "artist": "DJ Famous",
+      "start_sec": 560,
+      "end_sec": 840,
+      "bpm": 118,
+      "key": "Am"
+    },
+    {
+      "timestamp": "14:00",
+      "title": "Terrace Dreams",
+      "artist": "DJ Famous",
+      "start_sec": 840,
+      "end_sec": 1120,
+      "bpm": 119,
+      "key": "Em"
+    },
+    {
+      "timestamp": "18:40",
+      "title": "Rice Field Breeze",
+      "artist": "DJ Famous",
+      "start_sec": 1120,
+      "end_sec": 1400,
+      "bpm": 118,
+      "key": "C"
+    },
+    {
+      "timestamp": "23:20",
+      "title": "Eternal Calm",
+      "artist": "DJ Famous",
+      "start_sec": 1400,
+      "end_sec": 1680,
+      "bpm": 116,
+      "key": "G"
+    }
+  ],
+  "tur_ozel": "",
+  "hikaye": "İlk ışığın dokunmasıyla doğa uyanıyor, her yaprak yeni bir nota. Umut, en küçük çiçekten bile büyür.",
+  "neden_bu_sarki": "Yeni başlangıçların o müjdelesi hissi, organik house'ın doğallığıyla paylaşmak için."
+}

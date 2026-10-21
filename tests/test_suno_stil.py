@@ -22,7 +22,7 @@ import sys
 import pytest
 
 import config
-import suno_stil
+import config_mod.suno_stil as suno_stil
 
 _KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -130,7 +130,7 @@ def test_tur_proje_meta_jsonundan_okunuyor(tmp_path):
 
 def _cli(*argumanlar, hashseed="0"):
     ortam = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONHASHSEED=hashseed)
-    return subprocess.run([sys.executable, os.path.join(_KOK, "suno_stil.py"), *argumanlar],
+    return subprocess.run([sys.executable, os.path.join(_KOK, "config_mod", "suno_stil.py"), *argumanlar],
                           capture_output=True, text=True, encoding="utf-8",
                           cwd=_KOK, env=ortam, timeout=60)
 

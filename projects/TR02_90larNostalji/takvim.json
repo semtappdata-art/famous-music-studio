@@ -1,0 +1,91 @@
+{
+  "yayin_tarihi": "2026-10-19T12:00:00+03:00",
+  "fazlar": [
+    {
+      "kod": "dj_promo_dar",
+      "baslik": "Dar DJ listesi (10-20 isim)",
+      "tarih": "2026-09-14T12:00:00+03:00",
+      "isler": [
+        "promo havuzundan türdaş 10-20 DJ seç",
+        "özel link + kısa not gönder (PROMO_DM_SABLONU)",
+        "destekleyen isimleri kaydet (ikinci dalga cümlesi için)"
+      ],
+      "tamam": false
+    },
+    {
+      "kod": "dagitim_pitch",
+      "baslik": "Distribütör + Spotify pitch",
+      "tarih": "2026-09-21T12:00:00+03:00",
+      "isler": [
+        "distribütöre yükle (ISRC/UPC doğrula)",
+        "Spotify for Artists pitch: tür + hikaye + şehir + plan (4 hafta kala)",
+        "kanal allowlist talebi distribütöre (Content ID claim önlemi)"
+      ],
+      "tamam": false
+    },
+    {
+      "kod": "dj_promo_genis",
+      "baslik": "Geniş DJ listesi (onay damgalı)",
+      "tarih": "2026-09-28T12:00:00+03:00",
+      "isler": [
+        "\"Supported by [X]\" cümlesiyle ikinci dalga gönder",
+        "Beatport penceresiyle aynı haftaya kilitle (cross-feed)"
+      ],
+      "tamam": false
+    },
+    {
+      "kod": "icerik_yigini",
+      "baslik": "Uydu paketi üretimi (1+3+2)",
+      "tarih": "2026-10-05T12:00:00+03:00",
+      "isler": [
+        "3 Shorts kırp (hook / geçiş anı / outro)",
+        "2 topluluk postu taslağı (anket şablonları)",
+        "kapak A/B 2. varyantı üret (cover_varyant_B)"
+      ],
+      "tamam": false
+    },
+    {
+      "kod": "presave",
+      "baslik": "Pre-save + son hatırlatma",
+      "tarih": "2026-10-12T12:00:00+03:00",
+      "isler": [
+        "SmartLink/pre-save akışı açık mı?",
+        "DJ listesine son özet + Beatport butonları",
+        "topluluk ısınma postu (yayın öncesi 24-48sa)"
+      ],
+      "tamam": false
+    },
+    {
+      "kod": "yayin",
+      "baslik": "Yayın günü (golden-hour)",
+      "tarih": "2026-10-19T12:00:00+03:00",
+      "isler": [
+        "uzun format + Shorts (tam sürüm linkli)",
+        "playlist'e ekle (niyet listesi)",
+        "ilk yorumu sabitle (soru + timestamp)"
+      ],
+      "tamam": false
+    },
+    {
+      "kod": "buyume",
+      "baslik": "Büyüme (T+1/3 hafta)",
+      "tarih": "2026-11-02T12:00:00+03:00",
+      "isler": [
+        "klip + DJ cascade devam",
+        "Discover Weekly / Release Radar sinyallerini izle",
+        "Test & Compare sonucu işle"
+      ],
+      "tamam": false
+    },
+    {
+      "kod": "derivative",
+      "baslik": "Derivative penceresi (T+8 hafta)",
+      "tarih": "2026-12-14T12:00:00+03:00",
+      "isler": [
+        "tutmuş parça mı? remix/edit paketi ya da collab kararı",
+        "ikinci basın + ikinci editoryal kapı"
+      ],
+      "tamam": false
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Netlify Functions bunlari kendisi yukler; publish'e girmesin.
+# DIKKAT: "api/" satiri BURAYA YAZILMAZ — fonksiyonlar da bu dosyaya gore
+# filtrelenir ve fonksiyonlar yuklenmez (2026-10-21 deneyimi).
+package.json
+DEPLOY.md
+.netlifyignore
+**/__pycache__/
+**/*.pyc

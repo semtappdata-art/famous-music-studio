@@ -135,17 +135,17 @@ def test_yasak_ai_hashtag_yok():
         assert y.lower() not in birlesik.lower(), f"Yasak hashtag listelerde: {y}"
 
 
-# 7. KAPAK IKI ORAN
+# 7. KAPAK IKI ORAN (2026-10-09: generate_cover.py -> cover_generator.py tasindi)
 def test_kapak_iki_oran():
-    content = (REPO_ROOT / "generate_cover.py").read_text(encoding="utf-8")
+    content = (REPO_ROOT / "cover_generator.py").read_text(encoding="utf-8")
     assert "cover_vertical.png" in content
     assert "cover.png" in content
 
 
-# 8. DRAWTEXT
+# 8. DRAWTEXT (2026-10-09: DRAWTEXT_SATIR_SONU sabiti -> _escape_drawtext mekanizmasi)
 def test_drawtext_satir_sonu():
-    content = (REPO_ROOT / "generate_cover.py").read_text(encoding="utf-8")
-    assert "DRAWTEXT_SATIR_SONU" in content
+    content = (REPO_ROOT / "cover_generator.py").read_text(encoding="utf-8")
+    assert "_escape_drawtext" in content
 
 
 # 9. TURKCE LOWER
@@ -155,9 +155,9 @@ def test_turkce_lower_norm_word():
     assert "lower()" in content
 
 
-# 10. DRAWTEXT'TE LITERAL \n YOK (hizli, sadece generate_cover + ffmpeg_utils)
+# 10. DRAWTEXT'TE LITERAL \n YOK (hizli, sadece cover_generator + ffmpeg_builder)
 def test_ters_egik_cizgi_drawtext_yasak():
-    for name in ["generate_cover.py", "ffmpeg_utils.py"]:
+    for name in ["cover_generator.py", "ffmpeg_builder.py"]:
         p = REPO_ROOT / name
         if not p.exists():
             continue
@@ -190,3 +190,63 @@ def test_golden_hour_platform_stratejisi():
     content = (REPO_ROOT / "config.py").read_text(encoding="utf-8")
     assert "GOLDEN_HOURS" in content
     assert "next_golden_publish_time" in content
+
+
+# 14. MCP ONKONTROL (2026-10-10: senarist/dis-referans zenginlestirme)
+# Cagiran: validate_project.validate() (render oncesi), Gorev: mevcut 3 gorev
+# finally zinciri (yeni gorev YOK), Gozlem: `[proje] UYARI: MCP onkontrol` logu.
+def test_mcp_onkontrol_var():
+    content = (REPO_ROOT / "validate_project.py").read_text(encoding="utf-8")
+    assert "def _mcp_onkontrol" in content
+    assert "warnings.extend(_mcp_onkontrol())" in content
+
+
+def test_mcp_json_gerekli_sunucular():
+    import json
+    cfg = json.loads((REPO_ROOT / ".pi" / "mcp.json").read_text(encoding="utf-8"))
+    servers = cfg.get("mcpServers", {})
+    # Global config'te sadece çalışan MCP sunucuları olmalı
+    for s in ["filesystem", "postwire", "suno", "yt-studio", "chrome-devtools", "muapi"]:
+        assert s in servers, f"MCP eksik: {s}"
+        if isinstance(servers[s], dict):
+            assert servers[s].get("enabled") is not False, f"MCP devre-disi: {s}"  # True veya yok (enabled default True)
+    # fetch, memory, sequential-thinking, github, sqlite npm'de yok -> global config'te yok
+    for s in ["fetch", "memory", "sequential-thinking", "github", "sqlite"]:
+        assert s not in servers, f"npm'de olmayan MCP global config'te olmamalı: {s}"
+
+
+# 13. KO-FI DESTEK SATIRI (2026-10-08)
+def test_kofi_destek_bagli():
+    cfg = (REPO_ROOT / "config.py").read_text(encoding="utf-8")
+    assert "KOFI_URL" in cfg
+    assert "ko-fi.com/famousmusicstudio" in cfg
+    yu = (REPO_ROOT / "upload" / "youtube_upload.py").read_text(encoding="utf-8")
+    assert "_destek_satiri" in yu
+    assert "KOFI_URL" in yu
+
+
+# 16. BÜYÜME MOTORU (2026-10-19) — CLAUDE.md §16 kilitleri
+def test_buyume_bayraklari_tam():
+    cfg = (REPO_ROOT / "config.py").read_text(encoding="utf-8")
+    for bayrak in ["COLD_OPEN_ACIK", "COLD_OPEN_SURE_SN", "COLD_OPEN_PLATFORMLAR",
+                   "GORSEL_NABIZ_SURE_SN", "GORSEL_NABIZ_GUC",
+                   "ABONE_CTA_ACIK", "ABONE_CTA_ORAN", "ABONE_CTA_SURE_SN", "ABONE_CTA_METIN",
+                   "END_CARD_SURE_SN"]:
+        assert bayrak in cfg, f"Büyüme bayrağı kayıp: {bayrak}"
+    assert "arabesk_trap" in cfg and "nineties_nostalji" in cfg
+
+
+def test_buyume_ai_piksel_yasak():
+    # KIRMIZI ÇİZGİ: AI beyanı videoya yakılmaz — sadece metadata/açıklama.
+    for dosya in ["ffmpeg_utils.py", "render.py", "cover_generator.py"]:
+        kaynak = (REPO_ROOT / dosya).read_text(encoding="utf-8")
+        assert "🤖" not in kaynak, f"{dosya}: videoda AI rozeti yasak"
+        assert "AI DISCLOSURE" not in kaynak, f"{dosya}: videoda AI yazısı yasak"
+    yu = (REPO_ROOT / "upload" / "youtube_upload.py").read_text(encoding="utf-8")
+    assert "containsSyntheticMedia" in yu and "AI DISCLOSURE" in yu
+
+
+# 13. IMPORT SIRASI (geri getirildi 2026-10-19 — sehven düşmüştü)
+def test_import_sirasi_kurali():
+    kurallar = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "Import sırası" in kurallar

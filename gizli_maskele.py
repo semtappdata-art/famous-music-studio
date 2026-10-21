@@ -18,6 +18,11 @@ Ayni sinifin bir sonraki kurbani hazirdi: `upload/telegram_upload.py`
 YOLUN ICINDE, yani bir ConnectionError/ReadTimeout onu da log'a dusururdu.
 Bot token tek basina kanala mesaj gondermeye/silmeye yeter.
 
+YENI (2026-10-03): Dağıtız izleme (distributed tracing) desteği eklendi.
+Her auto_process.py çalıştırması için trace ID oluşturulur ve önemli işlemler
+için span ID'leri eklenir. Bu, sistemin davranışını analiz etmeyi ve 
+performans bottleneck'lerini tanımlamayı mümkün kılar.
+
 NEDEN AYRI MODUL:
   - `notify.py` telefona push gondermenin yeri, metin temizligi oraya ait
     degil.
@@ -39,9 +44,16 @@ sadece BILINEN kimlik bilgisi sekilleri hedefleniyor ve `tests/
 test_gizli_maskele.py` yanlis pozitif uretmedigini de dogruluyor.
 """
 
+import json
+import os
+import json
+import os
 import re
 
 MASKE = "…[MASKELİ]"
+# LOG_PATH tanımlaması - auto_process.py ile aynı dosyayı kullan
+LOG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "auto_process.log")
 # Zaten maskelenmiş bir değeri tanımak için (bkz. _anahtar_esittir).
 _MASKE_BASI = MASKE[0]
 
@@ -82,6 +94,84 @@ _ANAHTARLAR = (
 
 _ANAHTAR_ALT = "|".join(_ANAHTARLAR)
 
+# LOG_PATH tanımlaması - auto_process.py ile aynı dosyayı kullan
+LOG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "auto_process.log")
+
+# Dağıtız izleme (distributed tracing) için thread-local depolama
+import threading
+import uuid
+import time
+
+_trace_context = threading.local()
+
+def _generate_trace_id():
+    """Benzersiz trace ID oluşturur."""
+    return str(uuid.uuid4())
+
+def _generate_span_id():
+    """Benzersiz span ID oluşturur."""
+    return str(uuid.uuid4())[:8]  # Kısa span ID için ilk 8 karakter
+
+def get_trace_context():
+    """Mevcut trace context'i döndürür, yoksa yeni oluşturur."""
+    if not hasattr(_trace_context, 'trace_id'):
+        _trace_context.trace_id = _generate_trace_id()
+        _trace_context.span_id = _generate_span_id()
+        _trace_context.start_time = time.time()
+        _trace_context.spans = []  # (span_id, parent_span_id, operation_name, start_time, end_time)
+    return _trace_context
+
+def start_span(operation_name, parent_span_id=None):
+    """Yeni bir span başlatır ve span ID'ini döndürür."""
+    ctx = get_trace_context()
+    span_id = _generate_span_id()
+    span_info = {
+        'span_id': span_id,
+        'parent_span_id': parent_span_id or ctx.span_id,
+        'operation_name': operation_name,
+        'start_time': time.time(),
+        'end_time': None
+    }
+    ctx.spans.append(span_info)
+    return span_id
+
+def end_span(span_id):
+    """Belirtilen span'i sonlandırır."""
+    ctx = get_trace_context()
+    for span in ctx.spans:
+        if span['span_id'] == span_id:
+            span['end_time'] = time.time()
+            break
+
+def get_current_span_id():
+    """Mevcut span ID'ini döndürür."""
+    ctx = get_trace_context()
+    return ctx.span_id if hasattr(ctx, 'span_id') else None
+
+def get_trace_id():
+    """Mevcut trace ID'ini döndürür."""
+    ctx = get_trace_context()
+    return ctx.trace_id if hasattr(ctx, 'trace_id') else None
+
+def get_traces():
+    """Tüm trace bilgilerini döndürür."""
+    ctx = get_trace_context()
+    return {
+        'trace_id': getattr(ctx, 'trace_id', None),
+        'spans': getattr(ctx, 'spans', [])
+    }
+
+def reset_trace_context():
+    """Trace context'ini sıfırlar (yeni bir trace için)."""
+    if hasattr(_trace_context, 'trace_id'):
+        delattr(_trace_context, 'trace_id')
+    if hasattr(_trace_context, 'span_id'):
+        delattr(_trace_context, 'span_id')
+    if hasattr(_trace_context, 'start_time'):
+        delattr(_trace_context, 'start_time')
+    if hasattr(_trace_context, 'spans'):
+        delattr(_trace_context, 'spans')
 
 def _anahtar_esittir(m: "re.Match") -> str:
     # ZATEN MASKELI ISE DOKUNMA. Neden sart: deger sinifi `]` karakterini
@@ -184,3 +274,53 @@ def maskele_istisna(e: BaseException) -> str:
     if not metin.strip():
         return type(e).__name__
     return metin
+
+
+def json_log(mesaj: str, **kwargs) -> None:
+    """Güvenli JSON log üretir - auto_process.log'a yazar, analiz edilebilir.
+    
+    KULLANIM:
+        json_log("YouTube altyazı atlandı", 
+                project=ad, 
+                baslik=baslik, 
+                missing_file=expected_filename)
+    """
+    import time
+    from gizli_maskele import maskele, get_trace_id, get_current_span_id
+    
+    # Maskeleme uygulanacak tüm string değerleri işle
+    masked_kwargs = {
+        k: maskele(str(v)) if isinstance(v, str) else v 
+        for k, v in kwargs.items()
+    }
+    
+    log_entry = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "level": "INFO",
+        "message": mesaj,
+        **masked_kwargs
+    }
+    
+    # Trace context bilgilerini ekle (varsa)
+    trace_id = get_trace_id()
+    span_id = get_current_span_id()
+    if trace_id:
+        log_entry["trace_id"] = trace_id
+    if span_id:
+        log_entry["span_id"] = span_id
+    
+    # Mevcut auto_process.log formatına uyum sağlayacak şekilde yaz
+    # (JSON tek satır, mevcut log parsers'ı bozmadan)
+    log_json = "{"
+    log_json += ", ".join(f'"{k}": {json.dumps(v) if not isinstance(v, str) else f'"{v}"'}'
+                         for k, v in log_entry.items())
+    log_json += "}"
+    
+    print(log_json)  # stdout'a da yaz (mevcut _log davranışı)
+    try:
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(log_json + "\n")
+    except OSError:
+        pass  # Log yazılamazsa otomasyonu durdurma (mevcut davranış)
+
+

@@ -1,0 +1,12 @@
+{
+  "epk_package": "famous-music-studio-epk.zip",
+  "contents": [
+    "bio.md",
+    "bio.json",
+    "photos_README.md",
+    "music_assets_README.md",
+    "booking.md"
+  ],
+  "note": "Add actual photos and music files before distributing",
+  "generated": "2026-10-20T15:09:41.877455"
+}

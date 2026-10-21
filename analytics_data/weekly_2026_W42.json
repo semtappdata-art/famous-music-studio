@@ -1,0 +1,68 @@
+{
+  "week_start": "2026-10-19T00:00:00.617604",
+  "week_end": "2026-10-25T23:59:59.617604",
+  "total_videos": 4,
+  "total_views": 60000,
+  "total_watch_time_hours": 3008.3,
+  "avg_ctr": 6.2,
+  "avg_avd": 58.5,
+  "total_subscribers_gained": 180,
+  "total_likes": 4800,
+  "total_comments": 340,
+  "total_shares": 480,
+  "new_subscribers_per_video": 45.0,
+  "ctr_trend": "stable",
+  "avd_trend": "stable",
+  "top_3_videos": [
+    {
+      "video_id": "",
+      "title": "Gece Sürüşünde Hasret",
+      "views": 15000,
+      "ctr": 6.2,
+      "avd": 58.5
+    },
+    {
+      "video_id": "",
+      "title": "90'lar Nostalji Rooftop",
+      "views": 15000,
+      "ctr": 6.2,
+      "avd": 58.5
+    },
+    {
+      "video_id": "",
+      "title": "Gece Sürüşü Bridge",
+      "views": 15000,
+      "ctr": 6.2,
+      "avd": 58.5
+    }
+  ],
+  "bottom_3_videos": [
+    {
+      "video_id": "",
+      "title": "90'lar Nostalji Rooftop",
+      "views": 15000,
+      "ctr": 6.2,
+      "avd": 58.5
+    },
+    {
+      "video_id": "",
+      "title": "Gece Sürüşü Bridge",
+      "views": 15000,
+      "ctr": 6.2,
+      "avd": 58.5
+    },
+    {
+      "video_id": "",
+      "title": "Gün Doğumu Umudu",
+      "views": 15000,
+      "ctr": 6.2,
+      "avd": 58.5
+    }
+  ],
+  "ab_test_results": [],
+  "cross_promo_clicks": 0,
+  "cross_promo_conversions": 0,
+  "shorts_views": 60000,
+  "shorts_avg_watch_time": 58.5,
+  "shorts_swipe_away_rate": 0.0
+}

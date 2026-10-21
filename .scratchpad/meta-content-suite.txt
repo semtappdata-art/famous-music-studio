@@ -1,0 +1,14 @@
+uid=12_0 RootWebArea "Meta Business Suite" url="https://business.facebook.com/security/twofactor/reauth/?twofac_next=https%3A%2F%2Fbusiness.facebook.com%2Fcontent_management&type=avoid_bypass&app_id=0&save_device=0"
+  uid=12_1 generic
+    uid=12_2 dialog "2FA Entry" modal
+      uid=12_3 image "Meta logosu"
+      uid=12_4 heading "2FA Entry" level="2"
+      uid=12_5 StaticText "Ozgur Unlu • Facebook"
+      uid=12_6 heading "Bunun sen olduğunu bir kodla onayla" level="2"
+      uid=12_7 StaticText "+**********01 numaralı telefona gönderdiğimiz kodu gir."
+      uid=12_8 textbox "Kod" focusable focused
+      uid=12_9 StaticText "Kod"
+      uid=12_10 StaticText "2:49 saniye sonra yeni bir kod gönderebiliriz"
+      uid=12_11 button "Başka bir yol dene"
+      uid=12_12 button "Devam" disableable disabled
+  uid=12_13 link "Çeviriler" url="https://www.facebook.com/translations/?ref=trans_nub"

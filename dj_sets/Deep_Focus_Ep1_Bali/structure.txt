@@ -1,0 +1,17 @@
+# Deep Focus Ep01 - Bali Structure
+# Total Duration: ~28:00 (1680 seconds)
+
+00:00 - 04:40 | Dawn Awakening | 116 BPM | G
+04:40 - 09:20 | Morning Mist | 117 BPM | D
+09:20 - 14:00 | Gamelan Whispers | 118 BPM | Am
+14:00 - 18:40 | Terrace Dreams | 119 BPM | Em
+18:40 - 23:20 | Rice Field Breeze | 118 BPM | C
+23:20 - 28:00 | Eternal Calm | 116 BPM | G
+
+# Section markers for visual changes
+# 00:00-04:40: VERSE (dawn, zoom 1.00)
+# 04:40-09:20: CHORUS (mist, zoom 1.02)
+# 09:20-14:00: BRIDGE (gamelan, zoom 0.98)
+# 14:00-18:40: CHORUS (terrace, zoom 1.05)
+# 18:40-23:20: VERSE (breeze, zoom 1.02)
+# 23:20-28:00: OUTRO (calm, zoom 1.00)

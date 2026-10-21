@@ -71,6 +71,16 @@ import time
 
 import requests
 
+try:
+    from tools.call_guard import guarded_call
+    from tools.config_loader import get_secret as _get_secret
+except Exception:  # araç yoksa davranış değişmez
+    def guarded_call(fn=None, **_k):
+        return fn if callable(fn) else (lambda f: f)
+
+    def _get_secret(key, env_names=None, legacy_json=None, legacy_key=None, default=None):
+        return default
+
 _CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "notify_config.json")
 
 # ntfy'nin JSON publish uç noktası. Konu adı URL'de DEĞİL, gövdede gidiyor —
@@ -114,7 +124,10 @@ def _yapilandirma() -> dict:
 
 
 def _topic() -> str | None:
-    return _yapilandirma().get("ntfy_topic") or None
+    try:
+        return _get_secret("NOTIFY.ntfy_topic", "NTFY_TOPIC", _CONFIG_PATH, "ntfy_topic") or None
+    except Exception:
+        return _yapilandirma().get("ntfy_topic") or None
 
 
 def _telegram_sirlari() -> dict:
@@ -158,7 +171,13 @@ def _telegram_ayari() -> tuple[str | None, str | None, str | None]:
     bunu sessizce yapardı; bu yüzden kapı KODDA ve testle kilitli
     (tests/test_notify_telegram.py). Kapı kapandığında Telegram'a HİÇBİR istek
     ATILMAZ — ntfy yedeği varsa bildirim oradan gider, yoksa False döner."""
-    ham = _yapilandirma().get("telegram_chat_id")
+    ham = None
+    try:
+        ham = _get_secret("NOTIFY.telegram_chat_id", "NOTIFY_TELEGRAM_CHAT_ID", _CONFIG_PATH, "telegram_chat_id")
+    except Exception:
+        ham = None
+    if ham is None:
+        ham = _yapilandirma().get("telegram_chat_id")
     if ham is None or not str(ham).strip():
         return None, None, None
     bildirim_chat = str(ham).strip()
@@ -185,6 +204,70 @@ def is_configured() -> bool:
     "kurulu" diyen ama hiçbir şey gönderemeyen bir kanal bildirilmiş olurdu."""
     token, chat, _engel = _telegram_ayari()
     return bool(token and chat) or bool(_topic())
+
+
+def telegram_saglik() -> dict:
+    """Salt-okunur Telegram bildirim tanisi — MESAJ GONDERMEZ.
+
+    Sadece `getMe` (token gecerli mi) + `getUpdates` (bot hangi chat'leri
+    biliyor) cagirir. Kalici 400 teshisi icin yazildi
+    (2026-10-08): operator bota DM'de START vermemisse ya da id yanlissa
+    sendMessage kalici 400 doner ve tum uyarilar cop olur.
+
+    1. Kim cagiriyor? operator, manuel: python -c "import notify; print(notify.telegram_saglik())".
+    2. Hangi gorevden? HICBIRI — saatlik hatta bagli degil, kota/log/damgaya dokunmaz.
+    3. Calismadigini nasil anlariz? tests/test_notify_telegram_saglik.py.
+    """
+    token, chat, engel = _telegram_ayari()
+    if engel or not token:
+        return {"durum": "yapilandirilmamis", "engel": engel or "token-yok"}
+    try:
+        me = requests.get("%s/bot%s/getMe" % (_TELEGRAM_API, token), timeout=(5, 10))
+        me_j = me.json()
+    except Exception as e:  # noqa: BLE001 — ag hatasi, token maskeli dondur
+        return {"durum": "ag-hatasi", "detay": _token_maskele(str(e)[:150], token)}
+    if not me_j.get("ok"):
+        return {"durum": "token-gecersiz", "detay": str(me_j.get("description", ""))[:150]}
+    bot = (me_j.get("result") or {}).get("username", "?")
+    # Birincil kanit: getChat (salt-okunur, mesaj YOK). Basariliysa sohbet VAR.
+    try:
+        gc = requests.get(
+            "%s/bot%s/getChat" % (_TELEGRAM_API, token),
+            params={"chat_id": chat}, timeout=(5, 10))
+        gc_j = gc.json()
+    except Exception as e:  # noqa: BLE001
+        return {"durum": "ag-hatasi", "bot": bot, "detay": _token_maskele(str(e)[:150], token)}
+    if gc_j.get("ok"):
+        bilgi = gc_j.get("result") or {}
+        return {"durum": "tamam", "bot": bot, "chat": str(chat),
+                "chat_tipi": bilgi.get("type", "?"),
+                "chat_adi": str(bilgi.get("title") or bilgi.get("username") or "?")[:60]}
+    # getChat basarisiz — sebep ayirimi (400 = sohbet yok / yanlis id)
+    aciklama = str((gc_j.get("description") or ""))[:150]
+    try:
+        up = requests.get("%s/bot%s/getUpdates" % (_TELEGRAM_API, token), timeout=(5, 10))
+        up_j = up.json()
+    except Exception:  # noqa: BLE001
+        up_j = {}
+    bilinen = {}
+    if up_j.get("ok"):
+        for u in up_j.get("result", []):
+            for anahtar in ("message", "channel_post", "my_chat_member"):
+                c = (u.get(anahtar) or {}).get("chat", {})
+                if c.get("id") is not None:
+                    bilinen[str(c["id"])] = c.get("type", "?")
+    # getChat basarisizdi (basarili olsaydi yukarida donmustuk) — getUpdates
+    # sadece tamamlayici bilgi; hukum getChat'in aciklamasina gore.
+    return {
+        "durum": "chat-bilinmiyor",
+        "bot": bot,
+        "chat": str(chat),
+        "api_aciklama": aciklama,
+        "bilinen_chatler": sorted(bilinen),
+        "cozum": "Telegram'da @%s bota DM'den START ver (herhangi bir mesaj); "
+                 "sonra bunu tekrar calistir. Hala bulunmuyorsa id yanlis: "
+                 "@userinfobot ile dogru id'yi alip notify_config.json'a yaz." % bot,
+    }
 
 
 def uyar_bir_kez(anahtar: str, mesaj: str) -> None:
@@ -345,6 +428,7 @@ def _telegram_yanit(resp, bot_token: str) -> bool:
     return False
 
 
+@guarded_call
 def send(title: str, message: str) -> bool:
     """Telefona bir bildirim gönderir. Başlık da mesaj da TÜRKÇE olabilir.
 
@@ -511,6 +595,7 @@ def _yalniz_telegram(ne: str) -> tuple:
     return tg_token, tg_chat
 
 
+@guarded_call
 def send_text(message: str) -> bool:
     """Başlıksız düz metin — YALNIZ Telegram (`sendMessage`, `parse_mode` yok).
 
@@ -523,6 +608,7 @@ def send_text(message: str) -> bool:
     return _telegram_gonder(token, chat, "", message)
 
 
+@guarded_call
 def send_photo(path: str, caption: str) -> bool:
     """Fotoğraf + kısa açıklama — YALNIZ Telegram (`sendPhoto`, `parse_mode` yok).
 

@@ -84,7 +84,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from social_text import build_caption, build_youtube_comment, resolve_language
-from tiktok_upload import _find_cover, _load_meta
+from youtube_upload import _find_cover
+from youtube_playlists import _load_meta
 
 # NEDEN modülü İÇE AKTARIYORUZ, kuralları KOPYALAMIYORUZ: telif/kopya
 # kurallarının ikinci bir kopyası, birinci kopya güncellendiğinde sessizce

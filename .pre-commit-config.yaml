@@ -1,0 +1,27 @@
+repos:
+  # ---- Syntax & Import Check ----
+  - repo: local
+    hooks:
+      - id: python-syntax-check
+        name: Python syntax check (py_compile)
+        entry: python -m py_compile
+        language: system
+        files: \.py$
+        types: [python]
+
+  # ---- Lint (ruff) ----
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.6.6
+    hooks:
+      - id: ruff
+        args: [--fix]          # istiyorsanız otomatik düzeltme
+        exclude: ^tests/|^docs/
+
+  # ---- Trailing Whitespace & EOF ----
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files

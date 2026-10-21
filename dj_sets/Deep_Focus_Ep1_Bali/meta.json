@@ -1,0 +1,42 @@
+{
+  "title": "DJ Famous @ Rice Terraces, Ubud for Deep Focus Sessions",
+  "series": "deep_focus",
+  "episode": 1,
+  "theme": "dj",
+  "set_style": "organic_house",
+  "marquee_text": "Deep Focus Sessions • Ep01 • #DJ Famous",
+  "art_query": "bali rice terraces tegallalang morning mist cinematic organic",
+  "location": {
+    "city": "Ubud",
+    "country": "Indonesia",
+    "landmark": "Rice Terraces",
+    "gps": "-8.4095,115.1889",
+    "story": "Morning mist over Tegallalang, gamelan whispers in the wind",
+    "story_tr": "Tegallalang'ın sabah püskülü, gamelan fısıltısı rüzgarda. Doğanın kalbi atar, melodi nefes alır."
+  },
+  "playlist_id": "PL_DeepFocus",
+  "tags_base": ["organic house", "deep house", "deep focus", "dj famous", "nature", "bali", "morning"],
+  "hashtags": "#DeepFocus #OrganicHouse #DJFamous #Bali",
+  "seo": {
+    "primary_keyword": "organic house nature set bali",
+    "secondary_keywords": ["deep house", "wellness music", "morning mix", "meditation"]
+  },
+  "cross_promo": {
+    "shorts_clips": ["hook_0-30s", "mist_transition", "outro_sunrise"],
+    "instagram_reel": "30s_vertical_hook",
+    "tiktok_draft": "60s_best_moment",
+    "bluesky_thread": "track_by_track_breakdown"
+  },
+  "yayin_tarihi": "2026-11-07T10:00:00+03:00",
+  "end_card_text": "Sıradaki mekan: Tulum Cenotes",
+  "end_card_text_tr": "Sıradaki mekan: Tulum Cenotes",
+  "tracklist": [
+    {"timestamp": "00:00", "title": "Dawn Awakening", "artist": "DJ Famous", "start_sec": 0, "end_sec": 280, "bpm": 116, "key": "G"},
+    {"timestamp": "04:40", "title": "Morning Mist", "artist": "DJ Famous", "start_sec": 280, "end_sec": 560, "bpm": 117, "key": "D"},
+    {"timestamp": "09:20", "title": "Gamelan Whispers", "artist": "DJ Famous", "start_sec": 560, "end_sec": 840, "bpm": 118, "key": "Am"},
+    {"timestamp": "14:00", "title": "Terrace Dreams", "artist": "DJ Famous", "start_sec": 840, "end_sec": 1120, "bpm": 119, "key": "Em"},
+    {"timestamp": "18:40", "title": "Rice Field Breeze", "artist": "DJ Famous", "start_sec": 1120, "end_sec": 1400, "bpm": 118, "key": "C"},
+    {"timestamp": "23:20", "title": "Eternal Calm", "artist": "DJ Famous", "start_sec": 1400, "end_sec": 1680, "bpm": 116, "key": "G"}
+  ],
+  "tracklist_updated_at": "2026-10-19T00:00:00+03:00"
+}

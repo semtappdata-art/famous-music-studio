@@ -1,0 +1,12 @@
+uid=11_0 RootWebArea "Creator Studio" url="https://creatorstudio.facebook.com/install/"
+  uid=11_1 main
+    uid=11_2 image "Creator Studio'yu indirmek için QR kodunu tara" url="https://www.facebook.com/qr/show/code/?margin=4&pixel_size=6&data=https%3A%2F%2Fcreatorstudio.facebook.com%2Finstall&correction_level=H&hash=AQW6nneSM6z-6cshYeD3_yFq_wE"
+    uid=11_3 image "Creator Studio" url="https://static.xx.fbcdn.net/rsrc.php/yW/r/-WeXJUt3FVi.webp"
+    uid=11_4 StaticText "Facebook'ta büyümene, para kazanmana ve hayranlarına daha hızlı yanıt vermene yardımcı olacak yapay zeka destekli bir uygulama"
+    uid=11_5 link "App Store'dan indir" url="https://l.facebook.com/l.php?u=https%3A%2F%2Fapps.apple.com%2Fapp%2Fid6761864604&h=AUBt2jOLjKxSKyGlHMlSovwLX71dp31zk5Q2nxFrzA942R0UC962MvFBvDfhzjEvzmkrkxs3QXGZxiQhYdHntrsVgE76EonSoxD4udLc-SEaciUekgvM47fj9rZVq5ee2Aga7g"
+      uid=11_6 image "App Store'dan indir" url="https://static.xx.fbcdn.net/rsrc.php/yt/r/ixDHpt6bFxa.webp"
+    uid=11_7 link "Google Play'den indir" url="https://l.facebook.com/l.php?u=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.facebook.pronest%26fbclid%3DIwZXh0bgNhZW0CMTEAcGRvZgRicmlkETFWMVV3UUhteExpQXA2ZlBwc3J0YwZhcHBfaWQBMAABHm00kI0rqKNLJCAaOyZ0n8fXZe4BONNA1Dh0zkZH_3eymo8nqKSCoJCFjXER_aem_0yhW6AttxOsWI2C6gnptRg&h=AUANPsV5LdDEv-gShbpqjsREHBT3K9867ckHzhLITrMdIy88HOynVjrcGWDdWW0CFw5l_Dvdj_Ik18olJK7-2IkZUMfAkDc_Hnvlz-YnnzfYz1DnUmH1YI1B7XSeSPpgEn9UBg"
+      uid=11_8 image "Google Play'den indir" url="https://static.xx.fbcdn.net/rsrc.php/yt/r/6Ivm662zIDr.webp"
+    uid=11_9 StaticText "İçerik Stüdyosu yakında Amerika Birleşik Devletleri ve Kanada dışında kullanılabilecek. "
+    uid=11_10 link "Bekleme listesine katıl" url="https://www.facebook.com/creator_studio/welcome/?source=install"
+      uid=11_11 StaticText "Bekleme listesine katıl"

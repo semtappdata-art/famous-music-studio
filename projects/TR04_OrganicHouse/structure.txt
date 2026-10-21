@@ -1,0 +1,8 @@
+# Structure for Gün Doğumu Umudu
+
+00:00 - Dawn Awakening | 116 BPM | G
+04:40 - Morning Mist | 117 BPM | D
+09:20 - Gamelan Whispers | 118 BPM | Am
+14:00 - Terrace Dreams | 119 BPM | Em
+18:40 - Rice Field Breeze | 118 BPM | C
+23:20 - Eternal Calm | 116 BPM | G
