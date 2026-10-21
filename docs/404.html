@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-i18n-lang="true">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,16 +32,17 @@
   .alt { margin-top: 34px; font-size: .85rem; color: #6a6a78; }
   .alt a { color: #e94560; }
 </style>
+  <script src="i18n.js" defer></script>
 </head>
 <body>
   <div class="kod">4<span>0</span>4</div>
-  <h1>Bu sayfa bulunamadı</h1>
-  <p>Aradığınız sayfa taşınmış ya da hiç var olmamış olabilir.
+  <h1 data-i18n="h404.h1">Bu sayfa bulunamadı</h1>
+  <p data-i18n="h404.p">Aradığınız sayfa taşınmış ya da hiç var olmamış olabilir.
      Aşağıdan devam edebilirsiniz.</p>
   <div>
-    <a class="btn" href="./">Ana sayfa</a>
-    <a class="btn ghost" href="https://youtube.com/@Famous_musics_studio">YouTube kanalı</a>
+    <a class="btn" href="./"><span data-i18n="h404.ana">Ana sayfa</span></a>
+    <a class="btn ghost" href="https://youtube.com/@Famous_musics_studio"><span data-i18n="h404.youtube">YouTube kanalı</span></a>
   </div>
-  <p class="alt">Famous Music Studio · <a href="privacy.html">Gizlilik</a> · <a href="epk/bio.html">Press Kit</a></p>
+  <p class="alt">Famous Music Studio · <a href="privacy.html"><span data-i18n="h404.gizlilik">Gizlilik</span></a> · <a href="epk/bio.html"><span data-i18n="h404.epk">Press Kit</span></a></p>
 </body>
 </html>
