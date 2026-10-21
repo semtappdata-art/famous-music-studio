@@ -234,6 +234,26 @@ def video_butun_mu(dosya: str) -> bool:
 PARCALI_SONEK = ".parcali"
 
 
+def find_intro_cover(project_dir: str, width: int, height: int) -> str | None:
+    """Açılış intro'su için kapak dosyası (oranına göre) — yoksa None.
+
+    NEDEN: izleyicinin kaybı büyük ölçüde videonun ilk %1-%3'ünde
+    (≈2.-7. saniye) oluyor. Açılışta kapak intro'su + baştaki sessizliğin
+    kırpılması bu boşluğu kapatır.
+
+    ORAN KURALI: dikey (9:16) çıktı için `cover_vertical.png`, yatay (16:9)
+    için `cover.png` kullanılır. İkisi de yoksa intro ÇİZİLMEZ.
+    """
+    dikey = height > width
+    adaylar = (("cover_vertical.png", "cover.png") if dikey
+                else ("cover.png", "cover_vertical.png"))
+    for ad in adaylar:
+        yol = os.path.join(project_dir, ad)
+        if os.path.isfile(yol):
+            return yol
+    return None
+
+
 def find_cover(project_dir: str) -> str | None:
     for name in COVER_NAMES:
         path = os.path.join(project_dir, name)

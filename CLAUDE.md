@@ -47,6 +47,10 @@ audio.wav → generate_cover.py → validate_project.py → render.py → auto_p
 | `ffmpeg_utils.limiter_filtresi()` | TP limiter zinciri | `render.render_project` |
 | `render.limiter_gerekli()` | Limiter kararı (kapı değil) | `render.render_project` |
 | `render.video_butun_mu()` | Render bütünlüğü (0 bayt + ffprobe) | `auto_process._is_rendered` |
+| `ffmpeg_utils.bastaki_sessizlik()` | Baştaki sessizlik ölçümü (PAY + MAKS) | `render.render_project` |
+| `render.find_intro_cover()` | Açılış kapak seçimi (oran) | `render.render_project` |
+| `youtube_upload.upload_clip()` | Kesit yükleme (ertelenmiş golden hour) | `dj_clips.kesit_yayinla` |
+| `dj_clips.kesit_yayinla()` | Kesit yayını + tekrar engeli | `dj_clips.supur` |
 | `_drain_golden_hour_queue()` | Tamamlama süpürgesi | `auto_process.main()` finally |
 | `gorev_sarmalayici.calistir()` | Görev wrapper (log, nabız, maske) | 3 zamanlayıcı görevi |
 

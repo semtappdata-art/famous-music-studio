@@ -77,6 +77,9 @@ from audio_highlight import find_highlights
 
 KLIP_SURESI_SN = 30.0        # her kesitin uzunluğu
 MIN_ARA_SN = 60.0             # iki kesit arası en az boşluk
+# KESIT ERTELEME (2026-10-21): kesit, setin kendi Shorts'undan SONRA
+# yayinlanir. Hacim kısıtı (haftada 1 kesit) korunur.
+KESIT_ERTELEME_GUN = 3
 EN_YUKSEK_ATLA_SN = 20.0      # set'in kendi Shorts'unun kullandigi pencere
 KISA_VIDEOLAR = ("shorts_9x16",)
 
@@ -281,6 +284,100 @@ def _clip_state_guncelle(project_dir: str, bilgi: dict) -> None:
     state.update(bilgi)
     state_io._atomik_yaz(yol, state)
 
+
+# =============================================================================
+# İKİNCİ DALGA YAYINI (2026-10-21)
+# =============================================================================
+
+def kesit_sec(project_dir: str) -> dict | None:
+    """Yayınlanacak kesidi seçer: EN YÜKSEK ENERJİLİ olan (enerji 1 = en yüksek).
+
+    NEDEN: setin kendi Shorts'u zaten en enerjili pencereyi kullanıyor;
+    kesit onun KOPYASI olmamalı. `enerji` alanı 1'den başlayarak artar.
+    """
+    kayitlar = _state_oku(project_dir).get("dj_clips") or []
+    if not kayitlar:
+        return None
+    return min(kayitlar, key=lambda k: (k.get("enerji", 999), k.get("bas", 0.0)))
+
+
+def kesit_yayinla(project_dir: str, kesit: dict | None, log=print) -> bool:
+    """Kesidi YouTube'a yükler ve TEKRAR GÖNDERIMI ENGELLEYEN state'i yazar.
+
+    NEDEN state burada yazılıyor: `upload_clip` bilerek state'e YAZMAZ
+    (docstring'inde yazıyor). Yazan taraf TEK olmalı — iki taraf da yazarsa
+    ikinci koşu aynı kesidi ikinci kez yükler.
+
+    Yazılan anahtarlar AYRI bir aile:
+      youtube_clip_video_id / youtube_clip_dosya /
+      youtube_clip_publish_at / youtube_clip_uploaded_at
+    Setin kendi Shorts kaydı (youtube_shorts_video_id) ve üretim kaydı
+    (dj_clips) EZİLMEZ — süpürgenin okuduğu alanlar bunlar.
+    """
+    if not kesit:
+        return False
+    state = _state_oku(project_dir)
+    if state.get("youtube_clip_video_id"):
+        log("  Kesit zaten yayınlanmış: %s" % state.get("youtube_clip_dosya"))
+        return False
+
+    # DİNAMİK import: testler `youtube_upload.upload_clip`i monkeypatch'liyor.
+    from youtube_upload import upload_clip
+
+    video_id, publish_at = upload_clip(
+        project_dir,
+        kesit.get("dosya"),
+        state.get("youtube_video_id"),
+        float(kesit.get("bas") or 0.0),
+        KESIT_ERTELEME_GUN,
+        "public",
+    )
+    _clip_state_guncelle(project_dir, {
+        "youtube_clip_video_id": video_id,
+        "youtube_clip_dosya": kesit.get("dosya"),
+        "youtube_clip_publish_at": publish_at,
+        "youtube_clip_uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
+    log("  Kesit yayınlandı: %s (%s)" % (video_id, kesit.get("dosya")))
+    return True
+
+
+def supur(klasor: str, log=print) -> dict:
+    """Klasördeki DJ setlerinde bekleyen KESİTLERİ yayınlar.
+
+    DÖNER: {"yayinlanan": int, "atlanan": [{"proje":..., "sebep":...}]}
+
+    İKİ KAPI BİRBİRİNDEN BAĞIMSIZ: küresel tempo kapısı açık olsa bile
+    (yayın 30 gün önce) SET KAPI tutmalı — aynı kesit ikinci kez gitmez.
+    """
+    sonuc = {"yayinlanan": 0, "atlanan": []}
+    if not os.path.isdir(klasor):
+        return sonuc
+    for ad in sorted(os.listdir(klasor)):
+        proje = os.path.join(klasor, ad)
+        if not os.path.isdir(proje):
+            continue
+        state = _state_oku(proje)
+        if state.get("youtube_clip_video_id"):
+            sonuc["atlanan"].append({
+                "proje": ad,
+                "sebep": "Kesit zaten yayınlanmış (%s)" % state.get("youtube_clip_dosya"),
+            })
+            continue
+        if not state.get("youtube_video_id"):
+            sonuc["atlanan"].append({"proje": ad, "sebep": "Set henüz yüklenmemiş"})
+            continue
+        kesit = kesit_sec(proje)
+        if not kesit:
+            sonuc["atlanan"].append({"proje": ad, "sebep": "Üretilmiş kesit yok"})
+            continue
+        try:
+            if kesit_yayinla(proje, kesit, log=log):
+                sonuc["yayinlanan"] += 1
+        except Exception as e:
+            log("  Kesit yayın HATASI: %s" % str(e)[:160])
+            sonuc["atlanan"].append({"proje": ad, "sebep": "Hata: %s" % str(e)[:120]})
+    return sonuc
 
 # --- ana akis --------------------------------------------------------------
 

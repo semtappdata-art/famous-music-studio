@@ -27,7 +27,7 @@ import os
 import subprocess
 import sys
 import time
-from datetime import timezone
+from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # upload/ dizini için
@@ -416,6 +416,101 @@ def build_dj_set_snippet(meta: dict) -> dict:
     }
 
 
+# =============================================================================
+# KESİT (ikinci dalga) YÜKLEME UCU (2026-10-21)
+# =============================================================================
+
+def _dakika_damgasi(saniye: float) -> str:
+    """Saniyeyi "M:SS" biçimine çevirir (kesit başlığı/acıklaması için).
+
+    KURAL: saniye KESİLİR (yuvarlanmaz) — 59.9 -> "0:59", 332.53 -> "5:32".
+    Negatif/bozuk damga "0:00" olur (asla "-1:-5" basılmaz).
+    """
+    try:
+        sn = float(saniye)
+    except (TypeError, ValueError):
+        sn = 0.0
+    if sn < 0:
+        sn = 0.0
+    toplam = int(sn)
+    return "%d:%02d" % (toplam // 60, toplam % 60)
+
+
+def build_clip_snippet(meta: dict, full_video_id: str | None = None,
+                       saniye: float = 0.0) -> dict:
+    """Kesit (set içinden ikinci dalga) için YouTube snippet'i.
+
+    NEDEN AYRI FONKSİYON: Kesit, setin KENDİ Shorts'uyla aynı başlığı
+    alırsa kanalda neredeyse aynı iki video aynı adla durur — bu, kanalın
+    en büyük riski olan "inauthentic content" politikasının tarifi. Farkı
+    sağlayan şey DAKİNA DAMGASI ("5:32") — yorum değil, garanti.
+
+    video_id yoksa (set henüz yüklenmedi) KIRIK link basılmaz.
+    """
+    baslik = meta.get("title", "DJ Set")
+    damga = _dakika_damgasi(saniye)
+    lang = resolve_language(meta)
+
+    # İlk satır: küratörlük cümlesi + damga (+ tam set linki)
+    ilk = "A different moment from the same set — %s" % damga
+    if full_video_id:
+        ilk += " · https://youtu.be/%s" % full_video_id
+    description = ilk
+    if lang == "en":
+        description += ("\n\n🎧 The full set is on the channel. "
+                        "Which moment would you keep?")
+    else:
+        description += ("\n\n🎧 Setin tamamı kanalda. "
+                        "Bu anlardan hangisini seçerdin?")
+    description += social_text.aciklama_abone_bloku(lang)
+    if lang == "en":
+        description += ("\n\n🤖 AI DISCLOSURE:\n"
+                        "This Short contains AI-generated music and visuals.\n")
+    else:
+        description += ("\n\n🤖 AI BEYANI:\n"
+                        "Bu Short AI destekli müzik ve görseller içerir.\n")
+
+    theme_key = meta.get("theme", config.DEFAULT_THEME)
+    theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
+    genre_tags = [theme["label"]] + theme.get("related", [])
+    discovery = (config.DISCOVERY_HASHTAGS_EN if lang == "en"
+                 else config.DISCOVERY_HASHTAGS)
+    tags = genre_tags + [config.STATIC_LABEL_TEXT, "Shorts"] + [
+        h.lstrip("#") for h in discovery]
+
+    return {
+        "title": "%s %s #Shorts" % (baslik, damga),
+        "description": description,
+        "tags": tags,
+        "categoryId": "10",  # Music
+    }
+
+
+def _golden_publish_at(gun: int) -> str:
+    """`gun` gün SONRAKİ golden-hour penceresine zamanlama damgası (ISO, Z).
+
+    TUZAK (2026-10-21): `config.next_golden_publish_time` "verilen an ZATEN
+    golden-hour penceresindeyse None" döner ("hemen yayınla"). O None
+    "zamanlama yok"a çevrilirse kesit BUGÜN yayınlanır — 3 günlük
+    ertelemenin tamamen kaybolması, hattın var oluş sebebi olan hacim
+    kısıtının sessizce delinmesi. Burada None ASLA dönmez: hedef günün
+    penceresi geçmişse SONRAKİ güne kaydırılır.
+    """
+    simdi = datetime.now(config.TR_TZ)
+    hedef = simdi + timedelta(days=int(gun))
+    adaylar = []
+    for gun_offset in range(0, 4):
+        gun_basi = (hedef + timedelta(days=gun_offset)).replace(
+            minute=0, second=0, microsecond=0)
+        for bas, _son in config.GOLDEN_HOURS:
+            adaylar.append(gun_basi.replace(hour=int(bas)))
+    uygun = [a for a in adaylar if a >= hedef]
+    if not uygun:
+        # Teorik olarak imkânsız; yine de None DÖNME.
+        uygun = [hedef.replace(hour=int(config.GOLDEN_HOURS[0][0]))]
+    secilen = min(uygun)
+    return secilen.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
 def build_shorts_snippet(meta: dict, full_video_id: str | None = None) -> dict:
     """Shorts (shorts_9x16.mp4, 45sn highlight) için ayrı bir snippet — uzun format
     künyesi yerine TikTok/Instagram'la AYNI kısa-format caption'ı kullanıyor
@@ -731,6 +826,36 @@ def upload_short(project_dir: str, privacy: str, full_video_id: str | None = Non
     })
     return video_id
 
+
+def upload_clip(project_dir: str, clip_name: str, full_video_id: str | None = None,
+                bas_sn: float = 0.0, gun_ertele: int = 0,
+                privacy: str = "public") -> tuple[str, str | None]:
+    """Kesit klibini (clip_NN.mp4) YouTube'a yükler — ERTELENMIŞ golden hour'a.
+
+    DÖNER: (video_id, publish_at_iso)
+
+    NEDEN `gun_ertele`: kesit, setin KENDİ Shorts'undan SONRA yayınlanır.
+    Bu bir "güzel olur" değil, HAFTALIK HACİM KISITININ KENDİSİ — erteleme
+    kaybolursa kanalda aynı anda birden fazla kesit düşer.
+
+    NEDEN state'e YAZMAZ: tekrar gönderimi engelleyen anahtarları yazan
+    taraf `dj_clips.kesit_yayinla`dır. Burada yazılırsa iki taraf da yazar
+    ve ikinci koşu aynı kesidi tekrar yükleyebilir.
+    """
+    video_path = os.path.join(project_dir, "output", clip_name)
+    if not os.path.isfile(video_path):
+        raise FileNotFoundError("Kesit dosyası yok: %s" % video_path)
+    meta = load_meta(project_dir)
+    snippet = build_clip_snippet(meta, full_video_id, bas_sn)
+
+    if gun_ertele:
+        publish_at = _golden_publish_at(gun_ertele)
+    else:
+        publish_at = _compute_publish_at(privacy, True)
+
+    video_id = _upload(video_path, snippet, privacy, publish_at=publish_at)
+    print("  tamam: https://youtube.com/shorts/%s" % video_id)
+    return video_id, publish_at
 
 def fix_thumbnail(project_dir: str) -> None:
     """Zaten yüklenmiş video(lar) için thumbnail'i (cover.jpg/cover_vertical.jpg)

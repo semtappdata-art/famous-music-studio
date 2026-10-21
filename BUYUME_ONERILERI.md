@@ -229,6 +229,23 @@ eklendi.
     yarım render diskte `youtube_16x9.mp4` adıyla kalmıyor.
   - Test: `tests/test_kurtarma_kurallari.py` (+10 kural)
 
+- **Madde 34 (2026-10-21) — KESİT YAYIN HATTI + AÇILIŞ ÖLÇÜMÜ:**
+  Eksik API listesi **20 → 7**'ye indi.
+  - `youtube_upload.build_clip_snippet()` — kesit başlığı **dakika damgasıyla**
+    ("5:32") setin kendi Shorts'undan **FARKLI** → "inauthentic content"
+    riski kapatılır. Video id yoksa **kırık link basılmaz**.
+  - `youtube_upload._dakika_damgasi()` — saniye → "M:SS" (kesme, negatif→0:00)
+  - `youtube_upload.upload_clip()` — kesiti **ertelenmiş golden hour**'a yükler
+  - `youtube_upload._golden_publish_at(gun)` — **None tuzağı** engellendi:
+    golden-hour içindeki bir an "zamanlama yok"a çevrilirse kesit BUGÜN
+    yayınlanır ve 3 günlük erteleme **tamamen** kaybolur.
+  - `dj_clips.kesit_sec()` / `kesit_yayinla()` / `supur()` — en enerjili
+    kesit seçimi, **tekrar gönderimi engelleyen** state (ayrı anahtar ailesi:
+    `youtube_clip_*`), iki kapının (küresel tempo + set) bağımsızlığı
+  - `ffmpeg_utils.bastaki_sessizlik()` — `INTRO_SESSIZLIK_PAY` (0.12 sn)
+    düşülür, `INTRO_SESSIZLIK_MAKS` (3 sn) tavanı; bozuk dosyada **0.0**
+  - `render.find_intro_cover()` — orana göre `cover.png` / `cover_vertical.png`
+
 - Detayli rehber: `site/DEPLOY.md`.
 
 ### Kural notları (29) — Topluluk

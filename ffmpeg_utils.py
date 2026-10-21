@@ -123,10 +123,11 @@ def bastaki_sessizlik(audio_path: str) -> float:
     izleyici ilk saniyelerde ses duymaz. Ölçüm, sessizliğin gerçekten
     BAŞTA olduğunu doğrular (ortadaki sessizlik sayılmaz).
     """
+    esik = getattr(config, "INTRO_SESSIZLIK_ESIGI", "-50dB")
     cmd = [
         "ffmpeg", "-hide_banner", "-nostats",
         "-i", audio_path,
-        "-af", "silencedetect=noise=-50dB:d=0.3",
+        "-af", "silencedetect=noise=%s:d=0.3" % esik,
         "-f", "null", "-",
     ]
     try:
@@ -144,7 +145,14 @@ def bastaki_sessizlik(audio_path: str) -> float:
     bit = _sayi_bul(cikti, r"silence_end:\s*([\d.]+)")
     if bit is None:
         return 0.0
-    return max(0.0, bit - bas)
+    olcum = max(0.0, bit - bas)
+    # PAY: ölçülen sessizliğin TAMAMINI kesmek riskli — nakaratın başını
+    # yutabilir. Kısa bir pay bırakılır (0.12 sn).
+    pay = float(getattr(config, "INTRO_SESSIZLIK_PAY", 0.12))
+    kirp = max(0.0, olcum - pay)
+    # MAKS: bozuk bir tespit şarkının nakaratını yutmasın.
+    maks = float(getattr(config, "INTRO_SESSIZLIK_MAKS", 3.0))
+    return min(kirp, maks)
 
 
 def _escape_drawtext(text: str) -> str:
