@@ -862,7 +862,7 @@ def tiktok_kit_hashtagleri(meta: dict) -> list:
     theme_key = meta.get("theme", config.DEFAULT_THEME)
     theme = config.THEMES.get(theme_key, config.THEMES[config.DEFAULT_THEME])
     kesif = (config.TEMA_KESIF_ETIKETLERI.get(theme_key)
-             or config.TEMA_KESIF_ETIKETLERI["_varsayilan"])
+             or config.TEMA_KESIF_ETIKETLERI.get("_varsayilan", []))
     return _etiket_seç(zorunlu + [hashtag(theme["label"])],
                        pick_subset(title, kesif, len(kesif), salt=17))
 

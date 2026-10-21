@@ -23,7 +23,7 @@ kararı, bkz. dj_sets/README.md):
     her proje için geçerli bir reminder).
   - Instagram: Meta'nın resmi 'is_ai_generated' API alanı doğrulanamadığı
     için (bkz. instagram_upload.py'deki not) caption'ın SONUNA
-    social_text.build_ai_disclosure_line() ile tek, göze az batan bir satır
+    social_text modulunun AI beyani yardimcisi ile tek, göze az batan bir satır
     ekleniyor — ana katalogda BU SATIR YOK, sadece DJ Famous'ta.
 """
 
@@ -442,13 +442,17 @@ def process_set(project_dir: str, privacy: str, schedule: bool) -> None:
     elif os.path.isfile(os.path.join(upload_dir, "instagram_token.json")):
         try:
             from instagram_upload import upload_video as ig_upload
-            from social_text import build_caption, build_ai_disclosure_line, resolve_language
+            from social_text import build_caption
             meta_path = os.path.join(project_dir, "meta.json")
             meta = {}
             if os.path.isfile(meta_path):
                 with open(meta_path, "r", encoding="utf-8") as f:
                     meta = json.load(f)
-            caption = build_caption(meta) + "\n\n" + build_ai_disclosure_line(resolve_language(meta))
+            # AI beyani caption'IN ICINDE (ai_beyani=True) — ayri bir satir
+            # DEGIL. Once ayri `build_ai_disclosure_line()` satiri ekleniyordu;
+            # bu Instagram/FB tarafinda iki ayri beyan kaynagiydi.
+            # (test_ai_beyan_satiri: "eski ayri satir geri gelmemeli")
+            caption = build_caption(meta, ai_beyani=True)
             _log_instagram_result(ig_upload(project_dir, caption=caption))
         except Exception as e:
             log(f"  Instagram HATA: {e}")

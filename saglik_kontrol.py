@@ -63,12 +63,12 @@ import time
 try:
     import sentry_sdk
     from sentry_sdk import capture_exception, capture_message
-    _SENTRY_VAR = True
+    _SENTRY_MEVCUT = True
 except Exception:  # pragma: no cover - gozlem araci opsiyonel
     sentry_sdk = None  # type: ignore[assignment]
     capture_exception = None  # type: ignore[assignment]
     capture_message = None  # type: ignore[assignment]
-    _SENTRY_VAR = False
+    _SENTRY_MEVCUT = False
 
 REPO = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, REPO)

@@ -116,6 +116,14 @@ audio.wav → generate_cover.py → validate_project.py → render.py → auto_p
 
 ## 10. TEST / CI (Windows Uyumlu)
 
+**TEST HIZI (2026-10-21):** Test ortamı **ağa kapalı** ve **LLM kapalı**
+(`conftest.py` autouse fixture):
+- `socket.connect` / `create_connection` / `getaddrinfo` → localhost dışı ENGELLİ
+- `FAMOUS_MUSIC_USE_LLM_CAPTIONS=0` + yerel Ollama yerine **deterministik stub**
+  (`social_text._call_llm_for_caption`)
+- Sonuç: tam `pytest tests/` **saatlerce → 2m45s** (LLM/Ollama her caption'da
+  10-15 sn çağrılıyordu). Gerçek ağ gereken test: `@pytest.mark.network`.
+
 ```bash
 # Tek komut (geçici klasör ayrı)
 python -m pytest -q -p no:cacheprovider --basetemp="C:\pytest_tmp"
@@ -215,6 +223,10 @@ koruma otomatik devreye girer.
 
 **Koruma 2 — `tests/test_kurtarma_kurallari.py`:** 7 kritik modülün repoda
 **var olduğunu** ve **import edilebildiğini** test eder. Silinirse CI kırılır.
+
+**Koruma 4 — `EKSIK_OZELLIKLER.md`:** `python eksik_ozellik_raporu.py`
+testlerin beklediği ama repoda olmayan **20 API'yi** listeler (geliştirme
+sırasında yazılıp bırakılmış testler). Yeni özellik eklerken buraya bak.
 
 **Koruma 3 — `tests/test_i18n_pages.py`:** yeni site sayfası eklendiğinde
 i18n kontrolü yapılmadıysa test kırılır.

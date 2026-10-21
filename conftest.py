@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-pytest yapilandirmasi — toplanamayan (collection) testler.
+pytest yapilandirmasi — toplanamayan (collection) testler + AG KAPISI.
+
+BOLUM 1 — TOPLANAMAYAN TESTLER
 
 NEDEN (2026-10-21): Bu test dosyalari, depoda HIC BULUNMAYAN modulleri
 import ediyor:
@@ -23,11 +25,168 @@ uretiliyor:
   3) eksik olan varsa dosya collection'dan haric tutulur.
 Boylece yeni test dosyalari eklenince otomatik koruma devreye girer.
 
+BOLUM 2 — AG KAPISI (2026-10-21)
+
+NEDEN: `upload/bluesky_upload.py`, `telegram_upload.py`, `facebook_upload.py`
+gibi moduller import sirasinda veya modul seviyesinde GERCEK API CAGRISI
+yapiyordu. `requests.get(..., timeout=20)` + retry -> test paketi
+SAATLERCE asili kaliyordu (3%'te takilip kaliyordu).
+
+COZUM: autouse fixture ile ag DISA KAPATILIR.
+  - `socket.socket.connect`, `socket.create_connection`, `socket.getaddrinfo`
+    localhost disi adreslerde `RuntimeError` firlatir.
+  - Boylece cagri ANINDA basarisiz olur (20 sn beklemek yerine ~0 sn).
+  - localhost/127.0.0.1/::1 IZINLIDIR (yerel HTTP sunucu testleri calisir).
+  - Gercek ag gereken testler `@pytest.mark.network` ile isaretleyebilir.
+
 NOT: `pytest.ini` INI formatinda COK SATIRLI deger desteklemez (TOML destekler).
 Bu yuzden `collect_ignore` conftest.py'de tanimlanir (pytest'in resmi yolu).
 """
 import os
 import re
+import socket
+import sys
+
+import pytest
+
+# --------------------------------------------------------------- SYS.PATH
+# Deterministik olsun: `upload/` ve `tools/` altındaki modüller (social_text,
+# bluesky_upload, llm_router...) testlerde import ediliyor. Önceden bu yol
+# BAŞKA modüllerin import zinciriyle dolaylı ekleniyordu (kırılgan).
+_KOK = os.path.dirname(os.path.abspath(__file__))
+for _yol in (os.path.join(_KOK, "upload"), os.path.join(_KOK, "tools")):
+    if _yol not in sys.path:
+        sys.path.insert(0, _yol)
+
+# --------------------------------------------------------------- LLM STUB
+# `upload/social_text.py` LLM caption'i YEREL OLLAMA ile uretir
+# (`ollama run gemma2:2b`, timeout=60). Her metin uretiminde 10-15 sn.
+# Testlerde bu YERLELLESTIRILIR:
+#   - hiz (LLM'siz 3m20s -> 1 sn)
+#   - determinizm (LLM ciktisi testten teste degisiyordu)
+#   - kaynak (ollama her kurulumda degil)
+#
+# DIZGE: gercek LLM ciktisina YAKIN, ama ARAC ADI (Suno/AI/ChatGPT)
+# ICERMEYEN bir caption. CLAUDE.md: "yasak AI hashtag yok".
+_LLM_STUB = {
+    "tr": (
+        "🎧 {baslik} — yeni şarkı yayında.\n\n"
+        "Gece masallarından bir parça daha. Dinlerken kendi hikâyeni düşün.\n\n"
+        "Senin için hangisi? ❤️ #yenişarkı #türkçemüzik #keşfet"
+    ),
+    "en": (
+        "🎧 {baslik} — new track is out.\n\n"
+        "One more story from the night. Listen and make it yours.\n\n"
+        "Which one is yours? ❤️ #newrelease #music #discover"
+    ),
+}
+
+
+def _llm_stub_caption(meta: dict):
+    """Deterministik LLM caption stub'ı (gerçek Ollama çağrısı YERİNE)."""
+    dil = str((meta or {}).get("language") or "").lower()
+    if dil not in ("en", "tr"):
+        dil = "tr"
+    baslik = str((meta or {}).get("title") or "Yeni Şarkı")
+    return _LLM_STUB[dil].format(baslik=baslik)
+
+
+# --------------------------------------------------------------- AG KAPISI
+# NEDEN: bazi upload modulleri import seviyesinde gercek API cagrisi
+# yapiyordu; test paketi saatlerce asili kaliyordu. Ag kapatilir.
+_AG_IZINLI_HOST = {
+    "localhost", "127.0.0.1", "::1", "0.0.0.0", "", "localhost.localdomain",
+    "ip6-localhost", "ip6-loopback",
+}
+
+
+def _host_izni_mi(host) -> bool:
+    """Bu host'a baglanmaya izin var mi? (localhost/loopback = evet)"""
+    if host is None:
+        return True
+    h = str(host).strip().strip("[]").lower()
+    if h in _AG_IZINLI_HOST:
+        return True
+    if h.startswith("127."):
+        return True
+    return False
+
+
+def _adres_host(adres):
+    if isinstance(adres, (tuple, list)) and adres:
+        return adres[0]
+    return adres
+
+
+@pytest.fixture(autouse=True)
+def _llm_kapili(monkeypatch):
+    """Test ortaminda LLM cagrilari KAPATILIR (LLM bayragi + API anahtarlari).
+
+    NEDEN (2026-10-21): `FAMOUS_MUSIC_USE_LLM_CAPTIONS` sistem ortam
+    degiskeninde `1` idi. `upload/social_text.py` bunu okuyup GERCEK
+    OpenRouter cagrisi yapıyordu — HER metin uretiminde 10-15 sn. Test
+    paketi saatlerce asili kaliyor, API faturası birikiyor ve testler
+    LLM ciktisina bagli oldugu icin FLOK oluyordu.
+
+    Kapatma yontemi: LLM bayragini "0" yaz + API anahtarlarini gizle.
+    `social_text.py` bayragi `os.environ.get()` ile CANLI okudugu icin
+    bu aninda etkilidir (modul seviyesi sabit degil).
+    """
+    for bayrak in ("FAMOUS_MUSIC_USE_LLM_CAPTIONS", "FAMOUS_MUSIC_USE_LLM",
+                   "USE_LLM_CAPTIONS"):
+        monkeypatch.setenv(bayrak, "0")
+    for anahtar in ("OPENROUTER_API_KEY", "TOGETHER_API_KEY", "GOOGLE_API_KEY",
+                    "GEMINI_API_KEY", "ANTHROPIC_API_KEY", "NVIDIA_API_KEY",
+                    "WAVESPEED_API_KEY", "KLING_API_KEY", "SUNO_API_KEY",
+                    "HF_TOKEN", "HUGGINGFACEHUB_API_TOKEN", "POSTWIRE_TOKEN"):
+        monkeypatch.delenv(anahtar, raising=False)
+
+    # Yerel Ollama yerine deterministik stub.
+    try:
+        import social_text
+    except Exception:
+        return
+    monkeypatch.setattr(social_text, "_call_llm_for_caption",
+                        _llm_stub_caption, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _ag_kapisi(request, monkeypatch):
+    """Test ortaminda dis aga cikis engellenir (localhost haric).
+
+    Gercek ag gereken testler: `@pytest.mark.network` isaretle.
+    """
+    if request.node.get_closest_marker("network"):
+        return
+    eski_connect = socket.socket.connect
+    eski_create = socket.create_connection
+    eski_getaddr = socket.getaddrinfo
+
+    def _hata(adres):
+        return RuntimeError(
+            "AG KAPALI (test ortami): %s adresine baglanma denemesi engellendi. "
+            "Test ag cagrisini mock'lamali (monkeypatch) veya "
+            "@pytest.mark.network ile isaretlenmeli." % (adres,)
+        )
+
+    def connect(self, address, *a, **kw):
+        if _host_izni_mi(_adres_host(address)):
+            return eski_connect(self, address, *a, **kw)
+        raise _hata(address)
+
+    def create_connection(address, *a, **kw):
+        if _host_izni_mi(_adres_host(address)):
+            return eski_create(address, *a, **kw)
+        raise _hata(address)
+
+    def getaddrinfo(host, port, *a, **kw):
+        if _host_izni_mi(host):
+            return eski_getaddr(host, port, *a, **kw)
+        raise _hata(host)
+
+    monkeypatch.setattr(socket.socket, "connect", connect)
+    monkeypatch.setattr(socket, "create_connection", create_connection)
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 _KOK = os.path.dirname(os.path.abspath(__file__))
 _TESTS = os.path.join(_KOK, "tests")

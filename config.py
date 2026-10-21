@@ -813,6 +813,11 @@ TEMA_KESIF_ETIKETLERI = {
     "hiphop": ["#türkçehiphop", "#hiphoptr", "#rap", "#yenişarkı", "#türkçemüzik", "#keşfet"],
     "arabesk": ["#arabesk", "#türkçearabesk", "#trap", "#yenişarkı", "#türkçemüzik", "#keşfet"],
     "dj": ["#djset", "#mix", "#livemix", "#techhouse", "#keşfet"],
+    # NEDEN (2026-10-21): `upload/social_text.py` `TEMA_KESIF_ETIKETLERI["_varsayilan"]`
+    # ile bu SOGLUGU OKUYORDU — anahtar olmadigi icin KeyError -> hashtag/kesif
+    # uretimi cokuyordu. LLM acikken bu yol calismiyordu, gizliydi.
+    # Burada tema listesine GIRMEYEN herhangi bir anahtar icin genel havuz.
+    "_varsayilan": ["#yenişarkı", "#türkçemüzik", "#şarkı", "#keşfet", "#müzik"],
 }
 
 EK_PLATFORMLAR_DJ = {
@@ -1096,3 +1101,335 @@ try:
                 globals()[_ad] = getattr(_mod, _ad)
 except Exception:
     pass
+
+# ==========================================================================
+# GERI GETIRILEN ALANLAR (2026-10-21)
+# --------------------------------------------------------------------------
+# `c4caed5` commit'inde config.py uzerine yazildi ve asagidaki 97 sabit
+# dustu. Bunlarin BIRI TikTok kit uretimini AttributeError ile patiriyordu,
+# digerleri yayin ritmi / turev takvimi / buyume hedeflerini varsayilana
+# dusuruyordu. Kaynak: git show c4caed5^:config.py
+# SIRA KORUNARAK geri eklendi (aralarindaki bagimliliklar bozulmaz).
+# ==========================================================================
+
+TIKTOK_SET_ETIKETLERI_EN = ["#DJMix", "#LiveSet", "#ElectronicMusic", "#HouseMusic", "#MixSet"]
+
+TIKTOK_SET_HOOKS_EN = [
+    "Press play and let the set take over 🎧",
+    "One mix, zero skips 🎧",
+    "Set the mood for the night 🌙",
+    "Headphones on, the mix does the rest 🎧",
+    "A full set, one continuous flow 🔁",
+    "Late-night mix, no interruptions 🌃",
+    "Stay for the drop, then stay for the rest 🔊",
+    "Your next hour, sorted 🎶",
+]
+
+TIKTOK_SET_SORULARI_EN = [
+    "Where would you play this mix? 👇",
+    "Which moment of the set hit hardest? 💬",
+    "Deep house or techno next? 👇",
+    "Studying, driving or late night — when is this for? 🌙",
+    "Rate the mix from 1 to 10 👇",
+    "Longer set next time? 💬",
+]
+
+TIKTOK_DERLEME_HOOKS = [
+    "Tek tek arama, hepsi bir arada 🎧",
+    "Uzun bir gece için hazır liste 🌙",
+    "Sıradaki şarkıyı seçme, akış hazır 🔁",
+    "Bir oturuşta baştan sona dinlenir 🎧",
+    "Kulaklığı tak, liste kendiliğinden aksın 🎶",
+    "Gece boyu çalacak bir seçki 🌃",
+]
+
+TIKTOK_DERLEME_SORULARI = [
+    "Listede en sevdiğin hangisi? 👇",
+    "Hangi parçayla başlamalıydı? 💬",
+    "Bir sonraki derlemeye hangi şarkı girsin? 👇",
+    "Bu listeyi hangi saatte açarsın? 🌙",
+    "Sıralamayı sen yapsan ilk hangisi olurdu? 💬",
+]
+
+YOUTUBE_KOTA_YAYIN_REZERVI = 950
+
+YOUTUBE_STUDIO_PLAN_BILDIRIM = True
+
+DJ_KESIT_BEKLETME_ALANI = "kesit_beklet"
+
+DJ_KESIT_ILK_YASAK_SN = 6 * 60
+
+TUREV_GUNLUK_TAVAN = 1
+
+TUREV_YOUTUBE_VIDEO_HAFTALIK_TAVAN = 1
+
+TUREV_YENI_YAYIN_BANDI_SAAT = 24
+
+TUREV_AYNI_SARKI_ARA_SAAT = 48
+
+TUREV_PENCERE_GUN = 21
+
+TUREV_PLAN_T0_SAAT = 72
+
+TUREV_KOSU_BASINA_PLAN = 3
+
+TUREV_SARKI_YOUTUBE_KESIT_KAPI = "2026-10-09"
+
+TUREV_SARKI_YOUTUBE_KESIT_AKTIF = False
+
+TUREV_DJ_KULIS_ONAYLI = False
+
+TUREV_HATIRLATMA_AKTIF = False
+
+TUREV_HATIRLATMA_GUNLUK_TAVAN = 1
+
+TUREV_ELLE_ESLESME_SAAT = 36
+
+TUREV_INSAN_EMEGI_HAFTALIK_TAVAN = 2
+
+TUREV_INSAN_EMEGI_KAYMA_GUN = 2
+
+TUREV_KANAL_TAKVIMI = "kanal_takvimi.json"
+
+TUREV_TOPLULUK_TIKTOK_SONRASI_SAAT = 24
+
+YAYIN_RITMI_SET_SARKI_ARA_SAAT = 48
+
+YAYIN_RITMI_SHORTS_GECIKME_SAAT = 24
+
+YAYIN_RITMI_SHORTS_GECIKMELI = True
+
+YAYIN_RITMI_SARKI_GUNLUK_PLATFORM_TAVANI = 2
+
+YAYIN_RITMI_PLATFORM_MIN_ARA_SAAT = 6
+
+HIKAYE_KAPISI_TARIHI = "2026-09-21"
+
+YOUTUBE_BASLIK_ROTASYONU_AKTIF = True
+
+YOUTUBE_BASLIK_KALIPLARI = (
+    {"id": "K1", "sablon": "{title} (Sözleri) | Türkçe {tur} Şarkısı"},
+    {"id": "K2", "sablon": "{title} — Sözleri | Famous Music Studio"},
+    # K3 yalnız meta.json'da `baslik_eki` (şarkıya özgü 2-4 kelime) varsa aday.
+    {"id": "K3", "sablon": "{title} (Sözleri) · {baslik_eki}", "gerekli": "baslik_eki"},
+)
+
+SES_LIMITER_ACIK = True
+
+SES_TP_ESIK_DBTP = -1.0
+
+SES_LIMITER_TAVAN_DBFS = -2.0
+
+SES_LIMITER_ASIRI_ORNEKLEME = 192000
+
+SES_LIMITER_CIKIS_HZ = 48000
+
+STIL_MIX_ADET = 3
+
+STIL_IFADE_HAVUZU = {
+    "pop": {
+        "mix": ["polished radio mix", "smooth controlled highs", "punchy tight drums",
+                "modern mastered sound", "warm balanced low end", "clean glossy synths"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "crisp vocal consonants", "natural vocal presence with light reverb"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "quick hook within the first verse", "dynamic lift into the chorus"],
+    },
+    "rock": {
+        "mix": ["wide stereo guitars", "live drum kit", "no harsh cymbals",
+                "warm analog mix", "punchy tight drums", "controlled guitar distortion"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "vocal sits above the guitars", "dry intimate vocal in the verses"],
+        "duzenleme": ["concise radio-length arrangement", "no long guitar solos",
+                      "short instrumental intro", "dynamic build into the final chorus"],
+    },
+    "elektronik": {
+        "mix": ["smooth controlled highs", "tight sidechained low end", "clean punchy kick",
+                "wide stereo synth pads", "modern mastered sound", "no harsh hi-hats"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "airy but centered vocal", "crisp vocal consonants"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "short build before the drop", "vocal hook returns after the drop"],
+    },
+    "akustik": {
+        "mix": ["warm analog mix", "natural room ambience", "smooth controlled highs",
+                "close-miked acoustic guitar", "gentle dynamic range", "soft rounded low end"],
+        "vokal": ["dry intimate vocal", "intelligible turkish diction",
+                  "clear upfront lead vocal", "breath and texture kept natural"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "sparse verses, fuller chorus", "gentle build into the last chorus"],
+    },
+    "hiphop": {
+        "mix": ["punchy tight drums", "deep clean 808", "modern mastered sound",
+                "smooth controlled highs", "crisp snare", "uncluttered low mids"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "dry upfront rap delivery", "crisp vocal consonants"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "hook arrives early", "beat switch kept short"],
+    },
+    "arabesk": {
+        "mix": ["warm analog mix", "lush strings in the background", "smooth controlled highs",
+                "clear darbuka groove", "no harsh cymbals", "reverb kept on strings, not vocal"],
+        "vokal": ["clear upfront lead vocal", "intelligible turkish diction",
+                  "expressive but controlled vibrato", "dry intimate vocal in the verses"],
+        "duzenleme": ["concise radio-length arrangement", "no long instrumental breaks",
+                      "short string intro", "emotional lift into the chorus"],
+    },
+}
+
+GORUNURLUK_GERI_OKUMA_DENEME = 2
+
+GORUNURLUK_GERI_OKUMA_BEKLEME_SN = 5
+
+YOUTUBE_MIN_AVR_VIEW_DURATION_SN = 82.8
+
+YOUTUBE_CTR_THUMBNAIL_TARGET = 0.078
+
+YOUTUBE_SHORTS_TO_LONGFORM_CONVERSION = 0.22
+
+YOUTUBE_PLAYLIST_RETENTION_TARGET = 0.38
+
+TIKTOK_MIN_VIEW_COMPLETION_RATE = 0.74
+
+TIKTOK_SHARE_RATE_TARGET = 0.11
+
+TIKTOK_BIO_LINK_CONVERSION = 0.31
+
+TIKTOK_TOP_HASHTAG_WEIGHT_FYP = 0.28
+
+TIKTOK_TOP_HASHTAG_WEIGHT_MÜZIK = 0.26
+
+TIKTOK_TOP_HASHTAG_WEIGHT_YENIÇIKIŞ = 0.18
+
+TIKTOK_TOP_HASHTAG_WEIGHT_TREND = 0.16
+
+TIKTOK_TOP_HASHTAG_WEIGHT_SLUG = 0.12
+
+INSTAGRAM_REELS_COMPLETION_TARGET = 0.70
+
+INSTAGRAM_ENGAGEMENT_RATE_TARGET = 0.068
+
+INSTAGRAM_BIO_LINK_CONVERSION = 0.24
+
+INSTAGRAM_CAROUSEL_BOOST_FACTOR = 2.3
+
+TELEGRAM_PREVIEW_CLICK_RATE = 0.15
+
+TELEGRAM_RESHARE_EFFICIENCY = 0.50
+
+BLUESKY_PREVIEW_CLICK_RATE = 0.13
+
+BLUESKY_RESHARE_EFFICIENCY = 0.45
+
+YOUTUBE_MIN_AVR_VIEW_DURATION_SN = 82.8
+
+YOUTUBE_CTR_THUMBNAIL_TARGET = 0.078
+
+YOUTUBE_SHORTS_TO_LONGFORM_CONVERSION = 0.22
+
+YOUTUBE_PLAYLIST_RETENTION_TARGET = 0.38
+
+YOUTUBE_SUBSCRIBER_CONVERSION_RATE_TARGET = 0.0150
+
+YOUTUBE_MONTHLY_SUBSCRIBER_GROWTH_TARGET = 135
+
+TIKTOK_MIN_VIEW_COMPLETION_RATE = 0.74
+
+TIKTOK_SHARE_RATE_TARGET = 0.11
+
+TIKTOK_BIO_LINK_CONVERSION = 0.31
+
+TIKTOK_FOLLOWER_CONVERSION_RATE_TARGET = 0.080
+
+TIKTOK_TOP_HASHTAG_WEIGHT_FYP = 0.28
+
+TIKTOK_TOP_HASHTAG_WEIGHT_MÜZIK = 0.26
+
+TIKTOK_TOP_HASHTAG_WEIGHT_YENIÇIKIŞ = 0.18
+
+TIKTOK_TOP_HASHTAG_WEIGHT_TREND = 0.16
+
+TIKTOK_TOP_HASHTAG_WEIGHT_SLUG = 0.12
+
+INSTAGRAM_REELS_COMPLETION_TARGET = 0.70
+
+INSTAGRAM_ENGAGEMENT_RATE_TARGET = 0.068
+
+INSTAGRAM_BIO_LINK_CONVERSION = 0.24
+
+INSTAGRAM_CAROUSEL_BOOST_FACTOR = 2.3
+
+INSTAGRAM_FOLLOWER_CONVERSION_RATE_TARGET = 0.050
+
+TELEGRAM_PREVIEW_CLICK_RATE = 0.15
+
+TELEGRAM_RESHARE_EFFICIENCY = 0.50
+
+TELEGRAM_MEMBER_CONVERSION_RATE_TARGET = 0.10
+
+BLUESKY_PREVIEW_CLICK_RATE = 0.13
+
+BLUESKY_RESHARE_EFFICIENCY = 0.45
+
+BLUESKY_MEMBER_CONVERSION_RATE_TARGET = 0.08
+
+GROWTH_REKABET_KANALLARI = []
+
+GROWTH_OUTLIER_CARPAN = 2.0
+
+GROWTH_MIN_VIEWS = 1000
+
+END_SCREEN_ENABLED = True
+
+END_SCREEN_MINUTES = 5
+
+END_SCREEN_LOG_MESSAGE = (    # Kullanıcıya gösterilecek uyarı mesajı
+    'End screen kontrolü: YouTube Studio\'da son {min} saniyeye '
+    'video/playlist eklenmedi'
+)
+
+GROWTH_KEYWORDS = [
+    # Türkçe hip-hop/rap kategorisi
+    ("rap", 8000, "orta"),
+    ("türkçe hip-hop", 3500, "yüksek"),
+    ("sözler", 2000, "düşük"),
+
+    # Duygu/ton kategorisi
+    ("hüzün", 1500, "yüksek"),
+    ("sevgi", 1200, "orta"),
+    ("kader", 800, "düşük"),
+
+    # Format/feature kategorisi
+    ("melodi", 3000, "orta"),
+    ("beats", 1800, "düşük"),
+    ("freestyle", 1000, "yüksek"),
+]
+
+MARKA_SES = {
+    # Kimliğin: kısa, etkileyici, tekrarlanabilir
+    "tanim": "Famous Music Studio — AI-assisted Türkçe müzik",
+
+    # Ton: markanın konuşma tarzı
+    "ton": "guzel ve sincak, dogrudan ve hicbirsey",
+
+    # Kelimeler: kullan, kaçın
+    "kullan": ["keşfet", "dinle", "benimle", "haberdar ol", "sürpriz"],
+    "kacin": ["ücretsiz", "indir", "crack", "pirate", "mp3"],
+
+    # Platform sahneleri
+    "sahne": {
+        "youtube": "uzun soluklu, eğitici, otorite",
+        "tiktok": "hızlı, enerjik, trend-aware",
+        "instagram": "polished casual, marka uyumlu",
+        "facebook": "dostane, topluluk odaklı",
+    },
+
+    # CTA rehberi ( FOLLOW_LINES ile uyumlu )
+    "cta_kural": "izleyiciye NE kazandığını söyle, yalvarma",
+
+    # Hashtag stratjisi
+    "hashtag_kural": "3 katman: niche + mid + broad, max 5",
+
+    # Community: yorumlara cevap ver, soru sor
+    "community_kural": "her yorumu 24sa icin cevapla, soru sor",
+}

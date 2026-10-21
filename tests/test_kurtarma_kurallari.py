@@ -96,7 +96,7 @@ def test_sentry_opsiyonel_import():
     """
     ic = _oku("saglik_kontrol.py")
     assert "try:" in ic and "import sentry_sdk" in ic
-    assert "_SENTRY_VAR" in ic, "sentry opsiyonel bayragi yok"
+    assert "_SENTRY_MEVCUT" in ic, "sentry opsiyonel bayragi yok"
     # import'un try icinde olmasi
     m = re.search(r"try:\s*\n\s*import sentry_sdk", ic)
     assert m, "sentry importu try/except icinde DEGIL"
