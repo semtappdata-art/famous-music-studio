@@ -96,3 +96,8 @@ dj_sets/*/output/
 dj_sets/*/distribution/
 **/segments.json
 **/audio_eski_*.wav
+# Gercek bot token'lar repoda tutulmaz (GitHub secret scanning engeller)
+upload/telegram_client_secrets.json
+upload/bluesky_client_secrets.json
+upload/client_secrets.json
+upload/token.json
