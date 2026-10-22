@@ -256,6 +256,18 @@ koruma otomatik devreye girer.
 - Baştaki sessizlik kırpılırken **PAY** (0.12 sn) bırakılır ve **MAKS**
   (3 sn) tavanı uygulanır — bozuk ölçüm nakaratı yutmasın.
 
+**Koruma 7 — MADDE 36 (ek hat süpürgeleri, 2026-10-21):**
+- Altı ek hat (`_tiktok_kit_sirasi`, `_tiktok_yayin_dogrulama`,
+  `_turev_takvimi`, `_gunluk_izlenme`, `_ek_platform_backfill`,
+  `_facebook_backfill`) `main()`'in **finally** bloğunda çalışır —
+  **yeni görev DEĞİL** (§2).
+- Sıra kilitli: `_tiktok_kit_sirasi` < `_turev_takvimi` < `_release_lock` ·
+  `_refresh_stats` < `_gunluk_izlenme`.
+- Her biri kendi hatasını **yutar**; hiçbiri ana boru hattını düşüremez.
+- "İş yok" dönüşleri de **tek satır** iz bırakır (gürültü sınırı: koşu
+  başına bir satır) — "süpürge çalıştı, işi yoktu" ile "hiç çağrılmadı"
+  ayırt edilebilir olmalı (§9'un üçüncü sorusu).
+
 **Koruma 4 — `EKSIK_OZELLIKLER.md`:** `python eksik_ozellik_raporu.py`
 testlerin beklediği ama repoda olmayan **20 API'yi** listeler (geliştirme
 sırasında yazılıp bırakılmış testler). Yeni özellik eklerken buraya bak.

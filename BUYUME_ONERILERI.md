@@ -262,6 +262,24 @@ eklendi.
   - `backdrop_video` — DJ setlerinde (backdrop.mp4) Shorts highlight
     **kullanılmaz**, tam ekran long format çalışır (2026-09-24 kararı)
 
+- **Madde 36 (2026-10-21) — EK HAT SÜPÜRGELERİ (`finally` bloğuna bağlandı):**
+  Eksik API listesi **20 → 1**'e indi (kalan: `saglik_kontrol.METRIKLER`).
+  - `auto_process._tiktok_kit_sirasi()` / `._tiktok_yayin_dogrulama()` /
+    `._turev_takvimi()` / `._gunluk_izlenme()` / `._ek_platform_backfill()` /
+    `._facebook_backfill()` — hepsi `main()`'in **finally** bloğunda,
+    **YENİ GÖREV DEĞİL** (CLAUDE.md §2).
+  - **Sıralama kilitli:** `_tiktok_kit_sirasi` < `_turev_takvimi` <
+    `_release_lock` · `_refresh_stats` < `_gunluk_izlenme` (bayat veriyle
+    rapor üretilmesin).
+  - **"Tek satır" gürültü sınırı:** günün 18 saati golden-hour DIŞI. Eski kod
+    "iş yok" dönüşlerinde **hiçbir şey** yazmıyordu → "süpürge çalıştı, işi
+    yoktu" ile "süpürge hiç çağrılmadı" **ayırt edilemiyordu** (CLAUDE.md §9'un
+    üçüncü sorusu cevapsızdı). Artık her koşu en az bir iz bırakır.
+  - Her sarmalayıcı kendi hatasını **yutar**; bir ek hattın patlaması ana
+    boru hattını (render + upload) düşürmez.
+  - Facebook özeti `video_id`'leri de içerir (`x['video_id']` KeyError'ı
+    tüm özeti 'HATA' satırına çeviriyordu — `.get()` ile güvenli).
+
 - Detayli rehber: `site/DEPLOY.md`.
 
 ### Kural notları (29) — Topluluk

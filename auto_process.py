@@ -172,6 +172,120 @@ def _is_rendered(proje: str) -> bool:
                 "dosya varlığına güveniliyor.")
     return True
 
+# =============================================================================
+# SÜPÜRGE / EK HATLAR (2026-10-21)
+#
+# NEDEN ayrı fonksiyonlar: CLAUDE.md §3 "3 görevin finally bloğuna ekle"
+# kuralı — bu 6 çağrı `main()`'in finally bloğundan tetiklenir. Her biri
+# KENDİ hatasını YUTAR ve istisna fırlatmaz: bir ek hattın patlaması
+# ana boru hattını (render + upload) düşürmemeli.
+#
+# NEDEN "tek satır" log kuralı: günün 24 saatinin 18'i golden-hour DIŞI.
+# Eski kod "iş yok" dönüşlerinde HİÇBİR şey yazmıyordu — süpürgenin hiç
+# çağrılmamasından ayırt edilemiyordu. Artık her koşu EN AZ bir iz bırakır
+# (gürültü sınırı: koşu başına tek satır).
+# =============================================================================
+
+
+def _ek_platform_backfill() -> None:
+    """Telegram/Bluesky backfill süpürgesi — sonucu TEK satırla özetler."""
+    try:
+        from ek_platform_backfill import backfill
+        sonuc = backfill(log=log) or {}
+    except Exception as e:
+        log("Ek platform backfill HATA: %s" % str(e)[:140])
+        return
+    satirlar = []
+    for el in (sonuc.get("islenen") or []):
+        if isinstance(el, dict):
+            satirlar.append("  %s → %s: %s" % (el.get("platform", "?"),
+                                               el.get("proje", "?"),
+                                               el.get("sonuc", "")))
+        else:
+            satirlar.append("  %s" % el)
+    tavan = sonuc.get("tavan") or {}
+    if tavan:
+        satirlar.append("  Tavan: %s" % ", ".join(
+            "%s=%s" % (k, v) for k, v in tavan.items()))
+    kalan = sonuc.get("kalan") or {}
+    if kalan:
+        satirlar.append("  Kalan: %s" % ", ".join(
+            "%s=%s" % (k, v) for k, v in kalan.items()))
+    if not satirlar:
+        # İş yoktu — ama koşu iz bırakmalı ("süpürge çalıştı, işi yoktu"
+        # ile "süpürge hiç çağrılmadı" AYIRT EDİLMELİ).
+        durum = sonuc.get("durum", "bilinmiyor")
+        sebep = sonuc.get("sebep", "")
+        satirlar.append("  Ek platform backfill: %s%s" % (
+            durum, (" (%s)" % sebep) if sebep else ""))
+    for satir in satirlar:
+        log(satir)
+
+
+def _facebook_backfill() -> None:
+    """Facebook backfill süpürgesi — sonucu TEK satırla özetler."""
+    try:
+        from facebook_backfill import backfill
+        sonuc = backfill(log=log) or {}
+    except Exception as e:
+        log("Facebook backfill HATA: %s" % str(e)[:140])
+        return
+    durum = sonuc.get("durum", "bilinmiyor")
+    if durum != "tamam":
+        sebep = sonuc.get("sebep", "")
+        log("  Facebook backfill: %s%s" % (durum, (" (%s)" % sebep) if sebep else ""))
+        return
+    kalan = sonuc.get("kalan", 0)
+    islenen = sonuc.get("islenen") or []
+    engellenen = sonuc.get("engellenen") or []
+    # video_id OLABILIR olabilir — `x['video_id']` KeyError'i tum ozeti
+    # 'HATA' satirina ceviriyordu. `.get()` ile guvenli.
+    video_idler = [str(el.get("video_id", "")) for el in islenen
+                   if isinstance(el, dict) and el.get("video_id")]
+    log("  Facebook backfill: %s kaldı, %d gönderildi%s, %d engellendi" % (
+        kalan, len(islenen),
+        (" (%s)" % ", ".join(video_idler)) if video_idler else "",
+        len(engellenen)))
+
+
+def _tiktok_kit_sirasi() -> None:
+    """TikTok kit gönderim sırası (kapalıysa hiç çağrılmaz)."""
+    if not getattr(config, "TIKTOK_KIT_AKTIF", True):
+        log("  TikTok kit modu kapalı — gönderim sırası atlandı")
+        return
+    try:
+        from tiktok_yayin_kiti import kit_gonder_sirasi
+        kit_gonder_sirasi(log=log)
+    except Exception as e:
+        log("  TikTok kit HATA: %s" % str(e)[:140])
+
+
+def _tiktok_yayin_dogrulama() -> None:
+    """TikTok taslaklarının günlük doğrulaması (PUBLISH_COMPLETE işaretleme)."""
+    try:
+        from tiktok_yayin_dogrulama import gunluk_dogrulama
+        gunluk_dogrulama(log=log)
+    except Exception as e:
+        log("  TikTok yayın doğrulama HATA: %s" % str(e)[:140])
+
+
+def _turev_takvimi() -> None:
+    """Türev takvimi (üretim → türev → platform) sırasını işletir."""
+    try:
+        from turev_takvimi import sirasi
+        sirasi(log=log)
+    except Exception as e:
+        log("  Türev takvimi HATA: %s" % str(e)[:140])
+
+
+def _gunluk_izlenme() -> None:
+    """Günlük izlenme raporu (CLAUDE.md §12: günde 1)."""
+    try:
+        from weekly_report import gunluk_izlenme_raporu
+        gunluk_izlenme_raporu(log)
+    except Exception as e:
+        log("  Günlük izlenme HATA: %s" % str(e)[:140])
+
 def _load_state(project_dir: str) -> dict:
     state_path = os.path.join(project_dir, "state.json")
     if os.path.isfile(state_path):
@@ -1063,6 +1177,40 @@ def main():
             _abone_supurge(log=log)
         except Exception as e:
             log(f"  Abone kaldiraclari HATASI: {e}")
+
+        # --- MADDE 35: EK HAT SÜPÜRGELERI (2026-10-21) --------------------
+        # YENI GOREV DEGIL: mevcut saatlik gorevin `finally` bloguna baglanir
+        # (CLAUDE.md §2 "mevcut 3 gorevin finally bloguna ekle").
+        #
+        # SIRALAMA ONEMLI:
+        #   _tiktok_kit_sirasi < _turev_takvimi < _release_lock
+        #   _refresh_stats      < _gunluk_izlenme   (bayat veriyle rapor olmasin)
+        # Her biri kendi hatasini YUTAR; buradaki try sadece beklenmedik
+        # durumlar icin (birinin patlamasi digerlerini engellemesin).
+        try:
+            _tiktok_kit_sirasi()
+        except Exception as e:
+            log(f"  TikTok kit HATASI: {e}")
+        try:
+            _turev_takvimi()
+        except Exception as e:
+            log(f"  Turev takvimi HATASI: {e}")
+        try:
+            _tiktok_yayin_dogrulama()
+        except Exception as e:
+            log(f"  TikTok yayin dogrulama HATASI: {e}")
+        try:
+            _ek_platform_backfill()
+        except Exception as e:
+            log(f"  Ek platform backfill HATASI: {e}")
+        try:
+            _facebook_backfill()
+        except Exception as e:
+            log(f"  Facebook backfill HATASI: {e}")
+        try:
+            _gunluk_izlenme()
+        except Exception as e:
+            log(f"  Gunluk izlenme HATASI: {e}")
 
         _release_lock()
         try:
