@@ -103,3 +103,9 @@ upload/telegram_client_secrets.json
 upload/bluesky_client_secrets.json
 upload/client_secrets.json
 upload/token.json
+
+# Log klasoru (ekran goruntuleri API anahtari icerebilir) - ASLA commit edilmez
+logs/
+*.png
+!site/assets/*.png
+!site/**/*.png
